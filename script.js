@@ -90,7 +90,7 @@ function setupIndiegogoLink() {
         link.addEventListener('click', (e) => {
             e.preventDefault();
             // Replace this with your actual Indiegogo campaign link
-            window.open('https://www.indiegogo.com/your-campaign-link', '_blank');
+            window.open('https://igg.me/at/MuffleApp/x/34559251#/', '_blank');
         });
     }
 }
