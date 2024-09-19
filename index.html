@@ -2,119 +2,174 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <title>Mufl - A Social Music Discovery App</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Muffle - Online Multi-user Discovery and Promotion App</title>
+    <!-- Link to CSS -->
     <link rel="stylesheet" href="styles.css">
+    <!-- Link to Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <!-- Link to Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
 </head>
 <body>
+    <!-- Header Section -->
     <header>
         <nav class="container">
             <div class="logo">
-                <img src="MuffleLogo.png" alt="Muffle Logo" class="circular-logo">
+                <img src="assets/MuflLogo.png" alt="Mufl Logo" class="circular-logo">
+                <!-- Adjusted logo for better alignment -->
             </div>
+            <button class="menu-toggle" aria-label="Toggle Menu"><i class="fas fa-bars"></i></button>
             <ul>
-                <li><a href="#home">Home</a></li>
-                <li><a href="#contact">Contact</a></li>
+                <li><a href="#hero">Home</a></li>
+                <li><a href="#quick-demos">Quick Demos</a></li>
+                <li><a href="#informationals">Informationals</a></li>
+                <li><a href="#about">About Me</a></li>
+                <!-- Removed extra links as per your request -->
             </ul>
         </nav>
     </header>
 
-    <main>
-        <section id="hero" class="hero">
-            <div class="container">
-                <h1>Online Multi-user Discovery and Promotion App</h1>
-            </div>
-        </section>
+    <!-- Hero Section -->
+    <section id="hero" class="hero">
+        <div class="container">
+            <h1>Music Everyday from Everywhere</h1>
+            <!-- Removed the "Explore Now" button -->
+        </div>
+    </section>
 
-         <section id="home" class="app-section">
-            <div class="container">
-                <h2>Quick Description</h2>
-                <div class="section-text">
-                    <p>An online multi-user discovery and promotion app</p>
-                    <p>Users select artists on a selection screen.</p>
-                    <p>Based on the selections, users are grouped into rooms with users that share similar tastes</p>
-                    <p>In each room, users swipe through 30-second audio previews from Spotify, added by other room members.</p>
-                    <p>Discover new songs by swiping left or right, and add your own selections to the queue.</p>
-                    <p>Interact with other users by selecting artists from a shared pool.</p>
-                    <p>Track how your recommendations perform with other users in real-time.</p>
-                    <p>Experience a dynamic environment as users come and go, influencing the room's musical direction.</p>
-                    <p>Muffle is all about music discovery and promotion</p>
-                </div>
-            </div>
-        </section>
+    <!-- Quick Demos Section -->
+    <section id="quick-demos" class="app-section">
+        <div class="container">
+            <h2 class="section-title left-align">Quick Demos</h2>
 
-            <section id="Home" class="app-section">
-            <div class="container">
-                <h2>Home Screen</h2>
-                <div class="mockup-images">
-                    <!-- Add your mockup images here -->
-                    <img src="Home1.png" alt="Selection Screen Mockup 1">
-                    <img src="Home2.png" alt="Selection Screen Mockup 2">
-                </div>
-                <div class="section-text">
-                    <!-- Add your text content here -->
-                </div>
-            </div>
-        </section>
+            <!-- Rooms Section -->
+            <div class="demo-section">
+                <h3 class="center-align">Rooms - Your daily dose from every music taste</h3>
 
-        <section id="selection" class="app-section">
-            <div class="container">
-                <h2>Selection Screen</h2>
-                <div class="mockup-images">
-                    <!-- Add your mockup images here -->
-                    <img src="Selection1.png" alt="Selection Screen Mockup 1">
-                    <img src="Selection2.png" alt="Selection Screen Mockup 2">
-                </div>
-                <div class="section-text">
-                    <!-- Add your text content here -->
-                </div>
-            </div>
-        </section>
+                <div class="demo-content">
+                    <!-- Bullet Points -->
+                    <div class="demo-info">
+                        <ul>
+                            <li><i class="fas fa-music"></i> Join diverse rooms with users adding 30-second song previews to a queue.</li>
+                            <li><i class="fas fa-user-friends"></i> Select artists from an artist pool and see others select their picks.</li>
+                            <li><i class="fas fa-plus"></i> Add your recommendations to the queue.</li>
+                            <li><i class="fas fa-thumbs-up"></i> Give feedback with left and right swipes.</li>
+                        </ul>
+                    </div>
 
-        <section id="playing" class="app-section">
-            <div class="container">
-                <h2>Playing Screen</h2>
-                <div class="mockup-images">
-                    <!-- Add your mockup images here -->
-                    <img src="Playing1.png" alt="Playing Screen Mockup 1">
-                    <img src="Playing2.png" alt="Playing Screen Mockup 2">
-                </div>
-                <div class="section-text">
-                    <!-- Add your text content here -->
-                </div>
-            </div>
-        </section>
+                    <!-- Video Carousel -->
+                    <div class="demo-videos">
+                        <!-- Adjusted video container for consistent sizing -->
+                        <h4>Room Demos</h4>
+                        <div class="video-container">
+                            <video src="assets/HipHopRooms.mp4" controls poster="assets/RoomsThumbnail.jpg"></video>
+                            <video src="assets/AestheticRapRooms.mp4" controls poster="assets/RoomsThumbnail.jpg"></video>
+                            <video src="assets/IndieRooms.mp4" controls poster="assets/RoomsThumbnail.jpg"></video>
 
-        <section id="profile" class="app-section">
-            <div class="container">
-                <h2>Profile Screen</h2>
-                <div class="mockup-images">
-                    <!-- Add your mockup images here -->
-                    <img src="Profile.png" alt="Profile Screen Mockup 1">
-                    <img src="Timeline.png" alt="Timeline Screen Mockup 2">
-                </div>
-                <div class="section-text">
-                    <!-- Add your text content here -->
+                            <!-- Added poster image for better user experience -->
+                        </div>
+                    </div>
                 </div>
             </div>
-        </section>
-        <section id="contact" class="app-section">
-            <div class="container">
-                <h2>Contact</h2>
-                <p>For inquiries, please contact us at: <a href="mailto:Muffledev@gmail.com">MuflAppdev@gmail.com</a></p>
-                <div class="email-signup">
-                    
-                </div>
-            </div>
-        </section>
-    </main>
 
+            <!-- Threads Section -->
+            <div class="demo-section">
+                <h3 class="center-align">Threads - Your community curated playlist</h3>
+                <div class="demo-content">
+                    <!-- Bullet Points -->
+                    <div class="demo-info">
+                        <ul>
+                            <li><i class="fas fa-heart"></i> Like, comment, and add song previews to different threads.</li>
+                            <li><i class="fas fa-comments"></i> Start a thread to get recommendations on similar songs or songs matching a particular mood.</li>
+                            <li><i class="fas fa-chart-line"></i> Participate more to access detailed graphs.</li>
+                            <li><i class="fas fa-tags"></i> Compare different tags with parameter threads.</li>
+                        </ul>
+                    </div>
+
+                    <!-- Single Video -->
+                    <div class="demo-videos">
+                        <h4>Threads Demo</h4>
+                        <div class="video-container">
+                            <video src="assets/ThreadsDemo.mp4" controls poster="assets/ThreadsThumbnail.jpg"></video>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Informationals Section -->
+    <section id="informationals" class="app-section">
+        <div class="container">
+            <h2>Informationals</h2>
+
+            <!-- Rooms Informational -->
+            <div class="info-section">
+                <h3>Rooms</h3>
+                <div class="video-container">
+                    <video src="assets/RoomsInfo.mp4" controls poster="assets/RoomsInfoThumbnail.jpg"></video>
+                </div>
+            </div>
+
+            <!-- Threads Informational -->
+            <div class="info-section">
+                <h3>Threads</h3>
+                <div class="video-container">
+                    <video src="assets/ThreadsInfo.mp4" controls poster="assets/ThreadsInfoThumbnail.jpg"></video>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- About Me Section -->
+    <section id="about" class="app-section">
+        <div class="container">
+            <h2>About Me</h2>
+            <div class="about-content">
+                <img src="assets/ProfilePic.jpeg" alt="Profile Picture" class="profile-pic">
+                <h3>Djimmitry Graham</h3>
+                <div class="social-icons">
+                    <a href="#" target="_blank"><i class="fab fa-linkedin"></i></a>
+                    <a href="#" target="_blank"><i class="fab fa-twitter-square"></i></a>
+                    <a href="#" target="_blank"><i class="fab fa-youtube-square"></i></a>
+                </div>
+                <p class="bio">
+                    My name is Djimmitry Graham, and I graduated with a Computer Science degree from FAU. I went into Computer Science not because of coding, but because I really wanted to create something new. At the time, it seemed the easiest way to do that was to code it from scratch. I was good enough at coding to complete college assignments but never good enough to ever even look at a LeetCode question.
+
+                    I used to think there was something wrong with that.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact/Funding Section -->
+    <section id="contact" class="app-section">
+        <div class="container">
+            <h2>Contact/Funding</h2>
+            <p> <a href="muflappdev@gmail.com
+                @gmail.com">muflappdev@gmail.com</a></p>
+            <div class="email-signup">
+                <form id="email-form">
+                    <input type="email" id="email" name="email" placeholder="Enter your email" required>
+                    <button type="submit">Subscribe</button>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
     <footer>
         <div class="container">
-            <p>&copy; 2024 Muffle. All rights reserved.</p>
+            <p>&copy; 2024 Mufl. All rights reserved.</p>
+            <p>Currently accepting donations and funding through Kickstarter.</p>
+            <a href="https://www.kickstarter.com/your-campaign-link" target="_blank" class="footer-cta-button">Support on Kickstarter</a>
         </div>
     </footer>
 
+    <!-- Link to JavaScript -->
     <script src="script.js"></script>
 </body>
 </html>
+
