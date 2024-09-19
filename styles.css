@@ -1,11 +1,20 @@
+/* Root Variables */
 :root {
-    --primary-color: #4a4a4a;
-    --background-color: #f4f4f4;
-    --text-color: #333;
-    --header-bg: #1a1a1a;
-    --header-text: #fff;
+    --primary-color: #121212; /* Dark background */
+    --secondary-color: #1e1e1e; /* Slightly lighter dark */
+    --accent-color: #1db954; /* Spotify Green */
+    --text-color: #ffffff; /* White text */
+    --background-color: #121212; /* Dark background */
+    --header-bg: #1e1e1e;
+    --header-text: #ffffff;
+    --button-bg: #1db954;
+    --button-text: #ffffff;
+    --link-color: #1db954;
+    --footer-bg: #1e1e1e;
+    --footer-text: #ffffff;
 }
 
+/* Global Styles */
 * {
     box-sizing: border-box;
     margin: 0;
@@ -13,9 +22,9 @@
 }
 
 body {
-    font-family: 'Comfortaa', sans-serif;
-    line-height: 1.6;
+    font-family: 'Poppins', sans-serif;
     color: var(--text-color);
+    background-color: var(--background-color);
 }
 
 .container {
@@ -24,20 +33,67 @@ body {
     padding: 0 20px;
 }
 
+h1, h2, h3, h4 {
+    font-family: 'Montserrat', sans-serif;
+    color: var(--text-color);
+    margin-bottom: 20px;
+}
+
+h1 {
+    font-size: 3rem;
+    font-weight: 600;
+}
+
+h2 {
+    font-size: 2.5rem;
+    font-weight: 600;
+}
+
+h3 {
+    font-size: 2rem;
+    font-weight: 600;
+}
+
+h4 {
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+p {
+    font-size: 1.125rem;
+    line-height: 1.8;
+    margin-bottom: 20px;
+}
+
+a {
+    color: var(--link-color);
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+/* Header & Navigation */
 header {
     background-color: var(--header-bg);
     color: var(--header-text);
-    padding: 0.5rem 0;
     position: fixed;
     width: 100%;
     top: 0;
     z-index: 1000;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    border-bottom: 1px solid #333;
 }
 
 nav {
     display: flex;
     justify-content: space-between;
+    align-items: center;
+    padding: 1rem 0;
+}
+
+nav .logo {
+    display: flex;
     align-items: center;
 }
 
@@ -47,178 +103,22 @@ nav ul {
 }
 
 nav ul li {
-    margin-left: 20px;
+    margin-left: 30px;
 }
 
 nav ul li a {
     color: var(--header-text);
-    text-decoration: none;
-    transition: color 0.3s ease;
+    font-size: 1rem;
     font-weight: 500;
-    font-size: 0.9rem;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+    transition: color 0.3s ease;
 }
 
 nav ul li a:hover {
-    color: #a0a0a0;
+    color: var(--accent-color);
 }
 
-.circular-logo {
-    width: 60px;
-    height: 60px;
-    border-radius: 50%;
-    object-fit: cover;
-}
-
-.hero {
-    padding: 8rem 0 4rem;
-    background-color: var(--background-color);
-    text-align: center;
-    background-image: linear-gradient(45deg, #f3f3f3 25%, #e6e6e6 25%, #e6e6e6 50%, #f3f3f3 50%, #f3f3f3 75%, #e6e6e6 75%, #e6e6e6 100%);
-    background-size: 40px 40px;
-}
-
-.hero h1 {
-    font-size: 2.5rem;
-    color: var(--primary-color);
-    margin-bottom: 1rem;
-    text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
-}
-
-.app-section {
-    padding: 4rem 0;
-    transition: opacity 0.3s ease;
-}
-
-.app-section.active {
-    opacity: 1;
-}
-
-.app-section:not(.active) {
-    opacity: 0.3;
-}
-
-h2 {
-    margin-bottom: 2rem;
-    color: var(--primary-color);
-    font-size: 2rem;
-}
-
-.mockup-images {
-    display: flex;
-    justify-content: center;
-    gap: 2rem;
-    margin-bottom: 2rem;
-}
-
-.mockup-images img {
-    max-width: 250px;
-    height: auto;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-    border-radius: 10px;
-    transition: transform 0.3s ease;
-}
-
-.mockup-images img:hover {
-    transform: scale(1.05);
-}
-
-.section-text {
-    text-align: center;
-    max-width: 800px;
-    margin: 0 auto;
-}
-
-footer {
-    background-color: var(--header-bg);
-    color: var(--header-text);
-    text-align: center;
-    padding: 3rem 0;
-}
-
-footer p {
-    margin-bottom: 1rem;
-}
-
-footer a {
-    color: #a0a0a0;
-    text-decoration: none;
-}
-
-footer a:hover {
-    text-decoration: underline;
-}
-
-.email-signup {
-    margin-top: 2rem;
-}
-
-.email-signup form {
-    display: flex;
-    justify-content: center;
-    margin-top: 1rem;
-}
-
-.email-signup input[type="email"] {
-    padding: 0.5rem;
-    width: 250px;
-    border: 1px solid #ccc;
-    border-radius: 4px 0 0 4px;
-}
-
-.email-signup button {
-    padding: 0.5rem 1rem;
-    background-color: var(--primary-color);
-    color: white;
-    border: none;
-    border-radius: 0 4px 4px 0;
-    cursor: pointer;
-}
-
-@media (max-width: 768px) {
-    .hero h1 {
-        font-size: 2rem;
-    }
-
-    .mockup-images {
-        flex-direction: column;
-        align-items: center;
-    }
-
-    .mockup-images img {
-        max-width: 80%;
-    }
-
-    nav ul {
-        flex-direction: column;
-        position: absolute;
-        top: 100%;
-        right: 0;
-        background-color: var(--header-bg);
-        width: 100%;
-        text-align: center;
-        transform: translateY(-100%);
-        transition: transform 0.3s ease;
-    }
-
-    nav ul.active {
-        transform: translateY(0);
-    }
-
-    nav ul li {
-        margin: 10px 0;
-    }
-}
-
-@media (max-width: 480px) {
-    .hero h1 {
-        font-size: 1.5rem;
-    }
-
-    .mockup-images img {
-        max-width: 100%;
-    }
+nav ul li.active a {
+    color: var(--accent-color);
 }
 
 .menu-toggle {
@@ -230,8 +130,290 @@ footer a:hover {
     cursor: pointer;
 }
 
+.circular-logo {
+    width: 50px;
+    height: 50px;
+}
+
+/* Hero Section */
+.hero {
+    background-color: var(--primary-color);
+    color: var(--text-color);
+    text-align: center;
+    padding: 8rem 0 6rem 0;
+    margin-top: 70px; /* To offset the fixed header */
+}
+
+.hero h1 {
+    font-size: 3rem;
+    font-weight: 600;
+    color: var(--text-color);
+    margin-bottom: 30px;
+}
+
+/* App Section Styles */
+.app-section {
+    padding: 4rem 0;
+}
+
+.section-title {
+    font-size: 2.5rem;
+    margin-bottom: 2rem;
+    color: var(--text-color);
+}
+
+.left-align {
+    text-align: left;
+}
+
+.center-align {
+    text-align: center;
+}
+
+.demo-section {
+    margin-bottom: 6rem;
+}
+
+.demo-content {
+    display: flex;
+    align-items: flex-start;
+    margin-top: 2rem;
+    flex-wrap: wrap;
+}
+
+.demo-info {
+    flex: 1;
+    margin-right: 2rem;
+}
+
+.demo-info ul {
+    list-style: none;
+}
+
+.demo-info ul li {
+    margin-bottom: 1.5rem;
+    font-size: 1.125rem;
+    display: flex;
+    align-items: center;
+}
+
+.demo-info ul li i {
+    color: var(--accent-color);
+    margin-right: 10px;
+    font-size: 1.25rem;
+}
+
+.demo-videos {
+    flex: 1;
+    max-width: 600px;
+}
+
+.demo-videos h4 {
+    text-align: center;
+    margin-bottom: 1rem;
+    font-size: 1.5rem;
+}
+
+.video-container {
+    position: relative;
+    width: 100%;
+    padding-top: 56.25%; /* 16:9 Aspect Ratio */
+    background-color: #000;
+}
+
+.video-container video {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.video-container video:focus {
+    outline: none;
+}
+
+/* Informationals Section */
+.info-section {
+    margin-bottom: 6rem;
+}
+
+.info-section h3 {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+}
+
+.info-section .video-container {
+    margin-bottom: 2rem;
+}
+
+/* About Me Section */
+.about-content {
+    text-align: center;
+}
+
+.profile-pic {
+    width: 180px;
+    height: 180px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.social-icons {
+    margin-top: 1rem;
+}
+
+.social-icons a {
+    margin: 0 10px;
+    color: var(--text-color);
+    font-size: 2rem;
+    transition: color 0.3s ease;
+}
+
+.social-icons a:hover {
+    color: var(--accent-color);
+}
+
+.bio {
+    margin-top: 1.5rem;
+    font-size: 1.125rem;
+    line-height: 1.8;
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* Email Signup Form */
+.email-signup {
+    margin-top: 2rem;
+    text-align: center;
+}
+
+.email-signup form {
+    display: inline-flex;
+    margin-top: 1rem;
+    border-radius: 50px;
+    overflow: hidden;
+}
+
+.email-signup input[type="email"] {
+    padding: 0.75rem 1rem;
+    width: 300px;
+    border: 1px solid #555;
+    border-right: none;
+    border-radius: 50px 0 0 50px;
+    font-size: 1rem;
+    background-color: #1e1e1e;
+    color: var(--text-color);
+}
+
+.email-signup button {
+    padding: 0.75rem 1.5rem;
+    background-color: var(--button-bg);
+    color: var(--button-text);
+    border: none;
+    border-radius: 0 50px 50px 0;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: background-color 0.3s ease;
+}
+
+.email-signup button:hover {
+    background-color: #17a84b;
+}
+
+input::placeholder {
+    color: #aaa;
+}
+
+/* Footer */
+footer {
+    background-color: var(--footer-bg);
+    color: var(--footer-text);
+    text-align: center;
+    padding: 3rem 0;
+    margin-top: 4rem;
+    border-top: 1px solid #333;
+}
+
+footer p {
+    margin-bottom: 1rem;
+    font-size: 1rem;
+}
+
+.footer-cta-button {
+    display: inline-block;
+    background-color: var(--accent-color);
+    color: var(--footer-text);
+    padding: 0.75rem 2rem;
+    margin-top: 1rem;
+    text-decoration: none;
+    font-size: 1.125rem;
+    border-radius: 50px;
+    transition: background-color 0.3s ease;
+}
+
+.footer-cta-button:hover {
+    background-color: #17a84b;
+}
+
+/* Responsive Styles */
+@media (max-width: 992px) {
+    .demo-content {
+        flex-direction: column;
+    }
+
+    .demo-info {
+        margin-right: 0;
+        margin-bottom: 2rem;
+    }
+
+    .demo-videos {
+        max-width: 100%;
+    }
+}
+
 @media (max-width: 768px) {
+    nav ul {
+        flex-direction: column;
+        position: absolute;
+        top: 70px;
+        right: 0;
+        background-color: var(--header-bg);
+        width: 100%;
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.3s ease;
+    }
+
+    nav ul.active {
+        max-height: 300px;
+    }
+
+    nav ul li {
+        margin: 10px 0;
+        text-align: center;
+    }
+
     .menu-toggle {
         display: block;
+    }
+}
+
+@media (max-width: 480px) {
+    h1 {
+        font-size: 2rem;
+    }
+
+    h2 {
+        font-size: 1.8rem;
+    }
+
+    h3 {
+        font-size: 1.5rem;
+    }
+
+    .hero h1 {
+        font-size: 2.2rem;
     }
 }
