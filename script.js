@@ -3,12 +3,19 @@ document.addEventListener('DOMContentLoaded', () => {
     initApp();
 });
 
-function setupMobileMenu() {
-    const menuToggle = document.createElement('button');
-    menuToggle.innerHTML = '☰';
-    menuToggle.classList.add('menu-toggle');
-    document.querySelector('nav').appendChild(menuToggle);
+function initApp() {
+    try {
+        setupMobileMenu();
+        setupNavigation();
+        setupScrollEffects();
+        setupEmailSignup();
+    } catch (error) {
+        console.error('Error initializing app:', error);
+    }
+}
 
+function setupMobileMenu() {
+    const menuToggle = document.querySelector('.menu-toggle');
     const navList = document.querySelector('nav ul');
 
     menuToggle.addEventListener('click', () => {
@@ -16,22 +23,11 @@ function setupMobileMenu() {
     });
 }
 
-function initApp() {
-    try {
-        setupNavigation();
-        setupScrollEffects();
-        setupMobileMenu();
-        setupEmailSignup();
-        setupIndiegogoLink();
-    } catch (error) {
-        console.error('Error initializing app:', error);
-    }
-}
-
 function setupNavigation() {
     const navLinks = document.querySelectorAll('nav a');
     navLinks.forEach(link => {
         link.addEventListener('click', (e) => {
+            if (link.getAttribute('href') === '#') return;
             e.preventDefault();
             const targetId = link.getAttribute('href').slice(1);
             const targetElement = document.getElementById(targetId);
@@ -40,34 +36,19 @@ function setupNavigation() {
             } else {
                 console.warn(`Target element "${targetId}" not found`);
             }
+
+            // Close mobile menu after clicking a link
+            const navList = document.querySelector('nav ul');
+            if (navList.classList.contains('active')) {
+                navList.classList.remove('active');
+            }
         });
     });
     console.log('Navigation setup complete');
 }
 
 function setupScrollEffects() {
-    const sections = document.querySelectorAll('.app-section');
-    const observerOptions = {
-        root: null,
-        rootMargin: '0px',
-        threshold: 0.7
-    };
-
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                entry.target.classList.add('active');
-            } else {
-                entry.target.classList.remove('active');
-            }
-        });
-    }, observerOptions);
-
-    sections.forEach(section => {
-        observer.observe(section);
-    });
-
-    console.log('Scroll effects setup complete');
+    // Removed animations that could interfere with text layout
 }
 
 function setupEmailSignup() {
@@ -81,17 +62,8 @@ function setupEmailSignup() {
             alert('Thank you for subscribing!');
             form.reset();
         });
-    }
-}
-
-function setupIndiegogoLink() {
-    const link = document.getElementById('indiegogo-link');
-    if (link) {
-        link.addEventListener('click', (e) => {
-            e.preventDefault();
-            // Replace this with your actual Indiegogo campaign link
-            window.open('https://igg.me/at/MuffleApp/x/34559251#/', '_blank');
-        });
+    } else {
+        console.warn('Email form not found');
     }
 }
 
@@ -99,6 +71,7 @@ function setupIndiegogoLink() {
 window.addEventListener('error', (e) => {
     if (e.target.tagName === 'IMG') {
         console.error(`Error loading image: ${e.target.src}`);
-        e.target.src = 'placeholder.png'; // Replace with a placeholder image
+        e.target.src = 'assets/placeholder.png'; // Replace with a placeholder image
     }
 }, true);
+
