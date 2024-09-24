@@ -17,7 +17,7 @@
     <header>
         <nav class="container">
             <div class="logo">
-                <img src="MuflLogo.png" alt="Mufl Logo" class="circular-logo">
+                <img src="assets/MuflLogo.png" alt="Mufl Logo" class="circular-logo">
                 <!-- Adjusted logo for better alignment -->
             </div>
             <button class="menu-toggle" aria-label="Toggle Menu"><i class="fas fa-bars"></i></button>
@@ -25,6 +25,7 @@
                 <li><a href="#hero">Home</a></li>
                 <li><a href="#quick-demos">Quick Demos</a></li>
                 <li><a href="#informationals">Informationals</a></li>
+                <li><a href="#about">About Me</a></li>
                 <!-- Removed extra links as per your request -->
             </ul>
         </nav>
@@ -38,40 +39,68 @@
         </div>
     </section>
 
-    <!-- Quick Demos Section -->
-    <section id="quick-demos" class="app-section">
-        <div class="container">
-            <h2 class="section-title left-align">Quick Demos</h2>
+   <!-- Quick Demos Section -->
+<section id="quick-demos" class="app-section">
+    <div class="container">
+        <h2 class="section-title left-align">Quick Demos</h2>
 
-            <!-- Rooms Section -->
-            <div class="demo-section">
-                <h3 class="center-align">Rooms - Your daily dose from every music taste</h3>
+        <!-- Rooms Section -->
+        <div class="demo-section">
+            <h3 class="center-align">Rooms - Your daily dose from every music taste</h3>
 
-                <div class="demo-content">
-                    <!-- Bullet Points -->
-                    <div class="demo-info">
-                        <ul>
-                            <li><i class="fas fa-music"></i> Join diverse rooms with users adding 30-second song previews to a queue.</li>
-                            <li><i class="fas fa-user-friends"></i> Select artists from an artist pool and see others select their picks.</li>
-                            <li><i class="fas fa-plus"></i> Add your recommendations to the queue.</li>
-                            <li><i class="fas fa-thumbs-up"></i> Give feedback with left and right swipes.</li>
-                        </ul>
-                    </div>
+            <div class="demo-content">
+                <!-- Bullet Points -->
+                <div class="demo-info">
+                    <ul>
+                        <li><i class="fas fa-music"></i> Join diverse rooms with users adding 30-second song previews to a queue.</li>
+                        <li><i class="fas fa-user-friends"></i> Select artists from an artist pool and see others select their picks.</li>
+                        <li><i class="fas fa-plus"></i> Add your recommendations to the queue.</li>
+                        <li><i class="fas fa-thumbs-up"></i> Give feedback with left and right swipes.</li>
+                    </ul>
+                </div>
 
-                    <!-- Video Carousel -->
-                    <div class="demo-videos">
-                        <!-- Adjusted video container for consistent sizing -->
-                        <h4>Room Demos</h4>
-                        <div class="video-container">
-                            <video src="HipHopRooms.mp4" controls poster="RoomsThumbnail.jpg"></video>
-                            <video src="AestheticRapRooms.mp4" controls poster="RoomsThumbnail.jpg"></video>
-                            <video src="IndieRooms.mp4" controls poster="RoomsThumbnail.jpg"></video>
-
-                            <!-- Added poster image for better user experience -->
+                <!-- Video Carousel -->
+                <div class="demo-videos">
+                    <h4>Room Demos</h4>
+                    <div class="carousel">
+                        <button class="arrow-btn arrow-left" aria-label="Previous Slide"><i class="fas fa-chevron-left"></i></button>
+                        <div class="carousel-track-container">
+                            <ul class="carousel-track">
+                                <!-- Slide 1 -->
+                                <li class="carousel-slide">
+                                    <h5 class="video-title">Hip Hop Rooms</h5>
+                                    <video src="assets/HipHopRooms.mp4" controls poster="assets/ThumbnailRooms.png"></video>
+                                </li>
+                                <!-- Slide 2 -->
+                                <li class="carousel-slide">
+                                    <h5 class="video-title">Aesthetic Rap Rooms</h5>
+                                    <video src="assets/AestheticRapRooms.mp4" controls poster="assets/ThumbnailRooms.png"></video>
+                                </li>
+                                <!-- Slide 3 -->
+                                <li class="carousel-slide">
+                                    <h5 class="video-title">Indie Rooms</h5>
+                                    <video src="assets/IndieRooms.mp4" controls poster="assets/ThumbnailRooms.png"></video>
+                                </li>
+                                <!-- Slide 4 -->
+                                <li class="carousel-slide">
+                                    <h5 class="video-title">Country Rock Rooms</h5>
+                                    <video src="assets/CountryRockRooms.mp4" controls poster="assets/ThumbnailRooms.png"></video>
+                                </li>
+                            </ul>
                         </div>
+                        <button class="arrow-btn arrow-right" aria-label="Next Slide"><i class="fas fa-chevron-right"></i></button>
+                    </div>
+                    <!-- Carousel Indicators -->
+                    <div class="carousel-nav">
+                        <button class="carousel-indicator current-slide" aria-label="Slide 1"></button>
+                        <button class="carousel-indicator" aria-label="Slide 2"></button>
+                        <button class="carousel-indicator" aria-label="Slide 3"></button>
+                        <button class="carousel-indicator" aria-label="Slide 4"></button>
                     </div>
                 </div>
             </div>
+        </div>
+
 
             <!-- Threads Section -->
             <div class="demo-section">
@@ -91,7 +120,7 @@
                     <div class="demo-videos">
                         <h4>Threads Demo</h4>
                         <div class="video-container">
-                            <video src="ThreadsDemo.mp4" controls poster="ThreadsThumbnail.jpg"></video>
+                            <video src="assets/ThreadsDemo.mp4" controls poster="assets/ThumbnailThreads.png"></video>
                         </div>
                     </div>
                 </div>
@@ -108,7 +137,7 @@
             <div class="info-section">
                 <h3>Rooms</h3>
                 <div class="video-container">
-                    <video src="RoomsInfo.mp4" controls poster="assets/RoomsInfoThumbnail.jpg"></video>
+                    <video src="assets/RoomsInfo.mp4" controls poster="assets/ThumbnailRooms.png"></video>
                 </div>
             </div>
 
@@ -116,25 +145,58 @@
             <div class="info-section">
                 <h3>Threads</h3>
                 <div class="video-container">
-                    <video src="ThreadsInfo.mp4" controls poster="assets/ThreadsInfoThumbnail.jpg"></video>
+                    <video src="assets/ThreadsInfo.mp4" controls poster="assets/ThumbnailThreads.png"></video>
                 </div>
             </div>
         </div>
     </section>
 
-   
+    <!-- About Me Section -->
+    <section id="about" class="app-section">
+        <div class="container">
+            <h2>About Me</h2>
+            <div class="about-content">
+                <img src="assets/ProfilePic.jpeg" alt="Profile Picture" class="profile-pic">
+                <h3>Djimmitry Graham</h3>
+                <div class="social-icons">
+                    <a href="https://www.linkedin.com/in/djimmitry-graham/" target="_blank"><i class="fab fa-linkedin"></i></a>
+                    <a href="https://x.com/MuflDev" target="_blank"><i class="fab fa-twitter-square"></i></a>
+                    <a href="https://www.youtube.com/@Graham-u8c" target="_blank"><i class="fab fa-youtube-square"></i></a>
+                </div>
+                <p class="bio">
+                    My name is Djimmitry Graham, and I graduated with a Computer Science degree from FAU. I went into Computer Science not because of coding, but because I really wanted to create something new. And at the time, it seemed the easiest way to do that was to think it up from scratch.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Why I am Creating This App Section -->
+<section id="why-creating" class="app-section">
+    <div class="container">
+        <h2>Why I Am Creating This App</h2>
+        <div class="why-content">
+            <h3>The Great Music Filter</h3>
+            <p>We’re used to algorithms giving us playlists to dig through song by song, as there aren’t many other ways to find something new.</p>
+            <p>Digging through a 25 song playlist without at least being rewarded with one new song, barely ever seems worth the effort.</p>
+            <p>The idea of this chore alone discourages people to even try, putting a stop on new song discoveries, potential music streams, and artists being discovered.</p>
+            <p>There is muck filling the music industry pipeline, caused by the failure of a rewarding music discovery system.</p>
+            <p>Allow people to flow naturally through Rooms and communities and watch as random human social interactions become Mufl’s algorithm.</p>
+        </div>
+    </div>
+</section>
 
     <!-- Contact/Funding Section -->
     <section id="contact" class="app-section">
         <div class="container">
             <h2>Contact/Funding</h2>
             <p> <a href="muflappdev@gmail.com
-                @gmail.com">muflappdev@gmail.com</a></p>
+                @gmail.com">djimmitrygraham@gmail.com</a></p>
             <div class="email-signup">
-                <form id="email-form">
+                <form id="email-form" action="https://formspree.io/f/mkgwlyrr" method="POST">
                     <input type="email" id="email" name="email" placeholder="Enter your email" required>
                     <button type="submit">Subscribe</button>
                 </form>
+                
             </div>
         </div>
     </section>
@@ -144,7 +206,7 @@
         <div class="container">
             <p>&copy; 2024 Mufl. All rights reserved.</p>
             <p>Currently accepting donations and funding through Kickstarter.</p>
-            <a href="http://kck.st/3Xr0yli" target="_blank" class="footer-cta-button">Support on Kickstarter</a>
+            <a href="https://www.kickstarter.com/your-campaign-link" target="_blank" class="footer-cta-button">Support on Kickstarter</a>
         </div>
     </footer>
 
@@ -152,4 +214,5 @@
     <script src="script.js"></script>
 </body>
 </html>
+
 
