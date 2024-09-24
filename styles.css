@@ -131,8 +131,8 @@ nav ul li.active a {
 }
 
 .circular-logo {
-    width: 50px;
-    height: 50px;
+    width: 100px;
+    height: 100px;
 }
 
 /* Hero Section */
@@ -233,6 +233,83 @@ nav ul li.active a {
     outline: none;
 }
 
+/* Carousel Styles */
+.carousel {
+    position: relative;
+    overflow: hidden;
+    margin-top: 20px;
+}
+
+.carousel-track-container {
+    overflow: hidden;
+}
+
+.carousel-track {
+    display: flex;
+    transition: transform 0.5s ease-in-out;
+    padding: 0;
+    margin: 0;
+    list-style: none;
+}
+
+.carousel-slide {
+    min-width: 100%;
+    text-align: center;
+}
+
+.carousel-slide .video-title {
+    margin-bottom: 10px;
+    font-size: 1.5rem;
+    color: var(--text-color);
+}
+
+.carousel-slide video {
+    width: 100%;
+    height: auto;
+    max-height: 500px;
+}
+
+.arrow-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(30, 30, 30, 0.7);
+    border: none;
+    color: var(--text-color);
+    padding: 10px;
+    cursor: pointer;
+    font-size: 1.5rem;
+    z-index: 1;
+}
+
+.arrow-left {
+    left: 10px;
+}
+
+.arrow-right {
+    right: 10px;
+}
+
+.carousel-nav {
+    text-align: center;
+    margin-top: 10px;
+}
+
+.carousel-indicator {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    background-color: #555;
+    border-radius: 50%;
+    margin: 0 5px;
+    cursor: pointer;
+}
+
+.carousel-indicator.current-slide {
+    background-color: var(--accent-color);
+}
+
+
 /* Informationals Section */
 .info-section {
     margin-bottom: 6rem;
@@ -282,6 +359,42 @@ nav ul li.active a {
     margin-left: auto;
     margin-right: auto;
 }
+
+/* Why I am Creating This App Section */
+#why-creating {
+    background-color: var(--background-color); /* Matches the site background */
+    color: var(--text-color);
+    padding: 4rem 0;
+}
+
+#why-creating h2 {
+    font-size: 2.5rem;
+    font-family: 'Montserrat', sans-serif;
+    color: var(--text-color);
+    margin-bottom: 2rem;
+    text-align: center; /* Center-align for uniformity */
+}
+
+.why-content {
+    max-width: 800px;
+    margin: 0 auto; /* Center the content */
+    text-align: left; /* Left-align the text */
+    line-height: 1.8;
+}
+
+.why-content h3 {
+    font-size: 2rem;
+    margin-bottom: 1.5rem;
+    color: var(--text-color);
+    font-family: 'Montserrat', sans-serif;
+}
+
+.why-content p {
+    margin-bottom: 1.5rem;
+    font-size: 1.125rem;
+    font-family: 'Poppins', sans-serif;
+}
+
 
 /* Email Signup Form */
 .email-signup {
@@ -417,3 +530,4 @@ footer p {
         font-size: 2.2rem;
     }
 }
+
