@@ -69,80 +69,86 @@ function setupEmailSignup() {
 }
 
 function setupCarousel() {
-    const track = document.querySelector('.carousel-track');
-    const slides = Array.from(track.children);
-    const nextButton = document.querySelector('.arrow-right');
-    const prevButton = document.querySelector('.arrow-left');
-    const dotsNav = document.querySelector('.carousel-nav');
-    const dots = Array.from(dotsNav.children);
+    const carousels = document.querySelectorAll('.carousel');
+    carousels.forEach(carousel => {
+        const track = carousel.querySelector('.carousel-track');
+        const slides = Array.from(track.children);
+        const nextButton = carousel.querySelector('.arrow-right');
+        const prevButton = carousel.querySelector('.arrow-left');
+        const dotsNav = carousel.parentElement.querySelector('.carousel-nav');
+        let dots = [];
 
-    const slideWidth = slides[0].getBoundingClientRect().width;
-
-    // Arrange the slides next to one another
-    const setSlidePosition = (slide, index) => {
-        slide.style.left = `${slideWidth * index}px`;
-    };
-    slides.forEach(setSlidePosition);
-
-    const moveToSlide = (track, currentSlide, targetSlide) => {
-        track.style.transform = `translateX(-${targetSlide.style.left})`;
-        currentSlide.classList.remove('current-slide');
-        targetSlide.classList.add('current-slide');
-
-        // Pause all videos
-        const videos = track.querySelectorAll('video');
-        videos.forEach(video => video.pause());
-
-        // Play the video in the target slide if needed
-        const videoInTargetSlide = targetSlide.querySelector('video');
-        if (videoInTargetSlide) {
-            videoInTargetSlide.currentTime = 0; // Optional: reset the video to the beginning
+        // Generate dots dynamically
+        if (dotsNav) {
+            dotsNav.innerHTML = ''; // Clear existing dots
+            slides.forEach((_, index) => {
+                const dot = document.createElement('button');
+                dot.classList.add('carousel-indicator');
+                if (index === 0) dot.classList.add('current-slide');
+                dot.setAttribute('aria-label', `Slide ${index + 1}`);
+                dotsNav.appendChild(dot);
+                dots.push(dot);
+            });
         }
-    };
 
-    const updateDots = (currentDot, targetDot) => {
-        currentDot.classList.remove('current-slide');
-        targetDot.classList.add('current-slide');
-    };
+        let currentSlideIndex = 0;
 
-    prevButton.addEventListener('click', () => {
-        const currentSlide = track.querySelector('.current-slide') || slides[0];
-        const prevSlide = currentSlide.previousElementSibling || slides[slides.length - 1];
-        const currentDot = dotsNav.querySelector('.current-slide') || dots[0];
-        const prevDot = currentDot.previousElementSibling || dots[dots.length - 1];
+        if (!slides.length) {
+            console.warn('No slides found in the carousel.');
+            return;
+        }
+        
+        // Ensure buttons exist before adding event listeners
+        if (prevButton) {
+            prevButton.addEventListener('click', () => {
+                const prevIndex = (currentSlideIndex === 0) ? slides.length - 1 : currentSlideIndex - 1;
+                moveToSlide(prevIndex);
+            });
+        } else {
+            console.warn('Previous button not found in the carousel.');
+        }
 
-        moveToSlide(track, currentSlide, prevSlide);
-        updateDots(currentDot, prevDot);
+        if (nextButton) {
+            nextButton.addEventListener('click', () => {
+                const nextIndex = (currentSlideIndex === slides.length - 1) ? 0 : currentSlideIndex + 1;
+                moveToSlide(nextIndex);
+            });
+        } else {
+            console.warn('Next button not found in the carousel.');
+        }
+
+        if (dotsNav) {
+            dotsNav.addEventListener('click', (e) => {
+                const targetDot = e.target.closest('button');
+                if (!targetDot) return;
+
+                const targetIndex = dots.indexOf(targetDot);
+                if (targetIndex !== -1) {
+                    moveToSlide(targetIndex);
+                }
+            });
+        }
+
+        function moveToSlide(index) {
+            track.style.transform = `translateX(-${100 * index}%)`;
+            currentSlideIndex = index;
+            updateDots();
+        }
+
+        function updateDots() {
+            dots.forEach((dot, index) => {
+                dot.classList.toggle('current-slide', index === currentSlideIndex);
+            });
+        }
+
+        // Initialize carousel
+        moveToSlide(0);
     });
-
-    nextButton.addEventListener('click', () => {
-        const currentSlide = track.querySelector('.current-slide') || slides[0];
-        const nextSlide = currentSlide.nextElementSibling || slides[0];
-        const currentDot = dotsNav.querySelector('.current-slide') || dots[0];
-        const nextDot = currentDot.nextElementSibling || dots[0];
-
-        moveToSlide(track, currentSlide, nextSlide);
-        updateDots(currentDot, nextDot);
-    });
-
-    dotsNav.addEventListener('click', (e) => {
-        const targetDot = e.target.closest('button');
-
-        if (!targetDot) return;
-
-        const currentSlide = track.querySelector('.current-slide') || slides[0];
-        const currentDot = dotsNav.querySelector('.current-slide') || dots[0];
-        const targetIndex = dots.findIndex((dot) => dot === targetDot);
-        const targetSlide = slides[targetIndex];
-
-        moveToSlide(track, currentSlide, targetSlide);
-        updateDots(currentDot, targetDot);
-    });
-
-    // Set the first slide and dot as current
-    slides[0].classList.add('current-slide');
-    dots[0].classList.add('current-slide');
 }
+
+
+
+
 
 
 // Error handling for image loading
