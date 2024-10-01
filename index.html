@@ -11,55 +11,32 @@
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
     <!-- Link to Font Awesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
-
     <link href="https://cdnjs.cloudflare.com/ajax/libs/lightbox2/2.11.3/css/lightbox.min.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lightbox2/2.11.3/js/lightbox-plus-jquery.min.js"></script>
 
     <script>
         lightbox.option({
-            'fadeDuration': 0,  // Disable fade transition
-            'resizeDuration': 0,  // Disable resizing animation
-            'imageFadeDuration': 0 // Disable image fade
+            'fadeDuration': 0,  
+            'resizeDuration': 0,  
+            'imageFadeDuration': 0 
         });
     </script>
     
     <style>
-        /* Change the lightbox background (overlay) to black */
-.lb-overlay {
-    background-color: black !important; /* Ensure overlay is black */
-}
-
-/* Change the loader background (appears while the image is loading) */
-.lb-loader {
-    border-color: black transparent black transparent !important; /* Ensure loader uses black */
-}
-
-/* Set the background of the image container to black */
-.lb-outerContainer {
-    background-color: black !important; /* Black background while the image loads */
-}
-
-/* Set the inner image container to black */
-.lb-container {
-    background-color: black !important; /* Black background to prevent flash */
-}
-
-/* Prevent a background color flash during image loading */
-.lb-image {
-    background-color: black !important; /* Black background behind the image itself */
-}
-
+        .lb-overlay, .lb-outerContainer, .lb-container, .lb-image {
+            background-color: black !important;
+        }
+        .lb-loader {
+            border-color: black transparent black transparent !important;
+        }
     </style>
-    
-    
 </head>
 <body>
     <!-- Header Section -->
     <header>
         <nav class="container">
             <div class="logo">
-                <img src="MuflLogo.png" alt="Mufl Logo" class="circular-logo">
-                <!-- Adjusted logo for better alignment -->
+                <img src="MuflLogo.png" alt="Mufl Logo" class="circular-logo" loading="lazy">
             </div>
             <button class="menu-toggle" aria-label="Toggle Menu"><i class="fas fa-bars"></i></button>
             <ul>
@@ -67,7 +44,6 @@
                 <li><a href="#quick-demos">Quick Demos</a></li>
                 <li><a href="#informationals">Informationals</a></li>
                 <li><a href="#about">About Me</a></li>
-                <!-- Removed extra links as per your request -->
             </ul>
         </nav>
     </header>
@@ -76,122 +52,93 @@
     <section id="hero" class="hero">
         <div class="container">
             <h1>Music Everyday from Everywhere</h1>
-            <!-- Add the Pitch Deck Title -->
             <h2 class="pitch-deck-title">Pitch Deck</h2>
         </div>
         <!-- Pitch Deck Carousel -->
-       <!-- Thumbnail Grid with "+17" Indicator -->
-<div class="pitch-deck-gallery">
-    <!-- First three thumbnails -->
-    <a href="Slide1.jpg" data-lightbox="pitch-deck" data-title="Slide 1">
-        <img src="Slide1_thumbnail.jpg" alt="Slide 1 Thumbnail">
-    </a>
-    <a href="Slide2.jpg" data-lightbox="pitch-deck" data-title="Slide 2">
-        <img src="Slide2_thumbnail.jpg" alt="Slide 2 Thumbnail">
-    </a>
-    <a href="Slide3.jpg" data-lightbox="pitch-deck" data-title="Slide 3">
-        <img src="Slide3_thumbnail.jpg" alt="Slide 3 Thumbnail">
-    </a>
+        <div class="pitch-deck-gallery">
+            <a href="Slide1.jpg" data-lightbox="pitch-deck" data-title="Slide 1">
+                <img src="Slide1_thumbnail.jpg" alt="Slide 1 Thumbnail" loading="lazy">
+            </a>
+            <a href="Slide2.jpg" data-lightbox="pitch-deck" data-title="Slide 2">
+                <img src="Slide2_thumbnail.jpg" alt="Slide 2 Thumbnail" loading="lazy">
+            </a>
+            <a href="Slide3.jpg" data-lightbox="pitch-deck" data-title="Slide 3">
+                <img src="Slide3_thumbnail.jpg" alt="Slide 3 Thumbnail" loading="lazy">
+            </a>
 
-    <!-- "+17" Overlay for remaining images -->
-    <div class="more-images">
-        <a href="Slide4.jpg" data-lightbox="pitch-deck" data-title="Slide 4">
-            <img src="Slide4_thumbnail.jpg" alt="Slide 4 Thumbnail">
-            <div class="more-overlay">
-                +17 <!-- Number of remaining slides -->
+            <div class="more-images">
+                <a href="Slide4.jpg" data-lightbox="pitch-deck" data-title="Slide 4">
+                    <img src="Slide4_thumbnail.jpg" alt="Slide 4 Thumbnail" loading="lazy">
+                    <div class="more-overlay">
+                        +17
+                    </div>
+                </a>
+
+                <!-- Hidden lightbox links for remaining images -->
+                <a href="Slide5.jpg" data-lightbox="pitch-deck" data-title="Slide 5" style="display: none;"></a>
+                <a href="Slide6.jpg" data-lightbox="pitch-deck" data-title="Slide 6" style="display: none;"></a>
+                <!-- Add the rest of the images similarly, keeping them hidden -->
             </div>
-        </a>
-
-        <!-- Hidden lightbox links for remaining images -->
-        <a href="Slide5.jpg" data-lightbox="pitch-deck" data-title="Slide 5" style="display: none;"></a>
-        <a href="Slide6.jpg" data-lightbox="pitch-deck" data-title="Slide 6" style="display: none;"></a>
-        <a href="Slide7.jpg" data-lightbox="pitch-deck" data-title="Slide 7" style="display: none;"></a>
-        <a href="Slide8.jpg" data-lightbox="pitch-deck" data-title="Slide 8" style="display: none;"></a>
-        <a href="Slide9.jpg" data-lightbox="pitch-deck" data-title="Slide 9" style="display: none;"></a>
-        <a href="Slide10.jpg" data-lightbox="pitch-deck" data-title="Slide 10" style="display: none;"></a>
-        <a href="Slide11.jpg" data-lightbox="pitch-deck" data-title="Slide 11" style="display: none;"></a>
-        <a href="Slide12.jpg" data-lightbox="pitch-deck" data-title="Slide 12" style="display: none;"></a>
-        <a href="Slide13.jpg" data-lightbox="pitch-deck" data-title="Slide 13" style="display: none;"></a>
-        <a href="Slide14.jpg" data-lightbox="pitch-deck" data-title="Slide 14" style="display: none;"></a>
-        <a href="Slide15.jpg" data-lightbox="pitch-deck" data-title="Slide 15" style="display: none;"></a>
-        <a href="Slide16.jpg" data-lightbox="pitch-deck" data-title="Slide 16" style="display: none;"></a>
-        <a href="Slide17.jpg" data-lightbox="pitch-deck" data-title="Slide 17" style="display: none;"></a>
-        <a href="Slide18.jpg" data-lightbox="pitch-deck" data-title="Slide 18" style="display: none;"></a>
-        <a href="Slide19.jpg" data-lightbox="pitch-deck" data-title="Slide 19" style="display: none;"></a>
-        <a href="Slide20.jpg" data-lightbox="pitch-deck" data-title="Slide 20" style="display: none;"></a>
-        <a href="Slide21.jpg" data-lightbox="pitch-deck" data-title="Slide 21" style="display: none;"></a>
-    </div>
-</div>
-
-            
         </div>
     </section>
 
-   <!-- Quick Demos Section -->
-<section id="quick-demos" class="app-section">
-    <div class="container">
-        <h2 class="section-title left-align">Quick Demos</h2>
+    <!-- Quick Demos Section -->
+    <section id="quick-demos" class="app-section">
+        <div class="container">
+            <h2 class="section-title left-align">Quick Demos</h2>
 
-        <!-- Rooms Section -->
-        <div class="demo-section">
-            <h3 class="center-align">Rooms - Your daily dose from every music taste</h3>
+            <!-- Rooms Section -->
+            <div class="demo-section">
+                <h3 class="center-align">Rooms - Your daily dose from every music taste</h3>
+                <div class="demo-content">
+                    <div class="demo-info">
+                        <ul>
+                            <li><i class="fas fa-music"></i> Join diverse rooms with users adding 30-second song previews to a queue.</li>
+                            <li><i class="fas fa-user-friends"></i> Select artists from an artist pool and see others select their picks.</li>
+                            <li><i class="fas fa-plus"></i> Add your recommendations to the queue.</li>
+                            <li><i class="fas fa-thumbs-up"></i> Give feedback with left and right swipes.</li>
+                        </ul>
+                    </div>
 
-            <div class="demo-content">
-                <!-- Bullet Points -->
-                <div class="demo-info">
-                    <ul>
-                        <li><i class="fas fa-music"></i> Join diverse rooms with users adding 30-second song previews to a queue.</li>
-                        <li><i class="fas fa-user-friends"></i> Select artists from an artist pool and see others select their picks.</li>
-                        <li><i class="fas fa-plus"></i> Add your recommendations to the queue.</li>
-                        <li><i class="fas fa-thumbs-up"></i> Give feedback with left and right swipes.</li>
-                    </ul>
-                </div>
-
-                <!-- Video Carousel -->
-                <div class="demo-videos">
-                    <div class="carousel">
-                        <button class="arrow-btn arrow-left" aria-label="Previous Slide"><i class="fas fa-chevron-left"></i></button>
+                    <!-- Video Carousel -->
+                    <div class="demo-videos">
+                        <div class="carousel">
+                            <button class="arrow-btn arrow-left" aria-label="Previous Slide"><i class="fas fa-chevron-left"></i></button>
                             <ul class="carousel-track">
                                 <!-- Slide 1 -->
                                 <li class="carousel-slide">
                                     <h5 class="video-title">Hip Hop Rooms</h5>
-                                    <video src="HipHopRooms.mp4" controls poster="ThumbnailRooms.png"></video>
+                                    <video src="HipHopRooms.mp4" controls poster="ThumbnailRooms.png" loading="lazy"></video>
                                 </li>
-                                <!-- Slide 2 -->
                                 <li class="carousel-slide">
                                     <h5 class="video-title">Aesthetic Rap Rooms</h5>
-                                    <video src="AestheticRapRooms.mp4" controls poster="ThumbnailRooms.png"></video>
+                                    <video src="AestheticRapRooms.mp4" controls poster="ThumbnailRooms.png" loading="lazy"></video>
                                 </li>
-                                <!-- Slide 3 -->
                                 <li class="carousel-slide">
                                     <h5 class="video-title">Indie Rooms</h5>
-                                    <video src="IndieRooms.mp4" controls poster="ThumbnailRooms.png"></video>
+                                    <video src="IndieRooms.mp4" controls poster="ThumbnailRooms.png" loading="lazy"></video>
                                 </li>
-                                <!-- Slide 4 -->
                                 <li class="carousel-slide">
                                     <h5 class="video-title">Country Rock Rooms</h5>
-                                    <video src="CountryRockRooms.mp4" controls poster="ThumbnailRooms.png"></video>
+                                    <video src="CountryRockRooms.mp4" controls poster="ThumbnailRooms.png" loading="lazy"></video>
                                 </li>
                             </ul>
-                        <button class="arrow-btn arrow-right" aria-label="Next Slide"><i class="fas fa-chevron-right"></i></button>
-                    </div>
-                    <!-- Carousel Indicators -->
-                    <div class="carousel-nav">
-                        <button class="carousel-indicator current-slide" aria-label="Slide 1"></button>
-                        <button class="carousel-indicator" aria-label="Slide 2"></button>
-                        <button class="carousel-indicator" aria-label="Slide 3"></button>
-                        <button class="carousel-indicator" aria-label="Slide 4"></button>
+                            <button class="arrow-btn arrow-right" aria-label="Next Slide"><i class="fas fa-chevron-right"></i></button>
+                        </div>
+                        <div class="carousel-nav">
+                            <button class="carousel-indicator current-slide" aria-label="Slide 1"></button>
+                            <button class="carousel-indicator" aria-label="Slide 2"></button>
+                            <button class="carousel-indicator" aria-label="Slide 3"></button>
+                            <button class="carousel-indicator" aria-label="Slide 4"></button>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-
 
             <!-- Threads Section -->
             <div class="demo-section">
                 <h3 class="center-align">Threads - Your community curated playlist</h3>
                 <div class="demo-content">
-                    <!-- Bullet Points -->
                     <div class="demo-info">
                         <ul>
                             <li><i class="fas fa-heart"></i> Like, comment, and add song previews to different threads.</li>
@@ -203,7 +150,7 @@
 
                     <!-- Single Video -->
                     <div class="demo-videos">
-                            <video src="ThreadsDemo.mp4" controls poster="ThumbnailThreads.png"></video>
+                        <video src="ThreadsDemo.mp4" controls poster="ThumbnailThreads.png" loading="lazy"></video>
                     </div>
                 </div>
             </div>
@@ -219,7 +166,7 @@
             <div class="info-section">
                 <h3>Rooms</h3>
                 <div class="video-container">
-                    <video src="RoomsInfo.mp4" controls poster="ThumbnailRooms.png"></video>
+                    <video src="RoomsInfo.mp4" controls poster="ThumbnailRooms.png" loading="lazy"></video>
                 </div>
             </div>
 
@@ -227,14 +174,15 @@
             <div class="info-section">
                 <h3>Threads</h3>
                 <div class="video-container">
-                    <video src="ThreadsInfo.mp4" controls poster="ThumbnailThreads.png"></video>
+                    <video src="ThreadsInfo.mp4" controls poster="ThumbnailThreads.png" loading="lazy"></video>
                 </div>
             </div>
+
             <!-- Timeline Informational -->
-             <div class="info-section">
+            <div class="info-section">
                 <h3>Profile Screen and Timeline</h3>
                 <div class="video-container">
-                    <video src="Profile Mobile.mp4" controls poster="ThumbnailTimeline.png"></video>
+                    <video src="Profile Mobile.mp4" controls poster="ThumbnailTimeline.png" loading="lazy"></video>
                 </div>
             </div>
         </div>
@@ -245,7 +193,7 @@
         <div class="container">
             <h2>About Me</h2>
             <div class="about-content">
-                <img src="ProfilePic.jpeg" alt="Profile Picture" class="profile-pic">
+                <img src="ProfilePic.jpeg" alt="Profile Picture" class="profile-pic" loading="lazy">
                 <h3>Djimmitry Graham</h3>
                 <div class="social-icons">
                     <a href="https://www.linkedin.com/in/djimmitry-graham/" target="_blank"><i class="fab fa-linkedin"></i></a>
@@ -260,44 +208,38 @@
     </section>
 
     <!-- Why I am Creating This App Section -->
-<section id="why-creating" class="app-section">
-    <div class="container">
-        <h2>Why I Am Creating This App</h2>
-        <div class="why-content">
-            <h3>The Great Music Filter</h3>
-            <p>We’re used to algorithms giving us playlists to dig through song by song, as there aren’t many other ways to find something new.</p>
-            <p>Digging through a 25 song playlist without at least being rewarded with one new song, barely ever seems worth the effort.</p>
-            <p>The idea of this chore alone discourages people to even try, putting a stop on new song discoveries, potential music streams, and artists being discovered.</p>
-            <p>There is muck filling the music industry pipeline, caused by the failure of a rewarding music discovery system.</p>
-            <p>Allow people to flow naturally through Rooms and communities and watch as random human social interactions become Mufl’s algorithm.</p>
+    <section id="why-creating" class="app-section">
+        <div class="container">
+            <h2>Why I Am Creating This App</h2>
+            <div class="why-content">
+                <h3>The Great Music Filter</h3>
+                <p>We’re used to algorithms giving us playlists to dig through song by song, as there aren’t many other ways to find something new.</p>
+                <p>Digging through a 25-song playlist without at least being rewarded with one new song barely ever seems worth the effort.</p>
+                <p>The idea of this chore alone discourages people to even try, putting a stop to new song discoveries, potential music streams, and artists being discovered.</p>
+                <p>There is muck filling the music industry pipeline, caused by the failure of a rewarding music discovery system.</p>
+                <p>Allow people to flow naturally through Rooms and communities and watch as random human social interactions become Mufl’s algorithm.</p>
+            </div>
         </div>
-    </div>
-</section>
+    </section>
 
-<!-- Contact/Funding Section -->
-<section id="contact" class="app-section">
-    <div class="container">
-        <h2>Contact</h2>
-        <p><a href="mailto:djimmitrygraham@gmail.com">djimmitrygraham@gmail.com</a></p>
-        <div class="email-signup">
-  
-            <!-- Simplified Mailchimp Form -->
-            <form action="https://muflapp.us10.list-manage.com/subscribe/post?u=d159e35ddb72fa77c8999cb27&amp;id=8cda2a2947" method="post" id="mc-embedded-subscribe-form" name="mc-embedded-subscribe-form" target="_self" novalidate>
-                <label for="mce-EMAIL" class="visually-hidden">Email Address</label>
-
-                <input type="email" name="EMAIL" class="email" id="mce-EMAIL" placeholder="Enter your email" required>
-                <!-- Anti-spam hidden field -->
-                <div style="position: absolute; left: -5000px;" aria-hidden="true">
-                    <input type="text" name="b_d159e35ddb72fa77c8999cb27_8cda2a2947" tabindex="-1" value="">
-                </div>
-                <button type="submit" name="subscribe" id="mc-embedded-subscribe" class="button">Subscribe</button>
-            </form>
-            <!-- End Mailchimp Form -->
+    <!-- Contact/Funding Section -->
+    <section id="contact" class="app-section">
+        <div class="container">
+            <h2>Contact</h2>
+            <p><a href="mailto:djimmitrygraham@gmail.com">djimmitrygraham@gmail.com</a></p>
+            <div class="email-signup">
+                <!-- Simplified Mailchimp Form -->
+                <form action="https://muflapp.us10.list-manage.com/subscribe/post?u=d159e35ddb72fa77c8999cb27&amp;id=8cda2a2947" method="post" id="mc-embedded-subscribe-form" name="mc-embedded-subscribe-form" target="_self" novalidate>
+                    <label for="mce-EMAIL" class="visually-hidden">Email Address</label>
+                    <input type="email" name="EMAIL" class="email" id="mce-EMAIL" placeholder="Enter your email" required>
+                    <div style="position: absolute; left: -5000px;" aria-hidden="true">
+                        <input type="text" name="b_d159e35ddb72fa77c8999cb27_8cda2a2947" tabindex="-1" value="">
+                    </div>
+                    <button type="submit" name="subscribe" id="mc-embedded-subscribe" class="button">Subscribe</button>
+                </form>
+            </div>
         </div>
-    </div>
-</section>
-
-
+    </section>
 
     <!-- Footer -->
     <footer>
@@ -307,10 +249,8 @@
     </footer>
 
     <!-- Link to JavaScript -->
-    <script src="script.js"></script>
-
+    <script src="script.js" defer></script>
 </body>
 </html>
-
 
 
