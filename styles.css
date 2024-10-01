@@ -21,6 +21,11 @@
     padding: 0;
 }
 
+html, body {
+    overflow-x: hidden; /* Prevent horizontal scroll */
+    width: 100%;
+}
+
 body {
     font-family: 'Poppins', sans-serif;
     color: var(--text-color);
@@ -29,8 +34,10 @@ body {
 
 .container {
     max-width: 1200px;
+    width: 100%;
     margin: 0 auto;
     padding: 0 20px;
+    box-sizing: border-box; /* Ensure padding doesn't overflow */
 }
 
 h1, h2, h3, h4 {
@@ -74,6 +81,25 @@ a:hover {
     text-decoration: underline;
 }
 
+img, video {
+    max-width: 100%; /* Ensures media scales down with screen */
+    height: auto; /* Maintains the aspect ratio */
+}
+
+/* Add scroll padding for smooth navigation */
+section {
+    scroll-margin-top: 100px; /* Adjust this value to the height of your navbar or slightly more */
+}
+
+/* Styling for the pitch deck title */
+.pitch-deck-title {
+    color: #B3B3B3;
+}
+
+.center-align {
+    color: #B3B3B3;
+}
+
 /* Header & Navigation */
 header {
     background-color: var(--header-bg);
@@ -90,16 +116,23 @@ nav {
     justify-content: space-between;
     align-items: center;
     padding: 1rem 0;
+    height: 100px; /* Set this to the original height of the nav bar */
 }
 
 nav .logo {
     display: flex;
     align-items: center;
+    height: 100px; /* Match this height to the nav bar */
 }
 
 nav ul {
     display: flex;
     list-style: none;
+    padding: 0;
+    margin: 0;
+    width: 100%;
+    justify-content: flex-end;
+    flex-wrap: wrap;
 }
 
 nav ul li {
@@ -130,9 +163,38 @@ nav ul li.active a {
     cursor: pointer;
 }
 
+/* Media Query for Mobile */
+@media (max-width: 768px) {
+    nav {
+        flex-direction: column; /* Stack logo and menu toggle vertically */
+        align-items: center;
+    }
+
+    nav .logo {
+        margin-bottom: 10px; /* Space between logo and hamburger menu */
+    }
+
+    .menu-toggle {
+        display: block;
+        position: relative; /* Remove absolute positioning */
+        top: auto;
+        right: auto;
+        margin-top: 10px; /* Space between logo and hamburger menu */
+    }
+
+    nav ul {
+        flex-direction: column;
+        align-items: center;
+    }
+}
+
+
+
 .circular-logo {
-    width: 100px;
-    height: 100px;
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    object-fit: cover;
 }
 
 /* Hero Section */
@@ -148,8 +210,73 @@ nav ul li.active a {
     font-size: 3rem;
     font-weight: 600;
     color: var(--text-color);
-    margin-bottom: 30px;
+    margin-bottom: 70px;
 }
+
+.hero .container {
+    padding-bottom: 2rem;
+}
+
+/* Style for Lightbox thumbnails */
+.pitch-deck-gallery {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+}
+
+/* Each thumbnail */
+.pitch-deck-gallery a {
+    display: inline-block;
+    position: relative;
+    margin: 5px;
+}
+
+.pitch-deck-gallery img {
+    width: 150px; /* Adjust thumbnail size */
+    height: auto;
+    border: 1px solid #ddd;
+    cursor: pointer;
+    transition: transform 0.3s;
+}
+
+.pitch-deck-gallery img:hover {
+    transform: scale(1.05);
+}
+
+/* Style for the "+X" overlay */
+.more-images {
+    position: relative;
+    display: inline-block;
+}
+
+.more-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7); /* Dark overlay */
+    color: white;
+    font-size: 24px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-weight: bold;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+/* Hover effect for the "+X" overlay */
+.more-images:hover .more-overlay {
+    opacity: 1;
+}
+
+
+
+
+
 
 /* App Section Styles */
 .app-section {
@@ -158,7 +285,7 @@ nav ul li.active a {
 
 .section-title {
     font-size: 2.5rem;
-    margin-bottom: 2rem;
+    margin-bottom: 5rem;
     color: var(--text-color);
 }
 
@@ -176,7 +303,7 @@ nav ul li.active a {
 
 .demo-content {
     display: flex;
-    align-items: flex-start;
+    align-items: center; /* Changed from flex-start to center */
     margin-top: 2rem;
     flex-wrap: wrap;
 }
@@ -207,6 +334,14 @@ nav ul li.active a {
     flex: 1;
     max-width: 600px;
 }
+
+/* Video Styles */
+.demo-videos video {
+    width: 100%;
+    height: auto;
+    max-height: 500px; /* Adjust as needed */
+}
+
 
 .demo-videos h4 {
     text-align: center;
@@ -315,6 +450,11 @@ nav ul li.active a {
     margin-bottom: 6rem;
 }
 
+
+.app-section h2 {
+    margin-bottom: 5rem;
+}
+
 .info-section h3 {
     font-size: 2rem;
     margin-bottom: 1rem;
@@ -395,7 +535,6 @@ nav ul li.active a {
     font-family: 'Poppins', sans-serif;
 }
 
-
 /* Email Signup Form */
 .email-signup {
     margin-top: 2rem;
@@ -409,7 +548,8 @@ nav ul li.active a {
     overflow: hidden;
 }
 
-.email-signup input[type="email"] {
+.email-signup input[type="email"],
+.email-signup .email {
     padding: 0.75rem 1rem;
     width: 300px;
     border: 1px solid #555;
@@ -420,7 +560,9 @@ nav ul li.active a {
     color: var(--text-color);
 }
 
-.email-signup button {
+.email-signup button,
+.email-signup input[type="submit"],
+.email-signup .button {
     padding: 0.75rem 1.5rem;
     background-color: var(--button-bg);
     color: var(--button-text);
@@ -431,13 +573,31 @@ nav ul li.active a {
     transition: background-color 0.3s ease;
 }
 
-.email-signup button:hover {
+.email-signup button:hover,
+.email-signup input[type="submit"]:hover,
+.email-signup .button:hover {
     background-color: #17a84b;
 }
 
-input::placeholder {
+.email-signup input::placeholder {
     color: #aaa;
 }
+
+/* Hide the anti-spam field */
+.email-signup div[aria-hidden="true"] {
+    display: none;
+}
+
+.visually-hidden {
+    position: absolute;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    height: 1px;
+    width: 1px;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
 
 /* Footer */
 footer {
@@ -487,8 +647,21 @@ footer p {
 }
 
 @media (max-width: 768px) {
+    .demo-content {
+        flex-direction: column; /* Stack items vertically */
+    }
+
+    .demo-info {
+        margin-right: 0;
+        margin-bottom: 2rem;
+    }
+
+    .demo-videos {
+        max-width: 100%; /* Full width for videos */
+    }
+
     nav ul {
-        flex-direction: column;
+        flex-direction: column; /* Stack navigation items */
         position: absolute;
         top: 70px;
         right: 0;
@@ -497,6 +670,8 @@ footer p {
         max-height: 0;
         overflow: hidden;
         transition: max-height 0.3s ease;
+        align-items: center;
+
     }
 
     nav ul.active {
@@ -509,9 +684,20 @@ footer p {
     }
 
     .menu-toggle {
-        display: block;
+        display: block; /* Show the menu toggle on smaller screens */
+        position: absolute;
+        top: 20px;
+        right: 20px;
+    }
+    .container {
+        padding: 0 10px; /* Adjust padding for smaller screens */
+    }
+
+    .pitch-deck-container {
+        overflow-x: auto; /* Allow horizontal scroll for wide elements if needed */
     }
 }
+
 
 @media (max-width: 480px) {
     h1 {
@@ -529,5 +715,24 @@ footer p {
     .hero h1 {
         font-size: 2.2rem;
     }
+
+    /* Stack the navigation items */
+    nav ul {
+        flex-direction: column;
+    }
+
+    nav ul li {
+        margin-left: 0;
+    }
+
+    .hero {
+        padding: 5rem 0 4rem 0; /* Reduce padding for small screens */
+    }
+
+    .demo-info, .demo-videos {
+        width: 100%;
+    }
 }
+
+
 
