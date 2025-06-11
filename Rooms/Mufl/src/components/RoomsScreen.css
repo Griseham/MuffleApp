@@ -1,0 +1,495 @@
+/* RoomsScreen.css - Main layout styles for the Rooms Screen with scoped tab styles */
+
+:root {
+  --primary: #4ade80;
+  --primary-glow: rgba(74, 222, 128, 0.6);
+  --similarity-positive: #00F5FF;
+  --similarity-negative: #FF3D5A;
+  --similarity-positive-glow: rgba(0, 245, 255, 0.6);
+  --similarity-negative-glow: rgba(255, 61, 90, 0.6);
+  --tab-active: #333;
+  --tab-active-text: #4ade80;
+  --tab-inactive: #666;
+  --disabled-color: #555;
+  --disabled-bg: rgba(0, 0, 0, 0.3);
+}
+
+/* Main Container */
+.radio-rooms-container {
+  width: 100%;
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 40px 20px 80px;
+  height: 100vh;
+  overflow-y: auto;
+  background-color: #121212;
+  position: relative;
+  -webkit-overflow-scrolling: touch;
+}
+
+.radio-rooms-container::-webkit-scrollbar {
+  width: 10px;
+}
+
+.radio-rooms-container::-webkit-scrollbar-track {
+  background: #0a0a0a;
+  border-radius: 5px;
+}
+
+.radio-rooms-container::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 5px;
+}
+
+.radio-rooms-container::-webkit-scrollbar-thumb:hover {
+  background: var(--primary);
+}
+
+/* Recents Loading Indicator */
+.recents-loading {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 40px 20px !important;
+  gap: 15px !important;
+}
+
+.recents-loading .loading-spinner {
+  width: 40px !important;
+  height: 40px !important;
+}
+
+.recents-loading p {
+  color: var(--primary) !important;
+  font-size: 16px !important;
+  margin: 0 !important;
+  font-weight: 500 !important;
+}
+
+/* Back Button */
+.back-button {
+  background: rgba(18, 18, 18, 0.8);
+  border: none;
+  font-size: 24px;
+  color: white;
+  cursor: pointer;
+  padding: 10px 20px;
+  border-radius: 10px;
+  transition: background-color 0.3s;
+  position: absolute;
+  top: 40px;
+  left: 20px;
+  z-index: 101;
+  backdrop-filter: blur(4px);
+}
+
+
+
+.back-button:hover {
+  background-color: #333;
+}
+
+/* Info icon that mirrors the Back button */
+.radio-info-button {
+  position: absolute;
+  top: 47px;                         /* same vertical line as .back-button */
+  right: 32px;          /* 20 px from the tuner’s green border */
+  z-index: 101;                      /* identical stacking as Back */
+}
+
+@media (max-width: 650px) {
+  .radio-info-button {
+    right: 8px;                      /* keep it on-screen for small devices */
+  }
+}
+
+
+/* Selected Artists Container */
+.selected-artists-container {
+  margin: 0 auto 20px;
+  max-width: 1000px;
+  color: white;
+  background: #0a0a0a;
+  border-radius: 10px;
+  border: 2px solid #222;
+  padding: 20px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  transition: opacity 0.3s, filter 0.3s;
+}
+
+.selected-artists-container.disabled {
+  opacity: 0.5;
+  filter: grayscale(0.7);
+  pointer-events: none;
+}
+
+.selected-artists-container h2 {
+  font-size: 20px;
+  margin-bottom: 15px;
+  color: var(--primary);
+}
+
+.selected-artists-list {
+  display: flex;
+  gap: 15px;
+  overflow-x: auto;
+  padding: 5px 0 15px;
+  scrollbar-width: thin;
+  scrollbar-color: #333 #111;
+}
+
+.selected-artist-card {
+  flex: 0 0 auto;
+  text-align: center;
+  transition: transform 0.2s;
+}
+
+.selected-artist-card:hover {
+  transform: translateY(-5px);
+}
+
+.selected-artist-image {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 0 6px rgba(0,0,0,0.5);
+  border: 2px solid #2d2d2d;
+}
+
+.selected-artist-name {
+  margin-top: 8px;
+  font-size: 14px;
+  max-width: 80px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Tuner Container */
+.tuner-container {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  max-width: 1000px;
+  margin: 0 auto 24px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+  border-radius: 10px;
+  overflow: hidden;
+  background: #0f172a;
+  border: 2px solid var(--primary);
+  transition: opacity 0.3s, filter 0.3s, border-color 0.3s;
+}
+
+.tuner-container.disabled {
+  opacity: 0.5;
+  filter: grayscale(0.7);
+  border-color: var(--disabled-color);
+  pointer-events: none;
+}
+
+.tuner-container.disabled::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--disabled-bg);
+  backdrop-filter: blur(2px);
+  z-index: 100;
+}
+
+/* SCOPED TAB NAVIGATION FOR ROOMS SCREEN ONLY */
+.radio-rooms-container .tabs-container {
+  width: 100%;
+  max-width: 1000px;
+  margin: 0 auto 24px;
+}
+
+.radio-rooms-container .tabs-navigation {
+  display: flex;
+  gap: 4px;
+  background: #0a0a0a;
+  border-radius: 10px;
+  padding: 4px;
+  border: 2px solid #222;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+}
+
+.radio-rooms-container .tab-button {
+  flex: 1;
+  padding: 12px 20px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: var(--tab-inactive);
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  position: relative;
+  overflow: hidden;
+}
+
+.radio-rooms-container .tab-button:hover:not(.active):not(.disabled) {
+  color: #888;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.radio-rooms-container .tab-button.active {
+  color: var(--tab-active-text);
+  background: var(--tab-active);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--primary);
+}
+
+.radio-rooms-container .tab-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  transition: left 0.5s;
+}
+
+.radio-rooms-container .tab-button:hover::before {
+  left: 100%;
+}
+
+/* Ensure disabled tabs have consistent styling */
+.radio-rooms-container .tab-button.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: transparent;
+  color: var(--disabled-color);
+}
+
+.radio-rooms-container .tab-button.disabled:hover {
+  background: transparent;
+  color: var(--disabled-color);
+}
+
+/* Tuner Components */
+.tuner-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  padding: 32px 16px 40px;
+  width: 100%;
+  max-width: 1000px;
+  margin: 0 auto 24px;
+}
+
+.rt-wrapper {
+  user-select: none;
+  padding: 2rem;
+  background: #0a0a0a;
+  border: 2px solid #222;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  gap: 1.5rem;
+}
+
+.rt-header {
+  width: 95%;
+  background: linear-gradient(to bottom, #000, #050510);
+  border: 1px solid #1F2937;
+  border-radius: 0.5rem;
+  padding: 0.8rem 1rem;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.05);
+}
+
+.rt-display {
+  font-family: ui-monospace, monospace;
+  font-weight: 700;
+  font-size: 2.5rem;
+  display: flex;
+  justify-content: center;
+  align-items: baseline;
+  position: relative;
+  z-index: 2;
+  padding: 0.7rem 0;
+  min-width: 280px;
+}
+
+.rt-number {
+  cursor: pointer;
+  color: #6b7280;
+  transition: color 0.15s, text-shadow 0.15s;
+}
+
+.rt-number.active {
+  color: var(--primary);
+  text-shadow: 0 0 10px var(--primary-glow);
+}
+
+.rt-number.similarity-active {
+  color: var(--similarity-positive);
+  text-shadow: 0 0 10px var(--similarity-positive-glow);
+}
+
+.rt-number.similarity-negative {
+  color: var(--similarity-negative);
+  text-shadow: 0 0 10px var(--similarity-negative-glow);
+}
+
+.rt-dot {
+  color: #6b7280;
+  margin: 0 0.15rem;
+  pointer-events: none;
+}
+
+.rt-progress-bar {
+  width: 95%;
+  height: 0.4rem;
+  background: #1F2937;
+  border-radius: 9999px;
+  overflow: hidden;
+  margin: 0 auto 4px;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+.rt-progress-fill {
+  height: 100%;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, var(--primary), #63edab);
+  transition: width 0.2s;
+  box-shadow: 0 0 8px var(--primary-glow);
+}
+
+/* Station Cards List */
+.stations-list {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  margin-bottom: 60px;
+  width: 100%;
+  max-width: 1000px;
+  margin: 0 auto;
+  animation: fadeIn 0.5s ease-out;
+}
+
+/* Info Messages */
+.mode-info-message {
+  text-align: center;
+  margin: 10px auto 20px;
+  padding: 10px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  font-size: 14px;
+  color: #ccc;
+  max-width: 1000px;
+}
+
+.error-message {
+  text-align: center;
+  padding: 20px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 8px;
+  color: #ef4444;
+  margin: 20px auto;
+  max-width: 600px;
+}
+
+.retry-button {
+  background: var(--primary);
+  color: #000;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  margin-top: 10px;
+  transition: background-color 0.2s;
+}
+
+.retry-button:hover {
+  background: #22c55e;
+}
+
+.no-stations-message {
+  text-align: center;
+  padding: 40px 20px;
+  color: #888;
+  font-size: 16px;
+}
+
+/* Feed Section */
+.feed-section {
+  position: relative;
+  min-height: 200px;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.room-loader {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 50;
+}
+
+.lds-dual-ring {
+  width: 64px;
+  height: 64px;
+  border: 6px solid #7affd1;
+  border-top: 6px solid transparent;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+
+/* Centered spinner for Recents tab */
+.recents-loader {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 60px 0;   /* pushes it just under the tab bar */
+}
+
+/* Animations */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .radio-rooms-container {
+    padding: 20px;
+  }
+  
+  .radio-rooms-container .tabs-navigation {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .radio-rooms-container .tab-button {
+    padding: 10px 16px;
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .radio-rooms-container .tab-button {
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+}

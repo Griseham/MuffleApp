@@ -1,0 +1,51 @@
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Build files
+build/
+dist/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Node modules (use npm install instead)
+node_modules/
+
+# Large file directories
+untitled folder/
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Temporary files
+*.tmp
+*.temp
+*.zip
+
+# Large assets (keep only essential ones)
+**/assets/image*.png
+**/assets/image*.jpg
+**/assets/image*.jpeg
+*.zip
+node_modules/
+.DS_Store

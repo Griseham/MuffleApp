@@ -1,0 +1,444 @@
+{
+    "userInfo": {
+      "displayName": "Mel",
+      "username": "melodyarchive",
+      "bio": "Exploring soundwaves from every era | Crate digger | Producer | Los Angeles",
+      "avatar": "https://ui-avatars.com/api/?name=Mel&background=8338EC&color=fff&rounded=true&bold=true&size=80",
+      "following": 432,
+      "followers": 1248,
+      "soundCount": 872
+    },
+    "userPosts": [
+      {
+        "id": "post21",
+        "type": "music_snippet",
+        "author": "@melodyarchive",
+        "postedAt": "16m",
+        "postedIn": "What's on repeat today?",
+        "text": "This track hasn't left my playlist in weeks. Pure serotonin.",
+        "hasSnippet": true,
+        "snippet": {
+          "songName": "After Last Night",
+          "artistName": "Silk Sonic",
+          "albumCover": "https://example.com/silksonic_album.jpg"
+        },
+        "interactions": {
+          "comments": 4,
+          "reposts": 1,
+          "likes": 17
+        }
+      },
+      {
+        "id": "post17",
+        "type": "music_snippet",
+        "author": "@melodyarchive",
+        "postedAt": "2d",
+        "postedIn": "Songs that sound like night drives",
+        "text": "This is my go-to night driving song. Synths + drum machine = nocturnal cityscape at 2am.",
+        "hasSnippet": true,
+        "snippet": {
+          "songName": "Nightcall",
+          "artistName": "Kavinsky",
+          "albumCover": "https://example.com/kavinsky_album.jpg"
+        },
+        "interactions": {
+          "comments": 9,
+          "reposts": 16,
+          "likes": 53
+        }
+      },
+      {
+        "id": "post22",
+        "type": "regular",
+        "author": "@melodyarchive",
+        "postedAt": "45m",
+        "postedIn": "Hot industry takes",
+        "text": "Prediction: spatial audio will be standard within 3 years. Game-changer for immersive listening.",
+        "hasSnippet": false,
+        "interactions": {
+          "comments": 13,
+          "reposts": 5,
+          "likes": 29
+        }
+      },
+      {
+        "id": "post23",
+        "type": "regular",
+        "author": "@melodyarchive",
+        "postedAt": "1h",
+        "postedIn": "Studio setups",
+        "text": "Just rearranged my studio space. Monitor placement is everything!",
+        "hasSnippet": false,
+        "interactions": {
+          "comments": 7,
+          "reposts": 2,
+          "likes": 34
+        }
+      },
+      {
+        "id": "post10",
+        "type": "regular",
+        "author": "@melodyarchive",
+        "postedAt": "19h",
+        "postedIn": "1000 points to anyone who can recommend...",
+        "text": "Looking for songs with unusual time signatures that don't *feel* unusual. Like Pink Floyd's 'Money' in 7/4.",
+        "hasSnippet": false,
+        "interactions": {
+          "comments": 58,
+          "reposts": 7,
+          "likes": 41
+        }
+      },
+      {
+        "id": "post24",
+        "type": "music_snippet",
+        "author": "@melodyarchive",
+        "postedAt": "3h",
+        "postedIn": "Rediscovered classics",
+        "text": "How did I sleep on this for so long? That bassline is ridiculous.",
+        "hasSnippet": true,
+        "snippet": {
+          "songName": "Innerspace",
+          "artistName": "Flying Lotus",
+          "albumCover": "https://example.com/flylo_album.jpg"
+        },
+        "interactions": {
+          "comments": 5,
+          "reposts": 8,
+          "likes": 42
+        }
+      },
+      {
+        "id": "post3",
+        "type": "music_snippet",
+        "author": "@melodyarchive",
+        "postedAt": "6h",
+        "postedIn": "Songs that give you chills every time",
+        "text": "Those strings at 1:24... absolute perfection. Still gives me goosebumps every time.",
+        "hasSnippet": true,
+        "snippet": {
+          "songName": "Motion Picture Soundtrack",
+          "artistName": "Radiohead",
+          "albumCover": "https://example.com/radiohead_album.jpg"
+        },
+        "interactions": {
+          "comments": 8,
+          "reposts": 5,
+          "likes": 42
+        }
+      },
+      {
+        "id": "post25",
+        "type": "regular",
+        "author": "@melodyarchive",
+        "postedAt": "5h",
+        "postedIn": "Vinyl collectors",
+        "text": "Just scored an original pressing of DJ Shadow's Endtroducing... Holy grail acquired!",
+        "hasSnippet": false,
+        "interactions": {
+          "comments": 17,
+          "reposts": 3,
+          "likes": 81
+        }
+      },
+      {
+        "id": "post20",
+        "type": "regular",
+        "author": "@melodyarchive",
+        "postedAt": "3d",
+        "postedIn": "Sampling: Art or theft?",
+        "text": "Hot take: Sampling is one of the most important art forms of the last 50 years. Musical collage that bridges eras and cultures.",
+        "hasSnippet": false,
+        "interactions": {
+          "comments": 47,
+          "reposts": 31,
+          "likes": 103
+        }
+      },
+      {
+        "id": "post26",
+        "type": "music_snippet",
+        "author": "@melodyarchive",
+        "postedAt": "8h",
+        "postedIn": "Morning vibe check",
+        "text": "Starting the day with this. Coffee + this beat = productivity mode activated.",
+        "hasSnippet": true,
+        "snippet": {
+          "songName": "Time Moves Slow",
+          "artistName": "BADBADNOTGOOD",
+          "albumCover": "https://example.com/bbng_album.jpg"
+        },
+        "interactions": {
+          "comments": 3,
+          "reposts": 6,
+          "likes": 28
+        }
+      },
+      {
+        "id": "post13",
+        "type": "regular",
+        "author": "@melodyarchive",
+        "postedAt": "1d",
+        "postedIn": "Masterpieces that flew under the radar",
+        "text": "Little Simz's 'Sometimes I Might Be Introvert' might be the best album of the past 5 years. Criminally underappreciated.",
+        "hasSnippet": false,
+        "interactions": {
+          "comments": 19,
+          "reposts": 28,
+          "likes": 92
+        }
+      },
+      {
+        "id": "post27",
+        "type": "regular",
+        "author": "@melodyarchive",
+        "postedAt": "9h",
+        "postedIn": "Music city guide",
+        "text": "If you're ever in New Orleans, you HAVE to check out Frenchmen Street. Live jazz that will change your life.",
+        "hasSnippet": false,
+        "interactions": {
+          "comments": 11,
+          "reposts": 9,
+          "likes": 37
+        }
+      },
+      {
+        "id": "post12",
+        "type": "music_snippet",
+        "author": "@melodyarchive",
+        "postedAt": "23h",
+        "postedIn": "Songs that tell a story",
+        "text": "Kendrick's storytelling is cinema. The characters, the moral ambiguity. Literature in musical form.",
+        "hasSnippet": true,
+        "snippet": {
+          "songName": "good kid",
+          "artistName": "Kendrick Lamar",
+          "albumCover": "https://example.com/kendrick_album.jpg"
+        },
+        "interactions": {
+          "comments": 15,
+          "reposts": 21,
+          "likes": 74
+        }
+      },
+      {
+        "id": "post28",
+        "type": "regular",
+        "author": "@melodyarchive",
+        "postedAt": "11h",
+        "postedIn": "Unpopular music opinions",
+        "text": "Dark Side of the Moon is overrated. There, I said it. *hides*",
+        "hasSnippet": false,
+        "interactions": {
+          "comments": 64,
+          "reposts": 12,
+          "likes": 38
+        }
+      },
+      {
+        "id": "post1",
+        "type": "music_snippet",
+        "author": "@melodyarchive",
+        "postedAt": "2h",
+        "postedIn": "What song defines your summer?",
+        "text": "This will forever be summer nights. Synths washing over you like warm waves at sunset.",
+        "hasSnippet": true,
+        "snippet": {
+          "songName": "Electric Feel",
+          "artistName": "MGMT",
+          "albumCover": "https://example.com/mgmt_album.jpg"
+        },
+        "interactions": {
+          "comments": 12,
+          "reposts": 4,
+          "likes": 38
+        }
+      },
+      {
+        "id": "post29",
+        "type": "regular",
+        "author": "@melodyarchive",
+        "postedAt": "13h",
+        "postedIn": "Industry hot takes",
+        "text": "AI-generated music will never replace human artists, but it *will* become a powerful collaborative tool.",
+        "hasSnippet": false,
+        "interactions": {
+          "comments": 27,
+          "reposts": 14,
+          "likes": 56
+        }
+      },
+      {
+        "id": "post15",
+        "type": "regular",
+        "author": "@melodyarchive",
+        "postedAt": "1d",
+        "postedIn": "Genre-defying artists",
+        "text": "FKA twigs refuses to be boxed into any genre. Electronic + R&B + trip-hop + avant-garde + vulnerability = *chef's kiss*",
+        "hasSnippet": false,
+        "interactions": {
+          "comments": 8,
+          "reposts": 11,
+          "likes": 59
+        }
+      },
+      {
+        "id": "post30",
+        "type": "music_snippet",
+        "author": "@melodyarchive",
+        "postedAt": "7h",
+        "postedIn": "Underground discoveries",
+        "text": "This artist has like 4k monthly listeners but deserves MILLIONS. Absolute gem.",
+        "hasSnippet": true,
+        "snippet": {
+          "songName": "Blue Train Lines",
+          "artistName": "Mount Kimbie",
+          "albumCover": "https://example.com/mountkimbie_album.jpg"
+        },
+        "interactions": {
+          "comments": 6,
+          "reposts": 9,
+          "likes": 31
+        }
+      },
+      {
+        "id": "post9",
+        "type": "music_snippet",
+        "author": "@melodyarchive",
+        "postedAt": "17h",
+        "postedIn": "Hidden gems from the 90s",
+        "text": "Never got the recognition it deserved. Production was ahead of its time—jungle breaks + soul samples = genius.",
+        "hasSnippet": true,
+        "snippet": {
+          "songName": "Midnight In A Perfect World",
+          "artistName": "DJ Shadow",
+          "albumCover": "https://example.com/djshadow_album.jpg"
+        },
+        "interactions": {
+          "comments": 7,
+          "reposts": 12,
+          "likes": 34
+        }
+      }
+    ],
+    "genreData": {
+      "genreCompletionData": [
+        {
+          "genre": "Rock",
+          "totalCompletion": 12.023,
+          "arcs": [
+            { "percent": 0.75, "color": "#f56c42" },
+            { "percent": 0.4, "color": "#f56c42" },
+            { "percent": 0.2, "color": "#f56c42" },
+            { "percent": 0.1, "color": "#f56c42" }
+          ],
+          "subgenres": [
+            { "name": "Hard Rock", "subPct": 0.75, "completion": 5.347 },
+            { "name": "Indie Rock", "subPct": 0.4, "completion": 3.815 },
+            { "name": "Psychedelic Rock", "subPct": 0.2, "completion": 1.962 },
+            { "name": "Classic Rock", "subPct": 0.1, "completion": 0.899 }
+          ]
+        },
+        {
+          "genre": "Electronic",
+          "totalCompletion": 14.576,
+          "arcs": [
+            { "percent": 0.68, "color": "#1db954" },
+            { "percent": 0.42, "color": "#1db954" },
+            { "percent": 0.25, "color": "#1db954" }
+          ],
+          "subgenres": [
+            { "name": "Techno", "subPct": 0.68, "completion": 6.892 },
+            { "name": "House", "subPct": 0.42, "completion": 4.531 },
+            { "name": "Ambient", "subPct": 0.25, "completion": 3.153 }
+          ]
+        },
+        {
+          "genre": "Hip-Hop",
+          "totalCompletion": 18.247,
+          "arcs": [
+            { "percent": 0.82, "color": "#3b82f6" },
+            { "percent": 0.54, "color": "#3b82f6" },
+            { "percent": 0.32, "color": "#3b82f6" }
+          ],
+          "subgenres": [
+            { "name": "Trap", "subPct": 0.82, "completion": 8.241 },
+            { "name": "Boom Bap", "subPct": 0.54, "completion": 5.673 },
+            { "name": "Alternative Hip-Hop", "subPct": 0.32, "completion": 4.333 }
+          ]
+        },
+        {
+          "genre": "Jazz",
+          "totalCompletion": 7.653,
+          "arcs": [
+            { "percent": 0.45, "color": "#9c27b0" },
+            { "percent": 0.28, "color": "#9c27b0" }
+          ],
+          "subgenres": [
+            { "name": "Fusion", "subPct": 0.45, "completion": 4.892 },
+            { "name": "Bebop", "subPct": 0.28, "completion": 2.761 }
+          ]
+        },
+        {
+          "genre": "R&B",
+          "totalCompletion": 9.214,
+          "arcs": [
+            { "percent": 0.63, "color": "#ff9800" }
+          ],
+          "subgenres": [
+            { "name": "Neo-Soul", "subPct": 0.63, "completion": 9.214 }
+          ]
+        }
+      ]
+    },
+    "discoveryData": [
+      {
+        "daysAgo": 1,
+        "label": "Yesterday",
+        "artists": 3,
+        "plusCount": 2,
+        "percent1": "+0.00056% of music",
+        "percent2": "+0.04% of pop"
+      },
+      {
+        "daysAgo": 3,
+        "label": "3 days ago",
+        "artists": 4,
+        "plusCount": 0,
+        "percent1": "+0.00042% of music",
+        "percent2": "+0.03% of rock"
+      },
+      {
+        "daysAgo": 5,
+        "label": "5 days ago",
+        "artists": 2,
+        "plusCount": 1,
+        "percent1": "+0.00038% of music",
+        "percent2": "+0.02% of hip-hop"
+      },
+      {
+        "daysAgo": 7,
+        "label": "7 days ago",
+        "artists": 4,
+        "plusCount": 2,
+        "percent1": "+0.00056% of music",
+        "percent2": "+0.04% of pop"
+      },
+      {
+        "daysAgo": 10,
+        "label": "10 days ago",
+        "artists": 3,
+        "plusCount": 0,
+        "percent1": "+0.00031% of music",
+        "percent2": "+0.05% of electronic"
+      },
+      {
+        "daysAgo": 12,
+        "label": "12 days ago",
+        "artists": 5,
+        "plusCount": 0,
+        "percent1": "+0.00062% of music",
+        "percent2": "+0.07% of jazz"
+      }
+    ]
+  }

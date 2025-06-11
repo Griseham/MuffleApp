@@ -1,0 +1,212 @@
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -1000px 0; }
+  100% { background-position: 1000px 0; }
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Enhanced starfield container styles */
+.enhanced-starfield-container {
+  width: 100vw !important;
+  margin-left: calc(-50vw + 50%);
+  height: 800px !important;
+  position: relative;
+  overflow: hidden;
+}
+
+.enhanced-starfield-container > div {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+}
+
+.feed-content-overlay {
+  margin-top: -400px;  /* Increased negative margin to pull content up */
+  position: relative;
+  z-index: 10;
+  border-top-left-radius: 30px;
+  border-top-right-radius: 30px;
+  box-shadow: 0 -15px 40px rgba(0,0,0,0.6);
+  background-color: #0a0c14;
+  border-top: 1px solid rgba(255,255,255,0.1);
+  border-left: 1px solid rgba(255,255,255,0.1);
+  border-right: 1px solid rgba(255,255,255,0.1);
+  padding-top: 30px;
+}
+
+.cosmic-gradient {
+  /* Removed the opacity gradient to keep stars fully visible */
+  background: none; 
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 300px;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.genre-pill {
+  background-color: rgba(30, 35, 50, 0.5);
+  border-radius: 9999px;
+  padding: 8px 14px;
+  font-size: 14px;
+  font-weight: 600;
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.genre-pill:hover, .genre-pill.active {
+  background-color: rgba(58, 91, 160, 0.7);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.pill-container {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 16px 0;
+  padding: 0 20px;
+}
+
+.feed-title {
+  font-size: 28px;
+  font-weight: 700;
+  color: white;
+  margin: 0;
+  text-align: center;
+  padding: 0;  /* Removed top padding */
+  text-shadow: 0 2px 20px rgba(58, 91, 160, 0.5);
+}
+
+.feed-coordinate {
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.7);
+  text-align: center;
+  margin-top: 8px;
+  font-weight: 500;
+}
+
+.content-wrapper {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+/* Loading spinner */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40px 0;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 3px solid rgba(58, 91, 160, 0.2);
+  border-top-color: #3a5ba0;
+  animation: spin 1s linear infinite;
+}
+
+.spinner-text {
+  color: #a0aec0;
+  margin-top: 16px;
+  font-size: 16px;
+}
+
+/* Empty state */
+.empty-state {
+  text-align: center;
+  padding: 40px 0;
+}
+
+.empty-message {
+  font-size: 18px;
+  color: #a0aec0;
+  margin-bottom: 20px;
+}
+
+/* Music controls */
+.music-controls {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: rgba(10,12,20,0.85);
+  backdrop-filter: blur(10px);
+  border-top: 1px solid rgba(255,255,255,0.1);
+  padding: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 100;
+}
+
+.controls-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 800px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.music-icon-wrapper {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: rgba(58,91,160,0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.music-text {
+  color: white;
+  font-weight: 500;
+}
+
+.music-subtext {
+  color: #a0aec0;
+  font-size: 14px;
+}
+
+.shuffle-button {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: rgba(255,255,255,0.1);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}

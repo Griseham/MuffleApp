@@ -1,0 +1,14 @@
+/* src/App.css */
+.App {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    /* match the starfield / feed navy so nothing ever peeks through */
+    background-color: #0c111b;
+    min-height: 100vh;
+  }
+
+.App-header {
+  background-color: #1da1f2;
+  color: white;
+  padding: 10px 20px;
+  text-align: center;
+}

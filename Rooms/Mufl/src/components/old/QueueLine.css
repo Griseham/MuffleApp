@@ -1,0 +1,77 @@
+.queue-line-modal {
+    position: absolute;
+    bottom: 120px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #2a2a2a;
+    border-radius: 8px;
+    padding: 16px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    width: 600px;
+    max-width: 90%;
+    z-index: 1000;
+  }
+  
+  .queue-line-content {
+    display: flex;
+    gap: 16px;
+    overflow-x: auto;
+  }
+  
+  .queue-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 0 10px;
+    text-align: center;
+  }
+  
+  .queue-avatar-container {
+    position: relative;
+  }
+  
+  .queue-avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid white;
+  }
+  
+  .queue-user-ranking {
+    position: absolute;
+    top: -10px;
+    right: -10px;
+    font-size: 12px;
+    font-weight: bold;
+    background-color: #444;
+    color: white;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .zone-label {
+    margin-left: 8px;
+    font-weight: bold;
+    font-size: 1rem;
+  }
+  
+  /* Green for positive markers */
+  .zone-label.positive {
+    color: green;
+  }
+  
+  /* Red for negative markers */
+  .zone-label.negative {
+    color: red;
+  }
+  
+  .zone-label::before {
+    content: attr(data-zone);
+  }
+  
+  

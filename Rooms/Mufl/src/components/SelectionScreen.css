@@ -1,0 +1,472 @@
+/* SelectionScreen.css */
+
+/* Artist image container styling - defined in UnifiedArtistStyles.css now */
+
+/* Main container */
+.selection-screen-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 92%;
+  max-width: 900px;
+  margin: 0 auto;
+  box-sizing: border-box;
+  background-color: #000;
+  position: relative;
+  overflow: hidden;
+}
+
+
+/* Fixed header area */
+.selection-header {
+  padding: 24px 20px;
+  position: sticky;
+  top: 0;
+  background-color: rgba(0, 0, 0, 0.95);
+  backdrop-filter: blur(10px);
+  z-index: 20;
+  border-bottom: 1px solid #333;
+}
+
+h1 {
+  font-size: 28px;
+  font-weight: 700;
+  margin: 0 0 20px 0;
+  text-align: center;
+}
+
+/* Search bar styles */
+.search-container {
+  margin: 0 auto 20px;
+  width: 100%;
+  position: relative;
+}
+
+.search-input {
+  width: 100%;
+  padding: 12px 20px;
+  padding-right: 45px; /* Make room for the spinner */
+  border-radius: 50px;
+  border: none;
+  background-color: #262626;
+  color: white;
+  font-size: 16px;
+  box-sizing: border-box;
+}
+
+.search-input:focus {
+  outline: none;
+  background-color: #333;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+.search-input::placeholder {
+  color: #888;
+}
+
+/* Search spinner */
+.search-spinner {
+  position: absolute;
+  right: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  border-top: 2px solid #1DB954;
+  animation: spin 1s linear infinite;
+}
+
+/* Genre filter styles */
+.genre-filters-container {
+  position: relative;
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+
+.genre-filters {
+  display: flex;
+  overflow-x: auto;
+  gap: 10px;
+  padding: 4px 0;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+  position: relative;
+  mask-image: linear-gradient(to right, transparent, black 10px, black 90%, transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, black 10px, black 90%, transparent);
+}
+
+.genre-filters::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
+.genre-button {
+  flex: 0 0 auto;
+  padding: 8px 18px;
+  border-radius: 50px;
+  background-color: #262626;
+  color: white;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.genre-button:hover {
+  background-color: #333;
+}
+
+.genre-button.active {
+  background-color: white;
+  color: black;
+}
+
+.genre-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Scrollable artists area */
+.artists-area {
+  flex: 1;
+  overflow-y: auto; /* This is already correct, but ensure it has proper height */
+  padding: 10px 0;
+  margin-bottom: 80px; /* Space for fixed bottom bar */
+  height: calc(100vh - 180px); /* Subtract header + bottom bar height */
+}
+
+/* Artists grid */
+.artists-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+  padding: 0 20px;
+}
+
+@media (max-width: 768px) {
+  .artists-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .artists-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Artist circle styles - FIXED */
+.selection-artist-circle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  padding: 10px;
+  border-radius: 12px;
+}
+
+.selection-artist-circle:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.selection-artist-circle.selected {
+  background-color: rgba(29, 185, 84, 0.15);
+}
+
+.selection-artist-image-container {
+  width: 100%;
+  aspect-ratio: 1/1; /* Force 1:1 aspect ratio */
+  position: relative;
+  border-radius: 50%;
+  overflow: hidden;
+  margin-bottom: 10px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.artist-circle-image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.selection-artist-circle.selected .selection-artist-image-container::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border: 3px solid #1DB954;
+  border-radius: 50%;
+  box-sizing: border-box;
+}
+
+.selection-artist-name {
+  font-size: 16px;
+  text-align: center;
+  font-weight: 600;
+  margin: 0;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.3;
+}
+
+.selection-artist-circle.selected .selection-artist-name {
+  color: #1DB954;
+  font-weight: 700;
+}
+
+/* Loading spinner for artist circles */
+.artist-loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.7);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.artist-loading-spinner {
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top: 3px solid white;
+  width: 28px;
+  height: 28px;
+  animation: spin 1s linear infinite;
+}
+
+/* Initial loading state */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 300px;
+  width: 100%;
+}
+
+.loading-spinner {
+  border: 4px solid rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  border-top: 4px solid white;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+  margin-bottom: 16px;
+}
+
+/* Load more button */
+.load-more-container {
+  display: flex;
+  justify-content: center;
+  padding: 20px 0 30px 0;
+  width: 100%;
+}
+
+.load-more-button {
+  background-color: #262626;
+  color: white;
+  border: none;
+  border-radius: 50px;
+  padding: 10px 24px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.load-more-button:hover {
+  background-color: #333;
+}
+
+.load-more-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* No results message */
+.no-results {
+  width: 100%;
+  text-align: center;
+  color: #aaa;
+  font-size: 16px;
+  padding: 40px 0;
+}
+
+/* Animation for related artists */
+.fade-in {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Fixed bottom area */
+.bottom-area {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 800px;
+  background-color: rgba(0, 0, 0, 0.95);
+  backdrop-filter: blur(10px);
+  padding: 16px 20px;
+  border-top: 1px solid #333;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 100;
+  box-sizing: border-box;
+}
+
+/* Selected artists indicator */
+.selection-indicator {
+  display: flex;
+  align-items: center;
+}
+
+.selected-artists-circles {
+  display: flex;
+  margin-right: 16px;
+}
+
+.small-artist-circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  overflow: hidden;
+  margin-right: -15px; /* Create overlapping effect */
+  border: 2px solid black;
+  box-sizing: border-box;
+  transition: transform 0.2s;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  position: relative;
+}
+
+.small-artist-circle:hover {
+  transform: translateY(-3px);
+  z-index: 10 !important;
+}
+
+/* Continue button */
+.continue-button {
+  background-color: #1DB954;
+  color: white;
+  border: none;
+  border-radius: 50px;
+  padding: 10px 24px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.continue-button:hover:not(:disabled) {
+  background-color: #1ed760;
+  box-shadow: 0 4px 12px rgba(29, 185, 84, 0.3);
+}
+
+.continue-button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.continue-button:disabled {
+  background-color: #333;
+  color: #666;
+  cursor: not-allowed;
+}
+
+/* Error message */
+.error-message {
+  color: #ff6b6b;
+  text-align: center;
+  margin: 24px 16px;
+  padding: 16px;
+  background-color: rgba(255, 107, 107, 0.1);
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   ✨  Artist tile sizing & fallback fixes
+   ─────────────────────────────────────────────────────────── */
+
+/* Grid now self-sizes: 130 px tiles with 20 px gutters */
+.artists-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 20px;
+  padding: 0 20px;
+}
+
+/* Each selectable tile is now a fixed block instead of stretching
+   with the column → keeps circles identical on every viewport      */
+.selection-artist-circle {
+  width: 130px;
+  /* height = image (100%) + name (auto) so let content decide   */
+  margin: 0 auto;          /* centre the tiles on wide screens  */
+}
+
+/* Make sure the circle really is a circle at every size          */
+.selection-artist-image-container {
+  width: 100%;
+  aspect-ratio: 1 / 1;      /* modern CSS */
+  /* remove height: 0 and padding-bottom entirely */
+  position: relative;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #1c1c1c;
+}
+
+
+/* The artwork always fills the circle perfectly                  */
+.artist-circle-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Give the text a little breathing room and stop line-wrap       */
+.selection-artist-name {
+  font-size: 15px;
+  margin-top: 8px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── prettier selected state ─────────────────────────────────── */
+.selection-artist-circle.selected {
+  background: rgba(29, 185, 84, 0.12);
+}
+
+.selection-artist-circle.selected .selection-artist-image-container::after {
+  border-width: 4px;             /* thicker green ring */
+}

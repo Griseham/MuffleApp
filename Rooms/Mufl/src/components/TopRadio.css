@@ -1,0 +1,97 @@
+.rt-wrapper,                                     /* original file */
+.radio-container .rt-wrapper {                   /* override path */
+  overflow: visible;            /* was "hidden" */
+}
+/* Optimized TopRadio.css */
+/* Styles for the TopRadio component */
+
+/* Ensure radio wrapper and all parent containers allow overflow for info icons */
+.radio-container,
+.radio-container .rt-wrapper,
+.rt-wrapper {
+  overflow: visible !important;
+  position: relative;
+  z-index: 1;
+}
+
+/* Ensure the TopRadio component itself doesn't clip */
+.radio-container .rt-controls,
+.radio-container .rt-ruler,
+.radio-container .rt-frequency-display {
+  overflow: visible !important;
+}
+.radio-container {
+  height: 100%;
+  width: 100%;
+}
+
+/* Make the radio fit within the TopComponent */
+.radio-container .rt-wrapper {
+  padding: 0.5rem;
+  height: 100%;
+  background-color: transparent;
+}
+
+/* Reduce the height of header to fit in smaller space */
+.radio-container .rt-header {
+  padding: 0.25rem;
+  width: 100%;
+}
+
+.radio-container .rt-display {
+  font-size: 1.5rem;
+  padding: 0.25rem 0;
+}
+
+/* Make the ruler slightly taller to fit frequency points better */
+/* Slimmer ruler band */
+.radio-container .rt-ruler {
+  flex: 1 1 auto;
+  overflow: hidden !important;
+  width: calc(100% - 80px);     /* subtract knob width */
+  margin-right: 0.5rem;         /* gap before knob */
+}
+
+
+/* Make the knob smaller */
+.radio-container .rt-knob-zone {
+  flex: 0 0 80px;   /* fixed 80px slot */
+  position: relative;
+  z-index: 2;       /* sit on top of the ruler */
+}
+
+/* Ensure the frequency points are displayed consistently for both modes */
+.radio-container .rt-freq-point-box {
+  font-size: 1.1rem;
+  font-weight: 700;
+  padding: 0.3rem 0.45rem;
+  border-width: 2px;
+  z-index: 15;
+}
+
+/* Ensure frequency point numbers have consistent styling in both modes */
+.radio-container .rt-freq-point-box span {
+  min-width: 35px;
+  font-feature-settings: "tnum";
+  letter-spacing: 0.5px;
+}
+
+/* Ensure the volume mode points match similarity mode style */
+.radio-container .rt-waveform-container .rt-freq-point-box {
+  background-color: rgba(10, 10, 10, 0.8);
+  backdrop-filter: blur(3px);
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+}
+
+/* Ensure sufficient vertical spacing */
+.radio-container .rt-controls {
+  display: flex !important;
+  align-items: center;
+}
+
+/* Ensure the frequency display properly scales */
+/* Match the new, shorter band */
+.radio-container .rt-frequency-display {
+  min-height: 80px;             /* ~5 rem – keeps everything centred */
+}
+/* turn the wrapper into a "visible" canvas */

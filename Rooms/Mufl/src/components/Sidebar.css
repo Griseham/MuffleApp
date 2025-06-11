@@ -1,0 +1,119 @@
+/* Sidebar.css */
+.app-sidebar {
+  position: relative;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 275px; /* Wider sidebar like Twitter */
+  background-color: #000000;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start; /* Left align content */
+  padding: 16px 0;
+  border-right: 1px solid #222;
+  z-index: 50;
+  overflow-y: auto;
+  overflow-x: hidden;
+  pointer-events: auto;
+}
+
+/* Logo styling */
+.sidebar-logo {
+  margin-bottom: 32px;
+  padding: 8px 0;
+  width: 100%;
+}
+
+.logo-circle {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-left: 16px; /* Left aligned */
+  transition: all 0.3s ease;
+}
+
+.logo-circle:hover {
+  background-color: rgba(29, 185, 84, 0.1); /* Green highlight on hover */
+  transform: scale(1.05);
+}
+
+/* Navigation items */
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px; /* Add padding on sides */
+  margin: 4px 12px; /* Add margin for spacing */
+  cursor: pointer;
+  color: #e7e9ea; /* Twitter text color */
+  background: transparent;
+  border: none;
+  border-radius: 30px; /* Rounded buttons like Twitter */
+  position: relative;
+  transition: background-color 0.2s;
+  font-size: 20px;
+  font-weight: 400;
+  text-align: left;
+  height: 50px;
+  width: calc(100% - 24px); /* Full width minus margin */
+}
+
+.nav-item:hover {
+  background-color: rgba(231, 233, 234, 0.1); /* Twitter hover effect */
+}
+
+.nav-item.active {
+  font-weight: 700;
+  color: #1DB954; /* Spotify green for active item */
+}
+
+.nav-icon {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 26px;
+  height: 26px;
+  margin-right: 16px; /* Space between icon and label */
+  flex-shrink: 0;
+}
+
+.nav-label {
+  font-size: 20px;
+  font-weight: inherit;
+  white-space: nowrap;
+  display: inline; /* Always visible */
+}
+
+@media (max-width: 768px) {
+  .app-sidebar {
+    width: 88px; /* Collapse to icon-only on mobile */
+    align-items: center;
+  }
+  
+  .nav-item {
+    justify-content: center;
+    padding: 12px 0;
+    margin: 4px auto;
+    width: 50px;
+  }
+  
+  .nav-icon {
+    margin-right: 0;
+  }
+  
+  .nav-label {
+    display: none; /* Hide text on mobile */
+  }
+  
+  .logo-circle {
+    margin-left: 0; /* Center logo on mobile */
+  }
+}

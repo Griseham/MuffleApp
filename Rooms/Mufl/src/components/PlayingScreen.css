@@ -1,0 +1,63 @@
+/* PlayingScreen.css - Updated to match SelectionScreen width */
+
+.playing-screen-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    width: 92%;                    /* Match SelectionScreen: 92% instead of 100% */
+    max-width: 900px;              /* Match SelectionScreen: 900px instead of 800px */
+    margin: 0 auto;
+    box-sizing: border-box;
+    background: radial-gradient(circle at 50% 50%, #222222 0%, #111111 40%, #000000 100%);
+    position: relative;
+    overflow: hidden;
+    color: white;
+  }
+  
+  /* Adjust TopComponent to respect new container width */
+  .playing-screen-container .w-full.max-w-[800px] {
+    width: 100% !important;
+    max-width: 100% !important; /* Override inline styles to use full container width */
+    padding-bottom: 380px;   /* leaves room for the fully-extended panel */
+  }
+  
+  /* Update BottomContainer to match new proportions */
+  .bottom-container {
+    width: 90% !important;
+    max-width: 810px !important; /* 90% of 900px instead of 720px */
+    margin: 0 auto;
+  }
+  
+  /* Ensure consistent spacing */
+  .playing-screen-container .mt-14 {
+    width: 100%;
+  }
+  
+  /* Update SnippetCard sizing for wider container */
+  .playing-screen-container .relative.w-full.max-w-md {
+    max-width: 480px; /* Slightly larger to match wider container */
+  }
+  
+  /* Keep the smoky gradient for background continuity */
+  .smoky-gradient {
+    background: radial-gradient(circle at 50% 50%, #222222 0%, #111111 40%, #000000 100%);
+  }
+  
+  /* Custom scrollbar for all scrollable areas */
+  .playing-screen-container *::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  .playing-screen-container *::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+  }
+  
+  .playing-screen-container *::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 3px;
+  }
+  
+  .playing-screen-container *::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.5);
+  }

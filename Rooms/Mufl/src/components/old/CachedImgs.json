@@ -1,0 +1,876 @@
+
+{
+    "artists": [
+        {
+            "name": "Gene Pokorny",
+            "image": "https://i.scdn.co/image/ab67616d0000b27336a945347c67984201cd65375",
+            "related": [
+                {
+                    "name": "Alan Baer",
+                    "image": "https://i.scdn.co/image/ab67616d0000b2736a945347c67984201cd65375"
+                },
+                {
+                    "name": "Daniel Perantoni",
+                    "image": "https://i.scdn.co/image/ab67616d0000b27394307168e713acd916f6b3a8"
+                },
+                {
+                    "name": "Velvet Brass",
+                    "image": "https://i.scdn.co/image/ab67616d0000b273747fbc2a316050578aec31fb"
+                },
+                {
+                    "name": "Sam Pilafian",
+                    "image": "https://i.scdn.co/image/36f90543559f1250c5b4fc2af3408f1af8a0098d"
+                }
+            ]
+        },
+        {
+            "name": "Lana Del Rey",
+            "image": "https://i.scdn.co/image/ab6761610000e5eb5f68c9a267cdc44f94e4d168",
+            "related": [
+                {
+                    "name": "Zella Day",
+                    "image": "https://i.scdn.co/image/ab6761610000e5eb5f68c9a267cdc44f94e4d168"
+                },
+                {
+                    "name": "Banks",
+                    "image": "https://i.scdn.co/image/ab6761610000e5ebd288efeb8eec2d65d2e52bcb"
+                },
+                {
+                    "name": "Birdy",
+                    "image": "https://i.scdn.co/image/ab6761610000e5eb778483686ae247c1906f02fb"
+                },
+                {
+                    "name": "Phoebe Bridgers",
+                    "image": "https://i.scdn.co/image/ab6761610000e5eb626686e362d30246e816cc5b"
+                }
+            ]
+        },
+        {
+            "name": "Rihanna",
+            "image": "https://i.scdn.co/image/ab6761610000e5eb1ebb81323a96e465ad20b932",
+            "related": [
+                {
+                    "name": "Ashanti",
+                    "image": "https://i.scdn.co/image/ab6761610000e5eb1ebb81323a96e465ad20b932"
+                },
+                {
+                    "name": "Ciara",
+                    "image": "https://i.scdn.co/image/ab6761610000e5eb7aba0bf3576fe56c2b367c83"
+                },
+                {
+                    "name": "Tinashe",
+                    "image": "https://i.scdn.co/image/ab6761610000e5eba669f860c74c9007934d2cb6"
+                },
+                {
+                    "name": "Estelle",
+                    "image": "https://i.scdn.co/image/ab6761610000e5eb4d51e3664ea42c2dfb09f21b"
+                }
+            ]
+        },
+        {
+            "name": "Justin Bieber",
+            "image": "https://i.scdn.co/image/ab6761610000e5ebab4364d80728df548a4f7d77",
+            "related": [
+                {
+                    "name": "Jonas Brothers",
+                    "image": "https://i.scdn.co/image/ab6761610000e5ebab4364d80728df548a4f7d77"
+                },
+                {
+                    "name": "MAX",
+                    "image": "https://i.scdn.co/image/ab6761610000e5eb23e614922b351df9c2e93a2b"
+                },
+                {
+                    "name": "Lauv",
+                    "image": "https://i.scdn.co/image/ab6761610000e5ebb173d69f77530d77a991984f"
+                },
+                {
+                    "name": "Why Don't We",
+                    "image": "https://i.scdn.co/image/ab6761610000e5eb9160fac7a1ecb8ee89a633ac"
+                }
+            ]
+        },
+        {
+            "name": "Noah Kahan",
+            "image": "https://i.scdn.co/image/ab6761610000e5eb43a00ea7cb7be891ba310978",
+            "related": [
+                {
+                    "name": "Matt Maeson",
+                    "image": "https://i.scdn.co/image/ab6761610000e5ebc1e8ec8ed3f6ca3e659a9efd"
+                },
+                {
+                    "name": "Dean Lewis",
+                    "image": "https://i.scdn.co/image/ab6761610000e5eb43a00ea7cb7be891ba310978"
+                },
+                {
+                    "name": "Lewis Capaldi",
+                    "image": "https://i.scdn.co/image/ab6761610000e5ebea7538654040e553a7b0fc28"
+                },
+                {
+                    "name": "James TW",
+                    "image": "https://i.scdn.co/image/ab6761610000e5eb856c04f446eb4217fc1de30f"
+                }
+            ]
+        },
+        {
+            "name": "Chappell Roan",
+            "image": "https://i.scdn.co/image/ab6761610000e5eb2e9eb243aefef14b48280583",
+            "related": [
+                {
+                    "name": "Betty Who",
+                    "image": "https://i.scdn.co/image/ab6761610000e5eb2e9eb243aefef14b48280583"
+                },
+                {
+                    "name": "Allie X",
+                    "image": "https://i.scdn.co/image/ab6761610000e5eb1da144ef9f8d38233c143242"
+                },
+                {
+                    "name": "Charley",
+                    "image": "https://i.scdn.co/image/ab6761610000e5eb25d49dc188312efe6b566dac"
+                },
+                {
+                    "name": "Vérité",
+                    "image": "https://i.scdn.co/image/ab6761610000e5ebcb562aae5bed88a2d15481f8"
+                }
+            ]
+        },
+        {
+            "name": "Lady Gaga",
+            "image": "https://i.scdn.co/image/ab6761610000e5eb9a8ae4546aa5fb59aac60262",
+            "related": [
+                {
+                    "name": "Kylie Minogue",
+                    "image": "https://i.scdn.co/image/ab6761610000e5eb9a8ae4546aa5fb59aac60262"
+                },
+                {
+                    "name": "Cher",
+                    "image": "https://i.scdn.co/image/ab6761610000e5eb951b9e5d4f1f502691aeef1f"
+                },
+                {
+                    "name": "Ellie Goulding",
+                    "image": "https://i.scdn.co/image/ab6761610000e5ebc3cd7dc428871e8985d62b9a"
+                },
+                {
+                    "name": "Jessie Ware",
+                    "image": "https://i.scdn.co/image/ab6761610000e5ebdcbf8b16eaea624592b29a35"
+                }
+            ]
+        },
+
+        {
+            "name": "Taylor Swift",
+            "image": "https://i.scdn.co/image/ab6761610000e5eb3608d10bdd51605b8e900a09",
+            "related": [
+                {
+                    "name": "Ingrid Michaelson",
+                    "image": "https://i.scdn.co/image/ab6761610000e5eb3608d10bdd51605b8e900a09"
+                },
+                {
+                    "name": "Sara Bareilles",
+                    "image": "https://i.scdn.co/image/ab6761610000e5eb0bae7cfd3b32b10154e0b8b3"
+                },
+                {
+                    "name": "Kacey Musgraves",
+                    "image": "https://i.scdn.co/image/ab6761610000e5ebc548c7ff983f25641dc71ffe"
+                },
+                {
+                    "name": "Colbie Caillat",
+                    "image": "https://i.scdn.co/image/ab6761610000e5eb08635ff0ed30023d2ee764a1"
+                }
+            ]
+        },
+        {
+            "name": "Drake",
+            "image": "https://i.scdn.co/image/ab6761610000e5ebbd5d3e1b363c3e26710661c3",
+            "related": [
+                {
+                    "name": "Bryson Tiller",
+                    "image": "https://i.scdn.co/image/ab6761610000e5eb078fdd734b7f0aa782328428"
+                },
+                {
+                    "name": "Tory Lanez",
+                    "image": "https://i.scdn.co/image/ab6761610000e5ebbd5d3e1b363c3e26710661c3"
+                },
+                {
+                    "name": "NAV",
+                    "image": "https://i.scdn.co/image/ab6761610000e5ebf276b6e4b25bb6fb7b942ab2"
+                },
+                {
+                    "name": "PARTYNEXTDOOR",
+                    "image": "https://i.scdn.co/image/ab6761610000e5eb957320981e31e862bc2fb844"
+                }
+            ]
+        },
+        {
+            "name": "SZA",
+            "image": "https://i.scdn.co/image/ab6761610000e5eb9eb16dee0598c2d96820df68",
+            "related": [
+                {
+                    "name": "Ari Lennox",
+                    "image": "https://i.scdn.co/image/ab6761610000e5eb1c01565fc4815f6ba7b67575"
+                },
+                {
+                    "name": "Ravyn Lenae",
+                    "image": "https://i.scdn.co/image/ab6761610000e5eb9eb16dee0598c2d96820df68"
+                },
+                {
+                    "name": "Syd",
+                    "image": "https://i.scdn.co/image/ab6761610000e5ebe6fda2022b01ffe8a0966131"
+                },
+                {
+                    "name": "Jamila Woods",
+                    "image": "https://i.scdn.co/image/ab6761610000e5eb884bf09f3acbd46ea79baccc"
+                }
+            ]
+        },
+        {
+            "name": "Ariana Grande",
+            "image": "https://i.scdn.co/image/ab6761610000e5eb7619ca2683b434e139040f70",
+            "related": [
+                {
+                    "name": "Zara Larsson",
+                    "image": "https://i.scdn.co/image/ab6761610000e5eb7619ca2683b434e139040f70"
+                },
+                {
+                    "name": "Bebe Rexha",
+                    "image": "https://i.scdn.co/image/ab6761610000e5ebead1540fa76796266fadba33"
+                },
+                {
+                    "name": "Ava Max",
+                    "image": "https://i.scdn.co/image/ab6761610000e5ebdb972b34c76d1f6e643ba616"
+                },
+                {
+                    "name": "Tori Kelly",
+                    "image": "https://i.scdn.co/image/ab6761610000e5eb544ba0da8dbe879efa20bcb9"
+                }
+            ]
+        },
+        {
+            "name": "The Weeknd",
+            "image": "https://i.scdn.co/image/ab6761610000e5eb36d5be1a79a8a98c4d02f012",
+            "related": [
+                {
+                    "name": "Gallant",
+                    "image": "https://i.scdn.co/image/ab6761610000e5eb42e313570c82d4168e201a67"
+                },
+                {
+                    "name": "Sampha",
+                    "image": "https://i.scdn.co/image/ab6761610000e5eb36d5be1a79a8a98c4d02f012"
+                },
+                {
+                    "name": "Black Atlass",
+                    "image": "https://i.scdn.co/image/ab6761610000e5eb9bfe05bc3c65d206f12a857b"
+                },
+                {
+                    "name": "Majid Jordan",
+                    "image": "https://i.scdn.co/image/ab6761610000e5eb3916b72e0d2752aee6974d8e"
+                }
+            ]
+        },
+        {
+            "name": "Sabrina Carpenter",
+            "image": "https://i.scdn.co/image/ab6761610000e5eb6b17e78a3cd59cfd28fbb95a",
+            "related": [
+                {
+                    "name": "Megan Nicole",
+                    "image": "https://i.scdn.co/image/ab6761610000e5ebff3657f5e1fc83fde3a15897"
+                },
+                {
+                    "name": "Bridgit Mendler",
+                    "image": "https://i.scdn.co/image/ab6761610000e5ebbc30d8897d7327fa50d5f9f0"
+                },
+                {
+                    "name": "Rachel Platten",
+                    "image": "https://i.scdn.co/image/ab6761610000e5eb6b17e78a3cd59cfd28fbb95a"
+                },
+                {
+                    "name": "Victoria Justice",
+                    "image": "https://i.scdn.co/image/ab6761610000e5eb73ce8213e969323cec17549e"
+                }
+            ]
+        },
+        {
+            "name": "Bruno Mars",
+            "image": "https://i.scdn.co/image/ab6761610000e5eb01784e44ffd1a339350f4417",
+            "related": [
+                {
+                    "name": "Robin Thicke",
+                    "image": "https://i.scdn.co/image/ab6761610000e5eb02582bb3fa9d68f44a247f39"
+                },
+                {
+                    "name": "Jason Derulo",
+                    "image": "https://i.scdn.co/image/ab6761610000e5eb62fa38af4bdc7322b2103493"
+                },
+                {
+                    "name": "Aloe Blacc",
+                    "image": "https://i.scdn.co/image/ab6761610000e5ebb5afb132544178f57769bd56"
+                },
+                {
+                    "name": "John Legend",
+                    "image": "https://i.scdn.co/image/ab6761610000e5eb01784e44ffd1a339350f4417"
+                }
+            ]
+        },
+        {
+            "name": "Lil Wayne",
+            "image": "https://i.scdn.co/image/ab6761610000e5eb3d5b14b45d4c3d10d23b03ff",
+            "related": [
+                {
+                    "name": "Juicy J",
+                    "image": "https://i.scdn.co/image/ab6761610000e5eb116fc50265ef72d7e66723a5"
+                },
+                {
+                    "name": "Big Sean",
+                    "image": "https://i.scdn.co/image/ab6761610000e5eb3d5b14b45d4c3d10d23b03ff"
+                },
+                {
+                    "name": "Gucci Mane",
+                    "image": "https://i.scdn.co/image/ab6761610000e5ebb9b77f64bd278ffde2c94428"
+                },
+                {
+                    "name": "Waka Flocka Flame",
+                    "image": "https://i.scdn.co/image/ab6761610000e5eb098d901516df803fdfa7bb74"
+                }
+            ]
+        },
+        {
+            "name": "Post Malone",
+            "image": "https://i.scdn.co/image/ab6761610000e5eb4f7d049994ac00ed885bfbf2",
+            "related": [
+                {
+                    "name": "Arizona Zervas",
+                    "image": "https://i.scdn.co/image/ab6761610000e5ebfc992fcd4e92e84dbdd28d91"
+                },
+                {
+                    "name": "Blackbear",
+                    "image": "https://i.scdn.co/image/ab6761610000e5eb4f7d049994ac00ed885bfbf2"
+                },
+                {
+                    "name": "Trevor Daniel",
+                    "image": "https://i.scdn.co/image/ab6761610000e5eb91fa81ee7feed311d9aedf7e"
+                },
+                {
+                    "name": "Yung Gravy",
+                    "image": "https://i.scdn.co/image/ab6761610000e5eb7f7ee3a571416b4cc53d7fc4"
+                }
+            ]
+        },
+        {
+            
+                "name": "Rauw Alejandro",
+                "image": "https://i.scdn.co/image/ab6761610000e5ebaf9e096cfe63bb5115890cb9",
+                "related": [
+                    {
+                        "name": "Nicky Jam",
+                        "image": "https://i.scdn.co/image/ab6761610000e5eb4e0f64cf0dab523714a800a7"
+                    },
+                    {
+                        "name": "Farruko",
+                        "image": "https://i.scdn.co/image/ab6761610000e5eb7d36b670eff30cc4de53f67c"
+                    },
+                    {
+                        "name": "Wisin & Yandel",
+                        "image": "https://i.scdn.co/image/ab6761610000e5ebb5496c4b788e181679069ee8"
+                    },
+                    {
+                        "name": "Lunay",
+                        "image": "https://i.scdn.co/image/ab6761610000e5ebaf9e096cfe63bb5115890cb9"
+                    }
+                ]
+        },
+            {
+                "name": "Michael Bublé",
+                "image": "https://i.scdn.co/image/ab6761610000e5eb621cbb757dcbf609042f98d8",
+                "related": [
+                    {
+                        "name": "Michael Bolton",
+                        "image": "https://i.scdn.co/image/ab6761610000e5eb621cbb757dcbf609042f98d8"
+                    },
+                    {
+                        "name": "Tony Bennett",
+                        "image": "https://i.scdn.co/image/ab6761610000e5ebcd9641c8b449440a77ee19cc"
+                    },
+                    {
+                        "name": "Chris Botti",
+                        "image": "https://i.scdn.co/image/ab6761610000e5eb3536f18a4d9fe29772335ea3"
+                    },
+                    {
+                        "name": "Diana Krall",
+                        "image": "https://i.scdn.co/image/ab6761610000e5ebd1bfc97e11bb4c1f90f287a6"
+                    }
+                ]
+            },
+            
+            
+            
+            {
+                "name": "Nicki Minaj",
+                "image": "https://i.scdn.co/image/ab6761610000e5eb3ae964ef740d482d7cebcc1c",
+                "related": [
+                    {
+                        "name": "Kash Doll",
+                        "image": "https://i.scdn.co/image/ab6761610000e5eb3ae964ef740d482d7cebcc1c"
+                    },
+                    {
+                        "name": "Rico Nasty",
+                        "image": "https://i.scdn.co/image/ab6761610000e5eb79f5e241b0d4b148b128386c"
+                    },
+                    {
+                        "name": "Iggy Azalea",
+                        "image": "https://i.scdn.co/image/ab6761610000e5eb698a6abf2897a8fc8283cc0c"
+                    },
+                    {
+                        "name": "Flo Milli",
+                        "image": "https://i.scdn.co/image/ab6761610000e5eb2dd4342359c7b3aca2bca63c"
+                    }
+                ]
+            },
+            {
+                "name": "Mariah Carey",
+                "image": "https://i.scdn.co/image/ab6761610000e5eb7b83a663c1e66cde1b4c536b",
+                "related": [
+                    {
+                        "name": "Vanessa Williams",
+                        "image": "https://i.scdn.co/image/ab6761610000e5eb7b83a663c1e66cde1b4c536b"
+                    },
+                    {
+                        "name": "Deborah Cox",
+                        "image": "https://i.scdn.co/image/ab6761610000e5eb18315d5c9578cb96626f41f0"
+                    },
+                    {
+                        "name": "Tamia",
+                        "image": "https://i.scdn.co/image/ab6761610000e5ebcf35587ec242fd403b683687"
+                    },
+                    {
+                        "name": "Toni Braxton",
+                        "image": "https://i.scdn.co/image/ab6761610000e5eb89773feeaeff0e1cb4951d37"
+                    }
+                ]
+            },
+            {
+                "name": "Hozier",
+                "image": "https://i.scdn.co/image/ab6761610000e5eb0bd0474924477856d5ad4f4b",
+                "related": [
+                    {
+                        "name": "Glen Hansard",
+                        "image": "https://i.scdn.co/image/ab6761610000e5eb0bd0474924477856d5ad4f4b"
+                    },
+                    {
+                        "name": "Passenger",
+                        "image": "https://i.scdn.co/image/ab6761610000e5eb3eb6f55c271d954cc871954f"
+                    },
+                    {
+                        "name": "Damien Rice",
+                        "image": "https://i.scdn.co/image/2e30a95ed5539cc08cc339439a596db30304d31a"
+                    },
+                    {
+                        "name": "Gregory Alan Isakov",
+                        "image": "https://i.scdn.co/image/ab6761610000e5eb4528d0f9bb51b241561a16f3"
+                    }
+                ]
+            },
+            {
+                "name": "Olivia Rodrigo",
+                "image": "https://i.scdn.co/image/ab6761610000e5eb8b521134ae0ba3f60aab6811",
+                "related": [
+                    {
+                        "name": "Maisie Peters",
+                        "image": "https://i.scdn.co/image/ab6761610000e5eb8b521134ae0ba3f60aab6811"
+                    },
+                    {
+                        "name": "Conan Gray",
+                        "image": "https://i.scdn.co/image/ab6761610000e5ebcc2d67917c6dc6cdfd009964"
+                    },
+                    {
+                        "name": "Madison Beer",
+                        "image": "https://i.scdn.co/image/ab6761610000e5ebe0b37426761bbaa441615c5b"
+                    },
+                    {
+                        "name": "Tate McRae",
+                        "image": "https://i.scdn.co/image/ab6761610000e5eb4623c7ed9d1e2d2938fae462"
+                    }
+                ]
+            },
+            {
+                "name": "Coldplay",
+                "image": "https://i.scdn.co/image/ab6761610000e5eb1f595ca3f59db9643e17e48c",
+                "related": [
+                    {
+                        "name": "The Fray",
+                        "image": "https://i.scdn.co/image/ab6761610000e5eb1f595ca3f59db9643e17e48c"
+                    },
+                    {
+                        "name": "Snow Patrol",
+                        "image": "https://i.scdn.co/image/ab6761610000e5eb9b328846dc38b0a620da1ce2"
+                    },
+                    {
+                        "name": "Kodaline",
+                        "image": "https://i.scdn.co/image/ab6761610000e5eb0b99560e4162fe239ac6d3ba"
+                    },
+                    {
+                        "name": "Imagine Dragons",
+                        "image": "https://i.scdn.co/image/ab6761610000e5ebab47d8dae2b24f5afe7f9d38"
+                    }
+                ]
+            },
+            {
+                "name": "Pentatonix",
+                "image": "https://i.scdn.co/image/ab6761610000e5eb8518d85c0a33fbc8d0b02464",
+                "related": [
+                    {
+                        "name": "Anthem Lights",
+                        "image": "https://i.scdn.co/image/ab6761610000e5eb8518d85c0a33fbc8d0b02464"
+                    },
+                    {
+                        "name": "The Filharmonic",
+                        "image": "https://i.scdn.co/image/ab6761610000e5eb8c6007c4950dd2361e50be9a"
+                    },
+                    {
+                        "name": "BYU Vocal Point",
+                        "image": "https://i.scdn.co/image/ab6761610000e5eb7a331c17fb40c778afe9a6fd"
+                    },
+                    {
+                        "name": "Voctave",
+                        "image": "https://i.scdn.co/image/ab6761610000e5eb5747f5a3c96d7cccd205bbfc"
+                    }
+                ]
+            },
+            {
+                "name": "Feid",
+                "image": "https://i.scdn.co/image/ab6761610000e5ebf64f5cc7b8a7cc5c9a9f5434",
+                "related": [
+                    {
+                        "name": "Piso 21",
+                        "image": "https://i.scdn.co/image/ab6761610000e5ebf64f5cc7b8a7cc5c9a9f5434"
+                    },
+                    {
+                        "name": "Reik",
+                        "image": "https://i.scdn.co/image/ab6761610000e5ebf87c48cbd2ebcb0a66ce8ae1"
+                    },
+                    {
+                        "name": "Mau y Ricky",
+                        "image": "https://i.scdn.co/image/ab6761610000e5eb2d0130d0ab3180b3eed46b02"
+                    },
+                    {
+                        "name": "Zion & Lennox",
+                        "image": "https://i.scdn.co/image/ab6761610000e5ebfa844599a8631cca451a93e5"
+                    }
+                ]
+            },
+        
+        {
+            
+                "name": "Stray Kids",
+                "image": "https://i.scdn.co/image/ab6761610000e5ebd28d311ccd01e2fd8917cb5c",
+                "related": [
+                    {
+                        "name": "ATEEZ",
+                        "image": "https://i.scdn.co/image/ab6761610000e5ebd28d311ccd01e2fd8917cb5c"
+                    },
+                    {
+                        "name": "NCT 127",
+                        "image": "https://i.scdn.co/image/ab6761610000e5ebdc904dcc7399f1fd90107392"
+                    },
+                    {
+                        "name": "SEVENTEEN",
+                        "image": "https://i.scdn.co/image/ab6761610000e5eb8912a840e637dacc0d5c7828"
+                    },
+                    {
+                        "name": "MONSTA X",
+                        "image": "https://i.scdn.co/image/ab6761610000e5eb3806dc272074141b5f4ae00d"
+                    }
+                ]
+            },
+            {
+                "name": "David Guetta",
+                "image": "https://i.scdn.co/image/ab6761610000e5eb45c3688488f871aace7a4a57",
+                "related": [
+                    {
+                        "name": "Martin Garrix",
+                        "image": "https://i.scdn.co/image/ab6761610000e5eb45c3688488f871aace7a4a57"
+                    },
+                    {
+                        "name": "Calvin Harris",
+                        "image": "https://i.scdn.co/image/ab6761610000e5eb014a3c1730d960c66396ed63"
+                    },
+                    {
+                        "name": "Zedd",
+                        "image": "https://i.scdn.co/image/ab6761610000e5ebe28762aed82cde1178fb3873"
+                    },
+                    {
+                        "name": "Tiësto",
+                        "image": "https://i.scdn.co/image/ab6761610000e5ebe84e08fb1dfa2bf9b5a61563"
+                    }
+                ]
+            },
+            {
+                "name": "Snoop Dogg",
+                "image": "https://i.scdn.co/image/ab6761610000e5eb650e79afafd00492e33d7b8c",
+                "related": [
+                    {
+                        "name": "Ice Cube",
+                        "image": "https://i.scdn.co/image/ab6761610000e5eb650e79afafd00492e33d7b8c"
+                    },
+                    {
+                        "name": "Warren G",
+                        "image": "https://i.scdn.co/image/ab6761610000e5eb5c9383166226bbe48213b064"
+                    },
+                    {
+                        "name": "Nate Dogg",
+                        "image": "https://i.scdn.co/image/fd5d1f379a33ee26e2dfaf296bbab0970ec95ede"
+                    },
+                    {
+                        "name": "E-40",
+                        "image": "https://i.scdn.co/image/ab6761610000e5eb8ca18cf65fbe696a56d9cfda"
+                    }
+                ]
+            },
+            {
+                "name": "Ty Dolla $ign",
+                "image": "https://i.scdn.co/image/ab6761610000e5eb8ddeab89a67542470e2631c8",
+                "related": [
+                    {
+                        "name": "Jeremih",
+                        "image": "https://i.scdn.co/image/ab6761610000e5eb8ddeab89a67542470e2631c8"
+                    },
+                    {
+                        "name": "Eric Bellinger",
+                        "image": "https://i.scdn.co/image/ab6761610000e5ebc82ed2c4371ad0a968242eb5"
+                    },
+                    {
+                        "name": "Tory Lanez",
+                        "image": "https://i.scdn.co/image/ab6761610000e5ebbd5d3e1b363c3e26710661c3"
+                    },
+                    {
+                        "name": "6LACK",
+                        "image": "https://i.scdn.co/image/ab6761610000e5ebf8e7a2d1a01fd98e43ee57dc"
+                    }
+                ]
+            },
+            {
+                "name": "Megan Thee Stallion",
+                "image": "https://i.scdn.co/image/ab6761610000e5eb2dd4342359c7b3aca2bca63c",
+                "related": [
+                    {
+                        "name": "Flo Milli",
+                        "image": "https://i.scdn.co/image/ab6761610000e5eb2dd4342359c7b3aca2bca63c"
+                    },
+                    {
+                        "name": "Saweetie",
+                        "image": "https://i.scdn.co/image/ab6761610000e5eb7c350e80bfc4993f977934d1"
+                    },
+                    {
+                        "name": "Latto",
+                        "image": "https://i.scdn.co/image/ab6761610000e5eba11b0b5c37498f5dddb1bd7b"
+                    },
+                    {
+                        "name": "City Girls",
+                        "image": "https://i.scdn.co/image/ab6761610000e5eb5d4891c63de9b0b74a4b7b9e"
+                    }
+                ]
+            },
+            {
+                "name": "Dua Lipa",
+                "image": "https://i.scdn.co/image/ab6761610000e5ebc5c0e1d109d8a876076187f1",
+                "related": [
+                    {
+                        "name": "Mabel",
+                        "image": "https://i.scdn.co/image/ab6761610000e5ebc5c0e1d109d8a876076187f1"
+                    },
+                    {
+                        "name": "Anne-Marie",
+                        "image": "https://i.scdn.co/image/ab6761610000e5eb679c995b0d4a641ba32aa5f0"
+                    },
+                    {
+                        "name": "Zara Larsson",
+                        "image": "https://i.scdn.co/image/ab6761610000e5eb7619ca2683b434e139040f70"
+                    },
+                    {
+                        "name": "Tove Lo",
+                        "image": "https://i.scdn.co/image/ab6761610000e5eb2360c963315739fc33b01687"
+                    }
+                ]
+            },
+            {
+                "name": "JAY-Z",
+                "image": "https://i.scdn.co/image/ab6761610000e5eb153198caeef9e3bda92f9285",
+                "related": [
+                    {
+                        "name": "Nas",
+                        "image": "https://i.scdn.co/image/ab6761610000e5eb153198caeef9e3bda92f9285"
+                    },
+                    {
+                        "name": "The Notorious B.I.G.",
+                        "image": "https://i.scdn.co/image/1b4858fbd24046a81cace5ee18d19c868262b91f"
+                    },
+                    {
+                        "name": "Rakim",
+                        "image": "https://i.scdn.co/image/8d38481927c46840efeda04eaf5cd617dc78f53c"
+                    },
+                    {
+                        "name": "Common",
+                        "image": "https://i.scdn.co/image/ab6761610000e5eb6354c88f58d8a99b91e0d965"
+                    }
+                ]
+            },
+            {
+                "name": "Twenty One Pilots",
+                "image": "https://i.scdn.co/image/ab6761610000e5ebb256ae9a4b82bfff97776ae2",
+                "related": [
+                    {
+                        "name": "Panic! At The Disco",
+                        "image": "https://i.scdn.co/image/ab6761610000e5ebb256ae9a4b82bfff97776ae2"
+                    },
+                    {
+                        "name": "AJR",
+                        "image": "https://i.scdn.co/image/ab6761610000e5ebe65fa0329c232ac6f5040f80"
+                    },
+                    {
+                        "name": "The 1975",
+                        "image": "https://i.scdn.co/image/ab6761610000e5eb89348336354096fd4e36ca73"
+                    },
+                    {
+                        "name": "COIN",
+                        "image": "https://i.scdn.co/image/ab6761610000e5eb8dfafe2786d2c19003863e38"
+                    }
+                ]
+            },
+            {
+                "name": "Katy Perry",
+                "image": "https://i.scdn.co/image/ab6761610000e5eb8272bf414106646e0e4a89f3",
+                "related": [
+                    {
+                        "name": "Carly Rae Jepsen",
+                        "image": "https://i.scdn.co/image/ab6761610000e5eb8272bf414106646e0e4a89f3"
+                    },
+                    {
+                        "name": "Meghan Trainor",
+                        "image": "https://i.scdn.co/image/ab6761610000e5eb365984489dac7a79eac204e3"
+                    },
+                    {
+                        "name": "Hilary Duff",
+                        "image": "https://i.scdn.co/image/2b46c43a2c8d3af23f3183299c2070c2d42ad039"
+                    },
+                    {
+                        "name": "Ashlee Simpson",
+                        "image": "https://i.scdn.co/image/ab6761610000e5eb60a34dfbd606cefc93c33310"
+                    }
+                ]
+            },
+            
+            {
+                "name": "Beyoncé",
+                "image": "https://i.scdn.co/image/ab6761610000e5eb5a794e2253ea3c23f9c8712b",
+                "related": [
+                    {
+                        "name": "Kelly Rowland",
+                        "image": "https://i.scdn.co/image/ab6761610000e5eb7c614a2b3cedfc53e4679c2e"
+                    },
+                    {
+                        "name": "Brandy",
+                        "image": "https://i.scdn.co/image/ab6761610000e5ebdbf4e5a6d3b6df3c22c882a3"
+                    },
+                    {
+                        "name": "Monica",
+                        "image": "https://i.scdn.co/image/ab6761610000e5ebe511dad92fbc2626144a02a2"
+                    },
+                    {
+                        "name": "Fantasia",
+                        "image": "https://i.scdn.co/image/ab6761610000e5eb7a78089f1353ff2ccce38d5e"
+                    }
+                ]
+            },
+            {
+                "name": "Doja Cat",
+                "image": "https://i.scdn.co/image/ab6761610000e5eb5345ee65b6713e1bb1edd921",
+                "related": [
+                    {
+                        "name": "Tierra Whack",
+                        "image": "https://i.scdn.co/image/ab6761610000e5eb5345ee65b6713e1bb1edd921"
+                    },
+                    {
+                        "name": "Cupcakke",
+                        "image": "https://i.scdn.co/image/ab6761610000e5eba213034397f5fee33af9e581"
+                    },
+                    {
+                        "name": "Amine",
+                        "image": "https://i.scdn.co/image/ab6761610000e5ebe7730231c2411fd2df0c03f9"
+                    },
+                    {
+                        "name": "Rico Nasty",
+                        "image": "https://i.scdn.co/image/ab6761610000e5eb79f5e241b0d4b148b128386c"
+                    }
+                ]
+            },
+            {
+                "name": "Ed Sheeran",
+                "image": "https://i.scdn.co/image/ab6761610000e5eb365a79b1c70b46f322403221",
+                "related": [
+                    {
+                        "name": "Tom Odell",
+                        "image": "https://i.scdn.co/image/ab6761610000e5eb532e8dd8ba9fbd5e78105a78"
+                    },
+                    {
+                        "name": "Gavin James",
+                        "image": "https://i.scdn.co/image/ab6761610000e5eb0ebb51f670e620337afe780e"
+                    },
+                    {
+                        "name": "James Morrison",
+                        "image": "https://i.scdn.co/image/ab6761610000e5eb340fa517cfa6d15bb850c710"
+                    },
+                    {
+                        "name": "Shawn McDonald",
+                        "image": "https://i.scdn.co/image/ce0015eeca5fccd20ca6a87d7b76447da98b881c"
+                    }
+                ]
+            },
+            {
+                "name": "Charli XCX",
+                "image": "https://i.scdn.co/image/ab6761610000e5ebec34567e3455f42eeb55f3aa",
+                "related": [
+                    {
+                        "name": "Caroline Polachek",
+                        "image": "https://i.scdn.co/image/ab6761610000e5eb5da901a1dd949436f2377f72"
+                    },
+                    {
+                        "name": "Kim Petras",
+                        "image": "https://i.scdn.co/image/ab6761610000e5eb0796352804c3946cc63293ba"
+                    },
+                    {
+                        "name": "Slayyyter",
+                        "image": "https://i.scdn.co/image/ab6761610000e5eb8ce5a7dbd3b81c6003fed5cc"
+                    },
+                    {
+                        "name": "Rina Sawayama",
+                        "image": "https://i.scdn.co/image/ab6761610000e5eb8cb645e0a77bf015feda7fb9"
+                    }
+                ]
+            },
+            {
+                "name": "Jelly Roll",
+                "image": "https://i.scdn.co/image/ab6761610000e5eb9302f87d7a0c3963f9a7f6d6",
+                "related": [
+                    {
+                        "name": "Struggle Jennings",
+                        "image": "https://i.scdn.co/image/ab6761610000e5eb9302f87d7a0c3963f9a7f6d6"
+                    },
+                    {
+                        "name": "Upchurch",
+                        "image": "https://i.scdn.co/image/ab6761610000e5eb9a272f52373d34f6b5d18183"
+                    },
+                    {
+                        "name": "Adam Calhoun",
+                        "image": "https://i.scdn.co/image/ab6761610000e5ebe001ca9ed53adeef3d8e83f4"
+                    },
+                    {
+                        "name": "Ryan Upchurch",
+                        "image": "https://i.scdn.co/image/ab6761610000e5eb9a272f52373d34f6b5d18183"
+                    }
+                ]
+            }
+        ]
+        
+        
+        
+    
+}
+

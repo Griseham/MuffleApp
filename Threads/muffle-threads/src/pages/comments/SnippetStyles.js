@@ -1,0 +1,96 @@
+// src/styles/SnippetStyles.js
+const SnippetStyles = {
+    snippetBlock: {
+      marginTop: "8px",
+      background: "linear-gradient(145deg, #202020, #2b2b2b)",
+      border: "1px solid #333",
+      borderRadius: "8px",
+      display: "flex",
+      alignItems: "center",
+      gap: "0.75rem",
+      padding: "0.75rem",
+      boxShadow: "0 4px 10px rgba(0,0,0,0.3)",
+      transition: "transform 0.2s ease, background 0.3s ease",
+      ":hover": {
+        transform: "scale(1.02)",
+        background: "linear-gradient(145deg, #2a2a2a, #353535)",
+      },
+    },
+    snippetCard: {
+      display: "flex",
+      alignItems: "center",
+      gap: "0.75rem",
+      backgroundColor: "#1a1a1a",
+      borderRadius: "8px",
+      padding: "0.75rem",
+      marginTop: "0rem",
+      border: "1px solid #333",
+      boxShadow: "0 2px 6px rgba(0, 0, 0, 0.3)",
+      transition: "background 0.2s ease, transform 0.2s ease",
+      ":hover": {
+        backgroundColor: "#222",
+        transform: "scale(1.01)",
+      },
+    },
+    snippetAlbumArt: {
+      width: "50px",
+      height: "50px",
+      borderRadius: "6px",
+      objectFit: "cover",
+      boxShadow: "0 1px 3px rgba(0, 0, 0, 0.3)",
+    },
+    snippetTextWrapper: {
+      display: "flex",
+      flexDirection: "column",
+      flex: 1,
+      overflow: "hidden",
+      whiteSpace: "nowrap",
+      textOverflow: "ellipsis",
+    },
+    snippetTitle: {
+      color: "#fff",
+      fontWeight: "600",
+      fontSize: "0.95rem",
+      marginBottom: "2px",
+    },
+    snippetArtist: {
+      color: "#bbb",
+      fontSize: "0.85rem",
+      fontStyle: "italic",
+    },
+    snippetPlayButton: {
+      backgroundColor: "#1db954",
+      border: "none",
+      borderRadius: "50%",
+      width: "36px",
+      height: "36px",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      color: "#fff",
+      fontSize: "1rem",
+      cursor: "pointer",
+      transition: "transform 0.2s ease, background 0.2s ease",
+      ":hover": {
+        transform: "scale(1.05)",
+        backgroundColor: "#17a44a",
+      },
+    },
+    snippetRemoveButton: {
+      backgroundColor: "#444",
+      color: "#fff",
+      border: "none",
+      borderRadius: "6px",
+      padding: "5px 10px",
+      fontSize: "0.85rem",
+      cursor: "pointer",
+      transition: "background-color 0.2s ease, transform 0.2s ease",
+      ":hover": {
+        backgroundColor: "#555",
+        transform: "scale(1.05)",
+      },
+    },
+  };
+  
+  export default SnippetStyles;
+  

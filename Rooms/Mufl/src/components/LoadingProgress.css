@@ -1,0 +1,209 @@
+/* Loading Progress Styles */
+
+.loading-progress {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+  
+  .loading-progress.simple {
+    position: relative;
+    background: transparent;
+    padding: 40px 20px;
+    min-height: 120px;
+  }
+  
+  .loading-progress-content {
+    text-align: center;
+    color: white;
+    max-width: 500px;
+    width: 100%;
+    padding: 40px;
+  }
+  
+  .loading-progress h3 {
+    margin: 20px 0 30px 0;
+    font-size: 24px;
+    font-weight: 600;
+    color: #4ade80;
+  }
+  
+  .loading-steps {
+    margin: 30px 0;
+    text-align: left;
+  }
+  
+  .loading-step {
+    padding: 8px 0;
+    color: #888;
+    position: relative;
+    padding-left: 20px;
+    transition: color 0.3s ease;
+  }
+  
+  .loading-step.active {
+    color: #4ade80;
+  }
+  
+  .loading-step.active::before {
+    content: '✓';
+    position: absolute;
+    left: 0;
+    color: #4ade80;
+    font-weight: bold;
+  }
+  
+  .loading-step:not(.active)::before {
+    content: '•';
+    position: absolute;
+    left: 0;
+    color: #444;
+  }
+  
+  .loading-progress-bar {
+    width: 100%;
+    height: 8px;
+    background: #333;
+    border-radius: 4px;
+    overflow: hidden;
+    margin: 20px 0;
+    position: relative;
+  }
+  
+  .loading-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #4ade80, #22c55e);
+    border-radius: 4px;
+    transition: width 0.5s ease;
+    position: relative;
+  }
+  
+  .loading-progress-fill::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+    animation: shimmer 2s infinite;
+  }
+  
+  .loading-progress-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 12px;
+    font-weight: 600;
+    color: white;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+  }
+  
+  @keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+  
+  .loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid #333;
+    border-top: 3px solid #4ade80;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 20px auto;
+  }
+  
+  .loading-progress.simple .loading-spinner {
+    width: 30px;
+    height: 30px;
+    margin: 0 auto 15px auto;
+  }
+  
+  .loading-progress.simple p {
+    color: #666;
+    margin: 0;
+    font-size: 14px;
+  }
+  
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  
+  /* Mode info message */
+  .mode-info-message {
+    background: rgba(74, 222, 128, 0.1);
+    border: 1px solid rgba(74, 222, 128, 0.3);
+    border-radius: 8px;
+    padding: 12px 20px;
+    margin: 20px 0;
+    text-align: center;
+  }
+  
+  .mode-info-message p {
+    margin: 0;
+    color: #4ade80;
+    font-size: 14px;
+    font-weight: 500;
+  }
+  
+  /* Error message */
+  .error-message {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 8px;
+    padding: 20px;
+    margin: 20px 0;
+    text-align: center;
+  }
+  
+  .error-message p {
+    margin: 0 0 15px 0;
+    color: #ef4444;
+    font-size: 14px;
+  }
+  
+  .retry-button {
+    background: #ef4444;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+  }
+  
+  .retry-button:hover {
+    background: #dc2626;
+  }
+  
+  /* No stations message */
+  .no-stations-message {
+    text-align: center;
+    padding: 60px 20px;
+    color: #666;
+  }
+  
+  .no-stations-message p {
+    margin: 0 0 20px 0;
+    font-size: 16px;
+  }
+  
+  .no-stations-message .retry-button {
+    background: #4ade80;
+    color: #000;
+  }
+  
+  .no-stations-message .retry-button:hover {
+    background: #22c55e;
+  }
