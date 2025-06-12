@@ -2,7 +2,6 @@ import React, { useMemo, useState, useEffect } from "react";
 import TopRadio from './TopRadio';
 import RoomModal from './RoomModal';
 import InfoIconModal from './InfoIconModal';
-import { getArtistImageWithFallback } from '../utils/avatarService';
 
 // Your Selections Tab Component - Design 7 (Split View)
 const YourSelectionsTab = ({ yourSelections = [] }) => {

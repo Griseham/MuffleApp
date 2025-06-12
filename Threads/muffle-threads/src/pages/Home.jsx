@@ -132,12 +132,12 @@ const MusicHome = () => {
     const artists = selectedGenres.flatMap(genre => {
       const artistCount = 2 + Math.floor((seed + genre.name.length) % 2);
       return Array.from({ length: artistCount }, (_, i) => {
-        const artistId = `artist-${genre.name.toLowerCase()}-${i}-${seed % 1000}`;
+        const artistId = `artist-${genre.name.toLowerCase()}-${i}-${seed % 200}`;
         return {
           id: artistId,
           name: `${genre.name} Artist ${i + 1}`,
           genre: genre.name,
-          imageUrl: `/assets/image${Math.abs(artistId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % 1000) + 1}.png`
+          imageUrl: `/assets/image${Math.abs(artistId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % 200) + 1}.png`
         };
       });
     });
