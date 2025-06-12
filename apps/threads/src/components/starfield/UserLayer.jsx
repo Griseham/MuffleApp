@@ -3,7 +3,7 @@ import React, { useMemo, useContext } from "react";
 import styles from "../styles";
 import { generateFriends, TOTAL_WIDTH, TOTAL_HEIGHT, friendColors } from "../utils";
 import { StarfieldContext } from "../context/Context";
-import { getAvatarForUser } from '../utils/avatarService';
+import { getAvatarForUser } from '../../utils/avatarService';
 
 export default function UserLayer({ snapToFriend }) {
   const { isFullscreen } = useContext(StarfieldContext);

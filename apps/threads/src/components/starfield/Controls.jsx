@@ -5,7 +5,7 @@ import EnhancedArtistFilterBar from "../EnhancedArtistFilterBar";
 import { friendColors } from "../utils";
 import { Info } from "lucide-react";
 import InfoIconModal from "../InfoIconModal";
-import { getAvatarForUser } from '../utils/avatarService';
+import { getAvatarForUser } from '../../utils/avatarService';
 
 
 export default function Controls({
