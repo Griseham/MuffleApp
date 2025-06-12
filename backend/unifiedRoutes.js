@@ -366,6 +366,290 @@ unifiedRouter.get('/apple-music/search-artists', async (req, res) => {
   }
 });
 
+// Additional routes for Threads app compatibility
+unifiedRouter.get('/spotify-token', async (req, res) => {
+  try {
+    const token = await getAccessToken();
+    res.json({ 
+      success: true, 
+      token: token 
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to get Spotify token' 
+    });
+  }
+});
+
+unifiedRouter.get('/apple-music-search', async (req, res) => {
+  const { query } = req.query;
+  
+  if (!query || typeof query !== 'string') {
+    return res.status(400).json({ error: 'Valid search query is required' });
+  }
+  
+  try {
+    const results = await searchAppleMusic(query.trim());
+    res.json(results);
+  } catch (error) {
+    if (error.response) {
+      return res.status(error.response.status).json({ 
+        error: 'Apple Music API error', 
+        details: error.response.data?.errors?.[0]?.title || 'Unknown API error'
+      });
+    } else if (error.request) {
+      return res.status(504).json({ error: 'Apple Music API timeout or no response' });
+    } else {
+      return res.status(500).json({ error: 'Failed to search for artists', message: error.message });
+    }
+  }
+});
+
+// Mock routes for threads app data (since we don't have a real database)
+unifiedRouter.get('/cached-posts/:postId', async (req, res) => {
+  const { postId } = req.params;
+  
+  // Generate a single post with snippets for the specific postId
+  const mockSongs = [
+    { name: 'Midnight Studies', artist: 'Lo-Fi Dreams', album: 'Focus Flow' },
+    { name: 'Electric Sunset', artist: 'Neon Waves', album: 'City Lights' },
+    { name: 'Heavy Bassline', artist: 'Underground Kings', album: 'Street Symphony' },
+    { name: 'Acoustic Morning', artist: 'Coffee House', album: 'Sunday Sessions' },
+    { name: 'Digital Rain', artist: 'Synthwave Valley', album: 'Retro Future' }
+  ];
+  
+  const authors = ['MusicFan42', 'BeatCollector', 'SoundExplorer', 'VibesOnly'];
+  const postTypes = ['thread', 'groupchat', 'parameter'];
+  
+  // Create deterministic randomness based on postId
+  const seed = postId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  const random = (max = 1) => ((seed * 9301 + 49297) % 233280) / 233280 * max;
+  
+  const postType = postTypes[Math.floor(random() * postTypes.length)];
+  const hasSnippets = postType === 'thread' || postType === 'groupchat';
+  
+  const snippets = hasSnippets ? Array.from({ length: Math.floor(random() * 3) + 1 }, (_, i) => {
+    const song = mockSongs[Math.floor(random() * mockSongs.length)];
+    return {
+      commentId: `comment_${postId}_${i}`,
+      query: `${song.artist} ${song.name}`,
+      songName: song.name,
+      artistName: song.artist,
+      albumName: song.album,
+      artworkUrl: `https://via.placeholder.com/300x300/1a1a1a/ffffff?text=${encodeURIComponent(song.album)}`,
+      previewUrl: null,
+      duration: Math.floor(random() * 180000) + 120000,
+      releaseDate: `${2015 + Math.floor(random() * 9)}-${String(Math.floor(random() * 12) + 1).padStart(2, '0')}-01`
+    };
+  }) : [];
+  
+  const comments = snippets.map(snippet => ({
+    id: snippet.commentId,
+    author: authors[Math.floor(random() * authors.length)],
+    body: `Check out this track: ${snippet.songName} by ${snippet.artistName}`,
+    createdUtc: Date.now() / 1000,
+    ups: Math.floor(random() * 50) + 1
+  }));
+  
+  res.json({
+    success: true,
+    data: {
+      id: postId,
+      title: `Cached Post ${postId}`,
+      author: authors[Math.floor(random() * authors.length)],
+      postType: postType,
+      createdUtc: Date.now() / 1000,
+      ups: Math.floor(random() * 100) + 1,
+      num_comments: comments.length,
+      snippets: snippets,
+      comments: comments,
+      cached: true
+    }
+  });
+});
+
+unifiedRouter.get('/posts/:postId/comments', async (req, res) => {
+  const { postId } = req.params;
+  
+  // Return mock comments
+  res.json([
+    {
+      id: `comment-1-${postId}`,
+      content: 'Mock comment 1',
+      author: 'user1',
+      timestamp: new Date().toISOString()
+    },
+    {
+      id: `comment-2-${postId}`,
+      content: 'Mock comment 2', 
+      author: 'user2',
+      timestamp: new Date().toISOString()
+    }
+  ]);
+});
+
+unifiedRouter.get('/posts/:postId/snippets', async (req, res) => {
+  const { postId } = req.params;
+  
+  // Return mock snippets
+  res.json([
+    {
+      id: `snippet-1-${postId}`,
+      title: 'Mock Song 1',
+      artist: 'Mock Artist 1',
+      preview_url: null,
+      timestamp: new Date().toISOString()
+    }
+  ]);
+});
+
+unifiedRouter.get('/posts', async (req, res) => {
+  // Return mock posts list
+  res.json([
+    {
+      id: 'post-1',
+      title: 'Mock Post 1',
+      content: 'Mock content 1',
+      author: 'user1',
+      timestamp: new Date().toISOString()
+    },
+    {
+      id: 'post-2', 
+      title: 'Mock Post 2',
+      content: 'Mock content 2',
+      author: 'user2',
+      timestamp: new Date().toISOString()
+    }
+  ]);
+});
+
+// Generate diverse mock posts for threads app with snippets and albums
+const generateDiverseMockPosts = (count = 10) => {
+  const postTypes = ['thread', 'news', 'groupchat', 'parameter', 'tweet'];
+  const authors = ['MusicFan42', 'BeatCollector', 'SoundExplorer', 'VibesOnly', 'MelodyMaster', 'RhythmSeeker'];
+  const titles = [
+    'Need recommendations for late-night studying vibes',
+    'Just discovered this amazing indie band!',
+    'What\'s your go-to workout playlist?',
+    'Breaking: Major festival lineup announced',
+    'Live discussion: Album release party tonight',
+    'Compare: 90s vs 2000s hip-hop',
+    'Underrated artists that deserve more recognition',
+    'Best streaming quality for audiophiles?',
+    'Local music scene appreciation thread',
+    'Nostalgic songs that hit different'
+  ];
+
+  // Mock music data for snippets
+  const mockSongs = [
+    { name: 'Midnight Studies', artist: 'Lo-Fi Dreams', album: 'Focus Flow' },
+    { name: 'Electric Sunset', artist: 'Neon Waves', album: 'City Lights' },
+    { name: 'Heavy Bassline', artist: 'Underground Kings', album: 'Street Symphony' },
+    { name: 'Acoustic Morning', artist: 'Coffee House', album: 'Sunday Sessions' },
+    { name: 'Digital Rain', artist: 'Synthwave Valley', album: 'Retro Future' },
+    { name: 'Jazz in the Rain', artist: 'Blue Note Collective', album: 'Rainy Day Sessions' },
+    { name: 'Indie Anthem', artist: 'Garage Band Heroes', album: 'DIY Dreams' },
+    { name: 'Classical Remix', artist: 'Modern Orchestra', album: 'Timeless Reborn' }
+  ];
+  
+  return Array.from({ length: count }, (_, i) => {
+    const randomSong = mockSongs[Math.floor(Math.random() * mockSongs.length)];
+    const postId = `diverse_post_${Date.now()}_${i}`;
+    const hasSnippets = Math.random() > 0.3; // 70% chance of having snippets
+    
+    const post = {
+      id: postId,
+      author: authors[Math.floor(Math.random() * authors.length)],
+      title: titles[Math.floor(Math.random() * titles.length)],
+      selftext: '',
+      createdUtc: Date.now() / 1000,
+      postType: postTypes[Math.floor(Math.random() * postTypes.length)],
+      ups: Math.floor(Math.random() * 100) + 1,
+      bookmarks: Math.floor(Math.random() * 50) + 1,
+      num_comments: Math.floor(Math.random() * 25) + 1,
+      imageUrl: null,
+      username: authors[Math.floor(Math.random() * authors.length)],
+      avatar: null
+    };
+
+    // Add snippets for thread and groupchat posts
+    if (hasSnippets && (post.postType === 'thread' || post.postType === 'groupchat')) {
+      const snippetCount = Math.floor(Math.random() * 3) + 1; // 1-3 snippets
+      post.snippets = Array.from({ length: snippetCount }, (_, j) => {
+        const song = mockSongs[Math.floor(Math.random() * mockSongs.length)];
+        return {
+          commentId: `comment_${postId}_${j}`,
+          query: `${song.artist} ${song.name}`,
+          songName: song.name,
+          artistName: song.artist,
+          albumName: song.album,
+          artworkUrl: `https://via.placeholder.com/300x300/000000/FFFFFF?text=${encodeURIComponent(song.album)}`,
+          previewUrl: null, // Will use fallback
+          duration: Math.floor(Math.random() * 180000) + 120000, // 2-5 minutes
+          releaseDate: `${2015 + Math.floor(Math.random() * 9)}-${String(Math.floor(Math.random() * 12) + 1).padStart(2, '0')}-01`
+        };
+      });
+
+      // Add comments corresponding to snippets
+      post.comments = post.snippets.map((snippet, j) => ({
+        id: snippet.commentId,
+        author: authors[Math.floor(Math.random() * authors.length)],
+        body: `Check out this track: ${snippet.songName} by ${snippet.artistName}`,
+        createdUtc: Date.now() / 1000,
+        ups: Math.floor(Math.random() * 50) + 1
+      }));
+    }
+
+    return post;
+  });
+};
+
+unifiedRouter.get('/diverse-posts', async (req, res) => {
+  try {
+    const diversePosts = generateDiverseMockPosts(15);
+    res.json({
+      success: true,
+      data: diversePosts
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Failed to generate diverse posts'
+    });
+  }
+});
+
+unifiedRouter.get('/refresh', async (req, res) => {
+  try {
+    const refreshPosts = generateDiverseMockPosts(12);
+    res.json({
+      success: true,
+      data: refreshPosts
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Failed to refresh posts'
+    });
+  }
+});
+
+unifiedRouter.get('/cached-posts', async (req, res) => {
+  try {
+    const cachedPosts = generateDiverseMockPosts(20);
+    res.json({
+      success: true,
+      data: cachedPosts
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Failed to load cached posts'
+    });
+  }
+});
+
 // Health check
 unifiedRouter.get('/health', async (req, res) => {
   res.json({ 
