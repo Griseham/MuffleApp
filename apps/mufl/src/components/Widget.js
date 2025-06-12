@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { PlayIcon, PauseIcon, MusicNoteIcon, AlbumIcon } from './Icons/Icons';
 
 // Front-end → Back-end base URL
-const API_BASE = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001';
+const API_BASE = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080';
 
 // Additional icons needed for the new design
 const SearchIcon = ({ size = 24, className = "" }) => (

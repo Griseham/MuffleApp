@@ -46,7 +46,7 @@ const PlayingScreen = ({
   const [yourPicks, setYourPicks] = useState([]);
 
   // Get API base URL
-  const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001';
+  const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080';
 
   // Mock data for QL circles with avatars
   const qlUsers = [
