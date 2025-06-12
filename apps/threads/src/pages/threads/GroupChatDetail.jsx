@@ -8,7 +8,7 @@ import { validateAndSanitizeInput, checkRateLimit, sanitizeComment, sanitizeSear
 // Helper function to generate avatar URLs
 function authorToAvatar(author) {
   if (!author || typeof author !== "string") {
-    return "/threads/assets/default-avatar.png";
+    return "/assets/users/assets2/image1.png";
   }
 
   let hash = 0;
@@ -16,7 +16,7 @@ function authorToAvatar(author) {
     hash = author.charCodeAt(i) + ((hash << 5) - hash);
   }
   const mod = Math.abs(hash) % 100;
-  return `/threads/assets/image${mod + 1}.png`;
+  return `/assets/users/assets2/image${mod + 1}.png`;
 }
 
 // Helper function to format timestamps

@@ -101,27 +101,24 @@ const SnippetCard = ({
   // Ref for user avatar element
   const userAvatarRef = useRef(null);
 
-  // Get the current card - use real song data or fallback
+  // Get the current card - use real song data or show loading
   const getCurrentCard = () => {
+    // Always prioritize real Apple Music data
     if (currentSong) {
       return {
         id: currentSong.id,
         track: currentSong.track,
         artist: currentSong.artist,
-        album: currentSong.album,
+        album: currentSong.album || '', // Ensure album from Apple Music API
         artworkUrl: currentSong.artworkUrl,
-        previewUrl: currentSong.previewUrl,
+        previewUrl: currentSong.previewUrl, // 30-second preview from Apple Music
         color: currentSong.color,
         isFromRoomArtist: currentSong.isFromRoomArtist
       };
     }
     
-    // Fallback when loading or no songs available
-    if (isLoading) {
-      return FALLBACK_SNIPPETS[0];
-    }
-    
-    return FALLBACK_SNIPPETS[currentIndex % FALLBACK_SNIPPETS.length];
+    // Only show fallback when actually loading
+    return FALLBACK_SNIPPETS[0];
   };
 
   const currentCard = getCurrentCard();
@@ -137,12 +134,24 @@ const SnippetCard = ({
     setAudioError(false);
     setIsBookmarked(false); // Reset bookmark state for new song
     
+    // Debug: Log Apple Music data to verify album and preview URL
+    if (currentSong) {
+      console.log('🎵 SnippetCard received Apple Music data:', {
+        track: currentSong.track,
+        artist: currentSong.artist,
+        album: currentSong.album,
+        previewUrl: currentSong.previewUrl,
+        artworkUrl: currentSong.artworkUrl
+      });
+    }
+    
     // Load new audio if preview URL is available
     if (currentCard.previewUrl && audioRef.current) {
+      console.log('🎵 Loading Apple Music preview:', currentCard.previewUrl);
       audioRef.current.src = currentCard.previewUrl;
       audioRef.current.load();
     }
-  }, [currentCard.id]);
+  }, [currentCard.id, currentSong]);
 
   // Handle voting and card animation
   const handleVote = (type, strength) => {
@@ -673,6 +682,9 @@ const SnippetCard = ({
                 {currentCard.track}
               </h3>
               <p className="text-base text-gray-300 truncate mt-1">{currentCard.artist}</p>
+              {currentCard.album && (
+                <p className="text-sm text-gray-400 truncate mt-0.5">{currentCard.album}</p>
+              )}
             </div>
           </div>
 
