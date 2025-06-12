@@ -110,8 +110,11 @@ const SnippetCard = ({
         track: currentSong.track,
         artist: currentSong.artist,
         album: currentSong.album || '', // Ensure album from Apple Music API
-        artworkUrl: currentSong.artworkUrl,
-        previewUrl: currentSong.previewUrl, // 30-second preview from Apple Music
+        artworkUrl: currentSong.artworkUrl || currentSong.artwork,
+        previewUrl:
+             currentSong.previewUrl
+             || currentSong.snippetData?.attributes?.previews?.[0]?.url
+             || defaultPreviewUrl,
         color: currentSong.color,
         isFromRoomArtist: currentSong.isFromRoomArtist
       };

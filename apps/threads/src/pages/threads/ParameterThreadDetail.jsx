@@ -18,6 +18,7 @@ import ThreadCommentComposer from './ThreadCommentComposer';
 
 // Import utilities and styles
 import { authorToAvatar, getAvatarSrc } from "../utils/utils";
+import { getAvatarForUser } from '../utils/avatarService';
 import { FiArrowLeft } from "react-icons/fi";
 import ThreadDetailStyles from "./ThreadDetailStyles";
 import './../../styles/threadDetailStyles.css';
@@ -57,8 +58,8 @@ const parameterThreadMockData = {
       snippet: {
         name: 'Demons',
         artistName: 'Imagine Dragons',
-        artwork: '/threads/assets/image23.png',
-        previewUrl: '/backend/public/HeartShapedBox.mp3',
+        artwork: getAvatarForUser('RockFan2024'),
+        previewUrl: '/public/HeartShapedBox.mp3',
         userRating: null,
         avgRating: null,
         totalRatings: null,
@@ -77,8 +78,8 @@ const parameterThreadMockData = {
       snippet: {
         name: 'Basket Case',
         artistName: 'Green Day',
-        artwork: '/threads/assets/image24.png',
-        previewUrl: '/backend/public/HeartShapedBox.mp3',
+        artwork: getAvatarForUser('PunkRockLover'),
+        previewUrl: '/public/HeartShapedBox.mp3',
         userRating: null,
         avgRating: null,
         totalRatings: null,
@@ -97,8 +98,8 @@ const parameterThreadMockData = {
       snippet: {
         name: 'Counting Stars',
         artistName: 'OneRepublic',
-        artwork: '/threads/assets/image25.png',
-        previewUrl: '/backend/public/HeartShapedBox.mp3',
+        artwork: getAvatarForUser('PopRockDaily'),
+        previewUrl: '/public/HeartShapedBox.mp3',
         userRating: null,
         avgRating: null,
         totalRatings: null,
@@ -117,8 +118,8 @@ const parameterThreadMockData = {
       snippet: {
         name: 'This Love',
         artistName: 'Maroon 5',
-        artwork: '/threads/assets/image26.png',
-        previewUrl: '/backend/public/HeartShapedBox.mp3',
+        artwork: getAvatarForUser('MelodyMaster'),
+        previewUrl: '/public/HeartShapedBox.mp3',
         userRating: null,
         avgRating: null,
         totalRatings: null,
@@ -137,8 +138,8 @@ const parameterThreadMockData = {
       snippet: {
         name: 'Thunder',
         artistName: 'Imagine Dragons',
-        artwork: '/threads/assets/image27.png',
-        previewUrl: '/backend/public/HeartShapedBox.mp3',
+        artwork: getAvatarForUser('DragonFan99'),
+        previewUrl: '/public/HeartShapedBox.mp3',
         userRating: null,
         avgRating: null,
         totalRatings: null,
@@ -157,8 +158,8 @@ const parameterThreadMockData = {
       snippet: {
         name: 'When I Come Around',
         artistName: 'Green Day',
-        artwork: '/threads/assets/image28.png',
-        previewUrl: '/backend/public/HeartShapedBox.mp3',
+        artwork: getAvatarForUser('GuitarHero2000'),
+        previewUrl: '/public/HeartShapedBox.mp3',
         userRating: null,
         avgRating: null,
         totalRatings: null,
@@ -177,8 +178,8 @@ const parameterThreadMockData = {
       snippet: {
         name: 'Apologize',
         artistName: 'OneRepublic',
-        artwork: '/threads/assets/image29.png',
-        previewUrl: '/backend/public/HeartShapedBox.mp3',
+        artwork: getAvatarForUser('IndieVibes'),
+        previewUrl: '/public/HeartShapedBox.mp3',
         userRating: null,
         avgRating: null,
         totalRatings: null,
@@ -197,8 +198,8 @@ const parameterThreadMockData = {
       snippet: {
         name: 'Sunday Morning',
         artistName: 'Maroon 5',
-        artwork: '/threads/assets/image30.png',
-        previewUrl: '/backend/public/HeartShapedBox.mp3',
+        artwork: getAvatarForUser('VocalRange'),
+        previewUrl: '/public/HeartShapedBox.mp3',
         userRating: null,
         avgRating: null,
         totalRatings: null,
@@ -217,8 +218,8 @@ const parameterThreadMockData = {
       snippet: {
         name: 'Radioactive',
         artistName: 'Imagine Dragons',
-        artwork: '/threads/assets/image31.png',
-        previewUrl: '/backend/public/HeartShapedBox.mp3',
+        artwork: getAvatarForUser('NightVisionMusic'),
+        previewUrl: '/public/HeartShapedBox.mp3',
         userRating: null,
         avgRating: null,
         totalRatings: null,
@@ -237,8 +238,8 @@ const parameterThreadMockData = {
       snippet: {
         name: 'Good Riddance (Time of Your Life)',
         artistName: 'Green Day',
-        artwork: '/threads/assets/image32.png',
-        previewUrl: '/backend/public/HeartShapedBox.mp3',
+        artwork: getAvatarForUser('AlternativeRocks'),
+        previewUrl: '/public/HeartShapedBox.mp3',
         userRating: null,
         avgRating: null,
         totalRatings: null,
@@ -307,7 +308,6 @@ const parameterThreadMockData = {
     }
   ]
 };
-
 export default function ParameterThreadDetail({ postId, onBack, onSelectUser }) {
   // Transition state
   const [isVisible, setIsVisible] = useState(false);

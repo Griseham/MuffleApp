@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { authorToAvatar } from "../utils/utils";
+import { getAvatarForUser } from '../utils/avatarService';
 
 export default function useThreadData(postId, postData = null) {
   const [post, setPost] = useState(null);
@@ -53,14 +53,14 @@ const fetchCachedPostData = async (postId) => {
             query: snippet.query,
             name: snippet.songName,
             artistName: snippet.artistName,
-            artwork: snippet.artworkUrl || `/assets/users/assets2/image${Math.floor(Math.random() * 100) + 1}.png`,
-            previewUrl: snippet.previewUrl || `/backend/public/HeartShapedBox.mp3`,
+            artwork: snippet.artworkUrl || getAvatarForUser(snippetAuthor),
+            previewUrl: snippet.previewUrl || `/public/HeartShapedBox.mp3`,
             snippetData: {
               attributes: {
                 name: snippet.songName,
                 artistName: snippet.artistName,
-                previews: [{ url: snippet.previewUrl || `/backend/public/HeartShapedBox.mp3` }],
-                artwork: { url: snippet.artworkUrl || `/threads/assets/image${Math.floor(Math.random() * 100) + 1}.png` },
+                previews: [{ url: snippet.previewUrl || `/public/HeartShapedBox.mp3` }],
+                artwork: { url: snippet.artworkUrl || getAvatarForUser(snippetAuthor) },
                 albumName: snippet.albumName || '',
                 releaseDate: snippet.releaseDate || '',
                 durationInMillis: snippet.duration || 0
@@ -68,8 +68,8 @@ const fetchCachedPostData = async (postId) => {
             },
             author: snippetAuthor,
             timestamp: Date.now(),
-            artistImage: snippet.artworkUrl || `/threads/assets/image${Math.floor(Math.random() * 100) + 1}.png`,
-            snippetAuthorAvatar: authorToAvatar(snippetAuthor),
+            artistImage: snippet.artworkUrl || getAvatarForUser(snippetAuthor),
+            snippetAuthorAvatar: getAvatarForUser(snippetAuthor),
             userRating: null,
             avgRating: Math.floor(Math.random() * 50) + 50,
             totalRatings: Math.floor(Math.random() * 200) + 50,
@@ -131,14 +131,14 @@ useEffect(() => {
                   query: snippet.query,
                   name: snippet.songName,
                   artistName: snippet.artistName,
-                  artwork: snippet.artworkUrl || `/assets/users/assets2/image${Math.floor(Math.random() * 199) + 1}.png`,
-                  previewUrl: snippet.previewUrl || `/backend/public/HeartShapedBox.mp3`,
+                  artwork: snippet.artworkUrl || getAvatarForUser(snippetAuthor),
+                  previewUrl: snippet.previewUrl || `/public/HeartShapedBox.mp3`,
                   snippetData: {
                     attributes: {
                       name: snippet.songName,
                       artistName: snippet.artistName,
-                      previews: [{ url: snippet.previewUrl || `/backend/public/HeartShapedBox.mp3` }],
-                      artwork: { url: snippet.artworkUrl || `/threads/assets/image${Math.floor(Math.random() * 199) + 1}.png` },
+                      previews: [{ url: snippet.previewUrl || `/public/HeartShapedBox.mp3` }],
+                      artwork: { url: snippet.artworkUrl || getAvatarForUser(snippetAuthor) },
                       albumName: snippet.albumName || '',
                       releaseDate: snippet.releaseDate || '',
                       durationInMillis: snippet.duration || 0
@@ -146,8 +146,8 @@ useEffect(() => {
                   },
                   author: snippetAuthor,
                   timestamp: Date.now() / 1000 - Math.floor(Math.random() * 86400),
-                  artistImage: snippet.artworkUrl || `/threads/assets/image${Math.floor(Math.random() * 199) + 1}.png`,
-                  snippetAuthorAvatar: authorToAvatar(snippetAuthor),
+                  artistImage: snippet.artworkUrl || getAvatarForUser(snippetAuthor),
+                  snippetAuthorAvatar: getAvatarForUser(snippetAuthor),
                   userRating: null,
                   avgRating: Math.floor(Math.random() * 50) + 50,
                   totalRatings: Math.floor(Math.random() * 200) + 50,
@@ -465,7 +465,7 @@ useEffect(() => {
               const song = result.data;
               
               // Ensure we have proper artwork URL
-              let artworkUrl = `/threads/assets/image${Math.floor(Math.random() * 199) + 1}.png`;
+              let artworkUrl = getAvatarForUser(comment.author);
               if (song.attributes.artwork?.url) {
                 artworkUrl = song.attributes.artwork.url.replace('{w}', '300').replace('{h}', '300');
               }
@@ -478,7 +478,7 @@ useEffect(() => {
                   attributes: {
                     name: song.attributes.name,
                     artistName: song.attributes.artistName,
-                    previews: song.attributes.previews || [{ url: `/backend/public/HeartShapedBox.mp3` }],
+                    previews: song.attributes.previews || [{ url: `/public/HeartShapedBox.mp3` }],
                     artwork: { url: artworkUrl }
                   }
                 },
@@ -486,8 +486,8 @@ useEffect(() => {
                 timestamp: comment.createdUtc || (Date.now() / 1000 - Math.floor(Math.random() * 86400)),
                 artistName: song.attributes.artistName,
                 artistImage: artworkUrl,
-                previewUrl: song.attributes.previews?.[0]?.url || `/backend/public/HeartShapedBox.mp3`,
-                snippetAuthorAvatar: authorToAvatar(comment.author),
+                previewUrl: song.attributes.previews?.[0]?.url || `/public/HeartShapedBox.mp3`,
+                snippetAuthorAvatar: getAvatarForUser(comment.author),
                 userRating: null,
                 avgRating: Math.floor(Math.random() * 5) + 1,
                 totalRatings: Math.floor(Math.random() * 50) + 1,
@@ -545,16 +545,16 @@ useEffect(() => {
             attributes: {
               name: "Bohemian Rhapsody",
               artistName: "Queen",
-              previews: [{ url: `/backend/public/HeartShapedBox.mp3` }],
-              artwork: { url: `/threads/assets/image123.png` }
+              previews: [{ url: `/public/HeartShapedBox.mp3` }],
+              artwork: { url: getAvatarForUser("MusicLover123") }
             }
           },
           author: "MusicLover123",
           timestamp: Date.now() / 1000 - 86400,
           artistName: "Queen",
-          artistImage: `/threads/assets/image123.png`,
-          previewUrl: `/backend/public/HeartShapedBox.mp3`,
-          snippetAuthorAvatar: authorToAvatar("MusicLover123"),
+          artistImage: getAvatarForUser("MusicLover123"),
+          previewUrl: `/public/HeartShapedBox.mp3`,
+          snippetAuthorAvatar: getAvatarForUser("MusicLover123"),
           userRating: null,
           avgRating: 4,
           totalRatings: 25,
@@ -565,7 +565,7 @@ useEffect(() => {
       setSnippetRecs(fallbackSnippets);
       setArtistList([{
         name: "Queen",
-        image: `/threads/assets/image123.png`,
+        image: getAvatarForUser("MusicLover123"),
         ratings: 25,
         avgRating: 4,
       }]);
@@ -645,16 +645,16 @@ useEffect(() => {
                 attributes: {
                   name: song.attributes.name,
                   artistName: song.attributes.artistName,
-                  previews: song.attributes.previews || [{ url: `/backend/public/HeartShapedBox.mp3` }],
-                  artwork: song.attributes.artwork || { url: `/threads/assets/image${Math.floor(Math.random() * 199) + 1}.png` }
+                  previews: song.attributes.previews || [{ url: `/public/HeartShapedBox.mp3` }],
+                  artwork: song.attributes.artwork || { url: getAvatarForUser(author) }
                 }
               },
               author,
               timestamp: Date.now() / 1000 - Math.floor(Math.random() * 86400 * 7),
               artistName: song.attributes.artistName,
-              artistImage: song.attributes.artwork?.url || `/threads/assets/image${Math.floor(Math.random() * 199) + 1}.png`,
-              previewUrl: song.attributes.previews?.[0]?.url || `/backend/public/HeartShapedBox.mp3`,
-              snippetAuthorAvatar: authorToAvatar(author)
+              artistImage: song.attributes.artwork?.url || getAvatarForUser(author),
+              previewUrl: song.attributes.previews?.[0]?.url || `/public/HeartShapedBox.mp3`,
+              snippetAuthorAvatar: getAvatarForUser(author)
             };
             
             realSnippets.push(snippet);
@@ -702,16 +702,16 @@ useEffect(() => {
           attributes: {
             name: "Bohemian Rhapsody",
             artistName: "Queen",
-            previews: [{ url: `/backend/public/HeartShapedBox.mp3` }],
-            artwork: { url: `/threads/assets/image23.png` }
+            previews: [{ url: `/public/HeartShapedBox.mp3` }],
+            artwork: { url: getAvatarForUser("MusicLover123") }
           }
         },
         author: "MusicLover123",
         timestamp: Date.now() / 1000 - 86400,
         artistName: "Queen",
-        artistImage: `/threads/assets/image23.png`,
-        previewUrl: `/backend/public/HeartShapedBox.mp3`,
-        snippetAuthorAvatar: authorToAvatar("MusicLover123")
+        artistImage: getAvatarForUser("MusicLover123"),
+        previewUrl: `/public/HeartShapedBox.mp3`,
+        snippetAuthorAvatar: getAvatarForUser("MusicLover123")
       }
     ];
     
@@ -750,14 +750,14 @@ useEffect(() => {
               query: snippet.query,
               name: snippet.songName,
               artistName: snippet.artistName,
-              artwork: snippet.artworkUrl || `/threads/assets/image${Math.floor(Math.random() * 100) + 1}.png`,
-              previewUrl: snippet.previewUrl || `/backend/public/HeartShapedBox.mp3`,
+              artwork: snippet.artworkUrl || getAvatarForUser(snippetAuthor),
+              previewUrl: snippet.previewUrl || `/public/HeartShapedBox.mp3`,
               snippetData: {
                 attributes: {
                   name: snippet.songName,
                   artistName: snippet.artistName,
-                  previews: [{ url: snippet.previewUrl || `/backend/public/HeartShapedBox.mp3` }],
-                  artwork: { url: snippet.artworkUrl || `/threads/assets/image${Math.floor(Math.random() * 199) + 1}.png` },
+                  previews: [{ url: snippet.previewUrl || `/public/HeartShapedBox.mp3` }],
+                  artwork: { url: snippet.artworkUrl || getAvatarForUser(snippetAuthor) },
                   albumName: snippet.albumName || '',
                   releaseDate: snippet.releaseDate || '',
                   durationInMillis: snippet.duration || 0
@@ -765,8 +765,8 @@ useEffect(() => {
               },
               author: snippetAuthor,
               timestamp: Date.now() / 1000 - Math.floor(Math.random() * 86400),
-              artistImage: snippet.artworkUrl || `/threads/assets/image${Math.floor(Math.random() * 199) + 1}.png`,
-              snippetAuthorAvatar: authorToAvatar(snippetAuthor),
+              artistImage: snippet.artworkUrl || getAvatarForUser(snippetAuthor),
+              snippetAuthorAvatar: getAvatarForUser(snippetAuthor),
               userRating: null,
               avgRating: Math.floor(Math.random() * 50) + 50,
               totalRatings: Math.floor(Math.random() * 200) + 50,
@@ -802,23 +802,22 @@ useEffect(() => {
         if (data.success && data.data && data.data.length > 0) {
           const withAvatars = data.data.map((snip) => {
             const snippetAuthor = snip.author || "UnknownUser";
-            const avatar = authorToAvatar(snippetAuthor);
 
             // Normalize artwork and preview url fields so ThreadDetail can display them
             const normalizedArtwork =
               snip.artwork ||
               snip.artworkUrl ||
               snip.artistImage ||
-              `/threads/assets/image${Math.floor(Math.random() * 199) + 1}.png`;
+              getAvatarForUser(snippetAuthor);
 
             const normalizedPreview =
               snip.previewUrl ||
               snip.preview_url ||
-              `/backend/public/HeartShapedBox.mp3`;
+              `/public/HeartShapedBox.mp3`;
 
             return {
               ...snip,
-              snippetAuthorAvatar: avatar,
+              snippetAuthorAvatar: getAvatarForUser(snippetAuthor),
               artwork: normalizedArtwork,
               artistImage: snip.artistImage || snip.artworkUrl || normalizedArtwork,
               previewUrl: normalizedPreview,
@@ -827,7 +826,7 @@ useEffect(() => {
 
           const extractedArtists = data.data.map((song) => ({
             name: song.artistName,
-            image: song.artistImage,
+            image: song.artistImage || getAvatarForUser(song.author || "UnknownUser"),
             ratings: Math.floor(Math.random() * 100) + 1,
             avgRating: Math.floor(Math.random() * 5) + 1,
           }));
@@ -896,8 +895,6 @@ useEffect(() => {
           const song = musicEntry.songs[songIndex];
           const artist = musicEntry.artist;
           
-          const avatarIndex = (artist.charCodeAt(0) + artist.charCodeAt(artist.length - 1)) % 999 + 1;
-          
           return {
             id: comment.id,
             commentId: comment.id,
@@ -906,16 +903,16 @@ useEffect(() => {
               attributes: {
                 name: song,
                 artistName: artist,
-                previews: [{ url: `/backend/public/HeartShapedBox.mp3` }],
-                artwork: { url: `/threads/assets/image${avatarIndex}.png` }
+                previews: [{ url: `/public/HeartShapedBox.mp3` }],
+                artwork: { url: getAvatarForUser(comment.author) }
               }
             },
             author: comment.author,
             timestamp: comment.createdUtc || (Date.now() / 1000 - Math.floor(Math.random() * 86400)),
             artistName: artist,
-            artistImage: `/threads/assets/image${avatarIndex}.png`,
-            previewUrl: `/backend/public/HeartShapedBox.mp3`,
-            snippetAuthorAvatar: authorToAvatar(comment.author)
+            artistImage: getAvatarForUser(comment.author),
+            previewUrl: `/public/HeartShapedBox.mp3`,
+            snippetAuthorAvatar: getAvatarForUser(comment.author)
           };
         });
         
@@ -951,16 +948,16 @@ useEffect(() => {
               attributes: {
                 name: "Bohemian Rhapsody",
                 artistName: "Queen",
-                previews: [{ url: `/backend/public/HeartShapedBox.mp3` }],
-                artwork: { url: `/threads/assets/image123.png` }
+                previews: [{ url: `/public/HeartShapedBox.mp3` }],
+                artwork: { url: getAvatarForUser("MusicLover123") }
               }
             },
             author: "MusicLover123",
             timestamp: Date.now() / 1000 - 86400,
             artistName: "Queen",
-            artistImage: `/threads/assets/image123.png`,
-            previewUrl: `/backend/public/HeartShapedBox.mp3`,
-            snippetAuthorAvatar: authorToAvatar("MusicLover123")
+            artistImage: getAvatarForUser("MusicLover123"),
+            previewUrl: `/public/HeartShapedBox.mp3`,
+            snippetAuthorAvatar: getAvatarForUser("MusicLover123")
           }
         ];
         
@@ -985,16 +982,16 @@ useEffect(() => {
             attributes: {
               name: "Bohemian Rhapsody",
               artistName: "Queen",
-              previews: [{ url: `/backend/public/HeartShapedBox.mp3` }],
-              artwork: { url: `/threads/assets/image123.png` }
+              previews: [{ url: `/public/HeartShapedBox.mp3` }],
+              artwork: { url: getAvatarForUser("MusicLover123") }
             }
           },
           author: "MusicLover123",
           timestamp: Date.now() / 1000 - 86400,
           artistName: "Queen",
-          artistImage: `/threads/assets/image123.png`,
-          previewUrl: `/backend/public/HeartShapedBox.mp3`,
-          snippetAuthorAvatar: authorToAvatar("MusicLover123")
+          artistImage: getAvatarForUser("MusicLover123"),
+          previewUrl: `/public/HeartShapedBox.mp3`,
+          snippetAuthorAvatar: getAvatarForUser("MusicLover123")
         },
         {
           id: `fallback_2_${postId}`,
@@ -1004,16 +1001,16 @@ useEffect(() => {
             attributes: {
               name: "Blinding Lights",
               artistName: "The Weeknd",
-              previews: [{ url: `/backend/public/HeartShapedBox.mp3` }],
-              artwork: { url: `/threads/assets/image456.png` }
+              previews: [{ url: `/public/HeartShapedBox.mp3` }],
+              artwork: { url: getAvatarForUser("MusicFan456") }
             }
           },
           author: "MusicFan456",
           timestamp: Date.now() / 1000 - 43200,
           artistName: "The Weeknd",
-          artistImage: `/threads/assets/image56.png`,
-          previewUrl: `/backend/public/HeartShapedBox.mp3`,
-          snippetAuthorAvatar: authorToAvatar("MusicFan456")
+          artistImage: getAvatarForUser("MusicFan456"),
+          previewUrl: `/public/HeartShapedBox.mp3`,
+          snippetAuthorAvatar: getAvatarForUser("MusicFan456")
         }
       ];
       
@@ -1041,7 +1038,7 @@ useEffect(() => {
           if (!usersMap.has(comment.author)) {
             usersMap.set(comment.author, {
               name: comment.author,
-              avatar: authorToAvatar(comment.author),
+              avatar: getAvatarForUser(comment.author),
             });
           }
         }
@@ -1102,7 +1099,7 @@ useEffect(() => {
         const dummyUsers = Array.from({ length: userCount }, (_, index) => ({
           id: index,
           name: `User ${index + 1}`,
-          avatar: `https://i.pravatar.cc/50?img=${index + 1}`,
+          avatar: getAvatarForUser(`User ${index + 1}`),
         }));
         setUsers(dummyUsers);
       };
@@ -1118,7 +1115,7 @@ useEffect(() => {
             if (!usersMap.has(comment.author)) {
               usersMap.set(comment.author, {
                 name: comment.author,
-                avatar: authorToAvatar(comment.author),  
+                avatar: getAvatarForUser(comment.author),  
               });
             } 
           }

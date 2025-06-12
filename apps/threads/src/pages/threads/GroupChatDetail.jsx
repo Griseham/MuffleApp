@@ -4,19 +4,14 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Music, Search, Plus, Users, Send, MessageCircle, Heart, Share2, Bookmark } from "lucide-react";
 import styles from "./GroupChatDetailStyles";
 import { validateAndSanitizeInput, checkRateLimit, sanitizeComment, sanitizeSearchQuery } from "../../utils/security";
+import { getAvatarForUser } from '../utils/avatarService';
+
 
 // Helper function to generate avatar URLs
 function authorToAvatar(author) {
-  if (!author || typeof author !== "string") {
-    return "/assets/users/assets2/image1.png";
-  }
-
-  let hash = 0;
-  for (let i = 0; i < author.length; i++) {
-    hash = author.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  const mod = Math.abs(hash) % 100;
-  return `/assets/users/assets2/image${mod + 1}.png`;
+  // fall back to a fixed key for “You” or if author is undefined/null
+  const key = !author || author === 'You' ? 'you' : author;
+  return getAvatarForUser(key);
 }
 
 // Helper function to format timestamps
