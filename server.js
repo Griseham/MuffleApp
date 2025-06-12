@@ -20,8 +20,18 @@ registerThreadsRoutes(app).then(() => {
   const roomsBuild = path.join(__dirname, 'Rooms/Mufl/build');
   const threadsBuild = path.join(__dirname, 'Threads/muffle-threads/dist');
   
+  // Serve at intended paths
   app.use('/rooms', express.static(roomsBuild));
   app.use('/threads', express.static(threadsBuild));
+  
+  // TEMPORARY: Also serve Rooms static assets at root until rebuild completes
+  app.use('/static', express.static(path.join(roomsBuild, 'static')));
+  app.get('/manifest.json', (req, res) => {
+    res.sendFile(path.join(roomsBuild, 'manifest.json'));
+  });
+  app.get('/favicon.ico', (req, res) => {
+    res.sendFile(path.join(roomsBuild, 'favicon.ico'));
+  });
 
   // Health check route
   app.get('/health', (req, res) => {
