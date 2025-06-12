@@ -57,7 +57,7 @@ const parameterThreadMockData = {
       snippet: {
         name: 'Demons',
         artistName: 'Imagine Dragons',
-        artwork: '/assets/image123.png',
+        artwork: '/threads/assets/image23.png',
         previewUrl: '/backend/public/HeartShapedBox.mp3',
         userRating: null,
         avgRating: null,
@@ -77,7 +77,7 @@ const parameterThreadMockData = {
       snippet: {
         name: 'Basket Case',
         artistName: 'Green Day',
-        artwork: '/assets/image234.png',
+        artwork: '/threads/assets/image24.png',
         previewUrl: '/backend/public/HeartShapedBox.mp3',
         userRating: null,
         avgRating: null,
@@ -97,7 +97,7 @@ const parameterThreadMockData = {
       snippet: {
         name: 'Counting Stars',
         artistName: 'OneRepublic',
-        artwork: '/assets/image345.png',
+        artwork: '/threads/assets/image25.png',
         previewUrl: '/backend/public/HeartShapedBox.mp3',
         userRating: null,
         avgRating: null,
@@ -117,7 +117,7 @@ const parameterThreadMockData = {
       snippet: {
         name: 'This Love',
         artistName: 'Maroon 5',
-        artwork: '/assets/image456.png',
+        artwork: '/threads/assets/image26.png',
         previewUrl: '/backend/public/HeartShapedBox.mp3',
         userRating: null,
         avgRating: null,
@@ -137,7 +137,7 @@ const parameterThreadMockData = {
       snippet: {
         name: 'Thunder',
         artistName: 'Imagine Dragons',
-        artwork: '/assets/image567.png',
+        artwork: '/threads/assets/image27.png',
         previewUrl: '/backend/public/HeartShapedBox.mp3',
         userRating: null,
         avgRating: null,
@@ -157,7 +157,7 @@ const parameterThreadMockData = {
       snippet: {
         name: 'When I Come Around',
         artistName: 'Green Day',
-        artwork: '/assets/image678.png',
+        artwork: '/threads/assets/image28.png',
         previewUrl: '/backend/public/HeartShapedBox.mp3',
         userRating: null,
         avgRating: null,
@@ -177,7 +177,7 @@ const parameterThreadMockData = {
       snippet: {
         name: 'Apologize',
         artistName: 'OneRepublic',
-        artwork: '/assets/image789.png',
+        artwork: '/threads/assets/image29.png',
         previewUrl: '/backend/public/HeartShapedBox.mp3',
         userRating: null,
         avgRating: null,
@@ -197,7 +197,7 @@ const parameterThreadMockData = {
       snippet: {
         name: 'Sunday Morning',
         artistName: 'Maroon 5',
-        artwork: '/assets/image890.png',
+        artwork: '/threads/assets/image30.png',
         previewUrl: '/backend/public/HeartShapedBox.mp3',
         userRating: null,
         avgRating: null,
@@ -217,7 +217,7 @@ const parameterThreadMockData = {
       snippet: {
         name: 'Radioactive',
         artistName: 'Imagine Dragons',
-        artwork: '/assets/image901.png',
+        artwork: '/threads/assets/image31.png',
         previewUrl: '/backend/public/HeartShapedBox.mp3',
         userRating: null,
         avgRating: null,
@@ -237,7 +237,7 @@ const parameterThreadMockData = {
       snippet: {
         name: 'Good Riddance (Time of Your Life)',
         artistName: 'Green Day',
-        artwork: '/assets/image012.png',
+        artwork: '/threads/assets/image32.png',
         previewUrl: '/backend/public/HeartShapedBox.mp3',
         userRating: null,
         avgRating: null,
