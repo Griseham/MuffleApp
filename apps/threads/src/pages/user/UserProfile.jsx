@@ -546,10 +546,7 @@ export default function UserProfile({ user = profileData.userInfo, onBack }) {
       gap: '0.25rem',
       minWidth: '180px'
     },
-    statItem: {
-      fontSize: '0.8rem',
-      color: '#a9b6fc'
-    }
+
   };
 
   return (
