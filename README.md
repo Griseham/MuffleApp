@@ -20,6 +20,7 @@ Located in `apps/threads/`
 - `shared/assets/` - Common images, videos, and media files
 - `server.js` - Main backend server
 - `threadsRoutes.cjs` - API routes for Threads functionality
+- `apps/mufl/public/assets/users/assets2/` - Avatar image library used by the Mufl app
 
 ## Development
 
