@@ -3,14 +3,14 @@
 [phases.install]
 cmds = [
   "npm install",
-  "cd Rooms/Mufl && npm install",
-  "cd Threads/muffle-threads && npm install"
+  "cd apps/mufl && npm install",
+  "cd apps/threads && npm install"
 ]
 
 [phases.build]
 cmds = [
-  "cd Rooms/Mufl && npm run build",
-  "cd Threads/muffle-threads && npm run build"
+  "cd apps/mufl && npm run build",
+  "cd apps/threads && npm run build"
 ]
 
 [start]
