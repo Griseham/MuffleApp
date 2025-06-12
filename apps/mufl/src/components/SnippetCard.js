@@ -66,6 +66,8 @@ The user may or may not stay anonymous to eliminate bias`
   }
 ];
 
+const defaultPreviewUrl = "";
+
 const SnippetCard = ({ 
   onSwipe = () => {}, 
   currentSong = null,
