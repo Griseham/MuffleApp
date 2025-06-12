@@ -3,6 +3,7 @@ import { Play, Music, Pause, X, Search, Send, Disc } from 'lucide-react';
 import { Info } from "lucide-react";
 import InfoIconModal from "../InfoIconModal";
 import { validateAndSanitizeInput, sanitizeSearchQuery, checkRateLimit } from '../../utils/security';
+import { authorToAvatar } from '../../utils/avatar';
 
 
 const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
@@ -254,9 +255,9 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
       <div style={styles.innerContainer}>
         {/* User Avatar */}
         <div style={styles.avatarContainer}>
-          <img 
-            src="/threads/assets/user.png" 
-            alt="Your avatar" 
+          <img
+            src={authorToAvatar('You')}
+            alt="Your avatar"
             style={styles.avatar}
           />
         </div>

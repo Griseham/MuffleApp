@@ -48,3 +48,6 @@ Thumbs.db
 *.zip
 node_modules/
 .DS_Store
+!apps/threads/public/threads/assets/image*.png
+!apps/threads/public/threads/assets/user.png
+!apps/threads/public/threads/assets/default-avatar.png
