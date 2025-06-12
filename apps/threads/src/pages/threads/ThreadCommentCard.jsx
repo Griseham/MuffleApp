@@ -14,7 +14,7 @@ import {
 import InfoIconModal from '../InfoIconModal';
 
 
-import { getAvatarForUser } from '../utils/avatarService';
+import { getAvatarForUser } from '../../utils/avatarService';
 
 /** Consistent avatar per author string */
 function authorToAvatar(author) {
@@ -22,6 +22,7 @@ function authorToAvatar(author) {
   const key = !author || author === 'You' ? 'you' : author;
   return getAvatarForUser(key);
 }
+
 
 
 
