@@ -136,7 +136,7 @@ const handleSongFromWidget = (song) => {
     try {
       console.log(`🎤 Quick fetching song for: ${artist.name}`);
       
-      const response = await fetch(`${API_BASE_URL}/apple-music-search?query=${encodeURIComponent(artist.name)}`);
+      const response = await fetch(`${API_BASE_URL}/api/apple-music-search?query=${encodeURIComponent(artist.name)}`);
 
       if (!response.ok) {
         throw new Error(`Failed to fetch songs for ${artist.name}: ${response.status}`);
