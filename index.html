@@ -471,6 +471,27 @@
     background-color: rgba(0, 0, 0, 0.1);
 }
 
+.slide-fade-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
+    opacity: 0;
+    transition: opacity 0.5s ease-in-out;
+}
+
+.slide-fade-container.active {
+    opacity: 1;
+}
+
+.slide-fade-container.fade-out {
+    opacity: 0;
+}
+
 
         .main-slide:hover {
             transform: translateY(-4px);
@@ -970,7 +991,7 @@
                             </div>
                         </div>
 
-                        <div class="main-slide" id="mainSlide" style="background-image: url('./assets/PitchDeck/Slide1.jpg');">
+                        <div class="main-slide" id="mainSlide">
                         </div>
 
                         <div class="navigation-bar">
@@ -993,7 +1014,47 @@
         </div>
     </div>
     
-    <script>        
+    <script>
+        // Utility function to resolve paths relative to the current document
+        function getBaseURL() {
+            // Get the directory of the current HTML file
+            const currentPath = window.location.pathname;
+            const basePath = currentPath.substring(0, currentPath.lastIndexOf('/') + 1);
+            return window.location.origin + basePath;
+        }
+
+        function resolvePath(relativePath) {
+            // Convert relative paths to absolute URLs based on current document location
+            if (relativePath.startsWith('http://') || relativePath.startsWith('https://')) {
+                return relativePath; // Already absolute
+            }
+            
+            // Remove leading "./" if present
+            const cleanPath = relativePath.replace(/^\.\//, '');
+            return getBaseURL() + cleanPath;
+        }
+        
+        // Initialize paths when document is ready
+        document.addEventListener('DOMContentLoaded', function() {
+            // Fix logo path
+            const logoCircle = document.querySelector('.logo-circle');
+            if (logoCircle) {
+                const logoPath = resolvePath('./assets/MuflLogo.png');
+                logoCircle.style.backgroundImage = `url('${logoPath}')`;
+            }
+            
+            // Fix video thumbnail sources
+            document.querySelectorAll('video.video-element source').forEach(source => {
+                const originalSrc = source.getAttribute('src');
+                if (originalSrc && originalSrc.startsWith('./')) {
+                    source.src = resolvePath(originalSrc);
+                }
+            });
+            
+            // Initialize first slide in pitch deck
+            updateSlide(1);
+        });
+        
         // Handle nav item selection and content switching
         document.querySelectorAll('.nav-item, .nav-sub-item').forEach(item => {
             item.addEventListener('click', (e) => {
@@ -1047,12 +1108,12 @@
 
         // Add click handlers for interactive elements
         document.querySelector('.prototype-button')?.addEventListener('click', () => {
-            window.open('./Rooms/Mufl/public/index.html', '_blank');
+            window.open(resolvePath('./Rooms/Mufl/public/index.html'), '_blank');
         });
 
         document.querySelectorAll('.mvp-button').forEach(button => {
             button.addEventListener('click', () => {
-                window.open('./Threads/muffle-threads/index.html', '_blank');
+                window.open(resolvePath('./Threads/muffle-threads/index.html'), '_blank');
             });
         });
 
@@ -1060,6 +1121,9 @@
             card.addEventListener('click', () => {
                 const videoSrc = card.getAttribute('data-video');
                 if (videoSrc) {
+                    // Resolve the video path to be base-URL aware
+                    const resolvedVideoSrc = resolvePath(videoSrc);
+                    
                     // Create modal video player
                     const modal = document.createElement('div');
                     modal.style.cssText = `
@@ -1075,16 +1139,19 @@
                     
                     // Create source element for better compatibility
                     const source = document.createElement('source');
-                    source.src = videoSrc;
+                    source.src = resolvedVideoSrc;
                     source.type = 'video/mp4';
                     video.appendChild(source);
                     
                     // Add error handling
                     video.addEventListener('error', (e) => {
-                        console.error('Video failed to load:', videoSrc);
+                        console.error('Video failed to load:', resolvedVideoSrc);
+                        console.log('Original path:', videoSrc);
+                        console.log('Resolved path:', resolvedVideoSrc);
                         modal.innerHTML = `<div style="color: white; text-align: center;">
                             <h3>Video Error</h3>
-                            <p>Failed to load: ${videoSrc}</p>
+                            <p>Failed to load: ${resolvedVideoSrc}</p>
+                            <p>Original: ${videoSrc}</p>
                             <p>Click anywhere to close</p>
                         </div>`;
                     });
@@ -1125,11 +1192,50 @@
         function updateSlide(slideNumber) {
     currentSlide = slideNumber;
     
-    // Update main slide
+    // Update main slide with smooth transition
     const mainSlide = document.getElementById('mainSlide');
     if (mainSlide) {
-        mainSlide.style.backgroundImage = `url('./assets/PitchDeck/Slide${slideNumber}.jpg')`;
-        mainSlide.innerHTML = '';
+        // Check if this is the initial load
+        const existingContainers = mainSlide.querySelectorAll('.slide-fade-container');
+        const isInitialLoad = existingContainers.length === 0;
+        
+        if (isInitialLoad) {
+            // First time initialization - no animation needed
+            const slideImagePath = resolvePath(`./assets/PitchDeck/Slide${slideNumber}.jpg`);
+            const newContainer = document.createElement('div');
+            newContainer.className = 'slide-fade-container active';
+            newContainer.style.backgroundImage = `url('${slideImagePath}')`;
+            mainSlide.appendChild(newContainer);
+        } else {
+            // Animated transition
+            const currentActive = mainSlide.querySelector('.slide-fade-container.active');
+            
+            // Create new slide container
+            const slideImagePath = resolvePath(`./assets/PitchDeck/Slide${slideNumber}.jpg`);
+            const newContainer = document.createElement('div');
+            newContainer.className = 'slide-fade-container';
+            newContainer.style.backgroundImage = `url('${slideImagePath}')`;
+            mainSlide.appendChild(newContainer);
+            
+            // Trigger fade transition
+            requestAnimationFrame(() => {
+                // Fade out current slide
+                if (currentActive) {
+                    currentActive.classList.add('fade-out');
+                    currentActive.classList.remove('active');
+                }
+                
+                // Fade in new slide
+                newContainer.classList.add('active');
+                
+                // Clean up old containers after transition
+                setTimeout(() => {
+                    mainSlide.querySelectorAll('.slide-fade-container:not(.active)').forEach(container => {
+                        container.remove();
+                    });
+                }, 500); // Match the CSS transition duration
+            });
+        }
         
         // Update progress text
         const progressElement = document.querySelector('.slide-progress');
@@ -1176,50 +1282,291 @@
             }
         });
 
-        // Fullscreen functionality for pitch deck
+        // Enhanced fullscreen functionality for pitch deck
+        let fullscreenOverlay = null;
+        let isInFullscreenMode = false;
+
         function enterFullscreen() {
-            const mainSlide = document.getElementById('mainSlide');
-            if (mainSlide) {
-                if (mainSlide.requestFullscreen) {
-                    mainSlide.requestFullscreen();
-                } else if (mainSlide.webkitRequestFullscreen) {
-                    mainSlide.webkitRequestFullscreen();
-                } else if (mainSlide.msRequestFullscreen) {
-                    mainSlide.msRequestFullscreen();
-                } else if (mainSlide.mozRequestFullScreen) {
-                    mainSlide.mozRequestFullScreen();
+            if (isInFullscreenMode) return;
+            
+            // Create fullscreen overlay container
+            fullscreenOverlay = document.createElement('div');
+            fullscreenOverlay.id = 'fullscreen-overlay';
+            fullscreenOverlay.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+                background: #000;
+                z-index: 99999;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                cursor: none;
+            `;
+            
+            // Create fullscreen slide container
+            const slideContainer = document.createElement('div');
+            slideContainer.style.cssText = `
+                width: 95vw;
+                height: 85vh;
+                background-size: contain;
+                background-position: center;
+                background-repeat: no-repeat;
+                background-color: rgba(0, 0, 0, 0.1);
+                border-radius: 12px;
+                position: relative;
+            `;
+            slideContainer.id = 'fullscreen-slide';
+            
+            // Create navigation overlay
+            const navOverlay = document.createElement('div');
+            navOverlay.style.cssText = `
+                position: absolute;
+                bottom: 30px;
+                left: 50%;
+                transform: translateX(-50%);
+                display: flex;
+                gap: 20px;
+                align-items: center;
+                background: rgba(0, 0, 0, 0.7);
+                backdrop-filter: blur(10px);
+                padding: 15px 25px;
+                border-radius: 50px;
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                opacity: 0;
+                transition: opacity 0.3s ease;
+            `;
+            navOverlay.id = 'fullscreen-nav';
+            
+            // Add navigation buttons
+            const prevButton = document.createElement('button');
+            prevButton.innerHTML = '‹';
+            prevButton.style.cssText = `
+                width: 50px;
+                height: 50px;
+                border: none;
+                background: rgba(255, 255, 255, 0.1);
+                color: white;
+                border-radius: 50%;
+                font-size: 24px;
+                cursor: pointer;
+                transition: all 0.2s ease;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            `;
+            prevButton.id = 'fullscreen-prev';
+            
+            const nextButton = document.createElement('button');
+            nextButton.innerHTML = '›';
+            nextButton.style.cssText = prevButton.style.cssText;
+            nextButton.id = 'fullscreen-next';
+            
+            const slideInfo = document.createElement('div');
+            slideInfo.style.cssText = `
+                color: white;
+                font-size: 16px;
+                font-weight: 600;
+                margin: 0 15px;
+                min-width: 100px;
+                text-align: center;
+            `;
+            slideInfo.id = 'fullscreen-info';
+            slideInfo.textContent = `${currentSlide} / ${totalSlides}`;
+            
+            const exitButton = document.createElement('button');
+            exitButton.innerHTML = '×';
+            exitButton.style.cssText = `
+                width: 50px;
+                height: 50px;
+                border: none;
+                background: rgba(255, 255, 255, 0.1);
+                color: white;
+                border-radius: 50%;
+                font-size: 30px;
+                cursor: pointer;
+                transition: all 0.2s ease;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                line-height: 1;
+            `;
+            exitButton.id = 'fullscreen-exit';
+            
+            // Add hover effects
+            [prevButton, nextButton, exitButton].forEach(btn => {
+                btn.addEventListener('mouseenter', () => {
+                    btn.style.background = 'rgba(255, 255, 255, 0.2)';
+                    btn.style.transform = 'scale(1.1)';
+                });
+                btn.addEventListener('mouseleave', () => {
+                    btn.style.background = 'rgba(255, 255, 255, 0.1)';
+                    btn.style.transform = 'scale(1)';
+                });
+            });
+            
+            // Assemble navigation
+            navOverlay.appendChild(prevButton);
+            navOverlay.appendChild(slideInfo);
+            navOverlay.appendChild(nextButton);
+            navOverlay.appendChild(exitButton);
+            
+            // Assemble fullscreen container
+            fullscreenOverlay.appendChild(slideContainer);
+            fullscreenOverlay.appendChild(navOverlay);
+            document.body.appendChild(fullscreenOverlay);
+            
+            // Set initial slide
+            updateFullscreenSlide(currentSlide);
+            
+            // Show navigation on mouse move
+            let hideNavTimeout;
+            fullscreenOverlay.addEventListener('mousemove', () => {
+                navOverlay.style.opacity = '1';
+                fullscreenOverlay.style.cursor = 'default';
+                clearTimeout(hideNavTimeout);
+                hideNavTimeout = setTimeout(() => {
+                    navOverlay.style.opacity = '0';
+                    fullscreenOverlay.style.cursor = 'none';
+                }, 3000);
+            });
+            
+            // Add event listeners
+            prevButton.addEventListener('click', () => {
+                if (currentSlide > 1) {
+                    updateFullscreenSlide(currentSlide - 1);
                 }
-                
-                // Add fullscreen event listeners for keyboard navigation
-                document.addEventListener('fullscreenchange', handleFullscreenChange);
-                document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
-                document.addEventListener('msfullscreenchange', handleFullscreenChange);
-                document.addEventListener('mozfullscreenchange', handleFullscreenChange);
-            }
+            });
+            
+            nextButton.addEventListener('click', () => {
+                if (currentSlide < totalSlides) {
+                    updateFullscreenSlide(currentSlide + 1);
+                }
+            });
+            
+            exitButton.addEventListener('click', exitFullscreen);
+            
+            // Keyboard navigation
+            document.addEventListener('keydown', fullscreenKeyHandler);
+            
+            isInFullscreenMode = true;
+            
+            // Show nav initially for 3 seconds
+            navOverlay.style.opacity = '1';
+            hideNavTimeout = setTimeout(() => {
+                navOverlay.style.opacity = '0';
+                fullscreenOverlay.style.cursor = 'none';
+            }, 3000);
         }
 
-        function handleFullscreenChange() {
-            const isFullscreen = !!(document.fullscreenElement || 
-                                   document.webkitFullscreenElement || 
-                                   document.msFullscreenElement || 
-                                   document.mozFullScreenElement);
+        function updateFullscreenSlide(slideNumber) {
+            currentSlide = slideNumber;
             
-            if (isFullscreen) {
-                // Add keyboard navigation for fullscreen
-                document.addEventListener('keydown', fullscreenKeyHandler);
-            } else {
-                // Remove keyboard navigation when exiting fullscreen
-                document.removeEventListener('keydown', fullscreenKeyHandler);
+            if (fullscreenOverlay) {
+                const slideContainer = document.getElementById('fullscreen-slide');
+                const slideInfo = document.getElementById('fullscreen-info');
+                const prevBtn = document.getElementById('fullscreen-prev');
+                const nextBtn = document.getElementById('fullscreen-next');
+                
+                if (slideContainer) {
+                    // Apply smooth transition to fullscreen slides too
+                    const slideImagePath = resolvePath(`./assets/PitchDeck/Slide${slideNumber}.jpg`);
+                    
+                    // Create a temporary element to fade in the new image
+                    const tempDiv = document.createElement('div');
+                    tempDiv.style.cssText = `
+                        position: absolute;
+                        top: 0;
+                        left: 0;
+                        width: 100%;
+                        height: 100%;
+                        background-image: url('${slideImagePath}');
+                        background-size: contain;
+                        background-position: center;
+                        background-repeat: no-repeat;
+                        opacity: 0;
+                        transition: opacity 0.3s ease-in-out;
+                    `;
+                    
+                    slideContainer.appendChild(tempDiv);
+                    
+                    // Trigger fade transition
+                    requestAnimationFrame(() => {
+                        // Fade out current background
+                        slideContainer.style.opacity = '0.7';
+                        
+                        // Fade in new image
+                        tempDiv.style.opacity = '1';
+                        
+                        // Update background and clean up after transition
+                        setTimeout(() => {
+                            slideContainer.style.backgroundImage = `url('${slideImagePath}')`;
+                            slideContainer.style.opacity = '1';
+                            tempDiv.remove();
+                        }, 300);
+                    });
+                }
+                
+                if (slideInfo) {
+                    slideInfo.textContent = `${slideNumber} / ${totalSlides}`;
+                }
+                
+                // Update button states
+                if (prevBtn) {
+                    prevBtn.disabled = slideNumber === 1;
+                    prevBtn.style.opacity = slideNumber === 1 ? '0.3' : '1';
+                }
+                if (nextBtn) {
+                    nextBtn.disabled = slideNumber === totalSlides;
+                    nextBtn.style.opacity = slideNumber === totalSlides ? '0.3' : '1';
+                }
             }
+            
+            // Also update the regular slide
+            updateSlide(slideNumber);
+        }
+
+        function exitFullscreen() {
+            if (fullscreenOverlay) {
+                document.body.removeChild(fullscreenOverlay);
+                fullscreenOverlay = null;
+            }
+            
+            document.removeEventListener('keydown', fullscreenKeyHandler);
+            isInFullscreenMode = false;
         }
 
         function fullscreenKeyHandler(e) {
-            if (e.key === 'ArrowLeft' && currentSlide > 1) {
-                updateSlide(currentSlide - 1);
-            } else if (e.key === 'ArrowRight' && currentSlide < totalSlides) {
-                updateSlide(currentSlide + 1);
-            } else if (e.key === 'Escape') {
-                // Let browser handle escape naturally
+            if (!isInFullscreenMode) return;
+            
+            e.preventDefault();
+            
+            switch(e.key) {
+                case 'ArrowLeft':
+                case 'ArrowUp':
+                    if (currentSlide > 1) {
+                        updateFullscreenSlide(currentSlide - 1);
+                    }
+                    break;
+                case 'ArrowRight':
+                case 'ArrowDown':
+                case ' ': // Spacebar
+                    if (currentSlide < totalSlides) {
+                        updateFullscreenSlide(currentSlide + 1);
+                    }
+                    break;
+                case 'Escape':
+                    exitFullscreen();
+                    break;
+                case 'Home':
+                    updateFullscreenSlide(1);
+                    break;
+                case 'End':
+                    updateFullscreenSlide(totalSlides);
+                    break;
             }
         }
     </script>

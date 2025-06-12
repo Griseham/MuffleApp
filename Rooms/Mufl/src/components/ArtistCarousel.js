@@ -77,7 +77,7 @@ const ArtistCarousel = ({ artists, ArtistCircle, ArtistVolumeBar }) => {
   }
   
   return (
-    <div className="artists-container">
+    <div className="artist-carousel-content">
       {/* Artist grid - always shows 6 slots in 3x2 layout */}
       <div className={`artists-grid ${animationDirection || ''}`}>
         {filledArtists.map((artist, idx) => (

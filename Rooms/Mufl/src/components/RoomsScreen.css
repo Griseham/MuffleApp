@@ -95,7 +95,7 @@
   position: absolute;
   top: 47px;                         /* same vertical line as .back-button */
   right: 32px;          /* 20 px from the tuner’s green border */
-  z-index: 101;                      /* identical stacking as Back */
+  z-index: 50001;                   /* Higher than all other elements */
 }
 
 @media (max-width: 650px) {
