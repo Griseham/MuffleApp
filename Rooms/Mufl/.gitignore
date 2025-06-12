@@ -5,9 +5,7 @@
 .env.test.local
 .env.production.local
 
-# Build files
-build/
-dist/
+# build
 
 # Logs
 *.log
