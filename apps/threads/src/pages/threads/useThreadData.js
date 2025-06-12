@@ -53,7 +53,7 @@ const fetchCachedPostData = async (postId) => {
             query: snippet.query,
             name: snippet.songName,
             artistName: snippet.artistName,
-            artwork: snippet.artworkUrl || `/threads/assets/image${Math.floor(Math.random() * 100) + 1}.png`,
+            artwork: snippet.artworkUrl || `/assets/users/assets2/image${Math.floor(Math.random() * 100) + 1}.png`,
             previewUrl: snippet.previewUrl || `/backend/public/HeartShapedBox.mp3`,
             snippetData: {
               attributes: {
@@ -131,7 +131,7 @@ useEffect(() => {
                   query: snippet.query,
                   name: snippet.songName,
                   artistName: snippet.artistName,
-                  artwork: snippet.artworkUrl || `/threads/assets/image${Math.floor(Math.random() * 199) + 1}.png`,
+                  artwork: snippet.artworkUrl || `/assets/users/assets2/image${Math.floor(Math.random() * 199) + 1}.png`,
                   previewUrl: snippet.previewUrl || `/backend/public/HeartShapedBox.mp3`,
                   snippetData: {
                     attributes: {

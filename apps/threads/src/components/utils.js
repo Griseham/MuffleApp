@@ -36,7 +36,7 @@ export function hashString(str) {
 export function getAvatarSrc(id) {
   const idStr = id.toString();
   const num = hashString(idStr);
-  return `/threads/assets/image${(num % 100) + 1}.png`;
+  return `/assets/users/assets2/image${(num % 100) + 1}.png`;
 }
 
 /**

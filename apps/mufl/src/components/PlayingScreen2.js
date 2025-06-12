@@ -94,7 +94,6 @@ const seedCounts = () => ({
   // NEW: Function to handle songs added from Widget
 // NEW: Function to handle songs added from the Widget
 const handleSongFromWidget = (song) => {
-  console.log('🎵 Song added from Widget:', song.track, 'by', song.artist);
 
   // 1) Build the object that will go into the main queue
   const formattedSong = {
