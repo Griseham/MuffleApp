@@ -1,7 +1,6 @@
 {
   "name": "website",
   "version": "1.0.0",
-  "type": "module",
   "description": "A comprehensive social music platform featuring Rooms and Threads experiences, built with React and modern web technologies.",
   "main": "server.js",
   "scripts": {

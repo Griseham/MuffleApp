@@ -1,8 +1,8 @@
-import express from 'express';
-import dotenv from 'dotenv';
-import cors from 'cors';
-import registerRoomsRoutes from './Rooms/Mufl/src/backend/index.js';
-import registerThreadsRoutes from './Threads/muffle-threads/src/backend/server.js';
+const express = require('express');
+const dotenv = require('dotenv');
+const cors = require('cors');
+const registerRoomsRoutes = require('./Rooms/Mufl/src/backend/index.js');
+const registerThreadsRoutes = require('./Threads/muffle-threads/src/backend/server.js');
 
 dotenv.config();
 

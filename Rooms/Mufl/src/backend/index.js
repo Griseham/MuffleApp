@@ -1,12 +1,11 @@
-import dotenv from 'dotenv';
-dotenv.config({ path: './.env' });
-import axios from 'axios';
-import express from 'express';
-import cors from 'cors';
-import { getPopArtists, getArtistDetails, fetchImagesFor, getAccessToken } from './spotifyService.js';
-import { fetchSimilarArtists } from './lastFmService.js';
-import { getSnippetsForArtists, searchSongs, resolveAppleMusicArtistIds } from './appleMusicService.js';
-import appleMusicService from './appleMusicService.js';
+require('dotenv').config({ path: './.env' });
+const axios = require('axios');
+const express = require('express');
+const cors = require('cors');
+const { getPopArtists, getArtistDetails, fetchImagesFor, getAccessToken } = require('./spotifyService');
+const { fetchSimilarArtists } = require('./lastFmService');
+const { getSnippetsForArtists, searchSongs, resolveAppleMusicArtistIds } = require('./appleMusicService');
+const appleMusicService = require('./appleMusicService');
 
 const roomsRouter = express.Router();
 
@@ -1114,6 +1113,6 @@ roomsRouter.get('/api/health-check', async (req, res) => {
 //======================//
 // Export Route Registration Function
 //======================//
-export default function registerRoomsRoutes(app) {
+module.exports = function registerRoomsRoutes(app) {
   app.use('/api/rooms', roomsRouter);
 };
