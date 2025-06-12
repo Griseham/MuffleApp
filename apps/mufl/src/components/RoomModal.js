@@ -24,7 +24,7 @@ const RoomModal = ({ isOpen, onClose, station, onJoinRoom }) => {
   const fetchRandomArtists = async () => {
     setLoading(true);
     try {
-      const response = await axios.get('/apple-music/random-genre-artists', {
+      const response = await axios.get('/api/apple-music/random-genre-artists', {
         params: { count: 6 }
       });
       

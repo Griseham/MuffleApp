@@ -44,7 +44,7 @@ const fetchLastFmSimilarArtists = async (selectedArtists, targetCount = 50) => {
   const API_BASE = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080';
   
   try {
-    const response = await fetch(`${API_BASE}/lastfm/similar-artists`, {
+    const response = await fetch(`${API_BASE}/api/lastfm/similar-artists`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -79,7 +79,7 @@ const fetchAppleMusicImages = async (artistNames, progressCallback = null) => {
       // Search for each artist individually to get better results
       for (const artistName of batch) {
         try {
-          const response = await fetch(`${API_BASE}/apple-music/search-artists?query=${encodeURIComponent(artistName)}`);
+          const response = await fetch(`${API_BASE}/api/apple-music/search-artists?query=${encodeURIComponent(artistName)}`);
           
           if (response.ok) {
             const results = await response.json();
@@ -218,7 +218,7 @@ export const fetchRandomGenreArtists = async (count = 50, progressCallback = nul
     console.log(`Fetching ${count} random genre artists from Apple Music...`);
     
     // Use the new random genre endpoint
-    const response = await fetch(`${API_BASE}/apple-music/random-genre-artists?count=${count}`);
+    const response = await fetch(`${API_BASE}/api/apple-music/random-genre-artists?count=${count}`);
     
     if (!response.ok) {
       throw new Error(`Apple Music random genre fetch failed: ${response.status}`);

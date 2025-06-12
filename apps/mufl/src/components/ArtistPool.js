@@ -211,7 +211,7 @@ const fetchAdditionalArtistsFromAppleMusic = async (count) => {
     console.log(`Fetching ${count} additional artists from Apple Music...`);
     setIsRefreshing(true);
     
-    const response = await fetch(`/apple-music/random-genre-artists?count=${count * 2}`); // Get extra to filter
+    const response = await fetch(`/api/apple-music/random-genre-artists?count=${count * 2}`); // Get extra to filter
     if (!response.ok) {
       throw new Error('Failed to fetch from Apple Music API');
     }
