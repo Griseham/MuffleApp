@@ -23,9 +23,17 @@ const APPLE_DEVELOPER_TOKEN = process.env.APPLE_DEVELOPER_TOKEN;
 
 // Environment variables loaded
 
-const app = express();
-app.use(cors());
-app.use(express.json()); // Add JSON body parser middleware
+import express from 'express';
+import { someThreadsHandler } from './threadsController.js'; // adjust if needed
+
+const threadsRouter = express.Router();
+
+threadsRouter.get('/posts', someThreadsHandler); // define all routes
+
+export default function registerThreadsRoutes(app) {
+  app.use('/api/threads', threadsRouter);
+}
+
 
 // Blacklist configuration
 const BLACKLISTED_USERS = [
