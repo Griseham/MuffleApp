@@ -1,25 +1,54 @@
-# Mufl - Social Music Platform
+# Muffle Platform
 
-A comprehensive social music platform featuring Rooms and Threads experiences, built with React and modern web technologies.
+A comprehensive social music platform featuring two main applications:
 
-## 🎵 Features
+## Applications
 
-### Rooms
-- Interactive music rooms by genre (Hip-Hop, Indie, Aesthetic Rap, etc.)
-- Real-time music discovery and sharing
-- Genre-based community spaces
+### 🎵 Mufl (Rooms)
+Located in `apps/mufl/`
+- Interactive music rooms and social discovery
+- React application with Tailwind CSS
+- Run with: `npm run dev:mufl`
 
-### Threads
-- Music-focused social conversations
-- Thread-based discussions around artists and songs
-- Enhanced audio rating system
+### 🧵 Threads  
+Located in `apps/threads/`
+- Music discussion threads and community features
+- React + Vite application
+- Run with: `npm run dev:threads`
 
-### Additional Features
-- Apple Music API integration
-- Spotify API integration
-- Last.fm integration
-- Interactive pitch deck viewer
-- Responsive design
+## Shared Resources
+- `shared/assets/` - Common images, videos, and media files
+- `server.js` - Main backend server
+- `threadsRoutes.cjs` - API routes for Threads functionality
+
+## Development
+
+```bash
+# Install dependencies
+npm install
+
+# Run individual apps
+npm run dev:mufl     # Start Mufl (Rooms) app
+npm run dev:threads  # Start Threads app
+
+# Build apps
+npm run build:mufl
+npm run build:threads
+
+# Start backend server
+npm start
+```
+
+## Structure
+```
+├── apps/
+│   ├── mufl/          # Rooms application
+│   └── threads/       # Threads application
+├── shared/
+│   └── assets/        # Shared media files
+├── server.js          # Backend server
+└── package.json       # Main project config
+```
 
 ## 🚀 Getting Started
 
@@ -41,60 +70,25 @@ cd Website
 
 2. Set up environment variables:
 
-For Rooms app:
+For Mufl app:
 ```bash
-cd Rooms/Mufl
+cd apps/mufl
 cp .env.example .env
 # Edit .env with your actual API keys
 ```
 
 For Threads app:
 ```bash
-cd Threads/muffle-threads/src/backend
+cd apps/threads/src/backend
 cp .env.example .env
 # Edit .env with your actual API keys
 ```
 
 3. Install dependencies:
-
-For Rooms:
 ```bash
-cd Rooms/Mufl
 npm install
-```
-
-For Threads:
-```bash
-cd Threads/muffle-threads
-npm install
-```
-
-### Running the Applications
-
-#### Main Landing Page
-Open `index.html` in your browser to access the main investor portal and navigation.
-
-#### Rooms App
-```bash
-cd Rooms/Mufl
-npm start
-```
-
-#### Threads App
-```bash
-cd Threads/muffle-threads
-npm run dev
-```
-
-## 📁 Project Structure
-
-```
-Website/
-├── index.html              # Main landing page
-├── assets/                 # Videos, images, pitch deck
-├── Rooms/Mufl/            # Rooms React application
-├── Threads/muffle-threads/ # Threads React application
-└── README.md
+cd apps/mufl && npm install
+cd ../threads && npm install
 ```
 
 ## 🔑 API Configuration
