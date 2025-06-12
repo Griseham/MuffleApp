@@ -803,7 +803,26 @@ useEffect(() => {
           const withAvatars = data.data.map((snip) => {
             const snippetAuthor = snip.author || "UnknownUser";
             const avatar = authorToAvatar(snippetAuthor);
-            return { ...snip, snippetAuthorAvatar: avatar };
+
+            // Normalize artwork and preview url fields so ThreadDetail can display them
+            const normalizedArtwork =
+              snip.artwork ||
+              snip.artworkUrl ||
+              snip.artistImage ||
+              `/threads/assets/image${Math.floor(Math.random() * 199) + 1}.png`;
+
+            const normalizedPreview =
+              snip.previewUrl ||
+              snip.preview_url ||
+              `/backend/public/HeartShapedBox.mp3`;
+
+            return {
+              ...snip,
+              snippetAuthorAvatar: avatar,
+              artwork: normalizedArtwork,
+              artistImage: snip.artistImage || snip.artworkUrl || normalizedArtwork,
+              previewUrl: normalizedPreview,
+            };
           });
 
           const extractedArtists = data.data.map((song) => ({
@@ -1039,7 +1058,10 @@ useEffect(() => {
     
     let hasIssues = false;
     snippets.forEach((snippet, index) => {
-      const artworkUrl = snippet.snippetData?.attributes?.artwork?.url || snippet.artistImage;
+      const artworkUrl =
+        snippet.artwork ||
+        snippet.snippetData?.attributes?.artwork?.url ||
+        snippet.artistImage;
       
       if (!artworkUrl) {
         // Snippet is missing album art
