@@ -4,7 +4,7 @@ import './SelectionScreen.css';
 import { fetchSimilarArtists } from '../utils/fetchSimilar';
 
 // Set base URL for API requests
-axios.defaults.baseURL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:3000';
+axios.defaults.baseURL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080';
 
 // Utility functions
 const shuffleArray = (array) => {

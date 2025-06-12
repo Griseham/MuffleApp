@@ -41,7 +41,7 @@ const generateCacheKey = (selectedArtists) => {
 
 // Fetch similar artists from Last.fm
 const fetchLastFmSimilarArtists = async (selectedArtists, targetCount = 50) => {
-  const API_BASE = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001';
+  const API_BASE = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080';
   
   try {
     const response = await fetch(`${API_BASE}/lastfm/similar-artists`, {
@@ -68,7 +68,7 @@ const fetchLastFmSimilarArtists = async (selectedArtists, targetCount = 50) => {
 
 // Fetch images from Apple Music for artists
 const fetchAppleMusicImages = async (artistNames, progressCallback = null) => {
-  const API_BASE = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001';
+  const API_BASE = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080';
   const artistsWithImages = [];
   const batchSize = 5; // Process in smaller batches to avoid rate limits
   
@@ -210,7 +210,7 @@ export const fetchEnhancedSimilarArtists = async (selectedArtists, progressCallb
 
 // Fetch random genre artists from Apple Music (for negative similarity)
 export const fetchRandomGenreArtists = async (count = 50, progressCallback = null) => {
-  const API_BASE = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001';
+  const API_BASE = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080';
   
   try {
     if (progressCallback) progressCallback(20);

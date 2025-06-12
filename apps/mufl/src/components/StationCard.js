@@ -238,10 +238,28 @@ const StationCard = React.memo(function StationCard({
     return sim.toString();
   };
   
+  // Handle card click while allowing interactive elements to work
+  const handleCardClick = (e) => {
+    if (!isInteractive) return;
+    
+    // Check if click was on an interactive element
+    const target = e.target;
+    const isInfoIcon = target.closest('.info-icon-button') || target.closest('[data-info-modal]');
+    const isCarouselControl = target.closest('.carousel-arrow') || 
+                             target.closest('.carousel-button') || 
+                             target.closest('.carousel-dot') ||
+                             target.closest('.carousel-controls');
+    
+    // If not clicking on interactive elements, join the room
+    if (!isInfoIcon && !isCarouselControl) {
+      onJoinRoom(station);
+    }
+  };
+
   return (
     <div 
       className={`station-card ${isCurrentStation ? 'selected' : ''} ${frequencyClass} ${!isInteractive ? 'non-interactive' : ''}`} 
-      onClick={isInteractive ? () => onJoinRoom(station) : undefined}
+      onClick={handleCardClick}
       style={{ cursor: isInteractive ? 'pointer' : 'default' }}
     >
       {/* Station header */}
@@ -283,19 +301,7 @@ const StationCard = React.memo(function StationCard({
         </div>
 
         {/* RIGHT: Enhanced Artist carousel with selection indicators and radar info */}
-        <div 
-          className="artists-container"
-          onClick={isInteractive ? (e) => {
-            // Allow clicks to bubble up to join room, except from specific interactive elements
-            const target = e.target;
-            const isInfoIcon = target.closest('.info-icon-button');
-            const isCarouselArrow = target.closest('.carousel-arrow');
-            
-            if (!isInfoIcon && !isCarouselArrow) {
-              onJoinRoom(station);
-            }
-          } : undefined}
-        >
+        <div className="artists-container">
           {/* Radar Info Icon positioned in top-right - only show on first station */}
           {stationIndex === 0 && (
             <div 
@@ -306,6 +312,7 @@ const StationCard = React.memo(function StationCard({
                 zIndex: 10
               }}
               onClick={(e) => e.stopPropagation()} // Prevent this from triggering room join
+              data-info-modal="true" // Add data attribute for easier detection
             >
              <InfoIconModal
   title="Radar"

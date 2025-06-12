@@ -17,7 +17,7 @@ import {
 import InfoIconModal from './InfoIconModal';
 
 // Set base URL for API requests
-axios.defaults.baseURL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001';
+axios.defaults.baseURL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080';
 
 // Tab component
 const TabButton = ({ active, onClick, children, disabled = false }) => (
