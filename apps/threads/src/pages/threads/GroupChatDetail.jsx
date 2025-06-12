@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Music, Search, Plus, Users, Send, MessageCircle, Heart, Share2, Bookmark } from "lucide-react";
 import styles from "./GroupChatDetailStyles";
 import { validateAndSanitizeInput, checkRateLimit, sanitizeComment, sanitizeSearchQuery } from "../../utils/security";
-import { getAvatarForUser } from '../utils/avatarService';
+import { getAvatarForUser } from '../../utils/avatarService';
 
 
 // Helper function to generate avatar URLs
