@@ -137,30 +137,31 @@ const handleSongFromWidget = (song) => {
     try {
       console.log(`🎤 Quick fetching song for: ${artist.name}`);
       
-      const response = await fetch(`${API_BASE_URL}/api/apple-music/artist-songs`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ artistName: artist.name })
-      });
+      const response = await fetch(`${API_BASE_URL}/apple-music-search?query=${encodeURIComponent(artist.name)}`);
 
       if (!response.ok) {
         throw new Error(`Failed to fetch songs for ${artist.name}: ${response.status}`);
       }
 
-      const data = await response.json();
-      const songs = data.songs || [];
+      const result = await response.json();
       
-      if (songs.length > 0) {
-        const song = songs[0];
-        console.log(`✅ Got song "${song.track}" for ${artist.name}`);
+      if (result.success && result.data) {
+        const song = result.data;
+        console.log(`✅ Got song "${song.attributes.name}" for ${artist.name}`);
+        
+        // Handle Apple Music artwork URL with proper dimensions
+        let artworkUrl = artist.image;
+        if (song.attributes.artwork?.url) {
+          artworkUrl = song.attributes.artwork.url.replace('{w}', '300').replace('{h}', '300');
+        }
         
         return {
           id: `${artist.id || artist.name}-${Date.now()}-${Math.random()}`,
-          track: song.track,
-          artist: song.artist,
-          album: song.album || '',
-          artworkUrl: song.artworkUrl || artist.image,
-          previewUrl: song.previewUrl || '',
+          track: song.attributes.name,
+          artist: song.attributes.artistName,
+          album: song.attributes.albumName || '',
+          artworkUrl: artworkUrl,
+          previewUrl: song.attributes.previews?.[0]?.url || '',
           sourceArtist: artist,
           isFromRoomArtist: artist.isRoomArtist || false,
           isFromWidget: false,
