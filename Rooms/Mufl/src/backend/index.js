@@ -1116,5 +1116,7 @@ app.get('/api/health-check', async (req, res) => {
 //======================//
 // Start Server
 //======================//
-const PORT = process.env.PORT || 5001;
-app.listen(PORT, () => console.log(`Backend running on port ${PORT}`));
+export default function registerRoomsRoutes(app) {
+  // Put all your route definitions here — e.g.:
+  app.use('/api/rooms', roomsRouter);
+}
