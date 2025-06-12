@@ -18,7 +18,7 @@ const roomsBuild = path.join(__dirname, 'apps/mufl/build');
 const threadsBuild = path.join(__dirname, 'apps/threads/dist');
 
 // Serve static assets for root page
-app.use('/assets', express.static(path.join(__dirname, 'shared/assets')));
+app.use('/', express.static(path.join(__dirname, 'public')));
 
 // Rooms app
 app.use('/rooms', express.static(roomsBuild));
