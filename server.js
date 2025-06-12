@@ -20,6 +20,13 @@ const threadsBuild = path.join(__dirname, 'apps/threads/dist');
 // Serve static assets for root page
 app.use('/', express.static(path.join(__dirname, 'public')));
 
+// Serve videos and other files from public/assets at the /assets URL
+app.use(
+  '/assets',
+  express.static(path.join(__dirname, 'public', 'assets'))
+);
+
+
 // Rooms app
 app.use('/rooms', express.static(roomsBuild));
 app.get('/rooms/*', (req, res) => {
@@ -31,6 +38,8 @@ app.use('/threads', express.static(threadsBuild));
 app.get('/threads/*', (req, res) => {
   res.sendFile(path.join(threadsBuild, 'index.html'));
 });
+
+
 
 // Health check route
 app.get('/health', (req, res) => {
