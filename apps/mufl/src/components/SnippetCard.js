@@ -107,12 +107,18 @@ const SnippetCard = ({
   const getCurrentCard = () => {
     // Always prioritize real Apple Music data
     if (currentSong) {
+      // Ensure Apple Music artwork URL uses correct dimensions
+      let artworkUrl = currentSong.artworkUrl || currentSong.artwork;
+      if (artworkUrl && artworkUrl.includes('{w}') && artworkUrl.includes('{h}')) {
+        artworkUrl = artworkUrl.replace('{w}', '300').replace('{h}', '300');
+      }
+      
       return {
         id: currentSong.id,
         track: currentSong.track,
         artist: currentSong.artist,
-        album: currentSong.album || '', // Ensure album from Apple Music API
-        artworkUrl: currentSong.artworkUrl || currentSong.artwork,
+        album: currentSong.album || '', // Apple Music album name
+        artworkUrl: artworkUrl,
         previewUrl:
              currentSong.previewUrl
              || currentSong.snippetData?.attributes?.previews?.[0]?.url
