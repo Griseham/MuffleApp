@@ -814,7 +814,7 @@ return (
       <InfoIconModal
         title="Radio"
         steps={radioHelpSteps}
-        modalId="radio-tuner-modal"
+        modalId="radio-tuner-main-help"
       />
     </div>
 
@@ -973,8 +973,7 @@ return (
                   title="Tuner"
                   steps={knobHelpSteps}
                   showButtonText={false}
-                  modalId="knob-tuner-modal"
-                />
+                  modalId="radio-tuner-knob-help"                />
               </div>
               
               <RotaryKnob
