@@ -12,7 +12,7 @@ export function hashString(str) {
     for (let i = 0; i < author.length; i++) {
       hash = author.charCodeAt(i) + ((hash << 5) - hash);
     }
-    const mod = Math.abs(hash) % 200;
+    const mod = Math.abs(hash) % 100;
     return `/threads/assets/image${mod + 1}.png`;
   }
   
@@ -27,7 +27,7 @@ export function hashString(str) {
 export function getAvatarSrc(post) {
     const idStr = post.id.toString();
     const num = hashString(idStr);
-    return `/threads/assets/image${(num % 200) + 1}.png`;
+    return `/threads/assets/image${(num % 100) + 1}.png`;
   }
   
   
