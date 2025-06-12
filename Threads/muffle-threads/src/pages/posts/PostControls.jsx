@@ -173,7 +173,7 @@ export default function PostControls({
               src={
                 searchedSnippet.attributes.artwork?.url
                   .replace("{w}", "100")
-                  .replace("{h}", "100") || "/assets/default-artist.png"
+                  .replace("{h}", "100") || "/threads/assets/default-artist.png"
               }
               alt={searchedSnippet.attributes.name}
               style={{
