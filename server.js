@@ -5,59 +5,45 @@ const path = require('path');
 const registerUnifiedRoutes = require('./backend/unifiedRoutes.js');
 
 dotenv.config();
-
 const app = express();
+
+// 1) Middleware for JSON and CORS
 app.use(cors());
 app.use(express.json());
 
-// Register unified routes
+// 2) Your API routes
 registerUnifiedRoutes(app);
 
-// Serve static files from React builds
-const roomsBuild = path.join(__dirname, 'apps/mufl/build');
-const threadsBuild = path.join(__dirname, 'apps/threads/dist');
+// ──────────────────────────────────────────────────────
+// 3) **Serve the Mufl React build (including build/assets)**
+//    This lets your avatars at /assets/imageX.png load from apps/mufl/build/assets
+app.use(express.static(path.join(__dirname, 'apps/mufl/build')));
+// ──────────────────────────────────────────────────────
 
-// Serve static assets for root page
-app.use('/', express.static(path.join(__dirname, 'public')));
+// 4) If you have any extra files in public/assets (outside of the React build):
+app.use('/assets', express.static(path.join(__dirname, 'public', 'assets')));
 
-// Serve videos and other files from public/assets at the /assets URL
-app.use(
-  '/assets',
-  express.static(path.join(__dirname, 'public', 'assets'))
-);
-
-
-// Rooms app
-app.use('/rooms', express.static(roomsBuild));
+// 5) Rooms SPA under /rooms
+app.use('/rooms', express.static(path.join(__dirname, 'apps/mufl/build')));
 app.get('/rooms/*', (req, res) => {
-  res.sendFile(path.join(roomsBuild, 'index.html'));
+  res.sendFile(path.join(__dirname, 'apps/mufl/build', 'index.html'));
 });
 
-// Threads app  
-app.use('/threads', express.static(threadsBuild));
+// 6) Threads SPA under /threads
+app.use('/threads', express.static(path.join(__dirname, 'apps/threads/dist')));
 app.get('/threads/*', (req, res) => {
-  res.sendFile(path.join(threadsBuild, 'index.html'));
+  res.sendFile(path.join(__dirname, 'apps/threads/dist', 'index.html'));
 });
 
-
-
-// Health check route
-app.get('/health', (req, res) => {
-  res.sendStatus(200);
-});
-
-// Serve the built React app (including its /assets folder) at the root
-app.use(express.static(roomsBuild));
-
-
-
-
-// Root route - serve investor portal
+// 7) Root investor portal
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
+// 8) Health check
+app.get('/health', (req, res) => res.sendStatus(200));
+
 const PORT = process.env.PORT || 8080;
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`✅ Unified backend running on port ${PORT}`);
-});
+app.listen(PORT, '0.0.0.0', () =>
+  console.log(`✅ Unified backend running on port ${PORT}`)
+);
