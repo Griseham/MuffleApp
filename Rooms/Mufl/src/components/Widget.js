@@ -167,7 +167,7 @@ const Widget = ({ selectedArtists = [], queuedSongs = [], setWidgetSelectedArtis
   }, []);
 
   // Search ANY song on Apple Music with enhanced security
-  const fetchGlobalSongs = async (query) => {
+  const fetchGlobalSongs = useCallback(async (query) => {
     const validatedQuery = validateSearchQuery(query);
     if (!validatedQuery || validatedQuery.length < 2) {
       setGlobalSearchResults([]);
@@ -229,10 +229,10 @@ const Widget = ({ selectedArtists = [], queuedSongs = [], setWidgetSelectedArtis
     } finally {
       setLoadingSearchResults(false);
     }
-  };
+  }, [validateSearchQuery]);
 
   // Search within a specific artist's catalog with security
-  const fetchArtistSearch = async (query, artistName) => {
+  const fetchArtistSearch = useCallback(async (query, artistName) => {
     const validatedQuery = validateSearchQuery(query);
     const validatedArtistName = sanitizeSearchInput(artistName);
     
@@ -294,7 +294,7 @@ const Widget = ({ selectedArtists = [], queuedSongs = [], setWidgetSelectedArtis
     } finally {
       setLoadingSearchResults(false);
     }
-  };
+  }, [validateSearchQuery, sanitizeSearchInput]);
 
   // Handle artist selection
   const handleSelectArtist = async (artistId) => {

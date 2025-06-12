@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import RadioTuner from './RadioTuner';
 import './RadioTuner.css';
 import './TopRadio.css';
@@ -6,8 +6,8 @@ import './TopRadio.css';
 // A complete standalone radio component for TopComponent
 const TopRadio = ({ onFrequencyLanded, initialVolume = 1326, initialSimilarity = 46 }) => {
   // State management
-  const [activeSection, setActiveSection] = useState('volume');
   const [pendingStation, setPendingStation] = useState(null);   // ← new
+  const [activeSection, setActiveSection] = useState('volume');
 
   const [volume, setVolume] = useState(initialVolume);
   const [similarity, setSimilarity] = useState(initialSimilarity);

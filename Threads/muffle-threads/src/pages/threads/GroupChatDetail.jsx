@@ -15,7 +15,7 @@ function authorToAvatar(author) {
   for (let i = 0; i < author.length; i++) {
     hash = author.charCodeAt(i) + ((hash << 5) - hash);
   }
-  const mod = Math.abs(hash) % 1000;
+  const mod = Math.abs(hash) % 200;
   return `/assets/image${mod + 1}.png`;
 }
 

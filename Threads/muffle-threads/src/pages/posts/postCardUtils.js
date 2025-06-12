@@ -93,7 +93,7 @@ export function getAvatarSrc(post) {
   // Handle cases where post.id might be undefined
   const idStr = post.id ? post.id.toString() : post.author || 'default';
   const num = hashString(idStr);
-  return `/assets/image${(num % 1000) + 1}.png`;
+  return `/assets/image${(num % 200) + 1}.png`;
 }
 // Generate username based on author
 export function generateUsername(author) {

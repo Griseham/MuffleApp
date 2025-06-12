@@ -40,18 +40,9 @@ registerThreadsRoutes(app).then(() => {
     res.sendStatus(200);
   });
 
-  // Root route
+  // Root route - serve investor portal
   app.get('/', (req, res) => {
-    res.send(`
-      <h1>Muffle Backend ✅</h1>
-      <p>Backend is running successfully!</p>
-      <ul>
-        <li><a href="/rooms">Rooms App</a></li>
-        <li><a href="/threads">Threads App</a></li>
-        <li><a href="/api/rooms/api/health-check">Rooms API Health</a></li>
-        <li><a href="/api/threads/posts">Threads API</a></li>
-      </ul>
-    `);
+    res.sendFile(path.join(__dirname, 'index.html'));
   });
 
   const PORT = process.env.PORT || 3000;
