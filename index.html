@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mufl</title>
-    <link rel="icon" type="image/png" href="./assets/MuflLogo.png">
+    <link rel="icon" type="image/png" href="/assets/MuflLogo.png">
     <style>
         * {
             margin: 0;
@@ -57,7 +57,7 @@
         .logo-circle {
             width: 130px;
             height: 130px;
-            background-image: url('./assets/MuflLogo.png');
+            background-image: url('/assets/MuflLogo.png');
             background-size: contain;
             background-repeat: no-repeat;
             background-position: center;
@@ -864,28 +864,28 @@
                         <div class="videos-section">
                             <h2 class="section-title">Demo Videos</h2>
                             <div class="video-grid">
-                                <div class="video-card" data-video="./assets/HipHopRooms.mp4">
+                                <div class="video-card" data-video="/assets/HipHopRooms.mp4">
                                     <div class="video-thumbnail">
                                         <video class="video-element" preload="metadata">
-                                            <source src="./assets/HipHopRooms.mp4" type="video/mp4">
+                                            <source src="/assets/HipHopRooms.mp4" type="video/mp4">
                                         </video>
                                         <div class="play-overlay">▶</div>
                                     </div>
                                     <div class="video-title">Hip-Hop Rooms</div>
                                 </div>
-                                <div class="video-card" data-video="./assets/IndieRooms.mp4">
+                                <div class="video-card" data-video="/assets/IndieRooms.mp4">
                                     <div class="video-thumbnail">
                                         <video class="video-element" preload="metadata">
-                                            <source src="./assets/IndieRooms.mp4" type="video/mp4">
+                                            <source src="/assets/IndieRooms.mp4" type="video/mp4">
                                         </video>
                                         <div class="play-overlay">▶</div>
                                     </div>
                                     <div class="video-title">Indie Rooms</div>
                                 </div>
-                                <div class="video-card" data-video="./assets/AestheticRapRooms.mp4">
+                                <div class="video-card" data-video="/assets/AestheticRapRooms.mp4">
                                     <div class="video-thumbnail">
                                         <video class="video-element" preload="metadata">
-                                            <source src="./assets/AestheticRapRooms.mp4" type="video/mp4">
+                                            <source src="/assets/AestheticRapRooms.mp4" type="video/mp4">
                                         </video>
                                         <div class="play-overlay">▶</div>
                                     </div>
@@ -896,7 +896,7 @@
 
                         <div class="info-video-section">
                             <h2 class="section-title">Informational</h2>
-                            <div class="info-video-card" data-video="./assets/RoomsInformational.mp4">
+                            <div class="info-video-card" data-video="/assets/RoomsInformational.mp4">
                                 <div class="info-video-thumbnail">
                                     <div style="font-size: 48px; color: #666;">▶</div>
                                 </div>
@@ -915,10 +915,10 @@
 
                         <div class="single-video-section">
                             <h2 class="section-title">Demo Video</h2>
-                            <div class="single-video-card" data-video="./assets/ThreadsDemo.mp4">
+                            <div class="single-video-card" data-video="/assets/ThreadsDemo.mp4">
                                 <div class="single-video-thumbnail">
                                     <video class="video-element" preload="metadata">
-                                        <source src="./assets/ThreadsDemo.mp4" type="video/mp4">
+                                        <source src="/assets/ThreadsDemo.mp4" type="video/mp4">
                                     </video>
                                     <div class="play-overlay">▶</div>
                                 </div>
@@ -928,7 +928,7 @@
 
                         <div class="info-video-section">
                             <h2 class="section-title">Informational</h2>
-                            <div class="info-video-card" data-video="./assets/ThreadsInformational.mp4">
+                            <div class="info-video-card" data-video="/assets/ThreadsInformational.mp4">
                                 <div class="info-video-thumbnail">
                                     <div style="font-size: 48px; color: #666;">▶</div>
                                 </div>
@@ -949,7 +949,7 @@
 
                         <div class="info-video-section">
                             <h2 class="section-title">Profile screen and Timeline Informational</h2>
-                            <div class="info-video-card" data-video="./assets/ProfileInformational.mp4">
+                            <div class="info-video-card" data-video="/assets/ProfileInformational.mp4">
                                 <div class="info-video-thumbnail">
                                     <div style="font-size: 48px; color: #666;">▶</div>
                                 </div>
@@ -970,7 +970,7 @@
 
                         <div class="info-video-section">
                             <h2 class="section-title">Informational</h2>
-                            <div class="info-video-card" data-video="./assets/HomeInformational.mp4">
+                            <div class="info-video-card" data-video="/assets/HomeInformational.mp4">
                                 <div class="info-video-thumbnail">
                                     <div style="font-size: 48px; color: #666;">▶</div>
                                 </div>
@@ -1026,7 +1026,12 @@
             if (relativePath.startsWith('http://') || relativePath.startsWith('https://')) {
                 return relativePath; // Already absolute
             }
-            
+
+            // If path starts with a slash, it's root-relative
+            if (relativePath.startsWith('/')) {
+                return window.location.origin + relativePath;
+            }
+
             // Remove leading "./" if present
             const cleanPath = relativePath.replace(/^\.\//, '');
             return getBaseURL() + cleanPath;
@@ -1037,14 +1042,14 @@
             // Fix logo path
             const logoCircle = document.querySelector('.logo-circle');
             if (logoCircle) {
-                const logoPath = resolvePath('./assets/MuflLogo.png');
+                const logoPath = resolvePath('/assets/MuflLogo.png');
                 logoCircle.style.backgroundImage = `url('${logoPath}')`;
             }
             
             // Fix video thumbnail sources
             document.querySelectorAll('video.video-element source').forEach(source => {
                 const originalSrc = source.getAttribute('src');
-                if (originalSrc && originalSrc.startsWith('./')) {
+                if (originalSrc && !originalSrc.startsWith('http')) {
                     source.src = resolvePath(originalSrc);
                 }
             });
@@ -1199,7 +1204,7 @@
         
         if (isInitialLoad) {
             // First time initialization - no animation needed
-            const slideImagePath = resolvePath(`./assets/PitchDeck/Slide${slideNumber}.jpg`);
+            const slideImagePath = resolvePath(`/assets/PitchDeck/Slide${slideNumber}.jpg`);
             const newContainer = document.createElement('div');
             newContainer.className = 'slide-fade-container active';
             newContainer.style.backgroundImage = `url('${slideImagePath}')`;
@@ -1209,7 +1214,7 @@
             const currentActive = mainSlide.querySelector('.slide-fade-container.active');
             
             // Create new slide container
-            const slideImagePath = resolvePath(`./assets/PitchDeck/Slide${slideNumber}.jpg`);
+            const slideImagePath = resolvePath(`/assets/PitchDeck/Slide${slideNumber}.jpg`);
             const newContainer = document.createElement('div');
             newContainer.className = 'slide-fade-container';
             newContainer.style.backgroundImage = `url('${slideImagePath}')`;
@@ -1471,7 +1476,7 @@
                 
                 if (slideContainer) {
                     // Apply smooth transition to fullscreen slides too
-                    const slideImagePath = resolvePath(`./assets/PitchDeck/Slide${slideNumber}.jpg`);
+                    const slideImagePath = resolvePath(`/assets/PitchDeck/Slide${slideNumber}.jpg`);
                     
                     // Create a temporary element to fade in the new image
                     const tempDiv = document.createElement('div');
