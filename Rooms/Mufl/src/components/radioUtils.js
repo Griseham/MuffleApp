@@ -188,7 +188,7 @@ export const generateFrequencyPoints = (normalizedSim, count = 12) => {
     takenPositions.push(pointPosition);
     
     // Generate color based on frequency with more varied colors
-    const freqPercent = (freqValue - MIN_FREQUENCY) / (MAX_FREQUENCY - MIN_FREQUENCY) * 100;
+    // const freqPercent = (freqValue - MIN_FREQUENCY) / (MAX_FREQUENCY - MIN_FREQUENCY) * 100;
     let color;
     
     if (freqValue < 800) {
