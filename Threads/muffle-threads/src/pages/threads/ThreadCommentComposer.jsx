@@ -117,7 +117,7 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
     
     setIsSearching(true);
     try {
-      const resp = await fetch(`http://localhost:4000/api/apple-music-search?query=${encodeURIComponent(sanitizedQuery)}`);
+      const resp = await fetch(`${import.meta.env.VITE_API_BASE_URL}/apple-music-search?query=${encodeURIComponent(sanitizedQuery)}`);
       const data = await resp.json();
       
       if (data.success && data.data) {
@@ -224,7 +224,7 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
         artistName: selectedSong.attributes?.artistName || "Unknown Artist",
         artwork: selectedSong.attributes?.artwork?.url
           ?.replace("{w}", "100")
-          ?.replace("{h}", "100") || "/assets/default-artist.png",
+          ?.replace("{h}", "100") || "/threads/assets/default-artist.png",
         previewUrl: selectedSong.attributes?.previews?.[0]?.url || null
       };
     }
@@ -252,7 +252,7 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
         {/* User Avatar */}
         <div style={styles.avatarContainer}>
           <img 
-            src="/assets/user.png" 
+            src="/threads/assets/user.png" 
             alt="Your avatar" 
             style={styles.avatar}
           />
@@ -279,7 +279,7 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
                   <img
                     src={selectedSong.attributes.artwork?.url
                       ?.replace("{w}", "100")
-                      ?.replace("{h}", "100") || "/assets/default-artist.png"}
+                      ?.replace("{h}", "100") || "/threads/assets/default-artist.png"}
                     alt={selectedSong.attributes.name}
                     style={styles.snippetImage}
                   />
@@ -387,7 +387,7 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
                         <img
                           src={song.attributes.artwork?.url
                             ?.replace("{w}", "100")
-                            ?.replace("{h}", "100") || "/assets/default-artist.png"}
+                            ?.replace("{h}", "100") || "/threads/assets/default-artist.png"}
                           alt={song.attributes.name}
                           style={styles.resultImage}
                         />

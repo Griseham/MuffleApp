@@ -7,7 +7,7 @@ export function hashString(str) {
   }
   
   export function authorToAvatar(author) {
-    if (!author) return "/assets/default-avatar.png";
+    if (!author) return "/threads/assets/default-avatar.png";
     let hash = 0;
     for (let i = 0; i < author.length; i++) {
       hash = author.charCodeAt(i) + ((hash << 5) - hash);

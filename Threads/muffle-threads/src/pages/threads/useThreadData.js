@@ -31,7 +31,7 @@ export default function useThreadData(postId, postData = null) {
 const fetchCachedPostData = async (postId) => {
   try {
     console.log(`ThreadDetail: Fetching cached post data for ID: ${postId}`);
-    const resp = await fetch(`http://localhost:4000/api/cached-posts/${postId}`);
+    const resp = await fetch(`${import.meta.env.VITE_API_BASE_URL}/cached-posts/${postId}`);
     if (!resp.ok) {
       console.log(`ThreadDetail: Cached post not found (${resp.status}): ${postId}`);
       return false;
@@ -116,7 +116,7 @@ useEffect(() => {
       console.log("ThreadDetail: No cached data found, trying other sources...");
       
       try {
-        const directCacheResp = await fetch(`http://localhost:4000/api/cached-posts/${postId}`);
+        const directCacheResp = await fetch(`${import.meta.env.VITE_API_BASE_URL}/cached-posts/${postId}`);
         
         if (directCacheResp.ok) {
           const data = await directCacheResp.json();
@@ -169,7 +169,7 @@ useEffect(() => {
       } catch (error) {}
       
       try {
-        const resp = await fetch(`http://localhost:4000/api/posts`);
+        const resp = await fetch(`${import.meta.env.VITE_API_BASE_URL}/posts`);
         
         if (resp.ok) {
           const allPosts = await resp.json();
@@ -186,7 +186,7 @@ useEffect(() => {
               setIsLoading(false);
               
               try {
-                fetch(`http://localhost:4000/api/posts/${postId}/cache?subreddit=${foundPost.subreddit}`);
+                fetch(`${import.meta.env.VITE_API_BASE_URL}/posts/${postId}/cache?subreddit=${foundPost.subreddit}`);
               } catch (e) {}
               
               return;
@@ -197,7 +197,7 @@ useEffect(() => {
       
       try {
         console.log("ThreadDetail: Trying diverse-posts API...");
-        const diverseResp = await fetch(`http://localhost:4000/api/diverse-posts`);
+        const diverseResp = await fetch(`${import.meta.env.VITE_API_BASE_URL}/diverse-posts`);
         
         if (diverseResp.ok) {
           const diverseData = await diverseResp.json();
@@ -215,7 +215,7 @@ useEffect(() => {
               setIsLoading(false);
               
               try {
-                fetch(`http://localhost:4000/api/posts/${postId}/cache?subreddit=${diversePost.subreddit}`);
+                fetch(`${import.meta.env.VITE_API_BASE_URL}/posts/${postId}/cache?subreddit=${diversePost.subreddit}`);
               } catch (e) {}
               
               return;
@@ -227,7 +227,7 @@ useEffect(() => {
       }
       
       try {
-        const directPostResp = await fetch(`http://localhost:4000/api/posts/${postId}`);
+        const directPostResp = await fetch(`${import.meta.env.VITE_API_BASE_URL}/posts/${postId}`);
         
         if (directPostResp.ok) {
           const directPostData = await directPostResp.json();
@@ -243,7 +243,7 @@ useEffect(() => {
             setIsLoading(false);
             
             try {
-              fetch(`http://localhost:4000/api/posts/${postId}/cache?subreddit=${directPost.subreddit}`);
+              fetch(`${import.meta.env.VITE_API_BASE_URL}/posts/${postId}/cache?subreddit=${directPost.subreddit}`);
             } catch (e) {}
             
             return;
@@ -286,7 +286,7 @@ useEffect(() => {
     if (post.postType === "groupchat") return;
     
     try {
-      const cacheResp = await fetch(`http://localhost:4000/api/cached-posts/${postId}`);
+      const cacheResp = await fetch(`${import.meta.env.VITE_API_BASE_URL}/cached-posts/${postId}`);
       if (cacheResp.ok) {
         const cacheData = await cacheResp.json();
         if (cacheData.success && cacheData.data && cacheData.data.comments && cacheData.data.comments.length > 0) {
@@ -304,7 +304,7 @@ useEffect(() => {
     } catch (err) {}
     
     try {
-      const resp = await fetch(`http://localhost:4000/api/posts/${postId}/comments`);
+      const resp = await fetch(`${import.meta.env.VITE_API_BASE_URL}/posts/${postId}/comments`);
       
       if (resp.ok) {
         const data = await resp.json();
@@ -326,7 +326,7 @@ useEffect(() => {
           
           try {
             if (post.subreddit) {
-              fetch(`http://localhost:4000/api/posts/${postId}/cache?subreddit=${post.subreddit}`);
+              fetch(`${import.meta.env.VITE_API_BASE_URL}/posts/${postId}/cache?subreddit=${post.subreddit}`);
             }
           } catch (e) {}
           
@@ -335,7 +335,7 @@ useEffect(() => {
       }
       
       try {
-        const diverseCommentsResp = await fetch(`http://localhost:4000/api/diverse-posts/${postId}/comments`);
+        const diverseCommentsResp = await fetch(`${import.meta.env.VITE_API_BASE_URL}/diverse-posts/${postId}/comments`);
         
         if (diverseCommentsResp.ok) {
           const diverseCommentsData = await diverseCommentsResp.json();
@@ -354,7 +354,7 @@ useEffect(() => {
             
             try {
               if (post.subreddit) {
-                fetch(`http://localhost:4000/api/posts/${postId}/cache?subreddit=${post.subreddit}`);
+                fetch(`${import.meta.env.VITE_API_BASE_URL}/posts/${postId}/cache?subreddit=${post.subreddit}`);
               }
             } catch (e) {}
             
@@ -459,7 +459,7 @@ useEffect(() => {
         try {
           console.log(`ThreadDetail: Searching Apple Music for: "${query}"`);
           
-          const response = await fetch(`http://localhost:4000/api/apple-music-search?query=${encodeURIComponent(query)}`);
+          const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/apple-music-search?query=${encodeURIComponent(query)}`);
           
           if (response.ok) {
             const result = await response.json();
@@ -631,7 +631,7 @@ useEffect(() => {
         console.log(`ThreadDetail: Searching Apple Music for: ${query}`);
         
         // Search Apple Music API
-        const response = await fetch(`http://localhost:4000/api/apple-music-search?query=${encodeURIComponent(query)}`);
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/apple-music-search?query=${encodeURIComponent(query)}`);
         
         if (response.ok) {
           const result = await response.json();
@@ -740,7 +740,7 @@ useEffect(() => {
     
     
     try {
-      const cacheResp = await fetch(`http://localhost:4000/api/cached-posts/${postId}`);
+      const cacheResp = await fetch(`${import.meta.env.VITE_API_BASE_URL}/cached-posts/${postId}`);
       if (cacheResp.ok) {
         const cacheData = await cacheResp.json();
         
@@ -802,7 +802,7 @@ useEffect(() => {
     try {
       // Try to fetch snippets from API for non-cached posts
       if (post?.postType !== 'parameter') {
-        const resp = await fetch(`http://localhost:4000/api/posts/${postId}/snippets`);
+        const resp = await fetch(`${import.meta.env.VITE_API_BASE_URL}/posts/${postId}/snippets`);
         
         if (resp.ok) {
         const data = await resp.json();
@@ -1079,7 +1079,7 @@ useEffect(() => {
     if (!post) return;
     
     try {
-      const checkCacheResp = await fetch(`http://localhost:4000/api/cached-posts/${postId}`);
+      const checkCacheResp = await fetch(`${import.meta.env.VITE_API_BASE_URL}/cached-posts/${postId}`);
       if (checkCacheResp.ok) {
         setUsedCache(true);
       }

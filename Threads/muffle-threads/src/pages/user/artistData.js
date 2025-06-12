@@ -8,151 +8,151 @@ const artistData = {
         id: "artist1",
         name: "Tame Impala",
         genre: "Psychedelic Rock",
-        imageUrl: "/assets/image1.png"
+        imageUrl: "/threads/assets/image1.png"
       },
       {
         id: "artist2",
         name: "Kendrick Lamar",
         genre: "Hip-Hop",
-        imageUrl: "/assets/image2.png"
+        imageUrl: "/threads/assets/image2.png"
       },
       {
         id: "artist3",
         name: "Dua Lipa",
         genre: "Pop",
-        imageUrl: "/assets/image3.png"
+        imageUrl: "/threads/assets/image3.png"
       },
       {
         id: "artist4",
         name: "Radiohead",
         genre: "Alternative Rock",
-        imageUrl: "/assets/image4.png"
+        imageUrl: "/threads/assets/image4.png"
       },
       {
         id: "artist5",
         name: "Tyler, The Creator",
         genre: "Hip-Hop",
-        imageUrl: "/assets/image5.png"
+        imageUrl: "/threads/assets/image5.png"
       },
       {
         id: "artist6",
         name: "Billie Eilish",
         genre: "Pop",
-        imageUrl: "/assets/image6.png"
+        imageUrl: "/threads/assets/image6.png"
       },
       {
         id: "artist7",
         name: "Bonobo",
         genre: "Electronic",
-        imageUrl: "/assets/image7.png"
+        imageUrl: "/threads/assets/image7.png"
       },
       {
         id: "artist8",
         name: "Thundercat",
         genre: "Jazz",
-        imageUrl: "/assets/image8.png"
+        imageUrl: "/threads/assets/image8.png"
       },
       {
         id: "artist9",
         name: "Flume",
         genre: "Electronic",
-        imageUrl: "/assets/image9.png"
+        imageUrl: "/threads/assets/image9.png"
       },
       {
         id: "artist10",
         name: "Frank Ocean",
         genre: "R&B",
-        imageUrl: "/assets/image10.png"
+        imageUrl: "/threads/assets/image10.png"
       },
       {
         id: "artist11",
         name: "SZA",
         genre: "R&B",
-        imageUrl: "/assets/image11.png"
+        imageUrl: "/threads/assets/image11.png"
       },
       {
         id: "artist12",
         name: "Khruangbin",
         genre: "Funk",
-        imageUrl: "/assets/image12.png"
+        imageUrl: "/threads/assets/image12.png"
       },
       {
         id: "artist13",
         name: "FKA twigs",
         genre: "Electronic",
-        imageUrl: "/assets/image13.png"
+        imageUrl: "/threads/assets/image13.png"
       },
       {
         id: "artist14",
         name: "Jorja Smith",
         genre: "R&B",
-        imageUrl: "/assets/image14.png"
+        imageUrl: "/threads/assets/image14.png"
       },
       {
         id: "artist15",
         name: "Jamie xx",
         genre: "Electronic",
-        imageUrl: "/assets/image15.png"
+        imageUrl: "/threads/assets/image15.png"
       },
       {
         id: "artist16",
         name: "Hiatus Kaiyote",
         genre: "Neo-Soul",
-        imageUrl: "/assets/image16.png"
+        imageUrl: "/threads/assets/image16.png"
       },
       {
         id: "artist17",
         name: "Anderson .Paak",
         genre: "Hip-Hop",
-        imageUrl: "/assets/image17.png"
+        imageUrl: "/threads/assets/image17.png"
       },
       {
         id: "artist18",
         name: "Floating Points",
         genre: "Electronic",
-        imageUrl: "/assets/image18.png"
+        imageUrl: "/threads/assets/image18.png"
       },
       {
         id: "artist19",
         name: "Beach House",
         genre: "Dream Pop",
-        imageUrl: "/assets/image19.png"
+        imageUrl: "/threads/assets/image19.png"
       },
       {
         id: "artist20",
         name: "Four Tet",
         genre: "Electronic",
-        imageUrl: "/assets/image20.png"
+        imageUrl: "/threads/assets/image20.png"
       },
       {
         id: "artist21",
         name: "Solange",
         genre: "R&B",
-        imageUrl: "/assets/image21.png"
+        imageUrl: "/threads/assets/image21.png"
       },
       {
         id: "artist22",
         name: "BadBadNotGood",
         genre: "Jazz",
-        imageUrl: "/assets/image22.png"
+        imageUrl: "/threads/assets/image22.png"
       },
       {
         id: "artist23",
         name: "Little Dragon",
         genre: "Electronic",
-        imageUrl: "/assets/image23.png"
+        imageUrl: "/threads/assets/image23.png"
       },
       {
         id: "artist24",
         name: "King Krule",
         genre: "Alternative",
-        imageUrl: "/assets/image24.png"
+        imageUrl: "/threads/assets/image24.png"
       },
       {
         id: "artist25",
         name: "Kamasi Washington",
         genre: "Jazz",
-        imageUrl: "/assets/image25.png"
+        imageUrl: "/threads/assets/image25.png"
       }
     ],
     

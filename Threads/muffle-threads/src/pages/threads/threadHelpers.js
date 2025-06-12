@@ -58,7 +58,7 @@ export const formatSnippetData = (snippet, relatedComment, comments) => {
   const commentAuthor = relatedComment?.author || comments.find(c => c.id === snippetId)?.author || "Unknown";
   
   if (snippet.snippetData) {
-    const artworkUrl = snippet.snippetData.attributes?.artwork?.url || snippet.artistImage || "/assets/default-artist.png";
+    const artworkUrl = snippet.snippetData.attributes?.artwork?.url || snippet.artistImage || "/threads/assets/default-artist.png";
     
     return {
       id: snippetId,
