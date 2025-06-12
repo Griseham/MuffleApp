@@ -7,9 +7,16 @@ const { fetchSimilarArtists } = require('./lastFmService');
 const { getSnippetsForArtists, searchSongs, resolveAppleMusicArtistIds } = require('./appleMusicService');
 const appleMusicService = require('./appleMusicService');
 
-const app = express();
-app.use(cors());
-app.use(express.json());
+import express from 'express';
+import { someRoomsRouteHandler } from './roomsController.js'; // your existing route handlers
+
+const roomsRouter = express.Router();
+
+roomsRouter.get('/some-endpoint', someRoomsRouteHandler); // define all routes here
+
+export default function registerRoomsRoutes(app) {
+  app.use('/api/rooms', roomsRouter);
+}
 
 
 //======================//
