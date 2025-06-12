@@ -64,7 +64,7 @@ export default function UserLayer({ snapToFriend }) {
             ...styles.avatarWrapper
           }}>
             <img 
-              src={`/assets/image${avatarIds.you}.png`}
+              src={`/threads/assets/image${(avatarIds.you % 100) + 1}.png`}
               alt="Your avatar"
               style={styles.avatarImg}
             />
@@ -123,7 +123,7 @@ export default function UserLayer({ snapToFriend }) {
                 borderColor: fc
               }}>
                 <img 
-                  src={`/assets/image${avatarIds.friends[idx]}.png`}
+                  src={`/threads/assets/image${(avatarIds.friends[idx] % 100) + 1}.png`}
                   alt={`Friend ${f.id + 1}'s avatar`}
                   style={styles.avatarImg}
                 />

@@ -22,7 +22,7 @@ function authorToAvatar(author) {
   for (let i = 0; i < author.length; i++) {
     hash = author.charCodeAt(i) + ((hash << 5) - hash);
   }
-  return `/assets/image${(Math.abs(hash) % 200) + 1}.png`;
+  return `/threads/assets/image${(Math.abs(hash) % 100) + 1}.png`;
 }
 
 function getRandomTimestamp() {

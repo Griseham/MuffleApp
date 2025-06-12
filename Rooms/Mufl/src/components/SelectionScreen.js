@@ -162,16 +162,9 @@ const searchArtists = useCallback(async (query) => {
   
   setLoading('search', true);
   try {
-    // Use POST instead of GET to avoid query parameter injection
-    const res = await axios.post('/spotify/search-artists', {
-      query: finalQuery,
-      // Add request metadata for server-side validation
-      timestamp: Date.now(),
-      source: 'selection_screen'
-    }, {
-      headers: {
-        'Content-Type': 'application/json'
-      },
+    // Use GET request with query parameter
+    const res = await axios.get('/spotify/search-artists', {
+      params: { query: finalQuery },
       // Add timeout to prevent hanging requests
       timeout: 10000
     });

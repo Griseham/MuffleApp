@@ -77,7 +77,7 @@ const ArtistCarousel = ({ artists, ArtistCircle, ArtistVolumeBar }) => {
   }
   
   return (
-    <div className="artists-container" onClick={(e) => e.stopPropagation()}>
+    <div className="artists-container">
       {/* Artist grid - always shows 6 slots in 3x2 layout */}
       <div className={`artists-grid ${animationDirection || ''}`}>
         {filledArtists.map((artist, idx) => (
@@ -103,7 +103,7 @@ const ArtistCarousel = ({ artists, ArtistCircle, ArtistVolumeBar }) => {
       
       {/* Show controls only if there are multiple pages */}
       {totalPages > 1 && (
-        <div className="carousel-controls" onClick={(e) => e.stopPropagation()}>
+        <div className="carousel-controls">
           <button 
             className={`carousel-arrow prev ${currentPage <= 0 ? 'disabled' : ''}`}
             onClick={handlePrevPage}
