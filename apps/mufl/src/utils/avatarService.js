@@ -20,7 +20,7 @@ export const getAvatarForUser = (userId) => {
   // Generate random number 1-1000 based on userId
   const hash = hashCode(userId.toString());
   const imageNumber = Math.abs(hash % 200) + 1;
-  const avatarUrl = `/assets/image${imageNumber}.png`;
+  const avatarUrl = `/assets/users/assets2/image${imageNumber}.png`;
   
   // Cache the result
   avatarCache.set(userId, avatarUrl);
@@ -44,7 +44,7 @@ export const getRandomAvatars = (count) => {
     } while (usedNumbers.has(imageNumber));
     
     usedNumbers.add(imageNumber);
-    avatars.push(`/assets/image${imageNumber}.png`);
+    avatars.push(`/assets/users/assets2/image${imageNumber}.png`);
   }
   
   return avatars;

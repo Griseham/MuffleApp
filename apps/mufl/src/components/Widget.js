@@ -95,23 +95,35 @@ const Widget = ({ selectedArtists = [], queuedSongs = [], setWidgetSelectedArtis
     try {
       
       // Call the dedicated artist songs endpoint
-      const response = await fetch(`${API_BASE}/api/apple-music/artist-songs`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          artistName: artistName
-        }),
-      });
+      const response = await fetch(`${API_BASE}/apple-music-search?query=${encodeURIComponent(artistName)}`);
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const data = await response.json();
-      const songs = (data.songs || []).slice(0, 3);   // keep only the first 3
-
+      const result = await response.json();
+      
+      let songs = [];
+      if (result.success && result.data) {
+        const song = result.data;
+        
+        // Handle Apple Music artwork URL with proper dimensions
+        let artworkUrl = '';
+        if (song.attributes.artwork?.url) {
+          artworkUrl = song.attributes.artwork.url.replace('{w}', '300').replace('{h}', '300');
+        }
+        
+        // Convert to Widget format
+        const formattedSong = {
+          track: song.attributes.name,
+          artist: song.attributes.artistName,
+          album: song.attributes.albumName || '',
+          artworkUrl: artworkUrl,
+          previewUrl: song.attributes.previews?.[0]?.url || ''
+        };
+        
+        songs = [formattedSong]; // Widget expects an array
+      }
 
       // Cache the songs
       setArtistSongs(prev => ({

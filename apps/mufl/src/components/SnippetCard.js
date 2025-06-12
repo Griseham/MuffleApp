@@ -557,6 +557,7 @@ const SnippetCard = ({
                     alt={`${currentCard.album} by ${currentCard.artist}`}
                     className="w-full h-full object-cover"
                     onError={(e) => {
+                      console.log('Failed to load artwork:', currentCard.artworkUrl);
                       // Fallback to placeholder if image fails
                       e.target.style.display = 'none';
                     }}
