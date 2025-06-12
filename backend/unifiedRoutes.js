@@ -104,13 +104,28 @@ const getPopArtists = async (genre = 'pop') => {
       }
     });
 
-    return response.data.artists?.items.map(artist => ({
-      id: artist.id,
-      name: artist.name,
-      image: artist.images[0]?.url || 'fallback.jpg',
-      genres: artist.genres || [],
-      popularity: artist.popularity,
-    })) || [];
+    return response.data.artists?.items.map(artist => {
+      // Find the best quality image (prefer 640x640, fallback to largest available)
+      let imageUrl = null;
+      if (artist.images && artist.images.length > 0) {
+        // Try to find 640x640 image first
+        const preferredImage = artist.images.find(img => img.height === 640 && img.width === 640);
+        if (preferredImage) {
+          imageUrl = preferredImage.url;
+        } else {
+          // Use the first (largest) image available
+          imageUrl = artist.images[0].url;
+        }
+      }
+      
+      return {
+        id: artist.id,
+        name: artist.name,
+        image: imageUrl,
+        genres: artist.genres || [],
+        popularity: artist.popularity,
+      };
+    }).filter(artist => artist.image) || []; // Only return artists with images
   } catch (error) {
     console.error('Failed to fetch artists, using mock data:', error.message);
     // Return mock data when Spotify is unavailable
@@ -278,13 +293,28 @@ unifiedRouter.get('/spotify/search-artists', async (req, res) => {
       },
     });
 
-    const artists = response.data.artists?.items.map((artist) => ({
-      id: artist.id,
-      name: artist.name,
-      image: artist.images[0]?.url || 'fallback.jpg',
-      genres: artist.genres || [],
-      popularity: artist.popularity,
-    })) || [];
+    const artists = response.data.artists?.items.map((artist) => {
+      // Find the best quality image (prefer 640x640, fallback to largest available)
+      let imageUrl = null;
+      if (artist.images && artist.images.length > 0) {
+        // Try to find 640x640 image first
+        const preferredImage = artist.images.find(img => img.height === 640 && img.width === 640);
+        if (preferredImage) {
+          imageUrl = preferredImage.url;
+        } else {
+          // Use the first (largest) image available
+          imageUrl = artist.images[0].url;
+        }
+      }
+      
+      return {
+        id: artist.id,
+        name: artist.name,
+        image: imageUrl,
+        genres: artist.genres || [],
+        popularity: artist.popularity,
+      };
+    }).filter(artist => artist.image) || []; // Only return artists with images
 
     res.json(artists);
   } catch (error) {
@@ -663,5 +693,9 @@ unifiedRouter.get('/health', async (req, res) => {
 // Export Route Registration Function
 //======================//
 module.exports = function registerUnifiedRoutes(app) {
+  // Register routes with /api prefix for mufl app
   app.use('/api', unifiedRouter);
+  
+  // Register routes without prefix for threads app compatibility
+  app.use('/', unifiedRouter);
 };
