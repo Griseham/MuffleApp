@@ -47,9 +47,9 @@ registerThreadsRoutes(app).then(() => {
 
   const PORT = process.env.PORT || 3000;
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Unified backend running on port ${PORT}`);
+    
   });
 }).catch(error => {
-  console.error('Failed to start server:', error);
+  
   process.exit(1);
 });

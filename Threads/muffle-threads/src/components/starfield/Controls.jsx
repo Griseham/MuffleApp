@@ -46,7 +46,7 @@ export default function Controls({
     // Calculate next index (cycle through 0, 1, 2)
     const nextIndex = (currentIndex + 1) % 3;
     
-    console.log(`Cycling constellation for ${artist.name} from ${currentIndex} to ${nextIndex}`);
+    // Cycling constellation
     
     // Update the state
     setArtistConstellations(prev => ({

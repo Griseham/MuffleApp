@@ -243,7 +243,7 @@ const UserAvatarWithHoverCard = ({ user, avatarSrc, size = 48, onUserClick }) =>
     if (onUserClick) {
       onUserClick(enhancedUser);
     } else {
-      console.log(`Navigating to ${enhancedUser.username}'s profile`);
+      // Navigate to user profile
     }
   }, [enhancedUser, onUserClick]);
   

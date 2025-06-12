@@ -95,7 +95,7 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
             snippetsData = snippetsJson.data || [];
           }
         } catch (e) {
-          console.log("No snippets found:", e.message);
+          // No snippets found
         }
 
         // Create snippets map
@@ -229,7 +229,7 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
           }
         }
         
-        console.log(`Loaded ${shuffledMessages.length} messages for group chat`);
+        // Loaded messages for group chat
         
         if (shuffledMessages.length === 0) {
           setMessages([]);
@@ -246,7 +246,7 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
         startMessageSequence(shuffledMessages);
         
       } catch (error) {
-        console.error("Error loading messages:", error);
+        // Error loading messages
         setMessages([]);
         setAllMessages([]);
       } finally {
@@ -411,7 +411,6 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
     audioRef.current.pause();
     audioRef.current.src = snippet.previewUrl;
     audioRef.current.play().catch(err => {
-      console.error("Error playing audio:", err);
       setIsSnippetAudioPlaying(false);
     });
     
@@ -459,7 +458,6 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
         setSearchedSnippet(data.data);
       }
     } catch (error) {
-      console.error("Error searching for song:", error);
       alert("Search failed. Please try again.");
     } finally {
       setIsSearching(false);

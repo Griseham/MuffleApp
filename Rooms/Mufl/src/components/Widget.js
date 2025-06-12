@@ -93,7 +93,6 @@ const Widget = ({ selectedArtists = [], queuedSongs = [], setWidgetSelectedArtis
     setSearchError('');
 
     try {
-      console.log('[Widget] fetching top tracks for', artistName);
       
       // Call the dedicated artist songs endpoint
       const response = await fetch(`${API_BASE}/apple-music/artist-songs`, {
@@ -113,7 +112,6 @@ const Widget = ({ selectedArtists = [], queuedSongs = [], setWidgetSelectedArtis
       const data = await response.json();
       const songs = (data.songs || []).slice(0, 3);   // keep only the first 3
 
-      console.log('[Widget] top-tracks data →', songs);
 
       // Cache the songs
       setArtistSongs(prev => ({
@@ -124,7 +122,6 @@ const Widget = ({ selectedArtists = [], queuedSongs = [], setWidgetSelectedArtis
       return songs;
 
     } catch (error) {
-      console.error(`Error fetching songs for ${artistName}:`, error);
       setSearchError(`Failed to load songs for ${artistName}`);
       return [];
     } finally {
@@ -159,7 +156,6 @@ const Widget = ({ selectedArtists = [], queuedSongs = [], setWidgetSelectedArtis
     // Only allow safe characters for music search
     const allowedPattern = /^[a-zA-Z0-9\s\-'.,&()!?]+$/;
     if (sanitized && !allowedPattern.test(sanitized)) {
-      console.warn('[Widget] Invalid characters in search query');
       return sanitized.replace(/[^a-zA-Z0-9\s\-'.,&()!?]/g, '');
     }
     
@@ -178,7 +174,6 @@ const Widget = ({ selectedArtists = [], queuedSongs = [], setWidgetSelectedArtis
     setSearchError('');
     
     try {
-      console.log('[Widget] global search →', validatedQuery);
 
       const res = await fetch(
         `${API_BASE}/apple-music/search`,
@@ -217,10 +212,8 @@ const Widget = ({ selectedArtists = [], queuedSongs = [], setWidgetSelectedArtis
         )
         .slice(0, 20); // Limit results
 
-      console.log('[Widget] global search results =', validatedResults.length);
       setGlobalSearchResults(validatedResults);
     } catch (err) {
-      console.error('[Widget] global search error', err);
       if (err.name === 'TimeoutError') {
         setSearchError('Search timed out – try again');
       } else {
@@ -285,7 +278,6 @@ const Widget = ({ selectedArtists = [], queuedSongs = [], setWidgetSelectedArtis
       
       setGlobalSearchResults(validatedResults);
     } catch (err) {
-      console.error('[Widget] artist search error', err);
       if (err.name === 'TimeoutError') {
         setSearchError('Search timed out – try again');
       } else {
@@ -339,7 +331,6 @@ const Widget = ({ selectedArtists = [], queuedSongs = [], setWidgetSelectedArtis
   const addToPersonalQueue = (song) => {
     // Validate song object
     if (!song || typeof song !== 'object' || !song.track || !song.artist) {
-      console.error('[Widget] Invalid song object for queue');
       return;
     }
     
@@ -441,8 +432,6 @@ const Widget = ({ selectedArtists = [], queuedSongs = [], setWidgetSelectedArtis
         
         // Move finished songs to the main queue via callback
         if (songsToMoveToMain.length > 0 && onSongFromWidget) {
-          console.log(`🎵 Moving ${songsToMoveToMain.length} songs from Widget to main queue`);
-          
           songsToMoveToMain.forEach(song => {
             onSongFromWidget(song);
           });

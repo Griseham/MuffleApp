@@ -903,7 +903,6 @@ threadsRouter.get("/diverse-posts", async (req, res) => {
       return acc;
     }, {});
     
-    console.log(`/diverse-posts returning ${selectedPosts.length} fresh posts:`, typeCounts);
     
     return res.json({ 
       success: true, 
@@ -911,7 +910,6 @@ threadsRouter.get("/diverse-posts", async (req, res) => {
       message: `Fetched ${selectedPosts.length} fresh diverse posts from Reddit`
     });
   } catch (err) {
-    console.error("Error fetching diverse posts:", err);
     return res.status(500).json({ success: false, error: err.toString() });
   }
 });
