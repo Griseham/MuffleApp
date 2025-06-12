@@ -67,7 +67,7 @@ const UserHoverCard = ({ user, onUserClick, avatarSrc }) => {
           {/* User avatar */}
           <div className="w-12 h-12 rounded-full bg-gray-800 overflow-hidden">
             <img 
-              src={userData.avatar || avatarSrc || "/assets/user.png"} 
+              src={userData.avatar || avatarSrc || "/threads/assets/user.png"} 
               alt={`${userData.displayName}'s avatar`} 
               className="w-full h-full object-cover"
             />
@@ -270,7 +270,7 @@ const UserAvatarWithHoverCard = ({ user, avatarSrc, size = 48, onUserClick }) =>
         onMouseLeave={handleMouseLeave}
       >
         <img 
-          src={avatarSrc || "/assets/user.png"} 
+          src={avatarSrc || "/threads/assets/user.png"} 
           alt={`${enhancedUser.displayName}'s avatar`}
           className="w-full h-full object-cover" 
         />

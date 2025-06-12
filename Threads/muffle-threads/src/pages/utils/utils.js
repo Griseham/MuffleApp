@@ -13,7 +13,7 @@ export function hashString(str) {
       hash = author.charCodeAt(i) + ((hash << 5) - hash);
     }
     const mod = Math.abs(hash) % 200;
-    return `/assets/image${mod + 1}.png`;
+    return `/threads/assets/image${mod + 1}.png`;
   }
   
   export function removeLinks(text) {
@@ -27,7 +27,7 @@ export function hashString(str) {
 export function getAvatarSrc(post) {
     const idStr = post.id.toString();
     const num = hashString(idStr);
-    return `/assets/image${(num % 200) + 1}.png`;
+    return `/threads/assets/image${(num % 200) + 1}.png`;
   }
   
   

@@ -24,7 +24,7 @@ export default function CommentList({ comments, snippetRecs, onPlaySnippet, onSe
             id: snippet.commentId,
             name: snippet.snippetData.attributes.name,
             artistName: snippet.snippetData.attributes.artistName,
-            artwork: snippet.artistImage || "/assets/default-artist.png",
+            artwork: snippet.artistImage || "/threads/assets/default-artist.png",
             previewUrl: snippet.snippetData.attributes.previews?.[0]?.url || null,
           };
         }

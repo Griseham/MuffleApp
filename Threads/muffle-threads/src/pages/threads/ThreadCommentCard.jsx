@@ -16,7 +16,7 @@ import InfoIconModal from '../InfoIconModal';
 
 function authorToAvatar(author) {
   if (!author || author === 'You') {
-    return '/assets/user.png';
+    return '/threads/assets/user.png';
   }
   let hash = 0;
   for (let i = 0; i < author.length; i++) {
