@@ -146,13 +146,22 @@ const handleSongFromWidget = (song) => {
       
       if (result.success && result.data) {
         const song = result.data;
-        console.log(`✅ Got song "${song.attributes.name}" for ${artist.name}`);
+        console.log(`✅ Got Apple Music song "${song.attributes.name}" for ${artist.name}`);
         
-        // Handle Apple Music artwork URL with proper dimensions
-        let artworkUrl = artist.image;
+        // Always prioritize Apple Music artwork URL over artist image
+        let artworkUrl = '';
         if (song.attributes.artwork?.url) {
+          // Apple Music artwork URLs use {w} and {h} placeholders
           artworkUrl = song.attributes.artwork.url.replace('{w}', '300').replace('{h}', '300');
+          console.log(`🎨 Apple Music artwork: ${artworkUrl}`);
+        } else {
+          // Fallback to artist image if no song artwork
+          artworkUrl = artist.image;
+          console.log(`🎨 Fallback to artist image: ${artworkUrl}`);
         }
+        
+        const previewUrl = song.attributes.previews?.[0]?.url || '';
+        console.log(`🎵 Apple Music preview URL: ${previewUrl}`);
         
         return {
           id: `${artist.id || artist.name}-${Date.now()}-${Math.random()}`,
@@ -160,7 +169,7 @@ const handleSongFromWidget = (song) => {
           artist: song.attributes.artistName,
           album: song.attributes.albumName || '',
           artworkUrl: artworkUrl,
-          previewUrl: song.attributes.previews?.[0]?.url || '',
+          previewUrl: previewUrl,
           sourceArtist: artist,
           isFromRoomArtist: artist.isRoomArtist || false,
           isFromWidget: false,
