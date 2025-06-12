@@ -46,6 +46,12 @@ app.get('/health', (req, res) => {
   res.sendStatus(200);
 });
 
+// Serve the built React app (including its /assets folder) at the root
+app.use(express.static(roomsBuild));
+
+
+
+
 // Root route - serve investor portal
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
