@@ -132,12 +132,12 @@ const MusicHome = () => {
     const artists = selectedGenres.flatMap(genre => {
       const artistCount = 2 + Math.floor((seed + genre.name.length) % 2);
       return Array.from({ length: artistCount }, (_, i) => {
-        const artistId = `artist-${genre.name.toLowerCase()}-${i}-${seed % 200}`;
+        const artistId = `artist-${genre.name.toLowerCase()}-${i}-${seed % 100}`;
         return {
           id: artistId,
           name: `${genre.name} Artist ${i + 1}`,
           genre: genre.name,
-          imageUrl: `/assets/image${Math.abs(artistId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % 200) + 1}.png`
+          imageUrl: `/threads/assets/image${Math.abs(artistId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % 100) + 1}.png`
         };
       });
     });
@@ -210,7 +210,7 @@ const MusicHome = () => {
       } else {
         // Fallback: fetch if background fetch somehow failed
         console.log("No background posts available, fetching fresh...");
-        const response = await fetch("${import.meta.env.VITE_API_BASE_URL}/diverse-posts");
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/diverse-posts`);
         
         if (response.ok) {
           const result = await response.json();
@@ -255,7 +255,7 @@ const MusicHome = () => {
       console.log("Refreshing cached posts");
       
       try {
-        const response = await fetch("${import.meta.env.VITE_API_BASE_URL}/cached-posts");
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/cached-posts`);
         
         if (response.ok) {
           const result = await response.json();
@@ -291,7 +291,7 @@ const MusicHome = () => {
         const examplePost = createExamplePost();
         
         // Load cached posts
-        const response = await fetch("${import.meta.env.VITE_API_BASE_URL}/cached-posts");
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/cached-posts`);
         
         if (response.ok) {
           const result = await response.json();
@@ -346,8 +346,8 @@ const MusicHome = () => {
           
           // Fetch multiple API calls for maximum diversity
           const [diverseResponse, refreshResponse] = await Promise.all([
-            fetch("${import.meta.env.VITE_API_BASE_URL}/diverse-posts"),
-            fetch("${import.meta.env.VITE_API_BASE_URL}/refresh")
+            fetch(`${import.meta.env.VITE_API_BASE_URL}/diverse-posts`),
+            fetch(`${import.meta.env.VITE_API_BASE_URL}/refresh`)
           ]);
           
           const allFetchedPosts = [];
