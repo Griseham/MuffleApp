@@ -53,14 +53,14 @@ const fetchCachedPostData = async (postId) => {
             query: snippet.query,
             name: snippet.songName,
             artistName: snippet.artistName,
-            artwork: snippet.artworkUrl || `/threads/assets/image${Math.floor(Math.random() * 199) + 1}.png`,
+            artwork: snippet.artworkUrl || `/threads/assets/image${Math.floor(Math.random() * 100) + 1}.png`,
             previewUrl: snippet.previewUrl || `/backend/public/HeartShapedBox.mp3`,
             snippetData: {
               attributes: {
                 name: snippet.songName,
                 artistName: snippet.artistName,
                 previews: [{ url: snippet.previewUrl || `/backend/public/HeartShapedBox.mp3` }],
-                artwork: { url: snippet.artworkUrl || `/threads/assets/image${Math.floor(Math.random() * 199) + 1}.png` },
+                artwork: { url: snippet.artworkUrl || `/threads/assets/image${Math.floor(Math.random() * 100) + 1}.png` },
                 albumName: snippet.albumName || '',
                 releaseDate: snippet.releaseDate || '',
                 durationInMillis: snippet.duration || 0
@@ -68,7 +68,7 @@ const fetchCachedPostData = async (postId) => {
             },
             author: snippetAuthor,
             timestamp: Date.now(),
-            artistImage: snippet.artworkUrl || `/threads/assets/image${Math.floor(Math.random() * 199) + 1}.png`,
+            artistImage: snippet.artworkUrl || `/threads/assets/image${Math.floor(Math.random() * 100) + 1}.png`,
             snippetAuthorAvatar: authorToAvatar(snippetAuthor),
             userRating: null,
             avgRating: Math.floor(Math.random() * 50) + 50,
@@ -703,13 +703,13 @@ useEffect(() => {
             name: "Bohemian Rhapsody",
             artistName: "Queen",
             previews: [{ url: `/backend/public/HeartShapedBox.mp3` }],
-            artwork: { url: `/assets/image123.png` }
+            artwork: { url: `/threads/assets/image23.png` }
           }
         },
         author: "MusicLover123",
         timestamp: Date.now() / 1000 - 86400,
         artistName: "Queen",
-        artistImage: `/assets/image123.png`,
+        artistImage: `/threads/assets/image23.png`,
         previewUrl: `/backend/public/HeartShapedBox.mp3`,
         snippetAuthorAvatar: authorToAvatar("MusicLover123")
       }
@@ -750,7 +750,7 @@ useEffect(() => {
               query: snippet.query,
               name: snippet.songName,
               artistName: snippet.artistName,
-              artwork: snippet.artworkUrl || `/assets/image${Math.floor(Math.random() * 199) + 1}.png`,
+              artwork: snippet.artworkUrl || `/threads/assets/image${Math.floor(Math.random() * 100) + 1}.png`,
               previewUrl: snippet.previewUrl || `/backend/public/HeartShapedBox.mp3`,
               snippetData: {
                 attributes: {
@@ -992,7 +992,7 @@ useEffect(() => {
           author: "MusicFan456",
           timestamp: Date.now() / 1000 - 43200,
           artistName: "The Weeknd",
-          artistImage: `/assets/image456.png`,
+          artistImage: `/threads/assets/image56.png`,
           previewUrl: `/backend/public/HeartShapedBox.mp3`,
           snippetAuthorAvatar: authorToAvatar("MusicFan456")
         }
