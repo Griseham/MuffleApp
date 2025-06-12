@@ -16,9 +16,12 @@ registerRoomsRoutes(app);
 
 // Register Threads routes asynchronously
 registerThreadsRoutes(app).then(() => {
-  // Serve static files from React builds
-  app.use('/rooms', express.static(path.join(__dirname, 'Rooms/Mufl/build')));
-  app.use('/threads', express.static(path.join(__dirname, 'Threads/muffle-threads/dist')));
+  // Serve static files from React builds with proper asset routing
+  const roomsBuild = path.join(__dirname, 'Rooms/Mufl/build');
+  const threadsBuild = path.join(__dirname, 'Threads/muffle-threads/dist');
+  
+  app.use('/rooms', express.static(roomsBuild));
+  app.use('/threads', express.static(threadsBuild));
 
   // Health check route
   app.get('/health', (req, res) => {
@@ -41,11 +44,11 @@ registerThreadsRoutes(app).then(() => {
 
   // Serve React apps for SPA routing
   app.get('/rooms/*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'Rooms/Mufl/build', 'index.html'));
+    res.sendFile(path.join(roomsBuild, 'index.html'));
   });
 
   app.get('/threads/*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'Threads/muffle-threads/dist', 'index.html'));
+    res.sendFile(path.join(threadsBuild, 'index.html'));
   });
 
   const PORT = process.env.PORT || 3000;
