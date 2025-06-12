@@ -9,7 +9,7 @@ import ThreadCommentCard from './ThreadCommentCard';
 import ThreadCommentComposer from './ThreadCommentComposer';
 import { GraphSection } from './GraphComponents';
 import useThreadData from "./useThreadData";
-import { getAvatarForUser } from "../utils/avatarService";
+import { getAvatarForUser } from '../../utils/avatarService';
 import { FiArrowLeft } from "react-icons/fi";
 import ThreadDetailStyles from "./ThreadDetailStyles";
 import './../../styles/threadDetailStyles.css';
