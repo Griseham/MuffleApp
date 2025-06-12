@@ -95,7 +95,7 @@ const Widget = ({ selectedArtists = [], queuedSongs = [], setWidgetSelectedArtis
     try {
       
       // Call the dedicated artist songs endpoint
-      const response = await fetch(`${API_BASE}/apple-music/artist-songs`, {
+      const response = await fetch(`${API_BASE}/api/apple-music/artist-songs`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -176,7 +176,7 @@ const Widget = ({ selectedArtists = [], queuedSongs = [], setWidgetSelectedArtis
     try {
 
       const res = await fetch(
-        `${API_BASE}/apple-music/search`,
+        `${API_BASE}/api/apple-music/search`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -239,7 +239,7 @@ const Widget = ({ selectedArtists = [], queuedSongs = [], setWidgetSelectedArtis
     
     try {
       const res = await fetch(
-        `${API_BASE}/apple-music/artist-search`,
+        `${API_BASE}/api/apple-music/artist-search`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

@@ -137,7 +137,7 @@ const handleSongFromWidget = (song) => {
     try {
       console.log(`🎤 Quick fetching song for: ${artist.name}`);
       
-      const response = await fetch(`${API_BASE_URL}/apple-music/artist-songs`, {
+      const response = await fetch(`${API_BASE_URL}/api/apple-music/artist-songs`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ artistName: artist.name })
@@ -443,7 +443,7 @@ const handleSongFromWidget = (song) => {
         console.log('🔍 Not enough room artists with images, fetching from Apple Music...');
         
         try {
-          const response = await fetch(`${API_BASE_URL}/apple-music/random-genre-artists?count=20`);
+          const response = await fetch(`${API_BASE_URL}/api/apple-music/random-genre-artists?count=20`);
           if (response.ok) {
             const data = await response.json();
             const appleArtists = data.artists || [];
@@ -481,7 +481,7 @@ const handleSongFromWidget = (song) => {
 
         try {
           // Fetch similar artists for this batch using Last.fm WITH FULL URL
-          const response = await fetch(`${API_BASE_URL}/lastfm/similar-artists`, {
+          const response = await fetch(`${API_BASE_URL}/api/lastfm/similar-artists`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ selectedArtists: batch.map(a => a.name) })
@@ -495,7 +495,7 @@ const handleSongFromWidget = (song) => {
 
             // Get images for similar artists using Spotify WITH FULL URL
             if (similarArtists.length > 0) {
-              const imageResponse = await fetch(`${API_BASE_URL}/spotify/fetch-images`, {
+              const imageResponse = await fetch(`${API_BASE_URL}/api/spotify/fetch-images`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ artistNames: similarArtists.map(a => a.name) })
@@ -570,7 +570,7 @@ const handleSongFromWidget = (song) => {
         
         try {
           const needed = TARGET_TOTAL_ARTISTS - validFinalArtists.length;
-          const response = await fetch(`${API_BASE_URL}/apple-music/random-genre-artists?count=${needed + 10}`);
+          const response = await fetch(`${API_BASE_URL}/api/apple-music/random-genre-artists?count=${needed + 10}`);
           
           if (response.ok) {
             const data = await response.json();

@@ -99,7 +99,7 @@ const generateRandomStationName = () => {
 const generateTrendingRooms = async (count = 8) => {
   try {
     // Fetch popular artists from Spotify (using pop genre as trending)
-    const res = await axios.get('/spotify/artists', { 
+    const res = await axios.get('/api/spotify/artists', { 
       params: { 
         genre: 'pop',
         limit: count * 6 // Get enough artists to fill multiple rooms with 6 each

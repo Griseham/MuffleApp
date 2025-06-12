@@ -151,12 +151,21 @@ const fetchImagesFor = async (artistNames) => {
 
         const artist = response.data.artists?.items[0];
         if (artist) {
-          artists.push({
-            id: artist.id,
-            name: artist.name,
-            image: artist.images[0]?.url || 'fallback.jpg',
-            genres: artist.genres || [],
-          });
+          // Find the best quality image
+          let imageUrl = null;
+          if (artist.images && artist.images.length > 0) {
+            const preferredImage = artist.images.find(img => img.height === 640 && img.width === 640);
+            imageUrl = preferredImage ? preferredImage.url : artist.images[0].url;
+          }
+          
+          if (imageUrl) {
+            artists.push({
+              id: artist.id,
+              name: artist.name,
+              image: imageUrl,
+              genres: artist.genres || [],
+            });
+          }
         }
       } catch (artistError) {
         console.error(`Failed to fetch image for ${name}:`, artistError.message);
@@ -393,6 +402,132 @@ unifiedRouter.get('/apple-music/search-artists', async (req, res) => {
     } else {
       return res.status(500).json({ error: 'Failed to search for artists', message: error.message });
     }
+  }
+});
+
+unifiedRouter.get('/apple-music/random-genre-artists', async (req, res) => {
+  const { count = 50 } = req.query;
+  
+  try {
+    // Generate random genre artists using mock data (since we don't have real Apple Music random endpoint)
+    const genres = ['pop', 'rock', 'hip-hop', 'electronic', 'indie', 'jazz', 'country'];
+    const randomGenre = genres[Math.floor(Math.random() * genres.length)];
+    
+    // Use our existing Spotify endpoint to get artists by genre
+    const artists = await getPopArtists(randomGenre);
+    
+    // Shuffle and limit the results
+    const shuffled = artists.sort(() => 0.5 - Math.random());
+    const limited = shuffled.slice(0, parseInt(count));
+    
+    res.json(limited);
+  } catch (error) {
+    res.status(500).json({ 
+      error: 'Failed to fetch random genre artists',
+      message: error.message 
+    });
+  }
+});
+
+// Apple Music artist songs endpoint for Widget and PlayingScreen
+unifiedRouter.post('/apple-music/artist-songs', async (req, res) => {
+  const { artistName } = req.body;
+  
+  if (!artistName) {
+    return res.status(400).json({ error: 'Artist name is required' });
+  }
+  
+  try {
+    // Mock song data for the artist
+    const mockSongs = [
+      {
+        id: `song_${Date.now()}_1`,
+        name: `${artistName} - Song 1`,
+        artistName: artistName,
+        albumName: `${artistName} Album`,
+        artworkUrl: `https://via.placeholder.com/300x300/1a1a1a/ffffff?text=${encodeURIComponent(artistName)}`,
+        previewUrl: null,
+        duration: Math.floor(Math.random() * 180000) + 120000
+      },
+      {
+        id: `song_${Date.now()}_2`,
+        name: `${artistName} - Song 2`,
+        artistName: artistName,
+        albumName: `${artistName} Album`,
+        artworkUrl: `https://via.placeholder.com/300x300/1a1a1a/ffffff?text=${encodeURIComponent(artistName)}`,
+        previewUrl: null,
+        duration: Math.floor(Math.random() * 180000) + 120000
+      }
+    ];
+    
+    res.json({ songs: mockSongs });
+  } catch (error) {
+    res.status(500).json({ 
+      error: 'Failed to fetch artist songs',
+      message: error.message 
+    });
+  }
+});
+
+// Apple Music general search endpoint
+unifiedRouter.post('/apple-music/search', async (req, res) => {
+  const { query } = req.body;
+  
+  if (!query) {
+    return res.status(400).json({ error: 'Search query is required' });
+  }
+  
+  try {
+    // Mock search results
+    const mockResults = [
+      {
+        id: `search_${Date.now()}_1`,
+        name: `${query} - Result 1`,
+        artistName: 'Various Artists',
+        albumName: 'Search Results Album',
+        artworkUrl: `https://via.placeholder.com/300x300/1a1a1a/ffffff?text=${encodeURIComponent(query)}`,
+        previewUrl: null,
+        duration: Math.floor(Math.random() * 180000) + 120000
+      }
+    ];
+    
+    res.json({ results: mockResults });
+  } catch (error) {
+    res.status(500).json({ 
+      error: 'Failed to search Apple Music',
+      message: error.message 
+    });
+  }
+});
+
+// Apple Music artist search endpoint
+unifiedRouter.post('/apple-music/artist-search', async (req, res) => {
+  const { query, artistName } = req.body;
+  
+  if (!query || !artistName) {
+    return res.status(400).json({ error: 'Query and artist name are required' });
+  }
+  
+  try {
+    // Mock artist-specific search results
+    const mockResults = [
+      {
+        id: `artist_search_${Date.now()}_1`,
+        name: `${query} by ${artistName}`,
+        artistName: artistName,
+        albumName: `${artistName} Collection`,
+        artworkUrl: `https://via.placeholder.com/300x300/1a1a1a/ffffff?text=${encodeURIComponent(artistName)}`,
+        previewUrl: null,
+        duration: Math.floor(Math.random() * 180000) + 120000
+      }
+    ];
+    
+    res.json({ results: mockResults });
+  } catch (error) {
+    res.status(500).json({ 
+      error: 'Failed to search artist on Apple Music',
+      message: error.message 
+    });
   }
 });
 
