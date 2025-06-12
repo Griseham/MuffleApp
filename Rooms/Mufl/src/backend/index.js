@@ -1,28 +1,19 @@
-require('dotenv').config({ path: './.env' });
-const axios = require('axios');
-const express = require('express');
-const cors = require('cors');
-const { getPopArtists, getArtistDetails, fetchImagesFor, getAccessToken } = require('./spotifyService');
-const { fetchSimilarArtists } = require('./lastFmService');
-const { getSnippetsForArtists, searchSongs, resolveAppleMusicArtistIds } = require('./appleMusicService');
-const appleMusicService = require('./appleMusicService');
-
+import dotenv from 'dotenv';
+dotenv.config({ path: './.env' });
+import axios from 'axios';
 import express from 'express';
-import { someRoomsRouteHandler } from './roomsController.js'; // your existing route handlers
+import cors from 'cors';
+import { getPopArtists, getArtistDetails, fetchImagesFor, getAccessToken } from './spotifyService.js';
+import { fetchSimilarArtists } from './lastFmService.js';
+import { getSnippetsForArtists, searchSongs, resolveAppleMusicArtistIds } from './appleMusicService.js';
+import appleMusicService from './appleMusicService.js';
 
 const roomsRouter = express.Router();
-
-roomsRouter.get('/some-endpoint', someRoomsRouteHandler); // define all routes here
-
-export default function registerRoomsRoutes(app) {
-  app.use('/api/rooms', roomsRouter);
-}
-
 
 //======================//
 // Last.fm Similar Artists
 //======================//
-app.post('/lastfm/similar-artists', async (req, res) => {
+roomsRouter.post('/lastfm/similar-artists', async (req, res) => {
     const { selectedArtists } = req.body;
 
     if (!selectedArtists || selectedArtists.length === 0) {
@@ -38,7 +29,7 @@ app.post('/lastfm/similar-artists', async (req, res) => {
     }
 });
 
-app.get('/spotify/artists', async (req, res) => {
+roomsRouter.get('/spotify/artists', async (req, res) => {
     const { genre } = req.query;
     if (!genre) {
         return res.status(400).json({ error: 'Genre parameter is missing' });
@@ -52,7 +43,7 @@ app.get('/spotify/artists', async (req, res) => {
     }
 });
 
-app.get('/apple-music/tracks', async (req, res) => {
+roomsRouter.get('/apple-music/tracks', async (req, res) => {
     const { artistName } = req.query;
   
     if (!artistName) {
@@ -75,7 +66,7 @@ app.get('/apple-music/tracks', async (req, res) => {
 //======================//
 // Spotify Artist Details
 //======================//
-app.post('/spotify/artists-data', async (req, res) => {
+roomsRouter.post('/spotify/artists-data', async (req, res) => {
     const { artistNames } = req.body;
 
     if (!artistNames || artistNames.length === 0) {
@@ -94,7 +85,7 @@ app.post('/spotify/artists-data', async (req, res) => {
 //======================//
 // Spotify Artist Images
 //======================//
-app.post('/spotify/fetch-images', async (req, res) => {
+roomsRouter.post('/spotify/fetch-images', async (req, res) => {
     const { artistNames } = req.body;
 
     if (!artistNames || artistNames.length === 0) {
@@ -113,7 +104,7 @@ app.post('/spotify/fetch-images', async (req, res) => {
 //======================//
 // Apple Music Snippets
 //======================//
-app.post('/apple-music/snippets', async (req, res) => {
+roomsRouter.post('/apple-music/snippets', async (req, res) => {
     const { artistNames } = req.body;
 
     if (!artistNames || artistNames.length === 0) {
@@ -139,7 +130,7 @@ app.post('/apple-music/snippets', async (req, res) => {
 //======================//
 // Apple Music Random Genre Artists - IMAGES ONLY VERSION
 //======================//
-app.get('/apple-music/random-genre-artists', async (req, res) => {
+roomsRouter.get('/apple-music/random-genre-artists', async (req, res) => {
   const { count = 50 } = req.query;
   
   // Helper function to validate image URLs
@@ -339,7 +330,7 @@ app.get('/apple-music/random-genre-artists', async (req, res) => {
 //======================//
 // Spotify Artist Search
 //======================//
-app.get('/spotify/search-artists', async (req, res) => {
+roomsRouter.get('/spotify/search-artists', async (req, res) => {
   const { query } = req.query;
   
   if (!query) {
@@ -384,7 +375,7 @@ app.get('/spotify/search-artists', async (req, res) => {
 //======================//
 // Optimized Apple Music Artist Search endpoint
 
-app.get('/apple-music/search-artists', async (req, res) => {
+roomsRouter.get('/apple-music/search-artists', async (req, res) => {
     const { query } = req.query;
     
     // Input validation
@@ -457,7 +448,7 @@ app.get('/apple-music/search-artists', async (req, res) => {
     }
   });
 // In your Express server
-app.post('/apple-music/search', async (req, res) => {
+roomsRouter.post('/apple-music/search', async (req, res) => {
     const { searchQuery } = req.body;
     if (!searchQuery) {
       return res.status(400).json({ error: 'No search query' });
@@ -479,7 +470,7 @@ app.post('/apple-music/search', async (req, res) => {
 //======================//
 // Apple Music Artist Popular Songs - Dedicated Endpoint
 //======================//
-app.post('/apple-music/artist-songs', async (req, res) => {
+roomsRouter.post('/apple-music/artist-songs', async (req, res) => {
   const { artistName } = req.body;
   console.log('[API] /artist-songs for', artistName);
   if (!artistName) {
@@ -657,7 +648,7 @@ app.post('/apple-music/artist-songs', async (req, res) => {
 // ======================//
 // Apple Music Artist-only Search
 // ======================//
-app.post('/apple-music/artist-search', async (req, res) => {
+roomsRouter.post('/apple-music/artist-search', async (req, res) => {
   const { searchQuery, artistName } = req.body;
   if (!searchQuery || !artistName) {
     return res.status(400).json({ error: 'Missing query or artist' });
@@ -684,7 +675,7 @@ app.post('/apple-music/artist-search', async (req, res) => {
 //======================//
 
 // NEW: Batch fetch similar artists with rate limiting
-app.post('/lastfm/batch-similar-artists', async (req, res) => {
+roomsRouter.post('/lastfm/batch-similar-artists', async (req, res) => {
   const { artistBatches } = req.body; // Array of artist name arrays
   
   if (!artistBatches || artistBatches.length === 0) {
@@ -751,7 +742,7 @@ app.post('/lastfm/batch-similar-artists', async (req, res) => {
 //======================//
 
 // NEW: Batch fetch images with chunking to avoid overwhelming Spotify API
-app.post('/spotify/batch-fetch-images', async (req, res) => {
+roomsRouter.post('/spotify/batch-fetch-images', async (req, res) => {
   const { artistNames, chunkSize = 10 } = req.body;
   
   if (!artistNames || artistNames.length === 0) {
@@ -816,7 +807,7 @@ app.post('/spotify/batch-fetch-images', async (req, res) => {
 //======================//
 
 // NEW: Generate complete artist pool for a room
-app.post('/rooms/generate-artist-pool', async (req, res) => {
+roomsRouter.post('/rooms/generate-artist-pool', async (req, res) => {
   const { roomArtists, maxRelatedArtists = 50 } = req.body;
   
   if (!roomArtists || roomArtists.length === 0) {
@@ -911,7 +902,7 @@ app.post('/rooms/generate-artist-pool', async (req, res) => {
 //======================//
 
 // NEW: Get similar artists for a single artist (lightweight for real-time use)
-app.get('/lastfm/similar/:artistName', async (req, res) => {
+roomsRouter.get('/lastfm/similar/:artistName', async (req, res) => {
   const { artistName } = req.params;
   const { limit = 10 } = req.query;
   
@@ -979,7 +970,7 @@ app.get('/lastfm/similar/:artistName', async (req, res) => {
 //======================//
 
 // NEW: Refresh artist pool with new random related artists
-app.post('/rooms/refresh-artist-pool', async (req, res) => {
+roomsRouter.post('/rooms/refresh-artist-pool', async (req, res) => {
   const { currentPool, roomArtists, refreshCount = 5 } = req.body;
   
   if (!currentPool || currentPool.length === 0) {
@@ -1045,7 +1036,7 @@ app.post('/rooms/refresh-artist-pool', async (req, res) => {
 //======================//
 
 // NEW: Check API availability and rate limits
-app.get('/api/health-check', async (req, res) => {
+roomsRouter.get('/api/health-check', async (req, res) => {
   const healthStatus = {
       timestamp: new Date().toISOString(),
       services: {}
@@ -1121,9 +1112,8 @@ app.get('/api/health-check', async (req, res) => {
 // const { fetchImagesFor } = require('./spotifyService');
   
 //======================//
-// Start Server
+// Export Route Registration Function
 //======================//
 export default function registerRoomsRoutes(app) {
-  // Put all your route definitions here — e.g.:
   app.use('/api/rooms', roomsRouter);
-}
+};
