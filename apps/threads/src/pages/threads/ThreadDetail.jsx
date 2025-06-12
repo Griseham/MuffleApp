@@ -9,7 +9,7 @@ import ThreadCommentCard from './ThreadCommentCard';
 import ThreadCommentComposer from './ThreadCommentComposer';
 import { GraphSection } from './GraphComponents';
 import useThreadData from "./useThreadData";
-import { authorToAvatar, getAvatarSrc } from "../utils/utils";
+import { getAvatarForUser } from "../utils/avatarService";
 import { FiArrowLeft } from "react-icons/fi";
 import ThreadDetailStyles from "./ThreadDetailStyles";
 import './../../styles/threadDetailStyles.css';
@@ -20,6 +20,11 @@ import {
   formatSnippetData, 
   processScatterData 
 } from './threadHelpers';
+
+
+/** Consistent avatar per author string */
+
+
 
 // Theme color function - news threads use same color as regular threads in detail view
 const getThemeColor = (postType) => {
@@ -137,7 +142,7 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
           snippetId,
           userRating: snippet.userRating ?? 0,
           avgRating: snippet.avgRating ?? 0,
-          userAvatar: authorToAvatar(commentAuthor)
+          userAvatar: getAvatarForUser(commentAuthor)
         };
       })
       .slice(0, 6);
@@ -278,7 +283,7 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
             marginBottom: "16px",
           }}>
             <img
-              src={getAvatarSrc(post)}
+              src={getAvatarForUser(post.author)}
               alt="User avatar"
               style={{
                 width: "48px",

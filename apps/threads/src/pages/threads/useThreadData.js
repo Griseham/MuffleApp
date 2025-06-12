@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { getAvatarForUser } from '../utils/avatarService';
+import { getAvatarForUser } from '../../utils/avatarService';
 
 export default function useThreadData(postId, postData = null) {
   const [post, setPost] = useState(null);

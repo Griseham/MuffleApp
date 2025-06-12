@@ -17,11 +17,22 @@ import ThreadCommentCard from './ThreadCommentCard';
 import ThreadCommentComposer from './ThreadCommentComposer';
 
 // Import utilities and styles
-import { authorToAvatar, getAvatarSrc } from "../utils/utils";
-import { getAvatarForUser } from '../utils/avatarService';
 import { FiArrowLeft } from "react-icons/fi";
 import ThreadDetailStyles from "./ThreadDetailStyles";
 import './../../styles/threadDetailStyles.css';
+
+
+import { getAvatarForUser } from '../../utils/avatarService';
+
+/** Consistent avatar per author string */
+function authorToAvatar(author) {
+  // fall back to a fixed key for “You” or if author is undefined/null
+  const key = !author || author === 'You' ? 'you' : author;
+  return getAvatarForUser(key);
+}
+
+
+
 
 // Parameter-specific color scheme
 const PARAMETER_COLORS = {
@@ -667,7 +678,7 @@ export default function ParameterThreadDetail({ postId, onBack, onSelectUser }) 
             marginBottom: "16px",
           }}>
             <img
-              src={getAvatarSrc(post)}
+              src={getAvatarForUser(post)}
               alt="User avatar"
               style={{
                 width: "48px",
