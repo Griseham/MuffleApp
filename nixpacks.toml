@@ -1,5 +1,17 @@
-[phases.setup]
-nixPkgs = ['nodejs-18_x']
+# nixpacks.toml
+
+[phases.install]
+cmds = [
+  "npm install",
+  "cd Rooms/Mufl && npm install",
+  "cd Threads/muffle-threads && npm install"
+]
+
+[phases.build]
+cmds = [
+  "cd Rooms/Mufl && npm run build",
+  "cd Threads/muffle-threads && npm run build"
+]
 
 [start]
-cmd = "npm start"
+cmd = "node server.js"
