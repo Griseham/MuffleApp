@@ -32,7 +32,7 @@ export const fetchSimilarArtists = async (selectedArtists = [], forceRefresh = f
   const cacheSeedNames = similarArtistsCache.seedArtists.sort().join(',');
   
   if (!forceRefresh && !cacheExpired && seedArtistNames === cacheSeedNames) {
-    console.log('Using cached similar artists');
+    // Using cached similar artists
     return similarArtistsCache.artists;
   }
 
@@ -64,7 +64,7 @@ export const fetchSimilarArtists = async (selectedArtists = [], forceRefresh = f
     
     return similarArtists;
   } catch (error) {
-    console.error('Error fetching similar artists:', error);
+    // Error fetching similar artists
     
     // If the backend API fails, try to get artist data from Spotify directly
     try {
@@ -100,7 +100,7 @@ export const fetchSimilarArtists = async (selectedArtists = [], forceRefresh = f
         return similarArtists;
       }
     } catch (spotifyError) {
-      console.error('Error fetching artist data from Spotify:', spotifyError);
+      // Error fetching artist data from Spotify
     }
     
     // Return cache if available despite error, or empty array

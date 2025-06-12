@@ -196,26 +196,22 @@ const MusicHome = () => {
     setIsLoadingReddit(true);
     try {
       // Always fetch fresh posts from the diverse-posts endpoint
-      console.log("Fetching fresh diverse posts from Reddit...");
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/diverse-posts`);
       
       if (response.ok) {
         const result = await response.json();
         if (result.success && result.data.length > 0) {
-          console.log(`Received ${result.data.length} diverse posts from server`);
           
           // Add fresh posts to main feed, avoiding duplicates
           setPosts(prevPosts => {
             const existingIds = new Set(prevPosts.map(p => p.id));
             const newRedditPosts = result.data.filter(p => !existingIds.has(p.id));
-            console.log(`Adding ${newRedditPosts.length} new posts to feed (${result.data.length - newRedditPosts.length} were duplicates)`);
             
             if (newRedditPosts.length > 0) {
               setRedditPostsLoaded(true); // Only mark as loaded if we actually added posts
               return [...prevPosts, ...newRedditPosts];
             } else {
               // If no new posts were added due to duplicates, try one more time with refresh
-              console.log("No new posts added due to duplicates, will try refresh endpoint");
               return prevPosts;
             }
           });
@@ -227,13 +223,10 @@ const MusicHome = () => {
             return [...prevRedditPosts, ...newForStarfield];
           });
         } else {
-          console.log("No posts received from diverse-posts endpoint");
         }
       } else {
-        console.error("Failed to fetch from diverse-posts endpoint:", response.status);
       }
     } catch (err) {
-      console.error("Error loading Reddit posts:", err);
     } finally {
       setIsLoadingReddit(false);
     }
@@ -252,13 +245,11 @@ const MusicHome = () => {
       allPosts.push(...additionalRedditPosts);
     }
     
-    console.log(`Starfield has ${allPosts.length} posts (${cachedPostsOnly.length} cached + ${allPosts.length - cachedPostsOnly.length} reddit)`);
     return allPosts;
   }, [posts, redditPosts]);
 
   useEffect(() => {
     const handleCachedPostsRefresh = async () => {
-      console.log("Refreshing cached posts");
       
       try {
         const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/cached-posts`);
@@ -277,7 +268,6 @@ const MusicHome = () => {
           }
         }
       } catch (err) {
-        console.error("Failed to refresh cached posts:", err);
       }
     };
 
@@ -318,20 +308,16 @@ const MusicHome = () => {
             const shuffledPosts = shuffleArray(cachedData);
             setPosts([examplePost, ...shuffledPosts]);
             
-            console.log(`Loaded ${cachedData.length} cached posts`);
           } else {
             // Only show example post if no cached posts
             setPosts([examplePost]);
-            console.log("No cached posts found, showing only example post");
           }
         } else {
           // Fallback to example post on error
           setPosts([examplePost]);
-          console.error("Failed to fetch cached posts");
         }
         
       } catch (err) {
-        console.error("Error loading cached posts:", err);
         const examplePost = createExamplePost();
         setPosts([examplePost]);
       } finally {
@@ -348,7 +334,6 @@ const MusicHome = () => {
       // Always fetch Reddit posts in background for starfield use
       if (!isLoadingReddit) {
         try {
-          console.log("Background fetching diverse Reddit posts for starfield...");
           
           // Fetch multiple API calls for maximum diversity
           const [diverseResponse, refreshResponse] = await Promise.all([
@@ -376,11 +361,9 @@ const MusicHome = () => {
           }
           
           if (allFetchedPosts.length > 0) {
-            console.log(`Background loaded ${allFetchedPosts.length} diverse Reddit posts for starfield`);
             setRedditPosts(allFetchedPosts);
           }
         } catch (err) {
-          console.log("Background fetch failed:", err);
         }
       }
     };
@@ -418,7 +401,6 @@ const MusicHome = () => {
             post={selectedThread}
             onBack={() => setSelectedThread(null)}
             onUserListUpdate={(users) => {
-              console.log("Group chat users updated:", users);
             }}
           />
         ) : (

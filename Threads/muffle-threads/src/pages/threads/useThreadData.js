@@ -30,10 +30,8 @@ export default function useThreadData(postId, postData = null) {
 
 const fetchCachedPostData = async (postId) => {
   try {
-    console.log(`ThreadDetail: Fetching cached post data for ID: ${postId}`);
     const resp = await fetch(`${import.meta.env.VITE_API_BASE_URL}/cached-posts/${postId}`);
     if (!resp.ok) {
-      console.log(`ThreadDetail: Cached post not found (${resp.status}): ${postId}`);
       return false;
     }
     
@@ -43,7 +41,7 @@ const fetchCachedPostData = async (postId) => {
       setComments(data.data.comments || []);
       
       if (data.data.snippets?.length > 0) {
-        console.log("Processing snippets from cached data:", data.data.snippets);
+        // Processing snippets from cached data
         const snippetsWithAvatars = data.data.snippets.map(snippet => {
           // Find the corresponding comment to get the author
           const correspondingComment = data.data.comments?.find(c => c.id === snippet.commentId);
@@ -78,7 +76,7 @@ const fetchCachedPostData = async (postId) => {
             didRate: false
           };
         });
-        console.log("Processed snippets:", snippetsWithAvatars);
+        // Processed snippets
         setSnippetRecs(snippetsWithAvatars);
       }
       setUsedCache(true);
@@ -92,14 +90,13 @@ const fetchCachedPostData = async (postId) => {
 
 useEffect(() => {
   async function loadPost() {
-    console.log("ThreadDetail: Loading post with ID:", postId);
-    console.log("ThreadDetail: PostData provided:", !!postData);
+    // Loading post with ID
     setIsLoading(true);
     setError(null);
     
     // If postData is provided, use it directly
     if (postData) {
-      console.log("ThreadDetail: Using provided postData");
+      // Using provided postData
       setPost(ensureValidDate(postData));
       setUsedCache(false);
       setIsLoading(false);
@@ -109,11 +106,11 @@ useEffect(() => {
     try {
       let cachedResult = await fetchCachedPostData(postId);
       if (cachedResult) {
-        console.log("ThreadDetail: Successfully loaded cached post data");
+        // Successfully loaded cached post data
         setIsLoading(false);
         return;
       }
-      console.log("ThreadDetail: No cached data found, trying other sources...");
+      // No cached data found, trying other sources
       
       try {
         const directCacheResp = await fetch(`${import.meta.env.VITE_API_BASE_URL}/cached-posts/${postId}`);
@@ -196,7 +193,7 @@ useEffect(() => {
       } catch (error) {}
       
       try {
-        console.log("ThreadDetail: Trying diverse-posts API...");
+        // Trying diverse-posts API
         const diverseResp = await fetch(`${import.meta.env.VITE_API_BASE_URL}/diverse-posts`);
         
         if (diverseResp.ok) {
@@ -205,7 +202,7 @@ useEffect(() => {
             const diversePost = diverseData.data.find(p => p.id === postId);
             
             if (diversePost) {
-              console.log("ThreadDetail: Found post in diverse-posts API");
+              // Found post in diverse-posts API
               setPost(ensureValidDate({
                 ...diversePost,
                 ups: diversePost.ups || (postId.charCodeAt(0) % 10) * 100 + 50,
@@ -223,7 +220,7 @@ useEffect(() => {
           }
         }
       } catch (error) {
-        console.log("ThreadDetail: Error with diverse-posts API:", error);
+        // Error with diverse-posts API
       }
       
       try {
@@ -251,7 +248,7 @@ useEffect(() => {
         }
       } catch (error) {}
       
-      console.log("ThreadDetail: All post loading attempts failed, creating placeholder post");
+      // All post loading attempts failed, creating placeholder post
       const placeholderPost = {
         id: postId,
         title: "Post currently unavailable",
@@ -433,14 +430,14 @@ useEffect(() => {
     if (!commentsToProcess || commentsToProcess.length === 0) return;
     
     const isParameterThread = post?.postType === 'parameter';
-    console.log(`ThreadDetail: Generating snippets from comments using Apple Music API ${isParameterThread ? '(Parameter Thread)' : ''}`);
+    // Generating snippets from comments using Apple Music API
     
     const newSnippets = [];
     let processed = 0;
     // For parameter threads, process all comments since they're more likely to have songs
     const maxComments = isParameterThread ? commentsToProcess.length : 15;
     
-    console.log(`ThreadDetail: Processing up to ${maxComments} comments for snippets`);
+    // Processing comments for snippets
     
     for (const comment of commentsToProcess.slice(0, maxComments)) {
       if (!comment.body || comment.author === '[deleted]') continue;
@@ -448,7 +445,7 @@ useEffect(() => {
       const songQueries = detectSongInComment(comment.body);
       if (!songQueries) continue;
       
-      console.log(`ThreadDetail: Detected potential song in comment by ${comment.author}: "${comment.body.substring(0, 50)}..."`);
+      // Detected potential song in comment
       
       let foundMatch = false;
       
@@ -457,7 +454,7 @@ useEffect(() => {
         if (foundMatch) break;
         
         try {
-          console.log(`ThreadDetail: Searching Apple Music for: "${query}"`);
+          // Searching Apple Music
           
           const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/apple-music-search?query=${encodeURIComponent(query)}`);
           
@@ -498,12 +495,12 @@ useEffect(() => {
               };
               
               newSnippets.push(snippet);
-              console.log(`ThreadDetail: ✓ Found real song: "${song.attributes.name}" by ${song.attributes.artistName}`);
+              // Found real song
               foundMatch = true;
             }
           }
         } catch (error) {
-          console.error(`ThreadDetail: Error searching for "${query}":`, error);
+          // Error searching for query
         }
         
         // Add small delay between requests to be respectful to the API
@@ -514,13 +511,13 @@ useEffect(() => {
       
       // Stop if we have enough snippets
       if (newSnippets.length >= 8) {
-        console.log("ThreadDetail: Reached maximum snippets, stopping search");
+        // Reached maximum snippets, stopping search
         break;
       }
     }
     
     if (newSnippets.length > 0) {
-      console.log(`ThreadDetail: Successfully generated ${newSnippets.length} real snippets from ${processed} comments`);
+      // Successfully generated real snippets from comments
       setSnippetRecs(newSnippets);
       
       // Generate artist list
@@ -537,7 +534,7 @@ useEffect(() => {
       
       setArtistList(uniqueArtists);
     } else {
-      console.log("ThreadDetail: No songs detected in comments, falling back to synthetic snippets");
+      // No songs detected in comments, falling back to synthetic snippets
       // If no songs detected, generate some fallback snippets
       const fallbackSnippets = [
         {
@@ -579,7 +576,7 @@ useEffect(() => {
   const generateAppleMusicSnippets = async () => {
     if (!post) return;
     
-    console.log("ThreadDetail: Generating real Apple Music snippets for Reddit post");
+    // Generating real Apple Music snippets for Reddit post
     
     // Extract potential song/artist mentions from post title and content
     const postText = `${post.title || ''} ${post.selftext || ''}`;
@@ -628,8 +625,6 @@ useEffect(() => {
         }
         usedQueries.add(query);
         
-        console.log(`ThreadDetail: Searching Apple Music for: ${query}`);
-        
         // Search Apple Music API
         const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/apple-music-search?query=${encodeURIComponent(query)}`);
         
@@ -663,12 +658,12 @@ useEffect(() => {
             };
             
             realSnippets.push(snippet);
-            console.log(`ThreadDetail: Found real song: ${song.attributes.name} by ${song.attributes.artistName}`);
+            // Found real song
           } else {
-            console.log(`ThreadDetail: No Apple Music results for: ${query}`);
+            // No Apple Music results for query
           }
         } else {
-          console.log(`ThreadDetail: Apple Music API call failed for: ${query}`);
+          // Apple Music API call failed for query
         }
         
         // Add small delay between requests to be respectful to the API
@@ -690,15 +685,14 @@ useEffect(() => {
         
         setSnippetRecs(realSnippets);
         setArtistList(uniqueRealArtists);
-        console.log(`ThreadDetail: Successfully loaded ${realSnippets.length} real Apple Music snippets`);
+        // Successfully loaded real Apple Music snippets
         return;
       }
     } catch (error) {
-      console.error("ThreadDetail: Error fetching Apple Music snippets:", error);
+      // Error fetching Apple Music snippets
     }
     
     // Fallback to basic snippets if Apple Music fails
-    console.log("ThreadDetail: Falling back to basic snippets");
     const fallbackSnippets = [
       {
         id: `fallback_1_${postId}`,
@@ -746,8 +740,7 @@ useEffect(() => {
         
         // Process cached snippets (including for parameter threads)
         if (cacheData.success && cacheData.data && cacheData.data.snippets && cacheData.data.snippets.length > 0) {
-          console.log(`ThreadDetail: Loading cached snippets for ${post?.postType === 'parameter' ? 'parameter thread' : 'thread'}`);
-          console.log(`ThreadDetail: Found ${cacheData.data.snippets.length} cached snippets`);
+          // Loading cached snippets for thread
           const processedSnippets = cacheData.data.snippets.map(snippet => {
             const snippetAuthor = cacheData.data.comments.find(c => c.id === snippet.commentId)?.author || "UnknownUser";
             
@@ -832,16 +825,16 @@ useEffect(() => {
       }
       
       if (comments.length > 0) {
-        console.log("ThreadDetail: Processing comments for snippets");
+        // Processing comments for snippets
         
         // For API posts, try to generate snippets from comment text using Apple Music API
         if (postData && !postData.hasCachedData) {
-          console.log("ThreadDetail: Using Apple Music API to generate snippets from comment text");
+          // Using Apple Music API to generate snippets from comment text
           await generateSnippetsFromComments(comments);
           return;
         }
         
-        console.log("ThreadDetail: Generating snippets from existing comments");
+        // Generating snippets from existing comments
         const sortedComments = [...comments]
           .sort((a, b) => (b.body?.length || 0) - (a.body?.length || 0))
           .slice(0, Math.min(8, comments.length))
@@ -924,7 +917,7 @@ useEffect(() => {
       }
       
       // Use fallback snippets if no cached data or comments
-      console.log("ThreadDetail: No cached snippets or comments, using fallback generation");
+      // No cached snippets or comments, using fallback generation
       // For API posts, try Apple Music generation; for others, use synthetic snippets
       if (postData && !postData.hasCachedData) {
         generateAppleMusicSnippets();
@@ -1042,27 +1035,17 @@ useEffect(() => {
   const verifySnippetAlbumArt = (snippets) => {
     if (!snippets || snippets.length === 0) return true;
     
-    console.log("ThreadDetail: Verifying album art for snippets...");
+    // Verifying album art for snippets
     
     let hasIssues = false;
     snippets.forEach((snippet, index) => {
       const artworkUrl = snippet.snippetData?.attributes?.artwork?.url || snippet.artistImage;
       
       if (!artworkUrl) {
-        console.warn(`ThreadDetail: Snippet ${index} (${snippet.snippetData?.attributes?.name || snippet.id}) is missing album art`);
+        // Snippet is missing album art
         hasIssues = true;
-      } else if (artworkUrl.includes('/assets/image') && Math.random() < 0.1) {
-        // Occasionally log when we're using fallback images (10% chance)
-        console.log(`ThreadDetail: Snippet "${snippet.snippetData?.attributes?.name}" using fallback artwork: ${artworkUrl}`);
-      } else if (artworkUrl.includes('mzstatic.com') || artworkUrl.includes('apple.com')) {
-        // This is a real Apple Music artwork URL
-        console.log(`ThreadDetail: ✓ Snippet "${snippet.snippetData?.attributes?.name}" has real Apple Music artwork`);
       }
     });
-    
-    if (!hasIssues) {
-      console.log(`ThreadDetail: ✓ All ${snippets.length} snippets have album art`);
-    }
     
     return !hasIssues;
   };

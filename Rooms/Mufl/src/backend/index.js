@@ -23,7 +23,6 @@ roomsRouter.post('/lastfm/similar-artists', async (req, res) => {
         const similarArtists = await fetchSimilarArtists(selectedArtists);
         res.json({ similarArtists });
     } catch (error) {
-        console.error('Error in /lastfm/similar-artists route:', error.message);
         res.status(500).json({ error: 'Failed to fetch similar artists' });
     }
 });
@@ -37,7 +36,6 @@ roomsRouter.get('/spotify/artists', async (req, res) => {
         const artists = await getPopArtists(genre); // Pass genre if the function accepts it
         res.json(artists);
     } catch (error) {
-        console.error('Error in /spotify/artists route:', error.message);
         res.status(500).json({ error: 'Failed to fetch artists' });
     }
 });
@@ -54,7 +52,6 @@ roomsRouter.get('/apple-music/tracks', async (req, res) => {
       const tracks = await fetchAppleMusicTracks(artistName);
       res.json(tracks);
     } catch (error) {
-      console.error('Error fetching Apple Music tracks:', error.message);
       res.status(500).json({ error: 'Failed to fetch tracks' });
     }
   });
@@ -76,7 +73,6 @@ roomsRouter.post('/spotify/artists-data', async (req, res) => {
         const artistData = await getArtistDetails(artistNames);
         res.json({ artists: artistData });
     } catch (error) {
-        console.error('Error in /spotify/artists-data route:', error.message);
         res.status(500).json({ error: 'Failed to fetch artist data' });
     }
 });
@@ -95,7 +91,6 @@ roomsRouter.post('/spotify/fetch-images', async (req, res) => {
         const artistsWithImages = await fetchImagesFor(artistNames);
         res.json({ artists: artistsWithImages });
     } catch (error) {
-        console.error('Error in /spotify/fetch-images route:', error.message);
         res.status(500).json({ error: 'Failed to fetch artist images' });
     }
 });
@@ -116,7 +111,6 @@ roomsRouter.post('/apple-music/snippets', async (req, res) => {
         const snippets = await getSnippetsForArtists(artistIds);
         res.json(snippets);
     } catch (error) {
-        console.error('Error in /apple-music/snippets route:', error.message);
         res.status(500).json({ error: 'Failed to fetch snippets' });
     }
 });
@@ -154,7 +148,6 @@ roomsRouter.get('/apple-music/random-genre-artists', async (req, res) => {
     // Pick a random genre
     const randomGenre = genres[Math.floor(Math.random() * genres.length)];
     
-    console.log(`Fetching ${count} random artists with valid images from genre: ${randomGenre}`);
     
     // Get environment variables
     const APPLE_API_BASE_URL = process.env.REACT_APP_APPLE_API_BASE_URL;
@@ -210,9 +203,7 @@ roomsRouter.get('/apple-music/random-genre-artists', async (req, res) => {
               genres: artist.attributes.genreNames || [randomGenre]
             });
             
-            console.log(`✅ Added ${artist.attributes.name} with valid image`);
           } else {
-            console.log(`❌ Skipped ${artistName} - no valid image available`);
           }
         }
         
@@ -220,7 +211,6 @@ roomsRouter.get('/apple-music/random-genre-artists', async (req, res) => {
         await new Promise(resolve => setTimeout(resolve, 200));
         
       } catch (artistError) {
-        console.error(`Error searching for ${artistName}:`, artistError.message);
         continue;
       }
     }
@@ -268,7 +258,6 @@ roomsRouter.get('/apple-music/random-genre-artists', async (req, res) => {
                 genres: artist.attributes.genreNames || [randomGenre]
               });
               
-              console.log(`✅ Added ${artistName} from search with valid image`);
             }
           }
           
@@ -276,7 +265,6 @@ roomsRouter.get('/apple-music/random-genre-artists', async (req, res) => {
           await new Promise(resolve => setTimeout(resolve, 300));
           
         } catch (queryError) {
-          console.error(`Error with query "${query}":`, queryError.message);
           continue;
         }
       }
@@ -298,13 +286,11 @@ roomsRouter.get('/apple-music/random-genre-artists', async (req, res) => {
     const shuffled = uniqueArtists.sort(() => Math.random() - 0.5);
     const limited = shuffled.slice(0, parseInt(count));
     
-    console.log(`✅ Successfully found ${limited.length} artists with valid images from genre "${randomGenre}"`);
     
     // Verify all returned artists have valid images
     const validArtists = limited.filter(artist => hasValidImageUrl(artist.image));
     
     if (validArtists.length !== limited.length) {
-      console.warn(`⚠️ Filtered out ${limited.length - validArtists.length} artists without valid images`);
     }
     
     res.json({
@@ -315,7 +301,6 @@ roomsRouter.get('/apple-music/random-genre-artists', async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error fetching random genre artists:', error.message);
     
     // Return empty array instead of mock data to ensure no placeholder images
     res.json({
@@ -356,10 +341,8 @@ roomsRouter.get('/spotify/search-artists', async (req, res) => {
       popularity: artist.popularity,
     })) || [];
 
-    console.log(`Search for "${query}" returned ${artists.length} artists`);
     res.json(artists);
   } catch (error) {
-    console.error('Error in /spotify/search-artists route:', error.message);
     res.status(500).json({ 
       error: 'Failed to search for artists',
       message: error.response?.data?.error?.message || error.message
@@ -422,12 +405,10 @@ roomsRouter.get('/apple-music/search-artists', async (req, res) => {
         genres: (artist.attributes?.genreNames || []).slice(0, 3),
       }));
   
-      console.log(`Apple Music search for "${sanitizedQuery}" returned ${formattedResults.length} artists`);
       return res.json(formattedResults);
       
     } catch (error) {
       // Enhanced error handling
-      console.error('Error in Apple Music search:', error.message);
       
       // Determine the appropriate error response
       if (error.response) {
@@ -454,12 +435,10 @@ roomsRouter.post('/apple-music/search', async (req, res) => {
     }
     try {
       // call your `searchSongs(searchQuery)` from appleMusicService
-      console.log('[Server] /apple-music/search => searchQuery=', searchQuery);
 
       const results = await appleMusicService.searchSongs(searchQuery);
       return res.json(results);
     } catch (err) {
-      console.error('Search failed', err);
       return res.status(500).json({ error: 'Failed searching songs' });
     }
   });
@@ -471,7 +450,6 @@ roomsRouter.post('/apple-music/search', async (req, res) => {
 //======================//
 roomsRouter.post('/apple-music/artist-songs', async (req, res) => {
   const { artistName } = req.body;
-  console.log('[API] /artist-songs for', artistName);
   if (!artistName) {
     return res.status(400).json({ error: 'Artist name is required' });
   }
@@ -484,7 +462,6 @@ roomsRouter.post('/apple-music/artist-songs', async (req, res) => {
       throw new Error('Missing Apple Music API credentials');
     }
 
-    console.log(`Fetching popular songs for artist: ${artistName}`);
 
     // Step 1: First find the artist to get their ID
     const artistSearchUrl = `${APPLE_API_BASE_URL}/search?term=${encodeURIComponent(artistName)}&types=artists&limit=1`;
@@ -497,14 +474,12 @@ roomsRouter.post('/apple-music/artist-songs', async (req, res) => {
     const artists = artistResponse.data?.results?.artists?.data || [];
     
     if (artists.length === 0) {
-      console.log(`No artist found for: ${artistName}`);
       return res.json({ songs: [], message: 'Artist not found' });
     }
 
     const artist = artists[0];
     const artistId = artist.id;
     
-    console.log(`Found artist: ${artist.attributes.name} (ID: ${artistId})`);
 
     // Step 2: Try multiple approaches to get songs
 
@@ -528,11 +503,9 @@ roomsRouter.post('/apple-music/artist-songs', async (req, res) => {
         return songArtist === targetArtist;
       });
 
-      console.log(`Found ${exactArtistSongs.length} songs via search for ${artistName}`);
       allSongs.push(...exactArtistSongs);
 
     } catch (searchError) {
-      console.warn('Song search failed:', searchError.message);
     }
 
     // Approach 2: Try to get artist's top songs using the artist view (if available)
@@ -546,11 +519,9 @@ roomsRouter.post('/apple-music/artist-songs', async (req, res) => {
 
       const topSongsData = topSongsResponse.data?.data?.[0]?.views?.topSongs?.data || [];
       
-      console.log(`Found ${topSongsData.length} top songs from artist view`);
       allSongs.push(...topSongsData);
 
     } catch (topSongsError) {
-      console.warn('Top songs view failed:', topSongsError.message);
     }
 
     // Approach 3: Try iTunes lookup API as fallback for popular songs
@@ -579,11 +550,9 @@ roomsRouter.post('/apple-music/artist-songs', async (req, res) => {
           }
         }));
 
-      console.log(`Found ${itunesSongs.length} songs from iTunes search`);
       allSongs.push(...itunesSongs);
 
     } catch (itunesError) {
-      console.warn('iTunes search failed:', itunesError.message);
     }
 
     // Step 3: Process and deduplicate songs
@@ -628,8 +597,6 @@ roomsRouter.post('/apple-music/artist-songs', async (req, res) => {
     // Return top 5 songs
     const finalSongs = processedSongs.slice(0, 5);
 
-    console.log(`✅ Returning ${finalSongs.length} popular songs for ${artistName}`);
-    console.log('[API] returning', finalSongs.length, 'songs');
     res.json({
       artist: artistName,
       songs: finalSongs,
@@ -637,7 +604,6 @@ roomsRouter.post('/apple-music/artist-songs', async (req, res) => {
     });
 
   } catch (error) {
-    console.error(`Error fetching songs for artist ${artistName}:`, error.message);
     res.status(500).json({ 
       error: 'Failed to fetch artist songs',
       message: error.message 
@@ -661,7 +627,6 @@ roomsRouter.post('/apple-music/artist-search', async (req, res) => {
     );
     return res.json(results);
   } catch (err) {
-    console.error('Artist-search failed:', err.message);
     return res.status(500).json({ error: 'Failed artist search' });
   }
 });
@@ -688,7 +653,6 @@ roomsRouter.post('/lastfm/batch-similar-artists', async (req, res) => {
       // Process each batch with delay to respect API limits
       for (let i = 0; i < artistBatches.length; i++) {
           const batch = artistBatches[i];
-          console.log(`Processing batch ${i + 1}/${artistBatches.length}:`, batch);
 
           try {
               const batchResults = await fetchSimilarArtists(batch);
@@ -712,7 +676,6 @@ roomsRouter.post('/lastfm/batch-similar-artists', async (req, res) => {
               }
 
           } catch (batchError) {
-              console.error(`Error processing batch ${i}:`, batchError.message);
               results.push({
                   batchIndex: i,
                   artists: [],
@@ -731,7 +694,6 @@ roomsRouter.post('/lastfm/batch-similar-artists', async (req, res) => {
       });
 
   } catch (error) {
-      console.error('Error in batch similar artists fetch:', error.message);
       res.status(500).json({ error: 'Failed to fetch similar artists in batches' });
   }
 });
@@ -757,7 +719,6 @@ roomsRouter.post('/spotify/batch-fetch-images', async (req, res) => {
           chunks.push(artistNames.slice(i, i + chunkSize));
       }
 
-      console.log(`Processing ${artistNames.length} artists in ${chunks.length} chunks`);
 
       // Process each chunk with delay
       for (let i = 0; i < chunks.length; i++) {
@@ -781,12 +742,10 @@ roomsRouter.post('/spotify/batch-fetch-images', async (req, res) => {
               }
 
           } catch (chunkError) {
-              console.error(`Error processing image chunk ${i}:`, chunkError.message);
               // Continue with other chunks even if one fails
           }
       }
 
-      console.log(`Successfully fetched images for ${allArtistsWithImages.length}/${artistNames.length} artists`);
 
       res.json({
           artists: allArtistsWithImages,
@@ -796,7 +755,6 @@ roomsRouter.post('/spotify/batch-fetch-images', async (req, res) => {
       });
 
   } catch (error) {
-      console.error('Error in batch image fetch:', error.message);
       res.status(500).json({ error: 'Failed to fetch artist images in batches' });
   }
 });
@@ -814,7 +772,6 @@ roomsRouter.post('/rooms/generate-artist-pool', async (req, res) => {
   }
 
   try {
-      console.log(`Generating artist pool for ${roomArtists.length} room artists`);
       
       // Step 1: Get artist names from room artists
       const roomArtistNames = roomArtists.map(artist => artist.name);
@@ -874,7 +831,6 @@ roomsRouter.post('/rooms/generate-artist-pool', async (req, res) => {
 
       const result = Array.from(uniqueArtists.values());
 
-      console.log(`Generated artist pool: ${result.length} total artists (${roomArtists.length} room, ${result.length - roomArtists.length} related)`);
 
       res.json({
           artistPool: result,
@@ -888,7 +844,6 @@ roomsRouter.post('/rooms/generate-artist-pool', async (req, res) => {
       });
 
   } catch (error) {
-      console.error('Error generating artist pool:', error.message);
       res.status(500).json({ 
           error: 'Failed to generate artist pool',
           message: error.message 
@@ -910,7 +865,6 @@ roomsRouter.get('/lastfm/similar/:artistName', async (req, res) => {
   }
 
   try {
-      console.log(`Fetching similar artists for: ${artistName}`);
       
       const response = await axios.get('http://ws.audioscrobbler.com/2.0/', {
           params: {
@@ -956,7 +910,6 @@ roomsRouter.get('/lastfm/similar/:artistName', async (req, res) => {
       }
 
   } catch (error) {
-      console.error(`Error fetching similar artists for ${artistName}:`, error.message);
       res.status(500).json({ 
           error: 'Failed to fetch similar artists',
           artist: artistName 
@@ -977,7 +930,6 @@ roomsRouter.post('/rooms/refresh-artist-pool', async (req, res) => {
   }
 
   try {
-      console.log(`Refreshing artist pool: adding ${refreshCount} new artists`);
       
       // Get a random room artist to find more similar artists
       const roomArtistNames = roomArtists?.map(a => a.name) || [];
@@ -1020,7 +972,6 @@ roomsRouter.post('/rooms/refresh-artist-pool', async (req, res) => {
       });
 
   } catch (error) {
-      console.error('Error refreshing artist pool:', error.message);
       res.status(500).json({ 
           error: 'Failed to refresh artist pool',
           artistPool: currentPool // Return original pool on error
