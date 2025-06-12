@@ -968,7 +968,7 @@ return (
           showKnob && (
             <div style={{ position: 'relative' }}>
               {/* Tuner Info Icon Modal - Top Right of Knob */}
-              <div style={{ position: 'absolute', top: '-10px', right: '-18px', zIndex: 50000 }}>
+              <div style={{ position: 'absolute', top: '-10px', right: '-18px', zIndex: 50000, pointerEvents: 'auto' }}>
                 <InfoIconModal
                   title="Tuner"
                   steps={knobHelpSteps}
