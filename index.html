@@ -1106,12 +1106,12 @@
 
         // Add click handlers for interactive elements
         document.querySelector('.prototype-button')?.addEventListener('click', () => {
-            window.open(resolvePath('./Rooms/Mufl/public/index.html'), '_blank');
+            window.open(resolvePath('./rooms'), '_blank');
         });
 
         document.querySelectorAll('.mvp-button').forEach(button => {
             button.addEventListener('click', () => {
-                window.open(resolvePath('./Threads/muffle-threads/index.html'), '_blank');
+                window.open(resolvePath('./threads'), '_blank');
             });
         });
 

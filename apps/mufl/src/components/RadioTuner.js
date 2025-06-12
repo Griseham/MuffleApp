@@ -815,10 +815,7 @@ return (
       top: '12px', 
       right: '12px', 
       zIndex: 50000,
-      pointerEvents: 'auto',
-      background: 'rgba(255, 165, 0, 0.1)', // Temporary debug background
-      borderRadius: '50%',
-      padding: '4px'
+      pointerEvents: 'auto'
     }}>
       <InfoIconModal
         title="Radio"
@@ -985,10 +982,7 @@ return (
                 top: '-12px', 
                 right: '-12px', 
                 zIndex: 50000, 
-                pointerEvents: 'auto',
-                background: 'rgba(255, 165, 0, 0.1)', // Temporary debug background
-                borderRadius: '50%',
-                padding: '4px'
+                pointerEvents: 'auto'
               }}>
                 <InfoIconModal
                   title="Tuner"
