@@ -750,11 +750,7 @@ const MusicHome = () => {
                     borderRadius: '50%',
                     animation: 'spin 1s linear infinite'
                   }}></div>
-                  <p className="spinner-text" style={{
-                    marginTop: '1rem',
-                    fontSize: '1.125rem',
-                    fontWeight: '500'
-                  }}>Exploring the music universe...</p>
+                 
                 </div>
               )}
               
