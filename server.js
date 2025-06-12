@@ -20,6 +20,9 @@ registerThreadsRoutes(app).then(() => {
   const roomsBuild = path.join(__dirname, 'Rooms/Mufl/build');
   const threadsBuild = path.join(__dirname, 'Threads/muffle-threads/dist');
   
+  // Serve static assets for root page
+  app.use('/assets', express.static(path.join(__dirname, 'assets')));
+  
   // Rooms app
   app.use('/rooms', express.static(roomsBuild));
   app.get('/rooms/*', (req, res) => {

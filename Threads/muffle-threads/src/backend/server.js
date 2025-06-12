@@ -541,7 +541,7 @@ async function getSnippetRecommendations(comments) {
 
 // Endpoint to trigger caching
 // Replace the existing /api/posts/:postId/cache endpoint
-threadsRouter.get("/api/posts/:postId/cache", async (req, res) => {
+threadsRouter.get("/posts/:postId/cache", async (req, res) => {
   // Return that the post is already cached even if it's not
   // This prevents the client from trying to cache new posts
   return res.json({ 
@@ -554,7 +554,7 @@ threadsRouter.get("/api/posts/:postId/cache", async (req, res) => {
 // =========================
 // GET /api/posts  (updated)
 // =========================
-threadsRouter.get("/api/posts", postsLimiter, async (req, res) => {
+threadsRouter.get("/posts", postsLimiter, async (req, res) => {
   try {
     // Get all cached posts first
     const cacheDir = path.resolve(__dirname, './cached_posts');
@@ -687,7 +687,7 @@ threadsRouter.get("/api/posts", postsLimiter, async (req, res) => {
 });
 
 // Also update the cached-posts endpoint to use the correct path
-threadsRouter.get("/api/cached-posts", (req, res) => {
+threadsRouter.get("/cached-posts", (req, res) => {
   try {
     const cacheDir = path.resolve(__dirname, './cached_posts');
     // Looking for cached posts
@@ -734,7 +734,7 @@ threadsRouter.get("/api/cached-posts", (req, res) => {
 });
 
 // Also update the get specific cached post endpoint
-threadsRouter.get("/api/cached-posts/:postId", (req, res) => {
+threadsRouter.get("/cached-posts/:postId", (req, res) => {
   const { postId } = req.params;
   const filePath = path.resolve(__dirname, './cached_posts', `${postId}.json`);
   
@@ -756,7 +756,7 @@ threadsRouter.get("/api/cached-posts/:postId", (req, res) => {
 // Force a complete refresh with different posts
 // =========================
 
-threadsRouter.get("/api/refresh", async (req, res) => {
+threadsRouter.get("/refresh", async (req, res) => {
   try {
     // Clear cache and force refresh
     forceRefreshCachedPosts();
@@ -786,7 +786,7 @@ threadsRouter.get("/api/refresh", async (req, res) => {
 });
 
 // Add a new endpoint for specifically requesting diverse posts
-threadsRouter.get("/api/diverse-posts", async (req, res) => {
+threadsRouter.get("/diverse-posts", async (req, res) => {
   try {
     // Fetching diverse post mix
     
@@ -917,7 +917,7 @@ threadsRouter.get("/api/diverse-posts", async (req, res) => {
 });
 
 // Add new endpoint to check cache status
-threadsRouter.get("/api/cache-status", (req, res) => {
+threadsRouter.get("/cache-status", (req, res) => {
   const now = Date.now();
   const cacheAge = now - lastFetchTime;
   const cacheExpired = cacheAge > CACHE_TTL_MS;
@@ -934,7 +934,7 @@ threadsRouter.get("/api/cache-status", (req, res) => {
 });
 
 // New endpoint for browsing groupchats and news posts only
-threadsRouter.get("/api/browse-posts", async (req, res) => {
+threadsRouter.get("/browse-posts", async (req, res) => {
   try {
     // Fetching posts for browsing
     
@@ -979,7 +979,7 @@ threadsRouter.get("/api/browse-posts", async (req, res) => {
 });
 
 // New endpoint to cache a selected post
-threadsRouter.post("/api/cache-post", async (req, res) => {
+threadsRouter.post("/cache-post", async (req, res) => {
   try {
     const { postId, subreddit, postType } = req.body;
     
@@ -1030,7 +1030,7 @@ threadsRouter.post("/api/cache-post", async (req, res) => {
 // Call this function on server start to ensure first request gets fresh data
 forceRefreshCachedPosts();
 
-threadsRouter.get("/api/posts/:postId/comments", async (req, res) => {
+threadsRouter.get("/posts/:postId/comments", async (req, res) => {
   const { postId } = req.params;
   const post = cachedPosts.find((p) => p.id === postId);
   if (!post) {
@@ -1108,7 +1108,7 @@ threadsRouter.get("/api/posts/:postId/comments", async (req, res) => {
   }
 });
 
-threadsRouter.get("/api/posts/:postId/snippets", async (req, res) => {
+threadsRouter.get("/posts/:postId/snippets", async (req, res) => {
   const { postId } = req.params;
   const post = cachedPosts.find((p) => p.id === postId);
   if (!post) {
@@ -1140,7 +1140,7 @@ threadsRouter.get("/api/posts/:postId/snippets", async (req, res) => {
   }
 });
 
-threadsRouter.get("/api/apple-music-search", async (req, res) => {
+threadsRouter.get("/apple-music-search", async (req, res) => {
   const query = req.query.query;
   if (!query) {
     return res.status(400).json({ success: false, error: "Missing query parameter" });
@@ -1160,7 +1160,7 @@ threadsRouter.get("/api/apple-music-search", async (req, res) => {
 });
 
 // New endpoint to cache media assets (artwork and audio previews)
-threadsRouter.post("/api/cache-media", async (req, res) => {
+threadsRouter.post("/cache-media", async (req, res) => {
   try {
     const { artworkUrl, previewUrl, songId } = req.body;
     
