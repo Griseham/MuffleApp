@@ -1,14 +1,17 @@
 // server.js
-const express = require('express');
-const fetch = require('node-fetch'); // or use undici if needed
-const cors = require('cors');
-const fs = require("fs");
-const dotenv = require('dotenv');
+import express from 'express';
+import fetch from 'node-fetch'; // or use undici if needed
+import cors from 'cors';
+import fs from "fs";
+import dotenv from 'dotenv';
 dotenv.config(); // Load environment variables
-const rateLimit = require('express-rate-limit');
-const path = require('path');
+import rateLimit from 'express-rate-limit';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-// __dirname is available in CommonJS
+// ES Module equivalent for __dirname
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 
 
@@ -1260,7 +1263,7 @@ threadsRouter.get('/api/spotify-token', async (req, res) => {
 
 
 // Export route registration function
-module.exports = function registerThreadsRoutes(app) {
+export default function registerThreadsRoutes(app) {
   app.use('/api/threads', threadsRouter);
   // Serve cached media files
   app.use('/cached_media', express.static(path.resolve(__dirname, './cached_media')));

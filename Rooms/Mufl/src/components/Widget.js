@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { PlayIcon, PauseIcon, MusicNoteIcon, AlbumIcon } from './Icons/Icons';
 
 // Front-end → Back-end base URL
@@ -153,7 +153,7 @@ const Widget = ({ selectedArtists = [], queuedSongs = [], setWidgetSelectedArtis
   };
 
   // Validate search query
-  const validateSearchQuery = (query) => {
+  const validateSearchQuery = useCallback((query) => {
     const sanitized = sanitizeSearchInput(query);
     
     // Only allow safe characters for music search
@@ -164,7 +164,7 @@ const Widget = ({ selectedArtists = [], queuedSongs = [], setWidgetSelectedArtis
     }
     
     return sanitized;
-  };
+  }, []);
 
   // Search ANY song on Apple Music with enhanced security
   const fetchGlobalSongs = async (query) => {
