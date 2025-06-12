@@ -108,6 +108,25 @@ const SelectionScreen = ({ onContinue }) => {
       isMain: true
     }));
   }, []);
+
+  // Validate search query length and content
+  const validateSearchQuery = useCallback((query) => {
+    const sanitized = sanitizeInput(query);
+    
+    // Length validation
+    if (sanitized.length > 100) {
+      return sanitized.substring(0, 100);
+    }
+    
+    // Only allow alphanumeric, spaces, hyphens, apostrophes, and basic punctuation
+    const allowedPattern = /^[a-zA-Z0-9\s\-'.,&()]+$/;
+    if (sanitized && !allowedPattern.test(sanitized)) {
+      console.warn('Invalid characters detected in search query');
+      return sanitized.replace(/[^a-zA-Z0-9\s\-'.,&()]/g, '');
+    }
+    
+    return sanitized;
+  }, [sanitizeInput]);
   
 // Search for artists with enhanced security
 const searchArtists = useCallback(async (query) => {
@@ -343,25 +362,6 @@ const fetchArtistsByGenre = useCallback(async (genre) => {
       .replace(/setInterval\s*\(/gi, '') // Remove setInterval
       .trim();
   }, []);
-
-  // Validate search query length and content
-  const validateSearchQuery = useCallback((query) => {
-    const sanitized = sanitizeInput(query);
-    
-    // Length validation
-    if (sanitized.length > 100) {
-      return sanitized.substring(0, 100);
-    }
-    
-    // Only allow alphanumeric, spaces, hyphens, apostrophes, and basic punctuation
-    const allowedPattern = /^[a-zA-Z0-9\s\-'.,&()]+$/;
-    if (sanitized && !allowedPattern.test(sanitized)) {
-      console.warn('Invalid characters detected in search query');
-      return sanitized.replace(/[^a-zA-Z0-9\s\-'.,&()]/g, '');
-    }
-    
-    return sanitized;
-  }, [sanitizeInput]);
 
   // Handle search input with security measures
   const handleSearchChange = useCallback((e) => {
