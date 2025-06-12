@@ -3,7 +3,7 @@ import { Play, Music, Pause, X, Search, Send, Disc } from 'lucide-react';
 import { Info } from "lucide-react";
 import InfoIconModal from "../InfoIconModal";
 import { validateAndSanitizeInput, sanitizeSearchQuery, checkRateLimit } from '../../utils/security';
-import { authorToAvatar } from '../../utils/avatar';
+import { authorToAvatar } from '../utils/utils';
 
 
 const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
