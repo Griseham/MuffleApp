@@ -109,6 +109,24 @@ const SelectionScreen = ({ onContinue }) => {
     }));
   }, []);
 
+  // Sanitize input to prevent injection attacks
+  const sanitizeInput = useCallback((input) => {
+    // Remove potentially dangerous characters and patterns
+    return input
+      .replace(/[<>"'`\\]/g, '') // Remove HTML/script injection chars
+      .replace(/javascript:/gi, '') // Remove javascript: protocol
+      .replace(/data:/gi, '') // Remove data: protocol
+      .replace(/vbscript:/gi, '') // Remove vbscript: protocol
+      .replace(/on\w+=/gi, '') // Remove event handlers
+      .replace(/\{\{.*?\}\}/g, '') // Remove template injection
+      .replace(/\$\{.*?\}/g, '') // Remove ES6 template literals
+      .replace(/eval\s*\(/gi, '') // Remove eval calls
+      .replace(/Function\s*\(/gi, '') // Remove Function constructor
+      .replace(/setTimeout\s*\(/gi, '') // Remove setTimeout
+      .replace(/setInterval\s*\(/gi, '') // Remove setInterval
+      .trim();
+  }, []);
+
   // Validate search query length and content
   const validateSearchQuery = useCallback((query) => {
     const sanitized = sanitizeInput(query);
@@ -344,24 +362,6 @@ const fetchArtistsByGenre = useCallback(async (genre) => {
       loadMoreArtists();
     }
   }, [loadingState.more, hasMore, searchQuery, loadMoreArtists]);
-  
-  // Sanitize input to prevent injection attacks
-  const sanitizeInput = useCallback((input) => {
-    // Remove potentially dangerous characters and patterns
-    return input
-      .replace(/[<>"'`\\]/g, '') // Remove HTML/script injection chars
-      .replace(/javascript:/gi, '') // Remove javascript: protocol
-      .replace(/data:/gi, '') // Remove data: protocol
-      .replace(/vbscript:/gi, '') // Remove vbscript: protocol
-      .replace(/on\w+=/gi, '') // Remove event handlers
-      .replace(/\{\{.*?\}\}/g, '') // Remove template injection
-      .replace(/\$\{.*?\}/g, '') // Remove ES6 template literals
-      .replace(/eval\s*\(/gi, '') // Remove eval calls
-      .replace(/Function\s*\(/gi, '') // Remove Function constructor
-      .replace(/setTimeout\s*\(/gi, '') // Remove setTimeout
-      .replace(/setInterval\s*\(/gi, '') // Remove setInterval
-      .trim();
-  }, []);
 
   // Handle search input with security measures
   const handleSearchChange = useCallback((e) => {
