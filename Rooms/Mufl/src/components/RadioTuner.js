@@ -810,10 +810,11 @@ visibleRulerWidth
 return (
   <div className={`rt-wrapper ${className}`} style={{ '--rt-width': `${rulerWidth}px`, position: 'relative' }}>
     {/* Info Icon Modal for Radio Tuner */}
-    <div style={{ position: 'absolute', top: '16px', right: '16px', zIndex: 20000 }}>
+    <div style={{ position: 'absolute', top: '16px', right: '16px', zIndex: 50000 }}>
       <InfoIconModal
         title="Radio"
         steps={radioHelpSteps}
+        modalId="radio-tuner-modal"
       />
     </div>
 
@@ -967,11 +968,12 @@ return (
           showKnob && (
             <div style={{ position: 'relative' }}>
               {/* Tuner Info Icon Modal - Top Right of Knob */}
-              <div style={{ position: 'absolute', top: '-10px', right: '-18px', zIndex: 20000 }}>
+              <div style={{ position: 'absolute', top: '-10px', right: '-18px', zIndex: 50000 }}>
                 <InfoIconModal
                   title="Tuner"
                   steps={knobHelpSteps}
                   showButtonText={false}
+                  modalId="knob-tuner-modal"
                 />
               </div>
               

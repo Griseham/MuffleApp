@@ -321,7 +321,9 @@ const InfoIconModal = ({
           backgroundColor: 'rgba(30, 41, 59, 0.8)',
           border: 'none',
           cursor: 'pointer',
-          zIndex: 25000 // Ensure it's above radio and all other elements
+          zIndex: 50000, // Significantly increased z-index
+          position: 'relative', // Ensure z-index works properly
+          pointerEvents: 'auto' // Ensure button can receive clicks
         }}
       >
         <InfoIcon size={iconSize} color={iconColor} />

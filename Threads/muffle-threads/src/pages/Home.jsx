@@ -189,49 +189,55 @@ const MusicHome = () => {
     });
   }, [currentFilter]);
 
-  // Function to add background-fetched Reddit posts to main feed
+  // Function to add fresh Reddit posts to main feed
   const handleLoadRedditPosts = useCallback(async () => {
-    if (isLoadingReddit || redditPostsLoaded) return; // Prevent duplicate calls
+    if (isLoadingReddit) return; // Prevent duplicate calls while loading
     
     setIsLoadingReddit(true);
     try {
-      if (redditPosts.length > 0) {
-        // Use already background-fetched Reddit posts
-        console.log(`Adding ${redditPosts.length} background-fetched Reddit posts to main feed`);
-        
-        setRedditPostsLoaded(true);
-        
-        // Add Reddit posts to main feed, avoiding duplicates
-        setPosts(prevPosts => {
-          const existingIds = new Set(prevPosts.map(p => p.id));
-          const newRedditPosts = redditPosts.filter(p => !existingIds.has(p.id));
-          return [...prevPosts, ...newRedditPosts];
-        });
-      } else {
-        // Fallback: fetch if background fetch somehow failed
-        console.log("No background posts available, fetching fresh...");
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/diverse-posts`);
-        
-        if (response.ok) {
-          const result = await response.json();
-          if (result.success && result.data.length > 0) {
-            setRedditPosts(result.data);
-            setRedditPostsLoaded(true);
+      // Always fetch fresh posts from the diverse-posts endpoint
+      console.log("Fetching fresh diverse posts from Reddit...");
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/diverse-posts`);
+      
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success && result.data.length > 0) {
+          console.log(`Received ${result.data.length} diverse posts from server`);
+          
+          // Add fresh posts to main feed, avoiding duplicates
+          setPosts(prevPosts => {
+            const existingIds = new Set(prevPosts.map(p => p.id));
+            const newRedditPosts = result.data.filter(p => !existingIds.has(p.id));
+            console.log(`Adding ${newRedditPosts.length} new posts to feed (${result.data.length - newRedditPosts.length} were duplicates)`);
             
-            setPosts(prevPosts => {
-              const existingIds = new Set(prevPosts.map(p => p.id));
-              const newRedditPosts = result.data.filter(p => !existingIds.has(p.id));
+            if (newRedditPosts.length > 0) {
+              setRedditPostsLoaded(true); // Only mark as loaded if we actually added posts
               return [...prevPosts, ...newRedditPosts];
-            });
-          }
+            } else {
+              // If no new posts were added due to duplicates, try one more time with refresh
+              console.log("No new posts added due to duplicates, will try refresh endpoint");
+              return prevPosts;
+            }
+          });
+          
+          // If we didn't get any new posts, update background Reddit posts for starfield
+          setRedditPosts(prevRedditPosts => {
+            const existingRedditIds = new Set(prevRedditPosts.map(p => p.id));
+            const newForStarfield = result.data.filter(p => !existingRedditIds.has(p.id));
+            return [...prevRedditPosts, ...newForStarfield];
+          });
+        } else {
+          console.log("No posts received from diverse-posts endpoint");
         }
+      } else {
+        console.error("Failed to fetch from diverse-posts endpoint:", response.status);
       }
     } catch (err) {
       console.error("Error loading Reddit posts:", err);
     } finally {
       setIsLoadingReddit(false);
     }
-  }, [isLoadingReddit, redditPosts, redditPostsLoaded]);
+  }, [isLoadingReddit]);
 
   // Function to get all available posts (cached + reddit) for starfield
   const getAllPostsForStarfield = useCallback(() => {
@@ -546,8 +552,8 @@ const MusicHome = () => {
                 onClick={handleLoadRedditPosts}
                 disabled={isLoadingReddit}
                 style={{
-                  background: redditPostsLoaded 
-                    ? 'linear-gradient(45deg, #10b981, #059669)' 
+                  background: isLoadingReddit 
+                    ? 'linear-gradient(45deg, #6b7280, #4b5563)' 
                     : 'linear-gradient(45deg, #9c27b0, #3f51b5)',
                   color: 'white',
                   padding: '12px 24px',
@@ -557,8 +563,8 @@ const MusicHome = () => {
                   fontWeight: '600',
                   cursor: isLoadingReddit ? 'not-allowed' : 'pointer',
                   transition: 'all 0.2s ease',
-                  boxShadow: redditPostsLoaded 
-                    ? '0 4px 12px rgba(16, 185, 129, 0.3)' 
+                  boxShadow: isLoadingReddit 
+                    ? '0 4px 12px rgba(107, 114, 128, 0.3)' 
                     : '0 4px 12px rgba(156, 39, 176, 0.3)',
                   opacity: isLoadingReddit ? 0.7 : 1,
                   display: 'flex',
@@ -568,17 +574,13 @@ const MusicHome = () => {
                 onMouseEnter={(e) => {
                   if (!isLoadingReddit) {
                     e.target.style.transform = 'translateY(-2px)';
-                    e.target.style.boxShadow = redditPostsLoaded 
-                      ? '0 6px 16px rgba(16, 185, 129, 0.4)' 
-                      : '0 6px 16px rgba(156, 39, 176, 0.4)';
+                    e.target.style.boxShadow = '0 6px 16px rgba(156, 39, 176, 0.4)';
                   }
                 }}
                 onMouseLeave={(e) => {
                   if (!isLoadingReddit) {
                     e.target.style.transform = 'translateY(0)';
-                    e.target.style.boxShadow = redditPostsLoaded 
-                      ? '0 4px 12px rgba(16, 185, 129, 0.3)' 
-                      : '0 4px 12px rgba(156, 39, 176, 0.3)';
+                    e.target.style.boxShadow = '0 4px 12px rgba(156, 39, 176, 0.3)';
                   }
                 }}
               >
@@ -592,15 +594,7 @@ const MusicHome = () => {
                       borderRadius: '50%',
                       animation: 'spin 1s linear infinite'
                     }}></div>
-                    Loading Reddit Posts...
-                  </>
-                ) : redditPostsLoaded ? (
-                  <>
-                    ✓ Reddit Posts Added to Feed ({redditPosts.length})
-                  </>
-                ) : redditPosts.length > 0 ? (
-                  <>
-                    📥 Add Reddit Posts to Feed ({redditPosts.length})
+                    Loading Fresh Posts...
                   </>
                 ) : (
                   <>

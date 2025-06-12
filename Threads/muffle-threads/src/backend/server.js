@@ -702,31 +702,65 @@ threadsRouter.get("/cached-posts", (req, res) => {
     
     const cachedPostIds = files.map(f => f.replace('.json', ''));
     
-    const cachedPosts = cachedPostIds.map(id => {
+    const cachedPostsData = cachedPostIds.map(id => {
       try {
         const filePath = path.join(cacheDir, `${id}.json`);
         // Reading cached file
         const fileContents = fs.readFileSync(filePath, 'utf8');
         const data = JSON.parse(fileContents);
-        return {
+        
+        // Create full post object for both response and cachedPosts array
+        const fullPost = {
           id: data.id,
           title: data.title,
           author: data.author,
           subreddit: data.subreddit,
-          commentCount: data.comments?.length || 0,
-          snippetCount: data.snippets?.length || 0,
+          selftext: data.selftext || "",
           imageUrl: data.imageUrl,
           postType: data.postType || "thread",
-          createdUtc: data.createdUtc || Date.now()/1000
+          createdUtc: data.createdUtc || Date.now()/1000,
+          num_comments: data.comments?.length || 0,
+          // Add these fields for full compatibility
+          ups: data.ups || 0,
+          downs: data.downs || 0,
+          url: data.url || "",
+          is_self: data.is_self || true,
+          comments: data.comments || [],
+          snippets: data.snippets || []
         };
+        
+        return fullPost;
       } catch (err) {
         // Error reading cached post
         return { id, error: true };
       }
-    });
+    }).filter(post => !post.error); // Remove error entries
+    
+    // CRITICAL FIX: Update the server's cachedPosts array so comment lookups work
+    const validCachedPosts = cachedPostsData.filter(post => post.id);
+    if (validCachedPosts.length > 0) {
+      // Merge with existing cachedPosts, avoiding duplicates
+      const existingIds = new Set(cachedPosts.map(p => p.id));
+      const newPosts = validCachedPosts.filter(p => !existingIds.has(p.id));
+      cachedPosts.push(...newPosts);
+      // Updated server cachedPosts array with cached file data
+    }
+    
+    // Return simplified data for frontend (backward compatibility)
+    const responseData = cachedPostsData.map(post => ({
+      id: post.id,
+      title: post.title,
+      author: post.author,
+      subreddit: post.subreddit,
+      commentCount: post.num_comments,
+      snippetCount: post.snippets?.length || 0,
+      imageUrl: post.imageUrl,
+      postType: post.postType,
+      createdUtc: post.createdUtc
+    }));
     
     // Successfully loaded cached posts
-    return res.json({ success: true, data: cachedPosts });
+    return res.json({ success: true, data: responseData });
   } catch (error) {
     // Error getting cached posts
     return res.status(500).json({ success: false, error: error.toString() });
@@ -788,130 +822,96 @@ threadsRouter.get("/refresh", async (req, res) => {
 // Add a new endpoint for specifically requesting diverse posts
 threadsRouter.get("/diverse-posts", async (req, res) => {
   try {
-    // Fetching diverse post mix
+    // CRITICAL FIX: Fetch ONLY fresh Reddit posts to avoid duplicates with existing feed
+    // Don't include cached posts since they're already in the main feed
     
-    // First, get all cached posts
-    const cacheDir = path.resolve(__dirname, './cached_posts');
-    // Looking for cached posts
-    let cachedPostsData = [];
+    // Fetch completely fresh posts from Reddit with increased variety
+    const freshPosts = await fetchAllSubreddits();
     
-    if (fs.existsSync(cacheDir)) {
-      try {
-        const files = fs.readdirSync(cacheDir).filter(f => f.endsWith('.json'));
-        
-        cachedPostsData = files.map(file => {
-          try {
-            const filePath = path.join(cacheDir, file);
-            const fileContents = fs.readFileSync(filePath, 'utf8');
-            const postData = JSON.parse(fileContents);
-            return {
-              id: postData.id,
-              title: postData.title,
-              author: postData.author,
-              subreddit: postData.subreddit,
-              selftext: postData.selftext || "",
-              imageUrl: postData.imageUrl,
-              postType: postData.postType || "thread",
-              createdUtc: postData.createdUtc || Date.now()/1000,
-              hasCachedData: true,
-              num_comments: postData.comments?.length || 0,
-              // Give cached posts a high diversity score to prioritize them
-              diversityScore: 2.0 + (Math.random() * 0.5)
-            };
-          } catch (err) {
-            return null;
-          }
-        }).filter(post => post !== null);
-      } catch (err) {
-        // Error accessing cached posts directory
-      }
+    // Apply aggressive randomization and filtering to ensure variety
+    const shuffledFreshPosts = [...freshPosts];
+    for (let i = 0; i < 5; i++) {
+      shuffleArray(shuffledFreshPosts); // Multiple shuffles for maximum randomness
     }
     
-    // Now fetch fresh posts for additional diversity
-    const allFreshPosts = await fetchAllSubreddits();
-    
-    // Apply special diversity ranking algorithm to fresh posts
-    const rankedFreshPosts = allFreshPosts.map(post => {
+    // Apply diversity ranking algorithm to fresh posts only
+    const rankedFreshPosts = shuffledFreshPosts.map(post => {
       // Calculate diversity score (subreddit variety + engagement quality)
-      const subredditFactor = post.subreddit === "music" ? 0.8 :
-                              post.subreddit === "musicsuggestions" ? 0.7 : 1.2;
+      const subredditFactor = post.subreddit === "music" ? 1.0 :
+                              post.subreddit === "musicsuggestions" ? 1.2 : 
+                              post.subreddit === "listentothis" ? 1.3 :
+                              post.subreddit === "ifyoulikeblank" ? 1.1 : 1.0;
       
-      // Penalize extremely high upvote/comment counts to avoid domination
-      const engagementDiversity = Math.min(300, post.ups) / 300 + 
-                                Math.min(50, post.num_comments) / 50;
+      // Favor posts with moderate engagement to avoid mainstream domination
+      const engagementDiversity = Math.min(200, post.ups) / 200 + 
+                                Math.min(30, post.num_comments) / 30;
+                                
+      // Add extra randomness to ensure different posts each time
+      const randomFactor = 0.5 + Math.random() * 1.0;
                                 
       return {
         ...post,
-        diversityScore: subredditFactor * engagementDiversity * (0.8 + Math.random() * 0.4)
+        diversityScore: subredditFactor * engagementDiversity * randomFactor,
+        isFresh: true // Mark as fresh to distinguish from cached
       };
     });
     
-    // Mark group chats appropriately in cached posts
-    const explicitGroupChats = cachedPostsData.filter(post => 
-      post.id.startsWith('groupchat') || 
-      (post.subreddit === "musicsuggestions" && post.num_comments >= 5)
+    // Sort by diversity score
+    rankedFreshPosts.sort((a, b) => b.diversityScore - a.diversityScore);
+    
+    // Take top 25-30 fresh posts for variety
+    const selectedPosts = rankedFreshPosts.slice(0, 28);
+    
+    // Ensure we have some group chats from musicsuggestions
+    const musicSuggestionsPosts = selectedPosts.filter(post => 
+      post.subreddit === "musicsuggestions" && post.num_comments >= 5
     );
     
-    if (explicitGroupChats.length > 0) {
-      explicitGroupChats.forEach(post => {
-        post.postType = "groupchat";
-        // Give group chats extra priority
-        post.diversityScore += 0.5;
-      });
-      // Marked cached posts as group chats
+    if (musicSuggestionsPosts.length > 0) {
+      // Mark top 3-4 as group chats
+      const numGroupChats = Math.min(4, musicSuggestionsPosts.length);
+      for (let i = 0; i < numGroupChats; i++) {
+        musicSuggestionsPosts[i].postType = "groupchat";
+        musicSuggestionsPosts[i].diversityScore += 0.3; // Boost priority
+      }
     }
     
-    // Combine cached and fresh posts 
-    const allPosts = [...cachedPostsData, ...rankedFreshPosts];
+    // Mark some music posts as news
+    const musicPosts = selectedPosts.filter(post => post.subreddit === "music");
+    if (musicPosts.length > 0) {
+      const numNews = Math.min(3, musicPosts.length);
+      for (let i = 0; i < numNews; i++) {
+        musicPosts[i].postType = "news";
+      }
+    }
     
-    // Deduplicate posts
-    const uniquePosts = deduplicatePosts(allPosts);
-    
-    // Sort by diversity score
-    uniquePosts.sort((a, b) => b.diversityScore - a.diversityScore);
-    
-    // Take top results but prioritize specific types at the top
-    const topPosts = uniquePosts.slice(0, 50);
-    
-    // Sort to prioritize cached posts, group chats and news
-    topPosts.sort((a, b) => {
-      // Cached posts first
-      if (a.hasCachedData && !b.hasCachedData) return -1;
-      if (!a.hasCachedData && b.hasCachedData) return 1;
-      
-      // Then group chats
+    // Final sort to put group chats and news first
+    selectedPosts.sort((a, b) => {
       if (a.postType === 'groupchat' && b.postType !== 'groupchat') return -1;
       if (a.postType !== 'groupchat' && b.postType === 'groupchat') return 1;
-      
-      // Then news
       if (a.postType === 'news' && b.postType !== 'news') return -1;
       if (a.postType !== 'news' && b.postType === 'news') return 1;
-      
-      // Then by timestamp (newest first)
-      return b.createdUtc - a.createdUtc;
+      return b.diversityScore - a.diversityScore;
     });
     
-    // Update the cache with these diverse posts
-    cachedPosts = topPosts.slice(0, 40);
-    lastFetchTime = Date.now();
+    // DO NOT update cachedPosts array - let main endpoints handle caching
+    // This ensures diverse-posts always returns fresh content
     
-    // Log post type counts
-    const typeCounts = cachedPosts.reduce((acc, post) => {
+    // Log what we're returning
+    const typeCounts = selectedPosts.reduce((acc, post) => {
       acc[post.postType] = (acc[post.postType] || 0) + 1;
       return acc;
     }, {});
-    // Diverse posts organized by type
     
-    const cachedCount = cachedPosts.filter(p => p.hasCachedData).length;
-    // Returning diverse posts
+    console.log(`/diverse-posts returning ${selectedPosts.length} fresh posts:`, typeCounts);
     
     return res.json({ 
       success: true, 
-      data: cachedPosts,
-      message: "Fetched highly diverse post mix with cached content prioritized"
+      data: selectedPosts,
+      message: `Fetched ${selectedPosts.length} fresh diverse posts from Reddit`
     });
   } catch (err) {
-    // Error fetching diverse posts
+    console.error("Error fetching diverse posts:", err);
     return res.status(500).json({ success: false, error: err.toString() });
   }
 });

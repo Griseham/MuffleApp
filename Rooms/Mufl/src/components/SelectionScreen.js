@@ -163,7 +163,7 @@ const searchArtists = useCallback(async (query) => {
   setLoading('search', true);
   try {
     // Use GET request with query parameter
-    const res = await axios.get('/spotify/search-artists', {
+    const res = await axios.get('/api/rooms/spotify/search-artists', {
       params: { query: finalQuery },
       // Add timeout to prevent hanging requests
       timeout: 10000
