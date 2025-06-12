@@ -1268,10 +1268,11 @@ app.get('/api/spotify-token', async (req, res) => {
 });
 
 
-const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => {
-  // Server started on port
-});
+export default function registerThreadsRoutes(app) {
+  // Your Threads API endpoints
+  app.use('/api/threads', threadsRouter);
+}
+
 
 // Check caching directory on startup
 try {
