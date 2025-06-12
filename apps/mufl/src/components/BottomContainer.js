@@ -392,18 +392,19 @@ const renderSwipeContent = (songs, type) => {
               {/* Album Art or Song Icon */}
               <div className="song-icon">
                 {/* Show album art if available, otherwise show music note icon */}
-                {song.artworkUrl || song.image ? (
-                  <img 
-                    src={song.artworkUrl || song.image} 
-                    alt={`${song.track} by ${song.artist}`}
-                    className="w-full h-full object-cover rounded-md"
-                    onError={(e) => {
-                      // Fallback to music icon if image fails to load
-                      e.target.style.display = 'none';
-                      e.target.nextSibling.style.display = 'block';
-                    }}
-                  />
-                ) : null}
+               {song.artworkUrl || song.image || song.artistImage ? (
+   <img
+     src={song.artworkUrl || song.image || song.artistImage}
+     alt={`${song.track} by ${song.artist}`}
+     className="w-full h-full object-cover rounded-md"
+     onError={(e) => {
+       e.target.style.display = 'none';
+       e.target.nextSibling.style.display = 'block';
+     }}
+   />
+ ) : null}
+
+
                 {/* Fallback music icon - shown by default if no image, or if image fails */}
                 <div 
                   className="w-full h-full flex items-center justify-center"

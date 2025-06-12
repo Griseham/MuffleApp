@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Play, Music, Pause, X, Search, Send, Disc } from 'lucide-react';
 import { validateAndSanitizeInput, sanitizeSearchQuery, checkRateLimit } from '../../utils/security';
+import { getAvatarForUser } from '../../utils/avatarService';
+
 
 const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
   // State declarations
@@ -224,7 +226,7 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
         artistName: selectedSong.attributes?.artistName || "Unknown Artist",
         artwork: selectedSong.attributes?.artwork?.url
           ?.replace("{w}", "100")
-          ?.replace("{h}", "100") || "/threads/assets/default-artist.png",
+          ?.replace("{h}", "100") || "/assets/default-artist.png",
         previewUrl: selectedSong.attributes?.previews?.[0]?.url || null
       };
     }
@@ -252,7 +254,7 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
         {/* User Avatar */}
         <div style={styles.avatarContainer}>
           <img 
-            src="/threads/assets/user.png" 
+            src={getAvatarForUser('you')} 
             alt="Your avatar" 
             style={styles.avatar}
           />

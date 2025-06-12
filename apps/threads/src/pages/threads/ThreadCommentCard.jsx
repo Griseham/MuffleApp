@@ -14,16 +14,16 @@ import {
 import InfoIconModal from '../InfoIconModal';
 
 
+import { getAvatarForUser } from '../utils/avatarService';
+
+/** Consistent avatar per author string */
 function authorToAvatar(author) {
-  if (!author || author === 'You') {
-    return '/threads/assets/user.png';
-  }
-  let hash = 0;
-  for (let i = 0; i < author.length; i++) {
-    hash = author.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  return `/threads/assets/image${(Math.abs(hash) % 100) + 1}.png`;
+  // fall back to a fixed key for “You” or if author is undefined/null
+  const key = !author || author === 'You' ? 'you' : author;
+  return getAvatarForUser(key);
 }
+
+
 
 function getRandomTimestamp() {
   const randomHours = Math.floor(Math.random() * 24);

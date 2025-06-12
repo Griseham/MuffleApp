@@ -5,6 +5,8 @@ import EnhancedArtistFilterBar from "../EnhancedArtistFilterBar";
 import { friendColors } from "../utils";
 import { Info } from "lucide-react";
 import InfoIconModal from "../InfoIconModal";
+import { getAvatarForUser } from '../utils/avatarService';
+
 
 export default function Controls({
   isFullscreen,
@@ -245,7 +247,7 @@ export default function Controls({
             border: `2px solid ${friendColors[fid % friendColors.length]}`,
           }}>
             <img
-              src={`/threads/assets/image${(friendAvatars[fid] % 100) + 1}.png`}
+              src={getAvatarForUser(friendAvatars[fid])}
               alt={`Friend ${fid + 1}`}
               style={styles.avatarImg}
             />
@@ -297,7 +299,7 @@ export default function Controls({
         border: `2px solid ${friendColors[fid % friendColors.length]}`,
       }}>
         <img
-          src={`/threads/assets/image${(friendAvatars[fid] % 100) + 1}.png`}
+          src={getAvatarForUser(friendAvatars[fid])}
           alt={`Friend ${fid + 1}`}
           style={styles.avatarImg}
         />

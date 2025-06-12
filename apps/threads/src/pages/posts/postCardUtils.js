@@ -88,12 +88,12 @@ export function hashString(str) {
 
 // Get avatar source based on post
 export function getAvatarSrc(post) {
-  if (post.author === 'You') return '/threads/assets/user.png';
+  if (post.author === 'You') return '/assets/users/assets2/user.png';
   
   // Handle cases where post.id might be undefined
   const idStr = post.id ? post.id.toString() : post.author || 'default';
   const num = hashString(idStr);
-  return `/threads/assets/image${(num % 100) + 1}.png`;
+  return `/assets/users/assets2/image${(num % 100) + 1}.png`;
 }
 // Generate username based on author
 export function generateUsername(author) {
