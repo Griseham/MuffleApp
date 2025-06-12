@@ -16,21 +16,20 @@ registerRoomsRoutes(app);
 
 // Register Threads routes asynchronously
 registerThreadsRoutes(app).then(() => {
-  // Serve static files from React builds with proper asset routing
+  // Serve static files from React builds
   const roomsBuild = path.join(__dirname, 'Rooms/Mufl/build');
   const threadsBuild = path.join(__dirname, 'Threads/muffle-threads/dist');
   
-  // Serve at intended paths
+  // Rooms app
   app.use('/rooms', express.static(roomsBuild));
-  app.use('/threads', express.static(threadsBuild));
-  
-  // TEMPORARY: Also serve Rooms static assets at root until rebuild completes
-  app.use('/static', express.static(path.join(roomsBuild, 'static')));
-  app.get('/manifest.json', (req, res) => {
-    res.sendFile(path.join(roomsBuild, 'manifest.json'));
+  app.get('/rooms/*', (req, res) => {
+    res.sendFile(path.join(roomsBuild, 'index.html'));
   });
-  app.get('/favicon.ico', (req, res) => {
-    res.sendFile(path.join(roomsBuild, 'favicon.ico'));
+
+  // Threads app  
+  app.use('/threads', express.static(threadsBuild));
+  app.get('/threads/*', (req, res) => {
+    res.sendFile(path.join(threadsBuild, 'index.html'));
   });
 
   // Health check route
@@ -50,15 +49,6 @@ registerThreadsRoutes(app).then(() => {
         <li><a href="/api/threads/posts">Threads API</a></li>
       </ul>
     `);
-  });
-
-  // Serve React apps for SPA routing
-  app.get('/rooms/*', (req, res) => {
-    res.sendFile(path.join(roomsBuild, 'index.html'));
-  });
-
-  app.get('/threads/*', (req, res) => {
-    res.sendFile(path.join(threadsBuild, 'index.html'));
   });
 
   const PORT = process.env.PORT || 3000;
