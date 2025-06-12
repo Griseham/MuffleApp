@@ -8,7 +8,7 @@ import { validateAndSanitizeInput, checkRateLimit, sanitizeComment, sanitizeSear
 // Helper function to generate avatar URLs
 function authorToAvatar(author) {
   if (!author || typeof author !== "string") {
-    return "/assets/default-avatar.png";
+    return "/threads/assets/default-avatar.png";
   }
 
   let hash = 0;
@@ -83,13 +83,13 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
         setLoading(true);
         
         // Fetch comments
-        const commentsResponse = await fetch(`http://localhost:4000/api/posts/${post.id}/comments`);
+        const commentsResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}/posts/${post.id}/comments`);
         const commentsData = await commentsResponse.json();
         
         // Fetch snippets
         let snippetsData = [];
         try {
-          const snippetsResponse = await fetch(`http://localhost:4000/api/posts/${post.id}/snippets`);
+          const snippetsResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}/posts/${post.id}/snippets`);
           const snippetsJson = await snippetsResponse.json();
           if (snippetsJson.success) {
             snippetsData = snippetsJson.data || [];
@@ -108,7 +108,7 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
               artistName: s.snippetData.attributes.artistName,
               artwork: s.snippetData.attributes.artwork?.url
                 ?.replace("{w}", "100")
-                ?.replace("{h}", "100") || "/assets/default-artist.png",
+                ?.replace("{h}", "100") || "/threads/assets/default-artist.png",
               previewUrl: s.snippetData.attributes.previews?.[0]?.url
             };
           }
@@ -452,7 +452,7 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
     
     setIsSearching(true);
     try {
-      const response = await fetch(`http://localhost:4000/api/apple-music-search?query=${encodeURIComponent(sanitizedQuery)}`);
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/apple-music-search?query=${encodeURIComponent(sanitizedQuery)}`);
       const data = await response.json();
       
       if (data.success && data.data) {
@@ -472,7 +472,7 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
       id: snippet.id,
       name: snippet.attributes.name,
       artistName: snippet.attributes.artistName,
-      artwork: snippet.attributes.artwork?.url?.replace("{w}", "100")?.replace("{h}", "100") || "/assets/default-artist.png",
+      artwork: snippet.attributes.artwork?.url?.replace("{w}", "100")?.replace("{h}", "100") || "/threads/assets/default-artist.png",
       previewUrl: snippet.attributes.previews?.[0]?.url || null
     });
   }, []);
@@ -826,7 +826,7 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
                 gap: "12px"
               }}>
                 <img
-                  src={searchedSnippet.attributes.artwork?.url?.replace("{w}", "100")?.replace("{h}", "100") || "/assets/default-artist.png"}
+                  src={searchedSnippet.attributes.artwork?.url?.replace("{w}", "100")?.replace("{h}", "100") || "/threads/assets/default-artist.png"}
                   alt={searchedSnippet.attributes.name}
                   style={{ width: "50px", height: "50px", borderRadius: "8px" }}
                 />

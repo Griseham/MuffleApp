@@ -210,7 +210,7 @@ const MusicHome = () => {
       } else {
         // Fallback: fetch if background fetch somehow failed
         console.log("No background posts available, fetching fresh...");
-        const response = await fetch("http://localhost:4000/api/diverse-posts");
+        const response = await fetch("${import.meta.env.VITE_API_BASE_URL}/diverse-posts");
         
         if (response.ok) {
           const result = await response.json();
@@ -255,7 +255,7 @@ const MusicHome = () => {
       console.log("Refreshing cached posts");
       
       try {
-        const response = await fetch("http://localhost:4000/api/cached-posts");
+        const response = await fetch("${import.meta.env.VITE_API_BASE_URL}/cached-posts");
         
         if (response.ok) {
           const result = await response.json();
@@ -291,7 +291,7 @@ const MusicHome = () => {
         const examplePost = createExamplePost();
         
         // Load cached posts
-        const response = await fetch("http://localhost:4000/api/cached-posts");
+        const response = await fetch("${import.meta.env.VITE_API_BASE_URL}/cached-posts");
         
         if (response.ok) {
           const result = await response.json();
@@ -346,8 +346,8 @@ const MusicHome = () => {
           
           // Fetch multiple API calls for maximum diversity
           const [diverseResponse, refreshResponse] = await Promise.all([
-            fetch("http://localhost:4000/api/diverse-posts"),
-            fetch("http://localhost:4000/api/refresh")
+            fetch("${import.meta.env.VITE_API_BASE_URL}/diverse-posts"),
+            fetch("${import.meta.env.VITE_API_BASE_URL}/refresh")
           ]);
           
           const allFetchedPosts = [];

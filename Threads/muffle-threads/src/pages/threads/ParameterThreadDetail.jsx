@@ -358,7 +358,7 @@ export default function ParameterThreadDetail({ postId, onBack, onSelectUser }) 
       
       // For other parameter threads, try to load from API (future implementation)
       try {
-        const cacheResp = await fetch(`http://localhost:4000/api/cached-posts/${postId}`);
+        const cacheResp = await fetch(`${import.meta.env.VITE_API_BASE_URL}/cached-posts/${postId}`);
         
         if (cacheResp.ok) {
           const { data: cachedData } = await cacheResp.json();

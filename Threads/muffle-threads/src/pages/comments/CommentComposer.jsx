@@ -120,7 +120,7 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
     
     setIsSearching(true);
     try {
-      const resp = await fetch(`http://localhost:4000/api/apple-music-search?query=${encodeURIComponent(sanitizedQuery)}`);
+      const resp = await fetch(`${import.meta.env.VITE_API_BASE_URL}/apple-music-search?query=${encodeURIComponent(sanitizedQuery)}`);
       const data = await resp.json();
       
       if (data.success && data.data) {

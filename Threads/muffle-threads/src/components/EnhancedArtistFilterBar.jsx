@@ -57,7 +57,7 @@ const searchForArtists = useCallback(async (searchQuery) => {
   
   try {
     // Step 1: Get the Spotify token from your server
-    const tokenResponse = await fetch('http://localhost:4000/api/spotify-token');
+    const tokenResponse = await fetch('${import.meta.env.VITE_API_BASE_URL}/spotify-token');
     
     if (!tokenResponse.ok) {
       setError("Could not connect to Spotify API");
