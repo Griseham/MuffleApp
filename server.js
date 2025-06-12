@@ -1,6 +1,7 @@
 const express = require('express');
 const dotenv = require('dotenv');
 const cors = require('cors');
+const path = require('path');
 const registerRoomsRoutes = require('./Rooms/Mufl/src/backend/index.js');
 const registerThreadsRoutes = require('./threadsRoutes.cjs');
 
@@ -15,6 +16,38 @@ registerRoomsRoutes(app);
 
 // Register Threads routes asynchronously
 registerThreadsRoutes(app).then(() => {
+  // Serve static files from React builds
+  app.use('/rooms', express.static(path.join(__dirname, 'Rooms/Mufl/build')));
+  app.use('/threads', express.static(path.join(__dirname, 'Threads/muffle-threads/dist')));
+
+  // Health check route
+  app.get('/health', (req, res) => {
+    res.sendStatus(200);
+  });
+
+  // Root route
+  app.get('/', (req, res) => {
+    res.send(`
+      <h1>Muffle Backend ✅</h1>
+      <p>Backend is running successfully!</p>
+      <ul>
+        <li><a href="/rooms">Rooms App</a></li>
+        <li><a href="/threads">Threads App</a></li>
+        <li><a href="/api/rooms/api/health-check">Rooms API Health</a></li>
+        <li><a href="/api/threads/posts">Threads API</a></li>
+      </ul>
+    `);
+  });
+
+  // Serve React apps for SPA routing
+  app.get('/rooms/*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'Rooms/Mufl/build', 'index.html'));
+  });
+
+  app.get('/threads/*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'Threads/muffle-threads/dist', 'index.html'));
+  });
+
   const PORT = process.env.PORT || 3000;
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`Unified backend running on port ${PORT}`);
