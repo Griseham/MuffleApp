@@ -1,5 +1,5 @@
 // Updated InfoIconModal.jsx with Design 1 (Smoky Gradient Match) and Black & White colors - No hover effects
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import { useModalState } from '../utils/modalStateManager';
 
@@ -114,8 +114,12 @@ const InfoIconModal = ({
   /** NEW — set this to true when you want the panel on the side */
   sidePanel = true,
   /** NEW — unique identifier for this modal instance */
-  modalId = `modal-${Math.random().toString(36).substr(2, 9)}`
+  modalId: propsModalId
 }) => {
+  const idRef = useRef(
+    propsModalId || `modal-${Math.random().toString(36).substr(2, 9)}`
+  );
+  const modalId = idRef.current;
 
   // State management
   const [openIndex, setOpenIndex] = useState(0);    // first card open by default

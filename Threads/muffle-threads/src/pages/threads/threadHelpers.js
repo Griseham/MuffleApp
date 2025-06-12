@@ -91,7 +91,7 @@ export const processScatterData = (snippets, comments, getSnippetId) => {
     
     return {
       snippetId,
-      userAvatar: `/assets/image${(Math.abs(generateHash(commentAuthor)) % 200) + 1}.png`,
+      userAvatar: `/threads/assets/image${(Math.abs(generateHash(commentAuthor)) % 100) + 1}.png`,
       ratingCount: snippet.totalRatings || randomRatingCount,
       average: snippet.userRating ?? 50
     };

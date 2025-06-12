@@ -245,7 +245,7 @@ export default function Controls({
             border: `2px solid ${friendColors[fid % friendColors.length]}`,
           }}>
             <img
-              src={`/assets/image${friendAvatars[fid]}.png`}
+              src={`/threads/assets/image${(friendAvatars[fid] % 100) + 1}.png`}
               alt={`Friend ${fid + 1}`}
               style={styles.avatarImg}
             />
@@ -297,7 +297,7 @@ export default function Controls({
         border: `2px solid ${friendColors[fid % friendColors.length]}`,
       }}>
         <img
-          src={`/assets/image${friendAvatars[fid]}.png`}
+          src={`/threads/assets/image${(friendAvatars[fid] % 100) + 1}.png`}
           alt={`Friend ${fid + 1}`}
           style={styles.avatarImg}
         />

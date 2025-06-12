@@ -1,5 +1,5 @@
 // Apple Music API service for parameter threads
-const APPLE_MUSIC_API_BASE = '${import.meta.env.VITE_API_BASE_URL}/apple-music-search';
+const APPLE_MUSIC_API_BASE = `${import.meta.env.VITE_API_BASE_URL}/apple-music-search`;
 
 /**
  * Search for a song using Apple Music API via our backend
@@ -98,7 +98,7 @@ export function extractSongQuery(commentText) {
  */
 export async function cacheMediaAssets(artworkUrl, previewUrl, songId) {
   try {
-    const cacheResponse = await fetch('${import.meta.env.VITE_API_BASE_URL}/cache-media', {
+    const cacheResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}/cache-media`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
