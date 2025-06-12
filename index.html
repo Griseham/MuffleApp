@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mufl - Investor Portal</title>
+    <link rel="icon" type="image/png" href="./assets/MuflLogo.png">
     <style>
         * {
             margin: 0;
@@ -446,15 +447,13 @@
             color: #f5f5f7;
         }
 
-       /* --- replace your existing .main-slide block with the one below --- */
-.main-slide {
-    /* wider, but still capped so it never gets silly-wide */
-    width: 40vw;          /* 90 % of the viewport, not the inner container */
-    max-width: 1400px;    /* hard cap for very large screens  */
-
-    height: 600px;        /* unchanged */
-    margin-left: auto;    /* keep it centred */
-    margin-right: auto;   /* keep it centred */
+       .main-slide {
+    width: 80vw;
+    max-width: 1200px;
+    height: 70vh;
+    max-height: 800px;
+    margin-left: auto;
+    margin-right: auto;
 
     border-radius: 20px;
     margin-bottom: 32px;
@@ -466,9 +465,10 @@
     cursor: pointer;
     transition: all 0.3s ease;
     border: 1px solid rgba(255, 255, 255, 0.1);
-    background-size: cover;
+    background-size: contain;
     background-position: center;
     background-repeat: no-repeat;
+    background-color: rgba(0, 0, 0, 0.1);
 }
 
 
@@ -818,8 +818,6 @@
             </div>
             
             <div class="nav-item" data-content="pitch">Pitch Deck</div>
-            <div class="nav-item" data-content="business">Business Model</div>
-            <div class="nav-item" data-content="about">About Me</div>
         </div>
         
         <div class="main-content">
@@ -986,10 +984,6 @@
                             </div>
                         </div>
 
-                        <div class="pitch-action-buttons">
-                            <button class="pitch-action-button pitch-primary-action">Download PDF</button>
-                            <button class="pitch-action-button pitch-secondary-action">Share</button>
-                        </div>
                     </div>
                 </div>
                 <div class="refined-gradient"></div>
@@ -1078,18 +1072,31 @@
                     video.style.cssText = 'max-width: 90%; max-height: 90%; border-radius: 12px;';
                     video.controls = true;
                     video.autoplay = true;
-                    video.src = videoSrc;
+                    
+                    // Create source element for better compatibility
+                    const source = document.createElement('source');
+                    source.src = videoSrc;
+                    source.type = 'video/mp4';
+                    video.appendChild(source);
+                    
+                    // Add error handling
+                    video.addEventListener('error', (e) => {
+                        console.error('Video failed to load:', videoSrc);
+                        modal.innerHTML = `<div style="color: white; text-align: center;">
+                            <h3>Video Error</h3>
+                            <p>Failed to load: ${videoSrc}</p>
+                            <p>Click anywhere to close</p>
+                        </div>`;
+                    });
                     
                     modal.appendChild(video);
                     document.body.appendChild(modal);
                     
                     modal.addEventListener('click', (e) => {
-                        if (e.target === modal) {
+                        if (e.target === modal || e.target.closest('div') === modal.firstChild) {
                             document.body.removeChild(modal);
                         }
                     });
-                } else {
-                    alert('Video would play here');
                 }
             });
         });
@@ -1164,14 +1171,57 @@
                 if (slideNumber) {
                     updateSlide(slideNumber);
                 }
-            } else if (e.target.classList.contains('pitch-primary-action')) {
-                alert('Would download the PDF pitch deck');
-            } else if (e.target.classList.contains('pitch-secondary-action')) {
-                alert('Would open sharing options');
             } else if (e.target.classList.contains('quick-btn') && e.target.textContent === 'Fullscreen') {
-                alert('Would enter fullscreen mode');
+                enterFullscreen();
             }
         });
+
+        // Fullscreen functionality for pitch deck
+        function enterFullscreen() {
+            const mainSlide = document.getElementById('mainSlide');
+            if (mainSlide) {
+                if (mainSlide.requestFullscreen) {
+                    mainSlide.requestFullscreen();
+                } else if (mainSlide.webkitRequestFullscreen) {
+                    mainSlide.webkitRequestFullscreen();
+                } else if (mainSlide.msRequestFullscreen) {
+                    mainSlide.msRequestFullscreen();
+                } else if (mainSlide.mozRequestFullScreen) {
+                    mainSlide.mozRequestFullScreen();
+                }
+                
+                // Add fullscreen event listeners for keyboard navigation
+                document.addEventListener('fullscreenchange', handleFullscreenChange);
+                document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+                document.addEventListener('msfullscreenchange', handleFullscreenChange);
+                document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+            }
+        }
+
+        function handleFullscreenChange() {
+            const isFullscreen = !!(document.fullscreenElement || 
+                                   document.webkitFullscreenElement || 
+                                   document.msFullscreenElement || 
+                                   document.mozFullScreenElement);
+            
+            if (isFullscreen) {
+                // Add keyboard navigation for fullscreen
+                document.addEventListener('keydown', fullscreenKeyHandler);
+            } else {
+                // Remove keyboard navigation when exiting fullscreen
+                document.removeEventListener('keydown', fullscreenKeyHandler);
+            }
+        }
+
+        function fullscreenKeyHandler(e) {
+            if (e.key === 'ArrowLeft' && currentSlide > 1) {
+                updateSlide(currentSlide - 1);
+            } else if (e.key === 'ArrowRight' && currentSlide < totalSlides) {
+                updateSlide(currentSlide + 1);
+            } else if (e.key === 'Escape') {
+                // Let browser handle escape naturally
+            }
+        }
     </script>
 </body>
 </html>
