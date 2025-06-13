@@ -5,6 +5,8 @@ import ArtistPool from "./ArtistPool";
 import Widget from "./Widget";
 import InfoIconModal from "./InfoIconModal";
 
+import { getAvatarForUser } from "../utils/avatarService";
+
 // Swipe icon components
 const LeftSwipeIcon = ({ size = 24, className = "" }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
