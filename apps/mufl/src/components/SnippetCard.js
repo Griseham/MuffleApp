@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { UserIcon, PlayIcon, PauseIcon, BookmarkIcon, VolumeIcon } from "./Icons/Icons";
 import InfoIconModal from "./InfoIconModal";
-import UserHoverCard from "./UserHoverCard"; // Import UserHoverCard
+import UserHoverCard from "./UserHoverCard";
 
 const GENRES = ["Rock", "Pop", "R&B", "Jazz", "Hip-Hop"];
 const GENRE_COLORS = {
@@ -67,6 +67,29 @@ The user may or may not stay anonymous to eliminate bias`
 
 const defaultPreviewUrl = "";
 
+// Pure SVG Music Icon Component
+const PureMusicIcon = ({ size = 80, className = "", color = "currentColor" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill={color} className={className}>
+    <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
+  </svg>
+);
+
+// Pure SVG Album Icon Component 
+const PureAlbumIcon = ({ size = 80, className = "", color = "currentColor" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" className={className}>
+    <circle cx="12" cy="12" r="10"/>
+    <circle cx="12" cy="12" r="3" fill={color}/>
+  </svg>
+);
+
+// Pure SVG User Icon Component
+const PureUserIcon = ({ size = 24, className = "" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
+    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+    <circle cx="12" cy="7" r="4"/>
+  </svg>
+);
+
 const SnippetCard = ({ 
   onSwipe = () => {}, 
   currentSong = null,
@@ -102,22 +125,16 @@ const SnippetCard = ({
   // Ref for user avatar element
   const userAvatarRef = useRef(null);
 
-  // Get the current card - use real song data or show loading
+  // UPDATED: Get the current card - COMPLETELY IMAGE-FREE
   const getCurrentCard = () => {
-    // Always prioritize real Apple Music data
+    // Always prioritize real Apple Music data but remove image references
     if (currentSong) {
-      // Ensure Apple Music artwork URL uses correct dimensions
-      let artworkUrl = currentSong.artworkUrl || currentSong.artwork;
-      if (artworkUrl && artworkUrl.includes('{w}') && artworkUrl.includes('{h}')) {
-        artworkUrl = artworkUrl.replace('{w}', '300').replace('{h}', '300');
-      }
-      
       return {
         id: currentSong.id,
         track: currentSong.track,
         artist: currentSong.artist,
-        album: currentSong.album || '', // Apple Music album name
-        artworkUrl: artworkUrl,
+        album: currentSong.album || '', 
+        // REMOVED: artworkUrl - no longer used
         previewUrl:
              currentSong.previewUrl
              || currentSong.snippetData?.attributes?.previews?.[0]?.url
@@ -164,12 +181,10 @@ const SnippetCard = ({
     // Get user data to include in swipe
     const userData = generateUserData(currentCard);
     
-    // Create enhanced song data with user information AND album art for left/right tabs
+    // UPDATED: Create enhanced song data with user information - NO ARTWORK
     const enhancedSong = {
       ...currentCard,
-      // Ensure album art is included
-      artworkUrl: currentCard.artworkUrl,
-      image: currentCard.artworkUrl, // Some components might look for 'image' instead
+      // REMOVED: artworkUrl, image references
       album: currentCard.album,
       // Add user information that will be preserved in left/right tabs
       recommendedBy: {
@@ -349,7 +364,7 @@ const SnippetCard = ({
     );
   };
 
-  // Enhanced function to generate user data - NO MORE AVATAR SERVICE
+  // UPDATED: Enhanced function to generate user data - COMPLETELY SVG-ONLY
   const generateUserData = (song) => {
     if (!song || !song.track) return { 
       userId: 1,
@@ -491,6 +506,94 @@ const SnippetCard = ({
     };
   }, [showUserModal]);
 
+  // UPDATED: Generate dynamic SVG artwork based on song data
+  const generateSongArtwork = (song) => {
+    // Create a unique hash from song data
+    const songString = `${song.track}-${song.artist}`;
+    let hash = 0;
+    for (let i = 0; i < songString.length; i++) {
+      hash = songString.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    
+    // Color palettes based on song color
+    const getGradientColors = (baseColor) => {
+      const colorMap = {
+        '#1DB954': ['#1DB954', '#14A085', '#0F7B8A'], // Green theme
+        '#E91E63': ['#E91E63', '#C2185B', '#AD1457'], // Pink theme  
+        '#FF9800': ['#FF9800', '#F57C00', '#E65100'], // Orange theme
+        '#9C27B0': ['#9C27B0', '#7B1FA2', '#6A1B9A'], // Purple theme
+        '#2196F3': ['#2196F3', '#1976D2', '#1565C0'], // Blue theme
+      };
+      
+      return colorMap[baseColor] || ['#666666', '#555555', '#444444'];
+    };
+    
+    const colors = getGradientColors(song.color);
+    const patternType = Math.abs(hash) % 4; // 4 different patterns
+    
+    return (
+      <svg className="w-full h-full" viewBox="0 0 200 200">
+        <defs>
+          <linearGradient id={`grad-${song.id}`} x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style={{stopColor: colors[0], stopOpacity: 1}} />
+            <stop offset="50%" style={{stopColor: colors[1], stopOpacity: 0.8}} />
+            <stop offset="100%" style={{stopColor: colors[2], stopOpacity: 1}} />
+          </linearGradient>
+          <radialGradient id={`radial-${song.id}`} cx="50%" cy="50%" r="50%">
+            <stop offset="0%" style={{stopColor: colors[0], stopOpacity: 0.8}} />
+            <stop offset="100%" style={{stopColor: colors[2], stopOpacity: 1}} />
+          </radialGradient>
+        </defs>
+        
+        {/* Background */}
+        <rect width="200" height="200" fill={`url(#grad-${song.id})`} />
+        
+        {/* Pattern based on hash */}
+        {patternType === 0 && (
+          // Circular pattern
+          <>
+            <circle cx="100" cy="100" r="80" fill="none" stroke="white" strokeWidth="2" opacity="0.3" />
+            <circle cx="100" cy="100" r="60" fill="none" stroke="white" strokeWidth="2" opacity="0.4" />
+            <circle cx="100" cy="100" r="40" fill="none" stroke="white" strokeWidth="2" opacity="0.5" />
+            <circle cx="100" cy="100" r="20" fill="white" opacity="0.6" />
+          </>
+        )}
+        
+        {patternType === 1 && (
+          // Wave pattern
+          <>
+            <path d="M0,100 Q50,50 100,100 T200,100" stroke="white" strokeWidth="3" fill="none" opacity="0.4" />
+            <path d="M0,120 Q50,70 100,120 T200,120" stroke="white" strokeWidth="2" fill="none" opacity="0.3" />
+            <path d="M0,80 Q50,30 100,80 T200,80" stroke="white" strokeWidth="2" fill="none" opacity="0.3" />
+          </>
+        )}
+        
+        {patternType === 2 && (
+          // Geometric pattern
+          <>
+            <polygon points="100,40 140,80 140,120 100,160 60,120 60,80" fill="white" opacity="0.3" />
+            <polygon points="100,60 120,80 120,120 100,140 80,120 80,80" fill="white" opacity="0.4" />
+            <circle cx="100" cy="100" r="15" fill="white" opacity="0.6" />
+          </>
+        )}
+        
+        {patternType === 3 && (
+          // Music note pattern
+          <>
+            <ellipse cx="70" cy="140" rx="12" ry="8" fill="white" opacity="0.5" />
+            <ellipse cx="130" cy="120" rx="12" ry="8" fill="white" opacity="0.5" />
+            <rect x="77" y="80" width="3" height="60" fill="white" opacity="0.5" />
+            <rect x="137" y="60" width="3" height="60" fill="white" opacity="0.5" />
+            <path d="M80,80 Q120,60 140,60" stroke="white" strokeWidth="3" fill="none" opacity="0.5" />
+          </>
+        )}
+        
+        {/* Overlay gradient for depth */}
+        <rect width="200" height="200" fill={`url(#radial-${song.id})`} opacity="0.3" />
+      </svg>
+    );
+  };
+
   return (
     <div className="flex justify-center relative p-8">
       {/* Hidden audio element for preview playback */}
@@ -512,10 +615,8 @@ const SnippetCard = ({
             className="user-avatar-clickable mr-3 flex h-12 w-12 items-center justify-center rounded-full overflow-hidden bg-gradient-to-b from-[#1a1a1a] to-black border border-white/10 shadow-[0_4px_12px_-2px_rgba(0,0,0,0.5)] cursor-pointer hover:ring-2 hover:ring-[#1DB954] transition-all"
             onClick={handleUserAvatarClick}
           >
-            {/* Grey SVG user placeholder */}
-            <svg className="w-8 h-8 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-            </svg>
+            {/* PURE SVG user placeholder - NO IMAGES */}
+            <PureUserIcon size={24} className="text-gray-400" />
           </div>
           <div className="flex-1">
             <div className="flex items-center">
@@ -544,32 +645,12 @@ const SnippetCard = ({
           {/* Snippet Card */}
           <div className="flex w-full select-none flex-col overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-b from-[#1a1a1a] to-black shadow-[0_10px_25px_-5px_rgba(0,0,0,0.5)]">
             <div className="relative h-96 w-full flex items-center justify-center bg-black/40 border border-white/10">
-              {/* Album Art or Placeholder */}
-              {currentCard.artworkUrl ? (
-                <div className="absolute inset-0">
-                  <img 
-                    src={currentCard.artworkUrl} 
-                    alt={`${currentCard.album} by ${currentCard.artist}`}
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      // Fallback to placeholder if image fails
-                      e.target.style.display = 'none';
-                    }}
-                  />
-                  {/* Dark overlay for better text readability */}
-                  <div className="absolute inset-0 bg-black/30" />
-                </div>
-              ) : (
-                /* Placeholder for album art */
-                <div className="absolute inset-0 bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center">
-                  {/* Music icon placeholder */}
-                  <div className="text-gray-500">
-                    <svg width="80" height="80" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
-                    </svg>
-                  </div>
-                </div>
-              )}
+              {/* UPDATED: Pure SVG Artwork - NO IMAGES */}
+              <div className="absolute inset-0">
+                {generateSongArtwork(currentCard)}
+                {/* Dark overlay for better text readability */}
+                <div className="absolute inset-0 bg-black/30" />
+              </div>
               
               {/* Gradient overlay matching card color */}
               <div 
@@ -631,9 +712,7 @@ const SnippetCard = ({
                 >
                   {/* Show different icon based on audio availability */}
                   {audioError || !currentCard.previewUrl ? (
-                    <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
-                    </svg>
+                    <PureMusicIcon size={19} color="currentColor" />
                   ) : isPlaying ? (
                     <PauseIcon size={19} />
                   ) : (
