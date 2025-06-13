@@ -276,15 +276,12 @@ const QueueLine = ({ qlUsers }) => {
               }`}
               onClick={() => handleUserClick(user.id, index)}
             >
-              <img 
-                src={user.avatar} 
-                alt={user.name}
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  // Fallback to a default avatar if image fails to load
-                  e.target.src = getAvatarForUser(1);
-                }}
-              />
+              {/* Grey SVG user placeholder */}
+              <div className="w-full h-full bg-gray-700 flex items-center justify-center">
+                <svg className="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                </svg>
+              </div>
             </div>
             
             {/* Username - Smaller text */}

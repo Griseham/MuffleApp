@@ -127,14 +127,12 @@ const handleSongFromWidget = (song) => {
     return exists ? prev : [...prev, yourPickSong];
   });
 
-  console.log('🎵 Widget song queued and (if new) added to Your Picks');
 };
 
 
   // NEW: Function to fetch a single song quickly from one artist
   const fetchSingleSongFromArtist = async (artist) => {
     try {
-      console.log(`🎤 Quick fetching song for: ${artist.name}`);
       
       const response = await fetch(`${API_BASE_URL}/api/apple-music-search?query=${encodeURIComponent(artist.name)}`);
 
@@ -146,22 +144,18 @@ const handleSongFromWidget = (song) => {
       
       if (result.success && result.data) {
         const song = result.data;
-        console.log(`✅ Got Apple Music song "${song.attributes.name}" for ${artist.name}`);
         
         // Always prioritize Apple Music artwork URL over artist image
         let artworkUrl = '';
         if (song.attributes.artwork?.url) {
           // Apple Music artwork URLs use {w} and {h} placeholders
           artworkUrl = song.attributes.artwork.url.replace('{w}', '300').replace('{h}', '300');
-          console.log(`🎨 Apple Music artwork: ${artworkUrl}`);
         } else {
           // Fallback to artist image if no song artwork
           artworkUrl = artist.image;
-          console.log(`🎨 Fallback to artist image: ${artworkUrl}`);
         }
         
         const previewUrl = song.attributes.previews?.[0]?.url || '';
-        console.log(`🎵 Apple Music preview URL: ${previewUrl}`);
         
         return {
           id: `${artist.id || artist.name}-${Date.now()}-${Math.random()}`,
@@ -177,7 +171,6 @@ const handleSongFromWidget = (song) => {
         };
       }
     } catch (error) {
-      console.error(`❌ Error fetching song for ${artist.name}:`, error);
     }
     return null;
   };
@@ -186,7 +179,6 @@ const handleSongFromWidget = (song) => {
   const fetchFirstSongWithPriority = async (artists) => {
     if (!artists || artists.length === 0) return null;
     
-    console.log('⚡ PRIORITY: Fetching first song for immediate playback...');
     setIsFetchingSongs(true);
     setSongFetchProgress(10);
     
@@ -195,7 +187,6 @@ const handleSongFromWidget = (song) => {
       try {
         const song = await fetchSingleSongFromArtist(artist);
         if (song) {
-          console.log('⚡ FIRST SONG READY! User can play immediately');
           setCurrentSongs([song]);
           setCurrentSongIndex(0);
           setSongFetchProgress(100);
@@ -203,12 +194,10 @@ const handleSongFromWidget = (song) => {
           return song;
         }
       } catch (error) {
-        console.error(`❌ Failed to get first song from ${artist.name}:`, error);
         continue; // Try next artist
       }
     }
     
-    console.log('⚡ No first song available from any artist');
     setIsFetchingSongs(false);
     return null;
   };
@@ -216,7 +205,6 @@ const handleSongFromWidget = (song) => {
   // NEW: Function to fetch songs from Apple Music for selected artists (optimized for speed and quantity)
   const fetchSongsFromArtists = async (artists, count = 5, isBackground = false) => {
     if (!artists || artists.length === 0) {
-      console.log('No artists available for song fetching');
       return [];
     }
 
@@ -226,7 +214,6 @@ const handleSongFromWidget = (song) => {
     }
 
     try {
-      console.log(`🎵 Fetching songs from ${Math.min(count, artists.length)} artists${isBackground ? ' (background)' : ''}...`);
       
       // Shuffle artists and ensure we get different artists for each song
       const shuffledArtists = [...artists].sort(() => Math.random() - 0.5);
@@ -238,7 +225,6 @@ const handleSongFromWidget = (song) => {
         
         for (let i = 0; i < selectedArtists.length; i++) {
           const artist = selectedArtists[i];
-          console.log(`🎵 Background fetch ${i + 1}/${selectedArtists.length}: ${artist.name}`);
           
           const song = await fetchSingleSongFromArtist(artist);
           if (song) {
@@ -251,7 +237,6 @@ const handleSongFromWidget = (song) => {
           }
         }
         
-        console.log(`🎵 Background fetch complete: ${songs.length} songs`);
         return songs;
         
       } else {
@@ -261,7 +246,6 @@ const handleSongFromWidget = (song) => {
             setSongFetchProgress(Math.round(((index + 1) / selectedArtists.length) * 90));
             return await fetchSingleSongFromArtist(artist);
           } catch (error) {
-            console.error(`❌ Error in parallel fetch for ${artist.name}:`, error);
             return null;
           }
         });
@@ -272,13 +256,11 @@ const handleSongFromWidget = (song) => {
         // Filter out null results and ensure we have valid songs
         const validSongs = results.filter(song => song !== null);
         
-        console.log(`🎉 Successfully fetched ${validSongs.length} songs from ${selectedArtists.length} artists`);
         
         return validSongs;
       }
       
     } catch (error) {
-      console.error('❌ Error in song fetching process:', error);
       return [];
     } finally {
       if (!isBackground) {
@@ -308,25 +290,21 @@ const handleSongFromWidget = (song) => {
   const fetchMoreSongs = async () => {
     if (poolArtists.length === 0) return;
     
-    console.log('🔄 Fetching more songs...');
     
     // Get artists that we haven't used yet
     const usedArtistNames = new Set(currentSongs.map(song => song.sourceArtist?.name || song.artist));
     const unusedArtists = poolArtists.filter(artist => !usedArtistNames.has(artist.name));
     
     if (unusedArtists.length === 0) {
-      console.log('🔄 No unused artists available, using all artists');
       // If no unused artists, just use any artists
       const newSongs = await fetchSongsFromArtists(poolArtists, 3, true);
       if (newSongs.length > 0) {
         setCurrentSongs(prev => [...prev, ...newSongs]);
-        console.log(`➕ Added ${newSongs.length} new songs to queue`);
       }
     } else {
       const newSongs = await fetchSongsFromArtists(unusedArtists, Math.min(3, unusedArtists.length), true);
       if (newSongs.length > 0) {
         setCurrentSongs(prev => [...prev, ...newSongs]);
-        console.log(`➕ Added ${newSongs.length} new songs from unused artists to queue`);
       }
     }
   };
@@ -338,7 +316,6 @@ const handleSongFromWidget = (song) => {
       
       // Check if we have Widget songs waiting to be inserted
       if (widgetSongQueue.length > 0) {
-        console.log('🎵 Inserting Widget song as next track');
         
         // Take the first Widget song
         const widgetSong = widgetSongQueue[0];
@@ -352,7 +329,6 @@ const handleSongFromWidget = (song) => {
           return newSongs;
         });
         
-        console.log('🎵 Widget song inserted, advancing to it');
       }
       
       // If we're running low on songs (less than 3 remaining), fetch more
@@ -373,17 +349,15 @@ const handleSongFromWidget = (song) => {
   const initializeSuperOptimizedQueue = async (roomArtists) => {
     if (!roomArtists || roomArtists.length === 0) return;
     
-    console.log('🚀 SUPER OPTIMIZED: Starting fastest possible song loading...');
     
     // STEP 1: Get first song with absolute priority (1-2 seconds)
     const firstSong = await fetchFirstSongWithPriority(roomArtists);
     if (!firstSong) {
-      console.log('❌ Failed to get first song from room artists');
       return;
     }
     
     // STEP 2: Load 4 more songs from room artists (fast, 3-5 seconds)
-    console.log('🎵 Loading 4 more room artist songs...');
+
     const usedArtistNames = new Set([firstSong.sourceArtist?.name || firstSong.artist]);
     const remainingRoomArtists = roomArtists.filter(artist => !usedArtistNames.has(artist.name));
     
@@ -391,12 +365,10 @@ const handleSongFromWidget = (song) => {
       const moreSongs = await fetchSongsFromArtists(remainingRoomArtists, 4, false);
       if (moreSongs.length > 0) {
         setCurrentSongs(prev => [...prev, ...moreSongs]);
-        console.log(`✅ ${moreSongs.length} more room songs loaded`);
       }
     }
     
     // STEP 3: Start background tasks AFTER room songs are ready (8-15 seconds)
-    console.log('🔍 Starting background artist expansion...');
     setTimeout(() => {
       fetchRelatedArtistsInBackground(roomArtists);
     }, 3000); // 3 second delay
@@ -425,7 +397,6 @@ const handleSongFromWidget = (song) => {
       const batchSize = 3; // Process 3 artists at a time to avoid API strain
       const delay = 1500; // 1.5 second delay between batches
 
-      console.log(`🎯 Starting background fetch to get ${TARGET_TOTAL_ARTISTS} total artists with valid images from ${seedArtists.length} room artists`);
 
       // Add original room artists to the pool first (only those with valid images)
       const validRoomArtists = seedArtists.filter(hasValidImage);
@@ -440,16 +411,13 @@ const handleSongFromWidget = (song) => {
         }));
       });
 
-      console.log(`✅ Added ${validRoomArtists.length}/${seedArtists.length} room artists with valid images to pool`);
 
       // Calculate how many related artists we need
       const targetRelatedArtists = TARGET_TOTAL_ARTISTS - validRoomArtists.length;
       
-      console.log(`🎯 Need ${targetRelatedArtists} related artists with valid images`);
 
       // If we don't have enough valid room artists, first try to get more from Apple Music
       if (validRoomArtists.length < 10) {
-        console.log('🔍 Not enough room artists with images, fetching from Apple Music...');
         
         try {
           const response = await fetch(`${API_BASE_URL}/api/apple-music/random-genre-artists?count=20`);
@@ -471,10 +439,8 @@ const handleSongFromWidget = (song) => {
               }));
             });
             
-            console.log(`✅ Added ${validAppleArtists.length} Apple Music artists with valid images`);
           }
         } catch (appleError) {
-          console.error('❌ Error fetching from Apple Music:', appleError);
         }
       }
 
@@ -486,7 +452,6 @@ const handleSongFromWidget = (song) => {
         
         setBackgroundFetchProgress(Math.round((i / validRoomArtists.length) * 90)); // 0-90% for fetching
 
-        console.log(`📦 Processing batch ${batchNumber}/${totalBatches}: ${batch.map(a => a.name).join(', ')}`);
 
         try {
           // Fetch similar artists for this batch using Last.fm WITH FULL URL
@@ -500,7 +465,6 @@ const handleSongFromWidget = (song) => {
             const data = await response.json();
             const similarArtists = data.similarArtists || [];
             
-            console.log(`🔍 Found ${similarArtists.length} similar artists for batch ${batchNumber}`);
 
             // Get images for similar artists using Spotify WITH FULL URL
             if (similarArtists.length > 0) {
@@ -514,11 +478,9 @@ const handleSongFromWidget = (song) => {
                 const imageData = await imageResponse.json();
                 const artistsWithImages = imageData.artists || [];
 
-                console.log(`🖼️ Got ${artistsWithImages.length} artists with images from Spotify for batch ${batchNumber}`);
 
                 // Filter for artists with VALID images only
                 const validArtistsWithImages = artistsWithImages.filter(hasValidImage);
-                console.log(`✅ Filtered to ${validArtistsWithImages.length} artists with valid images`);
 
                 // Add to our pool - only artists with valid images
                 let addedFromBatch = 0;
@@ -540,12 +502,10 @@ const handleSongFromWidget = (song) => {
                   }
                 });
                 
-                console.log(`➕ Added ${addedFromBatch} new artists with valid images from batch ${batchNumber}. Total pool: ${allRelatedArtists.size}`);
               }
             }
           }
         } catch (batchError) {
-          console.error(`❌ Error fetching batch ${batchNumber}:`, batchError);
         }
 
         // Update progress
@@ -553,7 +513,6 @@ const handleSongFromWidget = (song) => {
 
         // Early exit if we've reached our target
         if (allRelatedArtists.size >= TARGET_TOTAL_ARTISTS) {
-          console.log(`🎯 Reached target of ${TARGET_TOTAL_ARTISTS} artists early! Current: ${allRelatedArtists.size}`);
           break;
         }
 
@@ -571,11 +530,9 @@ const handleSongFromWidget = (song) => {
       // Final validation - ensure all artists have valid images
       const validFinalArtists = finalArtists.filter(hasValidImage);
       
-      console.log(`🔍 Final validation: ${validFinalArtists.length}/${finalArtists.length} artists have valid images`);
 
       // If we're short on valid artists, try to get more from Apple Music
       if (validFinalArtists.length < TARGET_TOTAL_ARTISTS) {
-        console.log(`🔍 Short on artists (${validFinalArtists.length}/${TARGET_TOTAL_ARTISTS}), fetching more from Apple Music...`);
         
         try {
           const needed = TARGET_TOTAL_ARTISTS - validFinalArtists.length;
@@ -602,10 +559,8 @@ const handleSongFromWidget = (song) => {
               }));
             
             validFinalArtists.push(...validAppleArtists);
-            console.log(`✅ Added ${validAppleArtists.length} additional Apple Music artists`);
           }
         } catch (appleError) {
-          console.error('❌ Error fetching additional Apple Music artists:', appleError);
         }
       }
 
@@ -620,25 +575,20 @@ const handleSongFromWidget = (song) => {
       const roomArtistCount = finalPool.filter(a => a.isRoomArtist).length;
       const relatedArtistCount = finalPool.filter(a => !a.isRoomArtist).length;
       
-      console.log(`🎉 Background fetch complete!`);
-      console.log(`📊 Final pool: ${finalPool.length} total (${roomArtistCount} from room, ${relatedArtistCount} related)`);
-      console.log(`✅ ALL ARTISTS HAVE VALID PROFILE IMAGES`);
+   
 
       // After artist pool is ready, fetch songs from similar artists in background
       if (finalPool.length > 0) {
-        console.log('🎵 Loading songs from similar artists in background...');
         const similarArtists = finalPool.filter(a => !a.isRoomArtist);
         if (similarArtists.length > 0) {
           const similarSongs = await fetchSongsFromArtists(similarArtists, 5, true);
           if (similarSongs.length > 0) {
             setCurrentSongs(prev => [...prev, ...similarSongs]);
-            console.log(`🎉 Added ${similarSongs.length} songs from similar artists to queue`);
           }
         }
       }
 
     } catch (error) {
-      console.error('❌ Error in background artist fetch:', error);
     } finally {
       setIsBackgroundFetching(false);
       setBackgroundFetchProgress(100);
@@ -659,11 +609,7 @@ const handleSongFromWidget = (song) => {
     const roomToJoin = station || roomData;
     
     if (roomToJoin && roomToJoin.artists) {
-      console.log('🎵 Joining room with artists:', roomToJoin.artists);
-      console.log('🎵 Room data:', roomToJoin);
-      console.log('🎵 First artist sample:', roomToJoin.artists[0]);
-      
-      // Save room artists
+   
       setRoomArtists(roomToJoin.artists);
       setExpandedComponent('bottom');
       setActiveBottomTab('Pool');
@@ -677,9 +623,7 @@ const handleSongFromWidget = (song) => {
       // Start SUPER OPTIMIZED loading - first song gets absolute priority
       initializeSuperOptimizedQueue(roomToJoin.artists);
     } else if (roomToJoin) {
-      console.log('🚨 Room data received but no artists found:', roomToJoin);
     } else {
-      console.log('🚨 No room data received');
     }
   }, [station, roomData]);
 

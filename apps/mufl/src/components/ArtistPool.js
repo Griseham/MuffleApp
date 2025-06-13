@@ -1,5 +1,4 @@
-
-  import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 
 const ArtistPool = ({ 
 poolArtists = [], // Dynamic artists from room + related artists
@@ -39,14 +38,14 @@ const startUserSelectionSimulation = (artists) => {
   userSelectionTimeouts.forEach(timeout => clearTimeout(timeout));
   
   const mockUsers = [
-    { id: 'user1', name: 'Alex', initials: 'A', avatar: '/assets/image1.png' },
-    { id: 'user2', name: 'Beth', initials: 'B', avatar: '/assets/image2.png' },
-    { id: 'user3', name: 'Chris', initials: 'C', avatar: '/assets/image3.png' },
-    { id: 'user4', name: 'Dana', initials: 'D', avatar: '/assets/image4.png' },
-    { id: 'user5', name: 'Eve', initials: 'E', avatar: '/assets/image5.png' },
-    { id: 'user6', name: 'Frank', initials: 'F', avatar: '/assets/image6.png' },
-    { id: 'user7', name: 'Grace', initials: 'G', avatar: '/assets/image7.png' },
-    { id: 'user8', name: 'Henry', initials: 'H', avatar: '/assets/image8.png' },
+    { id: 'user1', name: 'Alex', initials: 'A' },
+    { id: 'user2', name: 'Beth', initials: 'B' },
+    { id: 'user3', name: 'Chris', initials: 'C' },
+    { id: 'user4', name: 'Dana', initials: 'D' },
+    { id: 'user5', name: 'Eve', initials: 'E' },
+    { id: 'user6', name: 'Frank', initials: 'F' },
+    { id: 'user7', name: 'Grace', initials: 'G' },
+    { id: 'user8', name: 'Henry', initials: 'H' },
   ];
   
   // Only ~60% of artists will get users
@@ -168,21 +167,17 @@ const generateArtistSVG = (artist, index) => {
 
 // Create a combined pool from both props, filtering for valid images only
 const getCombinedArtistPool = () => {
-  console.log('=== ArtistPool Debug ===');
-  console.log('poolArtists:', poolArtists.length);
-  console.log('roomArtists:', roomArtists.length);
+
   
   let combinedPool = [];
   
   // Add pool artists if available, but only those with valid images
   if (poolArtists.length > 0) {
     const validPoolArtists = poolArtists.filter(hasValidImage);
-    console.log(`Filtered pool artists: ${validPoolArtists.length}/${poolArtists.length} have valid images`);
     combinedPool = [...validPoolArtists];
   }
   // If no pool artists, create immediate pool from room artists with valid images
   else if (roomArtists.length > 0) {
-    console.log('Creating immediate pool from room artists');
     const validRoomArtists = roomArtists
       .filter(hasValidImage)
       .map((artist, idx) => ({
@@ -191,24 +186,20 @@ const getCombinedArtistPool = () => {
         id: artist.id || `room-${idx}`
       }));
 
-    console.log(`Valid room artists: ${validRoomArtists.length}/${roomArtists.length}`);
     combinedPool = [...validRoomArtists];
     
     // If we don't have enough artists, fetch from Apple Music API
     if (combinedPool.length < 10) {
-      console.log('Not enough artists with images, will need to fetch from Apple Music API');
       fetchAdditionalArtistsFromAppleMusic(10 - combinedPool.length);
     }
   }
   
-  console.log('Combined pool size (with valid images only):', combinedPool.length);
   return combinedPool;
 };
 
 // Function to fetch additional artists from Apple Music API
 const fetchAdditionalArtistsFromAppleMusic = async (count) => {
   try {
-    console.log(`Fetching ${count} additional artists from Apple Music...`);
     setIsRefreshing(true);
     
     const response = await fetch(`/api/apple-music/random-genre-artists?count=${count * 2}`); // Get extra to filter
@@ -230,7 +221,6 @@ const fetchAdditionalArtistsFromAppleMusic = async (count) => {
         isRoomArtist: false
       }));
 
-    console.log(`Added ${validAppleArtists.length} artists from Apple Music`);
     
     // Update the pool via callback to parent if available
     if (onPoolUpdate && validAppleArtists.length > 0) {
@@ -238,7 +228,6 @@ const fetchAdditionalArtistsFromAppleMusic = async (count) => {
     }
     
   } catch (error) {
-    console.error('Error fetching additional artists from Apple Music:', error);
   } finally {
     setIsRefreshing(false);
   }
@@ -246,7 +235,6 @@ const fetchAdditionalArtistsFromAppleMusic = async (count) => {
 
 // Function to shuffle and select exactly 10 artists for display (only those with images)
 const refreshVisibleArtists = async () => {
-  console.log('🔄 Refreshing artist pool...');
   setIsRefreshing(true);
   
   // Clear all user selections when pool refreshes
@@ -269,7 +257,6 @@ const refreshVisibleArtists = async () => {
   const validArtists = combinedPool.filter(hasValidImage);
   
   if (validArtists.length === 0) {
-    console.log('No artists with valid images found');
     setVisibleArtists([]);
     setIsRefreshing(false);
     return;
@@ -279,7 +266,6 @@ const refreshVisibleArtists = async () => {
   const roomArtistsFromPool = validArtists.filter(artist => artist.isRoomArtist);
   const relatedArtists = validArtists.filter(artist => !artist.isRoomArtist);
 
-  console.log('Valid artists - Room:', roomArtistsFromPool.length, 'Related:', relatedArtists.length);
 
   // Shuffle both groups
   const shuffledRoomArtists = [...roomArtistsFromPool].sort(() => Math.random() - 0.5);
@@ -306,16 +292,10 @@ const refreshVisibleArtists = async () => {
 
   // Final shuffle to mix room and related artists
   const finalSelection = selected.sort(() => Math.random() - 0.5);
-  console.log('Final selection:', finalSelection.map(a => ({ 
-    name: a.name, 
-    hasValidImage: hasValidImage(a), 
-    isRoom: a.isRoomArtist,
-    imageUrl: a.image 
-  })));
+
   
   setVisibleArtists(finalSelection.slice(0, DISPLAY_COUNT));
   setIsRefreshing(false);
-  console.log('✅ Pool refresh complete!');
   
   // Start slowly adding users to artists after refresh
   setTimeout(() => {
@@ -365,7 +345,7 @@ const renderRoomIndicator = (isRoomArtist) => {
   );
 };
 
-// Helper function to render user avatars with persistent state
+// Helper function to render user avatars with persistent state - UPDATED TO USE SVG
 const renderUserAvatars = (artistId) => {
   const users = getUsersForArtist(artistId);
   if (users.length === 0) return null;
@@ -377,13 +357,13 @@ const renderUserAvatars = (artistId) => {
           key={user.id || index} 
           className={`user-avatar user-${(index % 8) + 1}`}
           style={{
-            backgroundImage: user.avatar ? `url(${user.avatar})` : undefined,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
             animationDelay: `${index * 0.2}s` // Stagger the animations
           }}
         >
-          {!user.avatar && (user.initials || user.name?.charAt(0) || '?')}
+          {/* SVG User Icon */}
+          <svg className="w-full h-full text-white" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+          </svg>
         </div>
       ))}
       {users.length > 4 && (
@@ -459,13 +439,11 @@ return (
                         alt={artist.name}
                         className="artist-image"
                         onError={(e) => {
-                          console.log('Image failed to load for artist:', artist.name, 'URL:', artist.image);
                           // Fallback to SVG
                           e.target.style.display = 'none';
                           e.target.nextSibling.style.display = 'block';
                         }}
                         onLoad={() => {
-                          console.log('Image loaded successfully for artist:', artist.name);
                         }}
                       />
                     ) : (
