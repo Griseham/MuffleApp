@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from "react";
 import { UserIcon, PlayIcon, PauseIcon, BookmarkIcon, VolumeIcon } from "./Icons/Icons";
 import InfoIconModal from "./InfoIconModal";
 import UserHoverCard from "./UserHoverCard"; // Import UserHoverCard
-import { getAvatarForUser } from "../utils/avatarService"; // Import avatar service
 
 const GENRES = ["Rock", "Pop", "R&B", "Jazz", "Hip-Hop"];
 const GENRE_COLORS = {
@@ -145,9 +144,6 @@ const SnippetCard = ({
     setAudioError(false);
     setIsBookmarked(false); // Reset bookmark state for new song
     
-    // Debug: Log Apple Music data to verify album and preview URL
-
-    
     // Load new audio if preview URL is available
     if (currentCard.previewUrl && audioRef.current) {
       audioRef.current.src = currentCard.previewUrl;
@@ -179,7 +175,6 @@ const SnippetCard = ({
       recommendedBy: {
         userId: userData.userId,
         username: userData.username,
-        avatar: userData.avatar,
         timeAgo: userData.timeAgo,
         comment: userData.comment
       }
@@ -354,14 +349,13 @@ const SnippetCard = ({
     );
   };
 
-  // Enhanced function to generate user data with consistent avatars
+  // Enhanced function to generate user data - NO MORE AVATAR SERVICE
   const generateUserData = (song) => {
     if (!song || !song.track) return { 
       userId: 1,
       username: "music_lover", 
       timeAgo: "1m ago", 
-      comment: "Loading...",
-      avatar: getAvatarForUser(1)
+      comment: "Loading..."
     };
     
     const usernames = ["music_lover", "beat_seeker", "rhythm_guru", "sound_wave", "melody_finder"];
@@ -383,7 +377,7 @@ const SnippetCard = ({
       hash = songId.charCodeAt(i) + ((hash << 5) - hash);
     }
     
-    // Generate consistent user ID (1-15 to match avatar service)
+    // Generate consistent user ID (1-15)
     const userId = (Math.abs(hash) % 15) + 1;
     const userIndex = Math.abs(hash) % usernames.length;
     const commentIndex = Math.abs(hash >> 8) % comments.length;
@@ -394,8 +388,7 @@ const SnippetCard = ({
       userId: userId,
       username: usernames[userIndex],
       timeAgo: timeOptions[timeIndex],
-      comment: comments[commentIndex],
-      avatar: getAvatarForUser(userId) // Get consistent avatar for this user ID
+      comment: comments[commentIndex]
     };
   };
 
@@ -421,7 +414,6 @@ const SnippetCard = ({
       followers: followers,
       discoveryPercent: discoveryPercent,
       volume: 1000 + (userData.userId * 200),
-      avatar: userData.avatar,
       arrowCounts: {
         positive: {
           one: 60 + Math.floor(Math.random() * 60),
@@ -845,8 +837,7 @@ const SnippetCard = ({
             user={{
               id: userData.userId,
               name: userData.username,
-              volume: 1000 + (userData.userId * 200),
-              avatar: userData.avatar
+              volume: 1000 + (userData.userId * 200)
             }}
             userData={generateExtendedUserData(userData)}
             className="w-72"

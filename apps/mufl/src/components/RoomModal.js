@@ -38,9 +38,7 @@ const RoomModal = ({ isOpen, onClose, station, onJoinRoom }) => {
       }));
       
       setModalArtists(artistsWithData);
-      console.log('Fetched artists for room modal:', artistsWithData.length);
     } catch (error) {
-      console.error('Failed to fetch artists for room modal:', error);
       // Fallback to empty array
       setModalArtists([]);
     } finally {
@@ -135,7 +133,6 @@ const RoomModal = ({ isOpen, onClose, station, onJoinRoom }) => {
   // Make sure listeners is a number
   // const listenersCount = station.listeners || station.userCount || 42; // REMOVED - no longer needed
   
-  console.log('RoomModal fetched artists:', modalArtists.length);
   
   return (
     <div className="absolute top-0 right-0 mt-8 mr-4" style={{ zIndex: 30000 }}>
@@ -217,7 +214,6 @@ const RoomModal = ({ isOpen, onClose, station, onJoinRoom }) => {
                             alt={artist.name}
                             className="w-full h-full object-cover"
                             onError={(e) => {
-                              console.error('Failed to load artist image:', artist.name, artist.image);
                               // If image fails to load, show SVG fallback
                               e.target.style.display = 'none';
                               e.target.nextSibling.style.display = 'flex';

@@ -14,7 +14,6 @@ const getFromCache = (key) => {
       }
     }
   } catch (error) {
-    console.error('Cache read error:', error);
   }
   return null;
 };
@@ -27,7 +26,6 @@ const saveToCache = (key, data) => {
     };
     localStorage.setItem(`${CACHE_KEY}_${key}`, JSON.stringify(cacheData));
   } catch (error) {
-    console.error('Cache write error:', error);
   }
 };
 
@@ -61,7 +59,6 @@ const fetchLastFmSimilarArtists = async (selectedArtists, targetCount = 50) => {
     const data = await response.json();
     return data.similarArtists || [];
   } catch (error) {
-    console.error('Last.fm fetch error:', error);
     return [];
   }
 };
@@ -102,7 +99,6 @@ const fetchAppleMusicImages = async (artistNames, progressCallback = null) => {
           }
           
         } catch (error) {
-          console.error(`Error fetching image for ${artistName}:`, error);
         }
       }
       
@@ -113,7 +109,6 @@ const fetchAppleMusicImages = async (artistNames, progressCallback = null) => {
       }
       
     } catch (error) {
-      console.error('Batch processing error:', error);
     }
   }
   
@@ -148,7 +143,6 @@ export const fetchEnhancedSimilarArtists = async (selectedArtists, progressCallb
   const cacheKey = generateCacheKey(selectedArtists);
   const cached = getFromCache(cacheKey);
   if (cached) {
-    console.log('Using cached similar artists');
     if (progressCallback) progressCallback(100);
     return cached;
   }
@@ -156,14 +150,12 @@ export const fetchEnhancedSimilarArtists = async (selectedArtists, progressCallb
   try {
     // Step 1: Fetch similar artists from Last.fm (20%)
     if (progressCallback) progressCallback(10);
-    console.log('Fetching similar artists from Last.fm...');
     
     const similarArtists = await fetchLastFmSimilarArtists(selectedArtists, 60); // Get more to account for filtering
     
     if (progressCallback) progressCallback(20);
     
     if (similarArtists.length === 0) {
-      console.warn('No similar artists found from Last.fm');
       return [];
     }
 
@@ -174,7 +166,6 @@ export const fetchEnhancedSimilarArtists = async (selectedArtists, progressCallb
     if (progressCallback) progressCallback(25);
     
     // Step 3: Fetch images from Apple Music (25% -> 95%)
-    console.log(`Fetching images for ${limitedArtists.length} artists from Apple Music...`);
     
     const artistsWithImages = await fetchAppleMusicImages(
       limitedArtists.map(a => a.name),
@@ -194,7 +185,6 @@ export const fetchEnhancedSimilarArtists = async (selectedArtists, progressCallb
 
     if (progressCallback) progressCallback(100);
     
-    console.log(`Successfully fetched ${finalArtists.length} similar artists with images`);
     
     // Cache the results
     saveToCache(cacheKey, finalArtists);
@@ -202,7 +192,6 @@ export const fetchEnhancedSimilarArtists = async (selectedArtists, progressCallb
     return finalArtists;
     
   } catch (error) {
-    console.error('Error in fetchEnhancedSimilarArtists:', error);
     if (progressCallback) progressCallback(100);
     return [];
   }
@@ -215,7 +204,6 @@ export const fetchRandomGenreArtists = async (count = 50, progressCallback = nul
   try {
     if (progressCallback) progressCallback(20);
     
-    console.log(`Fetching ${count} random genre artists from Apple Music...`);
     
     // Use the new random genre endpoint
     const response = await fetch(`${API_BASE}/api/apple-music/random-genre-artists?count=${count}`);
@@ -234,12 +222,10 @@ export const fetchRandomGenreArtists = async (count = 50, progressCallback = nul
     
     if (progressCallback) progressCallback(100);
     
-    console.log(`Successfully fetched ${filteredArtists.length} random artists from genre: ${data.genre}`);
     
     return filteredArtists;
     
   } catch (error) {
-    console.error('Error fetching random genre artists:', error);
     if (progressCallback) progressCallback(100);
     
     // Fallback to mock data
@@ -261,8 +247,6 @@ export const clearSimilarArtistsCache = () => {
         localStorage.removeItem(key);
       }
     });
-    console.log('Similar artists cache cleared');
   } catch (error) {
-    console.error('Error clearing cache:', error);
   }
 };

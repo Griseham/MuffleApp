@@ -472,13 +472,11 @@ const TopComponent = ({
             alt={artist.name}
             className="w-full h-full object-cover"
             onError={(e) => {
-              console.log('Image failed to load for radar artist:', artist.name, 'URL:', artist.image);
               // Hide the image and show the SVG fallback
               e.target.style.display = 'none';
               e.target.nextSibling.style.display = 'block';
             }}
             onLoad={() => {
-              console.log('Image loaded successfully for radar artist:', artist.name);
             }}
           />
         ) : null}
@@ -567,7 +565,6 @@ const TopComponent = ({
         onClose={() => setModalOpen(false)}
         station={selectedStation}
         onJoinRoom={(station) => {
-          console.log("Joining room:", station);
           // Here you would navigate to the room or update state as needed
         }}
       />

@@ -20,6 +20,29 @@ const RightSwipeIcon = ({ size = 24, className = "" }) => (
   </svg>
 );
 
+// Pure SVG Music Note Icon (no external dependencies)
+const PureMusicNoteIcon = ({ size = 24, className = "" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+    <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" fill="currentColor"/>
+  </svg>
+);
+
+// Pure SVG Album Icon
+const PureAlbumIcon = ({ size = 24, className = "" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
+    <circle cx="12" cy="12" r="3" fill="currentColor"/>
+  </svg>
+);
+
+// Pure SVG User Icon
+const PureUserIcon = ({ size = 24, className = "" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    <circle cx="12" cy="7" r="4" stroke="currentColor" strokeWidth="2"/>
+  </svg>
+);
+
 // Updated SwipeIndicators component - Design 3 style (single row)
 const SwipeIndicators = ({ type, counts, userVote }) => {
   // Color coding: red for left, green for right
@@ -106,9 +129,9 @@ const BottomContainer = ({
   leftSwipeSongs = [],
   rightSwipeSongs = [],
   onSongFromWidget = () => {},
-  poolArtists = [], // NEW: Dynamic pool artists from room
-  roomArtists = [],   // NEW: Original room artists
-  onPoolUpdate = null // NEW: Callback for pool updates
+  poolArtists = [],
+  roomArtists = [],
+  onPoolUpdate = null
 }) => {
   const chatContainerRef = useRef(null);
   const [widgetSelectedArtist, setWidgetSelectedArtist] = useState(null);
@@ -137,7 +160,7 @@ const BottomContainer = ({
       case 'QL':
         return [
           {
-            icon: <UserIcon size={18} color="#a9b6fc" />,
+            icon: <PureUserIcon size={18} color="#a9b6fc" />,
             title: "Queue Line Rankings",
             color: 'rgba(59, 130, 246, 0.1)',
             iconBg: 'rgba(59, 130, 246, 0.2)',
@@ -185,10 +208,7 @@ const BottomContainer = ({
   };
 
   const generateRandomMessage = () => {
-    // Generate random 4-digit number for username
-    const randomDigits = Math.floor(Math.random() * 9000) + 1000; // Ensures 4 digits (1000-9999)
-    
-    // Lorem ipsum phrases for message content
+    const randomDigits = Math.floor(Math.random() * 9000) + 1000;
     const loremPhrases = [
       "Lorem ipsum dolor sit amet",
       "Consectetur adipiscing elit",
@@ -220,7 +240,6 @@ const BottomContainer = ({
     };
   };
 
-  // Always start with exactly 3 messages
   const initialChatMessages = [
     generateRandomMessage(),
     generateRandomMessage(),
@@ -241,31 +260,22 @@ const BottomContainer = ({
     { id: 8, title: "song8", artist: "artist2", votes: { "-3": 0, "-2": 0, "-1": 1, "+1": 3, "+2": 2, "+3": 1 } }
   ];
   
-  // NEW: State for widget integration
   const [selectedArtistsForWidget, setSelectedArtistsForWidget] = useState([]);
-  
-  // UPDATED: Synchronized countdown for artist pool (20 seconds)
   const [countdown, setCountdown] = useState(20);
   const [isPoolActive, setIsPoolActive] = useState(false);
 
-  // Track when Pool tab becomes active to sync countdown
   useEffect(() => {
     if (activeTab === "Pool") {
       setIsPoolActive(true);
-      // Reset countdown when Pool tab becomes active for smooth sync
       setCountdown(20);
     } else {
       setIsPoolActive(false);
     }
   }, [activeTab]);
   
-  // NEW: Handle artist selection from pool
   const handleArtistSelect = (artist, isSelected) => {
-    
     if (isSelected) {
-      // Add to widget selections
       setSelectedArtistsForWidget(prev => {
-        // Don't add duplicates
         if (prev.some(a => a.id === artist.id)) {
           return prev;
         }
@@ -274,28 +284,26 @@ const BottomContainer = ({
           name: artist.name,
           image: artist.image,
           isRoomArtist: artist.isRoomArtist || false,
-          otherUsers: Math.floor(Math.random() * 5) // Random count for demo
+          otherUsers: Math.floor(Math.random() * 5)
         }];
       });
     } else {
-      // Remove from widget selections
       setSelectedArtistsForWidget(prev => 
         prev.filter(a => a.id !== artist.id)
       );
     }
   };
   
-  // Countdown logic with widget clearing
   useEffect(() => {
     if (!isPoolActive || !isExpanded) return;
   
     const id = setInterval(() => {
       setCountdown(prev => {
         if (prev > 0) {
-          return prev - 1;          // 20 → … → 1 → 0
+          return prev - 1;
         }
-        setSelectedArtistsForWidget([]); // clear widget right at 0
-        return 20;                  // restart on next tick
+        setSelectedArtistsForWidget([]);
+        return 20;
       });
       
     }, 1000);
@@ -303,14 +311,12 @@ const BottomContainer = ({
     return () => clearInterval(id);
   }, [isPoolActive, isExpanded]);
 
-  // Auto-scroll chat to bottom when messages update
   useEffect(() => {
     if (activeTab === "Chat" && chatContainerRef.current) {
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
     }
   }, [chatMessages, activeTab]);
 
-  // Reset to 3 messages & then append one every 1.5s when in Chat
   useEffect(() => {
     let intervalId;
     if (activeTab === "Chat") {
@@ -325,13 +331,11 @@ const BottomContainer = ({
   const handleTabClick = tab => {
     setActiveTab(tab);
     
-    // Auto-expand when clicking on a tab while collapsed
     if (!isExpanded) {
       onToggleExpand(true);
     }
   };
 
-  // Expand/Collapse arrow icon
   const ExpandCollapseIcon = ({ isExpanded }) => (
     <svg 
       width="24" 
@@ -351,7 +355,6 @@ const BottomContainer = ({
     </svg>
   );
 
-  // Get badge count for tabs
   const getLeftSwipesBadgeCount = () => {
     return leftSwipeSongs.length;
   };
@@ -360,12 +363,11 @@ const BottomContainer = ({
     return rightSwipeSongs.length;
   };
 
-  // Get pool tab label 
   const getPoolTabLabel = () => {
     return "POOL";
   };
 
-  // Enhanced function to render swipe content with proper user avatars - UPDATED TO USE SVG
+  // COMPLETELY IMAGE-FREE swipe content renderer - ONLY SVGs
   const renderSwipeContent = (songs, type) => {
     const iconComponent = type === 'left' ? LeftSwipeIcon : RightSwipeIcon;
     const tabTitle = type === 'left' ? 'Left Swipes' : 'Right Swipes';
@@ -384,30 +386,9 @@ const BottomContainer = ({
                 key={`${song.id}-${index}`} 
                 className="song-card-design3"
               >
-                {/* Album Art or Song Icon */}
+                {/* PURE SVG Song Icon - NO IMAGES AT ALL */}
                 <div className="song-icon">
-                  {/* Show album art if available, otherwise show music note icon */}
-                 {song.artworkUrl || song.image || song.artistImage ? (
-     <img
-       src={song.artworkUrl || song.image || song.artistImage}
-       alt={`${song.track} by ${song.artist}`}
-       className="w-full h-full object-cover rounded-md"
-       onError={(e) => {
-         e.target.style.display = 'none';
-         e.target.nextSibling.style.display = 'block';
-       }}
-     />
-   ) : null}
-
-                  {/* Fallback music icon - shown by default if no image, or if image fails */}
-                  <div 
-                    className="w-full h-full flex items-center justify-center"
-                    style={{ 
-                      display: (song.artworkUrl || song.image) ? 'none' : 'flex' 
-                    }}
-                  >
-                    <MusicNoteIcon size={18} className="text-gray-400" />
-                  </div>
+                  <PureMusicNoteIcon size={20} className="text-purple-400" />
                 </div>
                 
                 {/* Song Info */}
@@ -416,15 +397,13 @@ const BottomContainer = ({
                   <p className="song-artist">{song.artist}</p>
                 </div>
 
-                {/* Middle Section - User Info with SVG Avatar */}
+                {/* Middle Section - User Info with PURE SVG Avatar */}
                 <div className="middle-section">
                   <div className="by-label">By:</div>
                   <div className="user-container">
                     <div className="user-avatar">
-                      {/* SVG User Icon instead of image */}
-                      <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-                      </svg>
+                      {/* PURE SVG User Icon - NO IMAGES */}
+                      <PureUserIcon size={16} className="text-blue-400" />
                     </div>
                     <span className="user-name">
                       {song.recommendedBy?.username || "user"}
@@ -605,14 +584,14 @@ const BottomContainer = ({
             {/* QL tab content */}
             {activeTab === "QL" && <QueueLine qlUsers={qlUsers} />}
             
-            {/* UPDATED: Pool tab with synchronized countdown and artist selection */}
+            {/* Pool tab with synchronized countdown and artist selection */}
             {activeTab === "Pool" && (
               <ArtistPool
                 poolArtists={poolArtists}
                 roomArtists={roomArtists}
-                countdown={countdown} // Pass synchronized countdown (20 seconds)
-                onPoolUpdate={onPoolUpdate} // Pass callback for pool updates
-                onArtistSelect={handleArtistSelect} // NEW: Handle artist selections
+                countdown={countdown}
+                onPoolUpdate={onPoolUpdate}
+                onArtistSelect={handleArtistSelect}
               />
             )}
             
@@ -625,6 +604,9 @@ const BottomContainer = ({
                 {chatMessages.map((m, i) => (
                   <div key={i} className="chat-message">
                     <div className="flex items-center">
+                      <div className="chat-user-avatar mr-2">
+                        <PureUserIcon size={14} className="text-blue-400" />
+                      </div>
                       <span className="text-white font-medium">{m.username}</span>
                       <span className="text-gray-500 mx-2">•</span>
                       <span className="text-gray-400">{m.text}</span>
@@ -652,7 +634,7 @@ const BottomContainer = ({
         )}
       </div>
       
-      {/* Enhanced Styles for Design 3 and Full Width */}
+      {/* Enhanced Styles for Design 3 and Full Width - IMAGE-FREE VERSION */}
       <style jsx>{`
         /* Bottom container centered with playing screen */
         .bottom-container {
@@ -692,7 +674,7 @@ const BottomContainer = ({
           display: flex;
           width: 100%;
           height: 64px;
-          padding: 0 0;                   /* Remove horizontal padding since container has it */
+          padding: 0 0;
           border-bottom: 1px solid rgba(255, 255, 255, 0.1);
           justify-content: space-between;
           align-items: center;
@@ -706,16 +688,16 @@ const BottomContainer = ({
           display: flex;
           justify-content: center;
           flex: 1;
-          gap: 12px; /* Reduced gap to fit more buttons */
+          gap: 12px;
         }
         
         /* Tab button styling */
         .tab-button {
           position: relative;
-          font-size: 12px; /* Slightly smaller font */
+          font-size: 12px;
           font-weight: bold;
           letter-spacing: 0.05em;
-          padding: 8px 10px; /* Reduced padding */
+          padding: 8px 10px;
           transition: all 0.2s;
           border: none;
           background: transparent;
@@ -723,7 +705,7 @@ const BottomContainer = ({
           cursor: pointer;
           display: flex;
           align-items: center;
-          white-space: nowrap; /* Prevent text wrapping */
+          white-space: nowrap;
         }
         
         .tab-button:hover {
@@ -779,11 +761,12 @@ const BottomContainer = ({
         /* Content area with fixed height */
         .content-area {
           flex: 1;
-          padding: 16px 4px;              /* Reduce horizontal padding since container has it */
+          padding: 16px 4px;
           overflow: hidden;
           position: relative;
           height: calc(100% - 64px);
         }
+
         /* Swipe content styles */
         .swipe-content {
           height: 100%;
@@ -801,7 +784,7 @@ const BottomContainer = ({
           margin-bottom: 16px;
         }
         
-        /* Design 3 Song Card Layout */
+        /* Design 3 Song Card Layout - COMPLETELY IMAGE-FREE */
         .song-card-design3 {
           display: flex;
           align-items: stretch;
@@ -819,19 +802,18 @@ const BottomContainer = ({
           box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
         }
         
+        /* PURE SVG Song Icon Container - NO IMAGES */
         .song-icon {
           display: flex;
           align-items: center;
           justify-content: center;
           width: 44px;
           height: 44px;
-          background-color: rgba(0, 0, 0, 0.5);
-          border: 1px solid rgba(255, 255, 255, 0.1);
+          background-color: rgba(75, 85, 99, 0.3);
+          border: 1px solid rgba(147, 51, 234, 0.3);
           border-radius: 8px;
           margin-right: 16px;
           flex-shrink: 0;
-          overflow: hidden; /* Ensure images fit properly within rounded corners */
-          position: relative; /* For proper fallback positioning */
         }
         
         .song-info {
@@ -858,7 +840,7 @@ const BottomContainer = ({
           text-overflow: ellipsis;
         }
         
-        /* Middle section - User info with SVG avatar */
+        /* Middle section - User info with PURE SVG avatar */
         .middle-section {
           display: flex;
           flex-direction: column;
@@ -881,16 +863,16 @@ const BottomContainer = ({
           gap: 4px;
         }
         
+        /* PURE SVG User Avatar - NO IMAGES */
         .user-avatar {
           width: 28px;
           height: 28px;
           border-radius: 50%;
-          background-color: #333;
+          background-color: rgba(59, 130, 246, 0.2);
           display: flex;
           align-items: center;
           justify-content: center;
-          border: 2px solid rgba(255, 255, 255, 0.1);
-          overflow: hidden; /* Ensure SVG fits properly */
+          border: 2px solid rgba(59, 130, 246, 0.3);
         }
         
         .user-name {
@@ -912,7 +894,7 @@ const BottomContainer = ({
           background-color: rgba(255, 255, 255, 0.2);
         }
         
-        /* Chat content styles */
+        /* Chat content styles with SVG user avatars */
         .chat-content {
           height: 100%;
           overflow-y: auto;
@@ -926,6 +908,19 @@ const BottomContainer = ({
           background-color: rgba(255, 255, 255, 0.05);
           border: 1px solid rgba(255, 255, 255, 0.1);
           border-radius: 10px;
+        }
+        
+        /* PURE SVG Chat User Avatar - NO IMAGES */
+        .chat-user-avatar {
+          width: 20px;
+          height: 20px;
+          border-radius: 50%;
+          background-color: rgba(59, 130, 246, 0.2);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border: 1px solid rgba(59, 130, 246, 0.3);
+          flex-shrink: 0;
         }
         
         /* Filter for glow effect */
@@ -947,13 +942,13 @@ const BottomContainer = ({
 
         @media (max-width: 768px) {
           .bottom-container {
-            width: calc(100% - 16px);     /* Less margin on mobile */
+            width: calc(100% - 16px);
             max-width: none;
-            padding: 0 12px;              /* Less padding on mobile */
+            padding: 0 12px;
           }
           
           .content-area {
-            padding: 12px 2px;            /* Even less padding on mobile */
+            padding: 12px 2px;
           }
         }
       `}</style>
