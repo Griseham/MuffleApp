@@ -6,6 +6,9 @@ const RoomModal = ({ isOpen, onClose, station, onJoinRoom }) => {
   const [modalArtists, setModalArtists] = useState([]);
   const [loading, setLoading] = useState(true); // Start with loading true
 
+  // Get API base URL
+  const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080';
+
   // 1) Synchronously clear out previous artists BEFORE paint:
   useLayoutEffect(() => {
     if (isOpen && station) {
@@ -17,28 +20,70 @@ const RoomModal = ({ isOpen, onClose, station, onJoinRoom }) => {
   // 2) Then fetch artists (this runs right after paint)
   useEffect(() => {
     if (isOpen && station) {
-      fetchRandomArtists();
+      fetchArtistsWithImages();
     }
   }, [isOpen, station?.id]);
 
-  const fetchRandomArtists = async () => {
+  // Updated function to fetch artists with proper images using the same approach as TopComponent
+  const fetchArtistsWithImages = async () => {
     setLoading(true);
     try {
-      const response = await axios.get('/api/apple-music/random-genre-artists', {
-        params: { count: 6 }
-      });
+      // Step 1: Get random artists from Apple Music (similar to TopComponent approach)
+      const response = await fetch(`${API_BASE_URL}/api/apple-music/random-genre-artists?count=12`);
       
-      const artists = response.data?.artists || [];
+      if (!response.ok) {
+        throw new Error(`Failed to fetch artists: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const appleArtists = data.artists || [];
       
-      // Add volume and pick count to each artist
-      const artistsWithData = artists.map(artist => ({
+      // Step 2: Filter for artists with valid images first
+      const artistsWithValidImages = appleArtists.filter(hasValidImage);
+      
+      // Step 3: If we don't have enough artists with valid images, get more from Spotify
+      let finalArtists = artistsWithValidImages.slice(0, 6);
+      
+      // If we need more artists, try to get images from Spotify for the ones without valid images
+      if (finalArtists.length < 6) {
+        const artistsWithoutImages = appleArtists.filter(artist => !hasValidImage(artist));
+        
+        if (artistsWithoutImages.length > 0) {
+          try {
+            // Use Spotify to get images for artists without valid images
+            const imageResponse = await fetch(`${API_BASE_URL}/api/spotify/fetch-images`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ 
+                artistNames: artistsWithoutImages.slice(0, 6).map(a => a.name) 
+              })
+            });
+
+            if (imageResponse.ok) {
+              const imageData = await imageResponse.json();
+              const artistsWithSpotifyImages = imageData.artists || [];
+              
+              // Add artists with Spotify images to our final list
+              const validSpotifyArtists = artistsWithSpotifyImages.filter(hasValidImage);
+              finalArtists = [...finalArtists, ...validSpotifyArtists].slice(0, 6);
+            }
+          } catch (spotifyError) {
+            console.warn('Failed to fetch Spotify images:', spotifyError);
+          }
+        }
+      }
+      
+      // Step 4: Add volume and pick count to each artist (same as before)
+      const artistsWithData = finalArtists.map(artist => ({
         ...artist,
         volume: Math.floor(Math.random() * 6) + 1,
         picks: Math.floor(Math.random() * 15) + 1
       }));
       
       setModalArtists(artistsWithData);
+      
     } catch (error) {
+      console.error('Error fetching artists for modal:', error);
       // Fallback to empty array
       setModalArtists([]);
     } finally {
@@ -129,10 +174,6 @@ const RoomModal = ({ isOpen, onClose, station, onJoinRoom }) => {
   
   // 4-letter code derived from station name or volume
   const stationCode = station.name || station.code || `K${volumePart.slice(0,3)}`;
-  
-  // Make sure listeners is a number
-  // const listenersCount = station.listeners || station.userCount || 42; // REMOVED - no longer needed
-  
   
   return (
     <div className="absolute top-0 right-0 mt-8 mr-4" style={{ zIndex: 30000 }}>
@@ -273,4 +314,4 @@ const RoomModal = ({ isOpen, onClose, station, onJoinRoom }) => {
   );
 };
 
-export default RoomModal;
+export default RoomModal; 

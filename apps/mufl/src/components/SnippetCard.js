@@ -125,27 +125,18 @@ const SnippetCard = ({
   // Ref for user avatar element
   const userAvatarRef = useRef(null);
 
-  // UPDATED: Get the current card - COMPLETELY IMAGE-FREE
+  // UPDATED: Get the current card - STATIC PLACEHOLDER DATA ONLY
   const getCurrentCard = () => {
-    // Always prioritize real Apple Music data but remove image references
-    if (currentSong) {
-      return {
-        id: currentSong.id,
-        track: currentSong.track,
-        artist: currentSong.artist,
-        album: currentSong.album || '', 
-        // REMOVED: artworkUrl - no longer used
-        previewUrl:
-             currentSong.previewUrl
-             || currentSong.snippetData?.attributes?.previews?.[0]?.url
-             || defaultPreviewUrl,
-        color: currentSong.color,
-        isFromRoomArtist: currentSong.isFromRoomArtist
-      };
-    }
-    
-    // Only show fallback when actually loading
-    return FALLBACK_SNIPPETS[0];
+    // Always return static placeholder data - no API calls
+    return {
+      id: 'placeholder-1',
+      track: 'Sample Song Title',
+      artist: 'Sample Artist Name',
+      album: 'Sample Album',
+      previewUrl: defaultPreviewUrl, // No preview available
+      color: '#1DB954',
+      isFromRoomArtist: false
+    };
   };
 
   const currentCard = getCurrentCard();
@@ -364,46 +355,14 @@ const SnippetCard = ({
     );
   };
 
-  // UPDATED: Enhanced function to generate user data - COMPLETELY SVG-ONLY
+  // UPDATED: Static user data generation - no dynamic API calls
   const generateUserData = (song) => {
-    if (!song || !song.track) return { 
+    // Always return the same static user data for consistency
+    return { 
       userId: 1,
       username: "music_lover", 
-      timeAgo: "1m ago", 
-      comment: "Loading..."
-    };
-    
-    const usernames = ["music_lover", "beat_seeker", "rhythm_guru", "sound_wave", "melody_finder"];
-    const comments = [
-      "Perfect vibe for today",
-      "Can't stop listening to this",
-      "This artist never disappoints",
-      "Added to my playlist instantly",
-      "The production is insane",
-      "This beat is everything",
-      "Another one",
-      "A second one",
-    ];
-    
-    // Use song ID to generate consistent user data
-    const songId = song.id || song.track;
-    let hash = 0;
-    for (let i = 0; i < songId.length; i++) {
-      hash = songId.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    
-    // Generate consistent user ID (1-15)
-    const userId = (Math.abs(hash) % 15) + 1;
-    const userIndex = Math.abs(hash) % usernames.length;
-    const commentIndex = Math.abs(hash >> 8) % comments.length;
-    const timeOptions = ["30s ago", "1m ago", "2m ago", "3m ago", "5m ago"];
-    const timeIndex = Math.abs(hash >> 16) % timeOptions.length;
-    
-    return {
-      userId: userId,
-      username: usernames[userIndex],
-      timeAgo: timeOptions[timeIndex],
-      comment: comments[commentIndex]
+      timeAgo: "2m ago", 
+      comment: "Perfect vibe for today"
     };
   };
 
@@ -645,9 +604,14 @@ const SnippetCard = ({
           {/* Snippet Card */}
           <div className="flex w-full select-none flex-col overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-b from-[#1a1a1a] to-black shadow-[0_10px_25px_-5px_rgba(0,0,0,0.5)]">
             <div className="relative h-96 w-full flex items-center justify-center bg-black/40 border border-white/10">
-              {/* UPDATED: Pure SVG Artwork - NO IMAGES */}
+              {/* UPDATED: Simple album art placeholder - restored original design */}
               <div className="absolute inset-0">
-                {generateSongArtwork(currentCard)}
+                <div className="absolute inset-0 bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center">
+                  {/* Original music icon placeholder - larger size */}
+                  <div className="text-gray-500">
+                    <PureMusicIcon size={80} color="currentColor" />
+                  </div>
+                </div>
                 {/* Dark overlay for better text readability */}
                 <div className="absolute inset-0 bg-black/30" />
               </div>
@@ -710,7 +674,7 @@ const SnippetCard = ({
                     isLoading ? 'opacity-50 cursor-not-allowed' : ''
                   }`}
                 >
-                  {/* Show different icon based on audio availability */}
+                  {/* RESTORED: Original play button design */}
                   {audioError || !currentCard.previewUrl ? (
                     <PureMusicIcon size={19} color="currentColor" />
                   ) : isPlaying ? (
