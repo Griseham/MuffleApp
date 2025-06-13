@@ -370,76 +370,85 @@ const BottomContainer = ({
   };
 
   // COMPLETELY IMAGE-FREE swipe content renderer - ONLY SVGs
-  const renderSwipeContent = (songs, type) => {
-    const iconComponent = type === 'left' ? LeftSwipeIcon : RightSwipeIcon;
-    const tabTitle = type === 'left' ? 'Left Swipes' : 'Right Swipes';
-    
-    return (
-      <div className="swipe-content">
-        <h3 className="swipe-header">
-          {React.createElement(iconComponent, { size: 20, className: "mr-2" })}
-          {tabTitle} ({songs.length})
-        </h3>
-        
-        <div className="overflow-y-auto max-h-[calc(100%-3rem)] px-1">
-          {songs.length > 0 ? (
-            songs.map((song, index) => (
-              <div 
-                key={`${song.id}-${index}`} 
-                className="song-card-design3"
-              >
-                {/* PURE SVG Song Icon - NO IMAGES AT ALL */}
-                <div className="song-icon">
-                  <PureMusicNoteIcon size={20} className="text-purple-400" />
-                </div>
-                
-                {/* Song Info */}
-                <div className="song-info">
-                  <h4 className="song-title">{song.track || song.title}</h4>
-                  <p className="song-artist">{song.artist}</p>
-                </div>
+// UPDATED: renderSwipeContent function - Use avatar service instead of SVG
+const renderSwipeContent = (songs, type) => {
+  const iconComponent = type === 'left' ? LeftSwipeIcon : RightSwipeIcon;
+  const tabTitle = type === 'left' ? 'Left Swipes' : 'Right Swipes';
+  
+  return (
+    <div className="swipe-content">
+      <h3 className="swipe-header">
+        {React.createElement(iconComponent, { size: 20, className: "mr-2" })}
+        {tabTitle} ({songs.length})
+      </h3>
+      
+      <div className="overflow-y-auto max-h-[calc(100%-3rem)] px-1">
+        {songs.length > 0 ? (
+          songs.map((song, index) => (
+            <div 
+              key={`${song.id}-${index}`} 
+              className="song-card-design3"
+            >
+              {/* PURE SVG Song Icon - NO IMAGES AT ALL */}
+              <div className="song-icon">
+                <PureMusicNoteIcon size={20} className="text-purple-400" />
+              </div>
+              
+              {/* Song Info */}
+              <div className="song-info">
+                <h4 className="song-title">{song.track || song.title}</h4>
+                <p className="song-artist">{song.artist}</p>
+              </div>
 
-                {/* Middle Section - User Info with PURE SVG Avatar */}
-                <div className="middle-section">
-                  <div className="by-label">By:</div>
-                  <div className="user-container">
-                    <div className="user-avatar">
-                      {/* PURE SVG User Icon - NO IMAGES */}
-                      <PureUserIcon size={16} className="text-blue-400" />
-                    </div>
-                    <span className="user-name">
-                      {song.recommendedBy?.username || "user"}
-                    </span>
+              {/* Middle Section - User Info with REAL AVATAR from service */}
+              <div className="middle-section">
+                <div className="by-label">By:</div>
+                <div className="user-container">
+                  <div className="user-avatar">
+                    {/* UPDATED: Use real avatar image from assets folder */}
+                    <img 
+                      src={getAvatarForUser(song.recommendedBy?.userId || 1)} 
+                      alt={`${song.recommendedBy?.username || "user"} avatar`}
+                      className="w-full h-full object-cover rounded-full"
+                      onError={(e) => {
+                        // Fallback to a default image if the avatar fails to load
+                        e.target.src = '/assets/users/assets2/image1.png';
+                      }}
+                    />
                   </div>
-                </div>
-
-                {/* Arrow Indicators - Single Row */}
-                <div className="indicators-container">
-                  <SwipeIndicators
-                    type="left"
-                    counts={song.leftCounts || { 1: 0, 2: 0, 3: 0 }}
-                    userVote={song.userVoteDirection === 'left' ? song.userVoteStrength : null}
-                  />
-                  
-                  <div className="separator"></div>
-                  
-                  <SwipeIndicators
-                    type="right"
-                    counts={song.rightCounts || { 1: 0, 2: 0, 3: 0 }}
-                    userVote={song.userVoteDirection === 'right' ? song.userVoteStrength : null}
-                  />
+                  <span className="user-name">
+                    {song.recommendedBy?.username || "user"}
+                  </span>
                 </div>
               </div>
-            ))
-          ) : (
-            <div className="p-4 text-center text-gray-500 border border-gray-700/30 rounded-lg bg-gray-900/20">
-              No {type} swipes yet. Try swiping songs to the {type}!
+
+              {/* Arrow Indicators - Single Row */}
+              <div className="indicators-container">
+                <SwipeIndicators
+                  type="left"
+                  counts={song.leftCounts || { 1: 0, 2: 0, 3: 0 }}
+                  userVote={song.userVoteDirection === 'left' ? song.userVoteStrength : null}
+                />
+                
+                <div className="separator"></div>
+                
+                <SwipeIndicators
+                  type="right"
+                  counts={song.rightCounts || { 1: 0, 2: 0, 3: 0 }}
+                  userVote={song.userVoteDirection === 'right' ? song.userVoteStrength : null}
+                />
+              </div>
             </div>
-          )}
-        </div>
+          ))
+        ) : (
+          <div className="p-4 text-center text-gray-500 border border-gray-700/30 rounded-lg bg-gray-900/20">
+            No {type} swipes yet. Try swiping songs to the {type}!
+          </div>
+        )}
       </div>
-    );
-  };
+    </div>
+  );
+};
 
   return (
     <div className="w-full pb-4 relative">
