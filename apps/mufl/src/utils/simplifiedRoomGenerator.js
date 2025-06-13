@@ -380,7 +380,6 @@ const SIMILARITY_RANGES = {
     
     if (mode === 'volume') {
       // Volume mode: primaryValue = volume, targetSecondaryValue = similarity
-      console.log(`Generating ${roomCount} rooms for volume ${primaryValue}${targetSecondaryValue ? ` targeting similarity ${targetSecondaryValue}` : ''}`);
       
       const rooms = generateRoomsForVolume(selectedArtists, relatedArtists, primaryValue, roomCount, targetSecondaryValue);
       
@@ -396,7 +395,6 @@ const SIMILARITY_RANGES = {
     } else {
       // Similarity mode: primaryValue = similarity, targetSecondaryValue = volume
       const similarityRange = getSimilarityRange(primaryValue);
-      console.log(`Generating ${roomCount} rooms for similarity ${primaryValue} (${similarityRange.name} range)${targetSecondaryValue ? ` targeting volume ${targetSecondaryValue}` : ''}`);
       
       const rooms = generateRoomsForSimilarity(selectedArtists, relatedArtists, primaryValue, roomCount, targetSecondaryValue);
       

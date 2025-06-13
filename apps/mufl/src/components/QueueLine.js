@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { VolumeIcon } from "./Icons/Icons";
 import UserHoverCard from "./UserHoverCard";
-import { getAvatarForUser } from "../utils/avatarService";
 
 // Trend arrow components - Smaller sizes
 const UpArrow = ({ className = "" }) => (
@@ -33,21 +32,14 @@ const QueueLine = ({ qlUsers }) => {
   // Reference to the container element for boundary checking
   const containerRef = useRef(null);
 
-  // Generate consistent avatar assignments for each user ID
-  const getUserAvatar = (userId) => {
-    // Use getAvatarForUser to get consistent avatar paths
-    return getAvatarForUser(userId);
-  };
-
-  // State for users with ranking logic
+  // State for users with ranking logic - NO MORE AVATAR SERVICE
   const [users, setUsers] = useState(() => 
     qlUsers.slice(0, 8).map((user, index) => ({ 
       ...user, 
       score: 100 - (index * 8) + Math.random() * 10, // Initial scores based on volume order
       trend: 'stable', 
       lastPosition: index + 1,
-      position: index + 1,
-      avatar: getUserAvatar(user.id) // Add avatar to user object
+      position: index + 1
     }))
   );
 
@@ -91,7 +83,7 @@ const QueueLine = ({ qlUsers }) => {
     return () => clearInterval(interval);
   }, []);
 
-  // Create unique random data for each user
+  // Create unique random data for each user - NO MORE AVATAR SERVICE
   const generateRandomUserData = (user) => {
     // Each month has an equal chance
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -121,7 +113,6 @@ const QueueLine = ({ qlUsers }) => {
       followers: followers,
       discoveryPercent: discoveryPercent,
       volume: user.volume,
-      avatar: user.avatar, // Include avatar in user data
       // Generate unique arrow counts for each user
       arrowCounts: {
         positive: {
@@ -138,12 +129,11 @@ const QueueLine = ({ qlUsers }) => {
     };
   };
 
-  // Create static user data with unique values for each user
+  // Create static user data with unique values for each user - NO MORE AVATAR SERVICE
   const staticUserData = useRef(users.map(user => ({
     id: user.id,
     name: user.name,
     volume: user.volume,
-    avatar: user.avatar,
     userData: generateRandomUserData(user)
   }))).current;
 
@@ -265,7 +255,7 @@ const QueueLine = ({ qlUsers }) => {
               <span className="text-gray-300 font-medium text-xs">{user.volume}</span>
             </div>
             
-            {/* User Circle with avatar image - Smaller */}
+            {/* User Circle with SVG avatar - Smaller */}
             <div 
               className={`user-circle w-12 h-12 rounded-full overflow-hidden shadow-md transition cursor-pointer ${
                 selectedUser?.id === user.id ? 'ring-[#1DB954] ring-2' : 
@@ -276,7 +266,7 @@ const QueueLine = ({ qlUsers }) => {
               }`}
               onClick={() => handleUserClick(user.id, index)}
             >
-              {/* Grey SVG user placeholder */}
+              {/* Grey SVG user placeholder - NO MORE IMAGE LOADING */}
               <div className="w-full h-full bg-gray-700 flex items-center justify-center">
                 <svg className="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />

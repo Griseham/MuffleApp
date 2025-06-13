@@ -63,7 +63,6 @@ export const useEnhancedRoomFeed = (selectedArtists = []) => {
     const lastNames = fetchedDataRef.current.lastSelectedArtists.map(a => a.name).sort().join('|');
     
     if (selectedNames === lastNames && fetchedDataRef.current.relatedArtists.length > 0) {
-      console.log('Using cached related artists');
       setRelatedArtists(fetchedDataRef.current.relatedArtists);
       return;
     }
@@ -77,14 +76,12 @@ export const useEnhancedRoomFeed = (selectedArtists = []) => {
         (progress) => updateLoadingState({ progress })
       );
       
-      console.log(`Fetched ${enhanced.length} similar artists with images`);
       
       setRelatedArtists(enhanced);
       fetchedDataRef.current.relatedArtists = enhanced;
       fetchedDataRef.current.lastSelectedArtists = [...selectedArtists];
       
     } catch (err) {
-      console.error('Error fetching similar artists:', err);
       setError('Failed to fetch similar artists. Please try again.');
     } finally {
       updateLoadingState({ similarArtists: false, progress: 100 });
@@ -100,16 +97,13 @@ export const useEnhancedRoomFeed = (selectedArtists = []) => {
     
     try {
       const random = await fetchRandomGenreArtists(50, (progress) => {
-        console.log(`Random artists fetch progress: ${progress}%`);
       });
       
-      console.log(`Fetched ${random.length} random genre artists`);
       
       setRandomArtists(random);
       fetchedDataRef.current.randomArtists = random;
       
     } catch (err) {
-      console.error('Error fetching random artists:', err);
       // Use fallback data
       const fallback = Array.from({ length: 30 }, (_, i) => ({
         id: `random-${i}`,
@@ -145,7 +139,6 @@ export const useEnhancedRoomFeed = (selectedArtists = []) => {
           // Generate rooms with random artists only
           const generatedRooms = generateSimplifiedRooms([], artistsToUse, primaryValue, 8, targetSecondaryValue, 'similarity');
           setRooms(generatedRooms);
-          console.log(`Generated ${generatedRooms.length} rooms for similarity ${primaryValue} (${rangeInfo.name} range)${targetSecondaryValue ? ` with target volume ${targetSecondaryValue}` : ''}`);
           
         } else {
           // Use related artists for positive similarity
@@ -159,7 +152,6 @@ export const useEnhancedRoomFeed = (selectedArtists = []) => {
           // Generate rooms with selected + related artists
           const generatedRooms = generateSimplifiedRooms(selectedArtists, artistsToUse, primaryValue, 8, targetSecondaryValue, 'similarity');
           setRooms(generatedRooms);
-          console.log(`Generated ${generatedRooms.length} rooms for similarity ${primaryValue} (${rangeInfo.name} range)${targetSecondaryValue ? ` with target volume ${targetSecondaryValue}` : ''}`);
         }
         
       } else {
@@ -175,11 +167,9 @@ export const useEnhancedRoomFeed = (selectedArtists = []) => {
         // Generate rooms with selected + related artists
         const generatedRooms = generateSimplifiedRooms(selectedArtists, artistsToUse, primaryValue, 8, targetSecondaryValue, 'volume');
         setRooms(generatedRooms);
-        console.log(`Generated ${generatedRooms.length} rooms for volume ${primaryValue}${targetSecondaryValue ? ` with target similarity ${targetSecondaryValue}` : ''}`);
       }
       
     } catch (err) {
-      console.error('Error generating rooms:', err);
       setError('Failed to generate rooms. Please try again.');
     } finally {
       updateLoadingState({ roomGeneration: false });
@@ -226,7 +216,6 @@ export const useEnhancedRoomFeed = (selectedArtists = []) => {
         updateLoadingState({ initialLoad: false, progress: 100 });
         
       } catch (err) {
-        console.error('Error in initial load:', err);
         setError('Failed to load initial data. Please try again.');
         updateLoadingState({ initialLoad: false });
       }

@@ -40,8 +40,7 @@ function App() {
   };
 
   const handleJoinRoom = (station) => {
-    console.log('🚀 App.js - Joining room:', station);
-    console.log('🚀 Station artists:', station?.artists?.length || 'No artists');
+
     setActiveStation(station);   // keep the artists!
     setStep('playing');
   };
