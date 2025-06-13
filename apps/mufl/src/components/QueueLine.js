@@ -21,6 +21,55 @@ const StableIcon = ({ className = "" }) => (
   </svg>
 );
 
+// Pure SVG User Avatar Component with Dynamic Colors
+const PureUserAvatar = ({ userId, size = 48, className = "" }) => {
+  // Generate consistent colors based on user ID
+  const getUserColor = (id) => {
+    const colors = [
+      { bg: 'bg-gradient-to-br from-blue-500 to-blue-700', icon: 'text-blue-100' },
+      { bg: 'bg-gradient-to-br from-green-500 to-green-700', icon: 'text-green-100' },
+      { bg: 'bg-gradient-to-br from-purple-500 to-purple-700', icon: 'text-purple-100' },
+      { bg: 'bg-gradient-to-br from-red-500 to-red-700', icon: 'text-red-100' },
+      { bg: 'bg-gradient-to-br from-yellow-500 to-yellow-700', icon: 'text-yellow-100' },
+      { bg: 'bg-gradient-to-br from-pink-500 to-pink-700', icon: 'text-pink-100' },
+      { bg: 'bg-gradient-to-br from-indigo-500 to-indigo-700', icon: 'text-indigo-100' },
+      { bg: 'bg-gradient-to-br from-orange-500 to-orange-700', icon: 'text-orange-100' },
+      { bg: 'bg-gradient-to-br from-teal-500 to-teal-700', icon: 'text-teal-100' },
+      { bg: 'bg-gradient-to-br from-cyan-500 to-cyan-700', icon: 'text-cyan-100' },
+      { bg: 'bg-gradient-to-br from-emerald-500 to-emerald-700', icon: 'text-emerald-100' },
+      { bg: 'bg-gradient-to-br from-violet-500 to-violet-700', icon: 'text-violet-100' },
+      { bg: 'bg-gradient-to-br from-rose-500 to-rose-700', icon: 'text-rose-100' },
+      { bg: 'bg-gradient-to-br from-lime-500 to-lime-700', icon: 'text-lime-100' },
+      { bg: 'bg-gradient-to-br from-amber-500 to-amber-700', icon: 'text-amber-100' },
+    ];
+    
+    return colors[(id - 1) % colors.length];
+  };
+
+  const userColor = getUserColor(userId);
+  const iconSize = Math.floor(size * 0.5); // Icon is 50% of container size
+
+  return (
+    <div 
+      className={`w-${size === 48 ? '12' : '10'} h-${size === 48 ? '12' : '10'} rounded-full ${userColor.bg} flex items-center justify-center shadow-lg ${className}`}
+      style={{ width: `${size}px`, height: `${size}px` }}
+    >
+      <svg 
+        width={iconSize} 
+        height={iconSize} 
+        viewBox="0 0 24 24" 
+        fill="none" 
+        stroke="currentColor" 
+        strokeWidth="2" 
+        className={userColor.icon}
+      >
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+        <circle cx="12" cy="7" r="4"/>
+      </svg>
+    </div>
+  );
+};
+
 const QueueLine = ({ qlUsers }) => {
   // Track which user is selected (clicked)
   const [selectedUser, setSelectedUser] = useState(null);
@@ -32,7 +81,7 @@ const QueueLine = ({ qlUsers }) => {
   // Reference to the container element for boundary checking
   const containerRef = useRef(null);
 
-  // State for users with ranking logic - NO MORE AVATAR SERVICE
+  // State for users with ranking logic - COMPLETELY AVATAR-FREE
   const [users, setUsers] = useState(() => 
     qlUsers.slice(0, 8).map((user, index) => ({ 
       ...user, 
@@ -83,7 +132,7 @@ const QueueLine = ({ qlUsers }) => {
     return () => clearInterval(interval);
   }, []);
 
-  // Create unique random data for each user - NO MORE AVATAR SERVICE
+  // UPDATED: Create unique random data for each user - NO AVATAR SERVICE
   const generateRandomUserData = (user) => {
     // Each month has an equal chance
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -129,7 +178,7 @@ const QueueLine = ({ qlUsers }) => {
     };
   };
 
-  // Create static user data with unique values for each user - NO MORE AVATAR SERVICE
+  // UPDATED: Create static user data with unique values for each user - NO AVATAR SERVICE
   const staticUserData = useRef(users.map(user => ({
     id: user.id,
     name: user.name,
@@ -255,9 +304,9 @@ const QueueLine = ({ qlUsers }) => {
               <span className="text-gray-300 font-medium text-xs">{user.volume}</span>
             </div>
             
-            {/* User Circle with SVG avatar - Smaller */}
+            {/* UPDATED: User Circle with Pure SVG avatar - NO MORE IMAGE REFERENCES */}
             <div 
-              className={`user-circle w-12 h-12 rounded-full overflow-hidden shadow-md transition cursor-pointer ${
+              className={`user-circle rounded-full overflow-hidden shadow-md transition cursor-pointer relative ${
                 selectedUser?.id === user.id ? 'ring-[#1DB954] ring-2' : 
                 index === 0 ? 'ring-2 ring-yellow-500 hover:ring-yellow-400' :
                 index === 1 ? 'ring-2 ring-gray-300 hover:ring-gray-200' :
@@ -266,12 +315,8 @@ const QueueLine = ({ qlUsers }) => {
               }`}
               onClick={() => handleUserClick(user.id, index)}
             >
-              {/* Grey SVG user placeholder - NO MORE IMAGE LOADING */}
-              <div className="w-full h-full bg-gray-700 flex items-center justify-center">
-                <svg className="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-                </svg>
-              </div>
+              {/* Pure SVG User Avatar with dynamic colors */}
+              <PureUserAvatar userId={user.id} size={48} />
             </div>
             
             {/* Username - Smaller text */}
