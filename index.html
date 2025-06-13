@@ -557,7 +557,7 @@
     /* push the dots all the way to the right of .navigation-bar */
     margin-left: auto; 
 
-    /* bottom padding so the dots don’t touch the border */
+    /* bottom padding so the dots don't touch the border */
     padding-bottom: 8px; 
 
     /* hide any scrollbar track if you want a cleaner look (optional) */
@@ -866,26 +866,8 @@
                             <div class="video-grid">
                                 <div class="video-card" data-video="/assets/HipHopRooms.mp4">
                                     <div class="video-thumbnail">
-                                        <video class="video-element" preload="metadata">
+                                        <video class="video-element" preload="metadata" muted autoplay loop>
                                             <source src="/assets/HipHopRooms.mp4" type="video/mp4">
-                                        </video>
-                                        <div class="play-overlay">▶</div>
-                                    </div>
-                                    <div class="video-title">Hip-Hop Rooms</div>
-                                </div>
-                                <div class="video-card" data-video="/assets/IndieRooms.mp4">
-                                    <div class="video-thumbnail">
-                                        <video class="video-element" preload="metadata">
-                                            <source src="/assets/IndieRooms.mp4" type="video/mp4">
-                                        </video>
-                                        <div class="play-overlay">▶</div>
-                                    </div>
-                                    <div class="video-title">Indie Rooms</div>
-                                </div>
-                                <div class="video-card" data-video="/assets/AestheticRapRooms.mp4">
-                                    <div class="video-thumbnail">
-                                        <video class="video-element" preload="metadata">
-                                            <source src="/assets/AestheticRapRooms.mp4" type="video/mp4">
                                         </video>
                                         <div class="play-overlay">▶</div>
                                     </div>
@@ -898,7 +880,10 @@
                             <h2 class="section-title">Informational</h2>
                             <div class="info-video-card" data-video="/assets/RoomsInformational.mp4">
                                 <div class="info-video-thumbnail">
-                                    <div style="font-size: 48px; color: #666;">▶</div>
+                                    <video class="video-element" preload="metadata" poster="/assets/ThumbnailRooms.png">
+                                        <source src="/assets/RoomsInformational.mp4" type="video/mp4">
+                                    </video>
+                                    <div class="play-overlay">▶</div>
                                 </div>
                             </div>
                         </div>
@@ -917,7 +902,7 @@
                             <h2 class="section-title">Demo Video</h2>
                             <div class="single-video-card" data-video="/assets/ThreadsDemo.mp4">
                                 <div class="single-video-thumbnail">
-                                    <video class="video-element" preload="metadata">
+                                    <video class="video-element" preload="metadata" muted autoplay loop>
                                         <source src="/assets/ThreadsDemo.mp4" type="video/mp4">
                                     </video>
                                     <div class="play-overlay">▶</div>
@@ -930,7 +915,10 @@
                             <h2 class="section-title">Informational</h2>
                             <div class="info-video-card" data-video="/assets/ThreadsInformational.mp4">
                                 <div class="info-video-thumbnail">
-                                    <div style="font-size: 48px; color: #666;">▶</div>
+                                    <video class="video-element" preload="metadata" poster="/assets/ThumbnailThreads.png">
+                                        <source src="/assets/ThreadsInformational.mp4" type="video/mp4">
+                                    </video>
+                                    <div class="play-overlay">▶</div>
                                 </div>
                             </div>
                         </div>
@@ -951,7 +939,10 @@
                             <h2 class="section-title">Profile screen and Timeline Informational</h2>
                             <div class="info-video-card" data-video="/assets/ProfileInformational.mp4">
                                 <div class="info-video-thumbnail">
-                                    <div style="font-size: 48px; color: #666;">▶</div>
+                                    <video class="video-element" preload="metadata" poster="/assets/ThumbnailProfile.png">
+                                        <source src="/assets/ProfileInformational.mp4" type="video/mp4">
+                                    </video>
+                                    <div class="play-overlay">▶</div>
                                 </div>
                             </div>
                         </div>
@@ -972,7 +963,10 @@
                             <h2 class="section-title">Informational</h2>
                             <div class="info-video-card" data-video="/assets/HomeInformational.mp4">
                                 <div class="info-video-thumbnail">
-                                    <div style="font-size: 48px; color: #666;">▶</div>
+                                    <video class="video-element" preload="metadata" poster="/assets/ThumbnailHome.png">
+                                        <source src="/assets/HomeInformational.mp4" type="video/mp4">
+                                    </video>
+                                    <div class="play-overlay">▶</div>
                                 </div>
                             </div>
                         </div>
@@ -1046,11 +1040,21 @@
                 logoCircle.style.backgroundImage = `url('${logoPath}')`;
             }
             
-            // Fix video thumbnail sources
+            // Fix video thumbnail sources and reload videos
             document.querySelectorAll('video.video-element source').forEach(source => {
                 const originalSrc = source.getAttribute('src');
                 if (originalSrc && !originalSrc.startsWith('http')) {
                     source.src = resolvePath(originalSrc);
+                    // Force the video element to reload with the new source
+                    source.parentElement.load();
+                }
+            });
+            
+            // Fix poster images
+            document.querySelectorAll('video.video-element[poster]').forEach(video => {
+                const originalPoster = video.getAttribute('poster');
+                if (originalPoster && !originalPoster.startsWith('http')) {
+                    video.poster = resolvePath(originalPoster);
                 }
             });
             
@@ -1190,84 +1194,81 @@
             }
         }
 
-
-
         function updateSlide(slideNumber) {
-    currentSlide = slideNumber;
-    
-    // Update main slide with smooth transition
-    const mainSlide = document.getElementById('mainSlide');
-    if (mainSlide) {
-        // Check if this is the initial load
-        const existingContainers = mainSlide.querySelectorAll('.slide-fade-container');
-        const isInitialLoad = existingContainers.length === 0;
-        
-        if (isInitialLoad) {
-            // First time initialization - no animation needed
-            const slideImagePath = resolvePath(`/assets/PitchDeck/Slide${slideNumber}.jpg`);
-            const newContainer = document.createElement('div');
-            newContainer.className = 'slide-fade-container active';
-            newContainer.style.backgroundImage = `url('${slideImagePath}')`;
-            mainSlide.appendChild(newContainer);
-        } else {
-            // Animated transition
-            const currentActive = mainSlide.querySelector('.slide-fade-container.active');
+            currentSlide = slideNumber;
             
-            // Create new slide container
-            const slideImagePath = resolvePath(`/assets/PitchDeck/Slide${slideNumber}.jpg`);
-            const newContainer = document.createElement('div');
-            newContainer.className = 'slide-fade-container';
-            newContainer.style.backgroundImage = `url('${slideImagePath}')`;
-            mainSlide.appendChild(newContainer);
-            
-            // Trigger fade transition
-            requestAnimationFrame(() => {
-                // Fade out current slide
-                if (currentActive) {
-                    currentActive.classList.add('fade-out');
-                    currentActive.classList.remove('active');
+            // Update main slide with smooth transition
+            const mainSlide = document.getElementById('mainSlide');
+            if (mainSlide) {
+                // Check if this is the initial load
+                const existingContainers = mainSlide.querySelectorAll('.slide-fade-container');
+                const isInitialLoad = existingContainers.length === 0;
+                
+                if (isInitialLoad) {
+                    // First time initialization - no animation needed
+                    const slideImagePath = resolvePath(`/assets/PitchDeck/Slide${slideNumber}.jpg`);
+                    const newContainer = document.createElement('div');
+                    newContainer.className = 'slide-fade-container active';
+                    newContainer.style.backgroundImage = `url('${slideImagePath}')`;
+                    mainSlide.appendChild(newContainer);
+                } else {
+                    // Animated transition
+                    const currentActive = mainSlide.querySelector('.slide-fade-container.active');
+                    
+                    // Create new slide container
+                    const slideImagePath = resolvePath(`/assets/PitchDeck/Slide${slideNumber}.jpg`);
+                    const newContainer = document.createElement('div');
+                    newContainer.className = 'slide-fade-container';
+                    newContainer.style.backgroundImage = `url('${slideImagePath}')`;
+                    mainSlide.appendChild(newContainer);
+                    
+                    // Trigger fade transition
+                    requestAnimationFrame(() => {
+                        // Fade out current slide
+                        if (currentActive) {
+                            currentActive.classList.add('fade-out');
+                            currentActive.classList.remove('active');
+                        }
+                        
+                        // Fade in new slide
+                        newContainer.classList.add('active');
+                        
+                        // Clean up old containers after transition
+                        setTimeout(() => {
+                            mainSlide.querySelectorAll('.slide-fade-container:not(.active)').forEach(container => {
+                                container.remove();
+                            });
+                        }, 500); // Match the CSS transition duration
+                    });
                 }
                 
-                // Fade in new slide
-                newContainer.classList.add('active');
+                // Update progress text
+                const progressElement = document.querySelector('.slide-progress');
+                if (progressElement) {
+                    progressElement.textContent = `Slide ${slideNumber} of ${totalSlides}`;
+                }
                 
-                // Clean up old containers after transition
-                setTimeout(() => {
-                    mainSlide.querySelectorAll('.slide-fade-container:not(.active)').forEach(container => {
-                        container.remove();
+                // Update dots: remove active from all, then add to current
+                document.querySelectorAll('.dot').forEach(dot => dot.classList.remove('active'));
+                const activeDot = document.querySelector(`[data-slide="${slideNumber}"]`);
+                if (activeDot) {
+                    activeDot.classList.add('active');
+                    
+                    // Scroll that dot into view (centered in the visible area)
+                    activeDot.scrollIntoView({ 
+                        behavior: 'smooth', 
+                        inline: 'center',   // horizontally center the active dot
+                        block: 'nearest'    // no vertical movement, only horizontal
                     });
-                }, 500); // Match the CSS transition duration
-            });
+                }
+                
+                // Enable/disable navigation arrows
+                const prevBtn = document.getElementById('prevBtn');
+                const nextBtn = document.getElementById('nextBtn');
+                if (prevBtn) prevBtn.disabled = (slideNumber === 1);
+                if (nextBtn) nextBtn.disabled = (slideNumber === totalSlides);
+            }
         }
-        
-        // Update progress text
-        const progressElement = document.querySelector('.slide-progress');
-        if (progressElement) {
-            progressElement.textContent = `Slide ${slideNumber} of ${totalSlides}`;
-        }
-        
-        // Update dots: remove active from all, then add to current
-        document.querySelectorAll('.dot').forEach(dot => dot.classList.remove('active'));
-        const activeDot = document.querySelector(`[data-slide="${slideNumber}"]`);
-        if (activeDot) {
-            activeDot.classList.add('active');
-            
-            // Scroll that dot into view (centered in the visible area)
-            activeDot.scrollIntoView({ 
-                behavior: 'smooth', 
-                inline: 'center',   // horizontally center the active dot
-                block: 'nearest'    // no vertical movement, only horizontal
-            });
-        }
-        
-        // Enable/disable navigation arrows
-        const prevBtn = document.getElementById('prevBtn');
-        const nextBtn = document.getElementById('nextBtn');
-        if (prevBtn) prevBtn.disabled = (slideNumber === 1);
-        if (nextBtn) nextBtn.disabled = (slideNumber === totalSlides);
-    }
-}
-
 
         // Navigation button handlers
         document.addEventListener('click', (e) => {

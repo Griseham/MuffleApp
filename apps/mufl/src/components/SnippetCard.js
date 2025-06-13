@@ -13,13 +13,6 @@ const GENRE_COLORS = {
   "Hip-Hop": "text-green-400",
 };
 
-// Fallback mock snippets for when no real data is available
-const FALLBACK_SNIPPETS = [
-  { id: 1, track: "Loading Songs...", artist: "Please wait", color: "#1DB954", artworkUrl: null },
-  { id: 2, track: "Fetching from Apple Music", artist: "Almost ready", color: "#E91E63", artworkUrl: null },
-  { id: 3, track: "Building your queue", artist: "Just a moment", color: "#FF9800", artworkUrl: null }
-];
-
 // Info content for the InfoIconModal
 const snippetCardInfoSteps = [
   {
@@ -75,22 +68,6 @@ const PureMusicIcon = ({ size = 80, className = "", color = "currentColor" }) =>
   </svg>
 );
 
-// Pure SVG Album Icon Component 
-const PureAlbumIcon = ({ size = 80, className = "", color = "currentColor" }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" className={className}>
-    <circle cx="12" cy="12" r="10"/>
-    <circle cx="12" cy="12" r="3" fill={color}/>
-  </svg>
-);
-
-// Pure SVG User Icon Component
-const PureUserIcon = ({ size = 24, className = "" }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
-    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-    <circle cx="12" cy="7" r="4"/>
-  </svg>
-);
-
 const SnippetCard = ({ 
   onSwipe = () => {}, 
   currentSong = null,
@@ -126,38 +103,43 @@ const SnippetCard = ({
   // Ref for user avatar element
   const userAvatarRef = useRef(null);
 
-  // UPDATED: Get the current card - STATIC PLACEHOLDER DATA ONLY
+  // UPDATED: Get the current card - Use Spotify artist data for songs
   const getCurrentCard = () => {
-    // Always return static placeholder data - no API calls
+    // If we have real song data from PlayingScreen2.js, use it
+    if (currentSong && currentSong.track) {
+      return {
+        id: currentSong.id || `song-${Date.now()}`,
+        track: currentSong.track,
+        artist: currentSong.artist,
+        album: currentSong.album || `${currentSong.artist} Collection`,
+        artistImage: currentSong.sourceArtist?.image || '', // Spotify artist image
+        color: currentSong.color || '#1DB954',
+        isFromRoomArtist: currentSong.isFromRoomArtist || false,
+        isFromWidget: currentSong.isFromWidget || false
+      };
+    }
+
+    // Fallback to loading state
     return {
-      id: 'placeholder-1',
-      track: 'Sample Song Title',
-      artist: 'Sample Artist Name',
-      album: 'Sample Album',
-      previewUrl: defaultPreviewUrl, // No preview available
+      id: 'loading-placeholder',
+      track: 'Loading...',
+      artist: 'Please wait',
+      album: 'Fetching songs',
+      artistImage: '',
       color: '#1DB954',
-      isFromRoomArtist: false
+      isFromRoomArtist: false,
+      isFromWidget: false
     };
   };
 
   const currentCard = getCurrentCard();
 
-  // Handle audio playback and reset states when song changes
+  // Handle audio playbook and reset states when song changes
   useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-    }
-    
+    // No audio functionality - removed all audio-related code
     setIsPlaying(false);
     setAudioError(false);
     setIsBookmarked(false); // Reset bookmark state for new song
-    
-    // Load new audio if preview URL is available
-    if (currentCard.previewUrl && audioRef.current) {
-      audioRef.current.src = currentCard.previewUrl;
-      audioRef.current.load();
-    }
   }, [currentCard.id, currentSong]);
 
   // Handle voting and card animation
@@ -173,11 +155,9 @@ const SnippetCard = ({
     // Get user data to include in swipe
     const userData = generateUserData(currentCard);
     
-    // UPDATED: Create enhanced song data with user information - NO ARTWORK
+    // UPDATED: Create enhanced song data with user information
     const enhancedSong = {
       ...currentCard,
-      // REMOVED: artworkUrl, image references
-      album: currentCard.album,
       // Add user information that will be preserved in left/right tabs
       recommendedBy: {
         userId: userData.userId,
@@ -289,28 +269,8 @@ const SnippetCard = ({
   };
 
   const handlePlay = () => {
-    if (!currentCard.previewUrl || audioError) {
-      // No preview available, just trigger animation
-      triggerAnimation();
-      return;
-    }
-
-    if (audioRef.current) {
-      if (isPlaying) {
-        audioRef.current.pause();
-        setIsPlaying(false);
-      } else {
-        audioRef.current.play()
-          .then(() => {
-            setIsPlaying(true);
-            triggerAnimation();
-          })
-          .catch((error) => {
-            setAudioError(true);
-            triggerAnimation(); // Still show animation even if audio fails
-          });
-      }
-    }
+    // No audio playback - just trigger animation for visual feedback
+    triggerAnimation();
   };
 
   // Handle audio events
@@ -326,9 +286,6 @@ const SnippetCard = ({
   useEffect(() => {
     return () => {
       animTimers.current.forEach((t) => clearInterval(t) || clearTimeout(t));
-      if (audioRef.current) {
-        audioRef.current.pause();
-      }
     };
   }, []);
 
@@ -356,14 +313,41 @@ const SnippetCard = ({
     );
   };
 
-  // UPDATED: Static user data generation - no dynamic API calls
+  // UPDATED: Generate user data with avatar from service - realistic mock users
   const generateUserData = (song) => {
-    // Always return the same static user data for consistency
+    // Use song data to generate consistent user for each track
+    const songHash = song.track ? song.track.length + song.artist.length : 1;
+    const userId = (songHash % 15) + 1; // Use one of our 15 mock users from PlayingScreen2.js
+    
+    const mockUsers = [
+      { id: 1, username: "music_lover", comments: ["Perfect vibe for today", "This hits different", "Great track!"] },
+      { id: 2, username: "sound_wave", comments: ["Love this energy", "On repeat!", "Chef's kiss 👌"] },
+      { id: 3, username: "beat_maker", comments: ["The production is insane", "Those drums though!", "Fire beat"] },
+      { id: 4, username: "audio_freak", comments: ["Crystal clear sound", "Audiophile approved", "Amazing mix"] },
+      { id: 5, username: "rhythm_guru", comments: ["Can't stop dancing", "Groove is immaculate", "Body moving!"] },
+      { id: 6, username: "bass_hunter", comments: ["That bass line 🔥", "Sub frequencies on point", "Feel it in my chest"] },
+      { id: 7, username: "synth_master", comments: ["Vintage vibes", "Analog warmth", "Synth heaven"] },
+      { id: 8, username: "deep_grooves", comments: ["Underground classic", "Deep cut", "Rare find"] },
+      { id: 9, username: "ambient_vibes", comments: ["So atmospheric", "Ethereal beauty", "Floating on air"] },
+      { id: 10, username: "chill_tones", comments: ["Relaxing vibes", "Sunday morning mood", "Peaceful energy"] },
+      { id: 11, username: "drum_circle", comments: ["Percussive perfection", "Rhythm section tight", "Those fills!"] },
+      { id: 12, username: "melody_maker", comments: ["Catchy hook", "Stuck in my head", "Melodic genius"] },
+      { id: 13, username: "vocal_artist", comments: ["Incredible vocals", "Range is unreal", "Emotional delivery"] },
+      { id: 14, username: "sample_king", comments: ["Recognize that sample", "Flip game strong", "Creative use"] },
+      { id: 15, username: "track_layer", comments: ["Layered production", "Every element perfect", "Sonic sculpture"] }
+    ];
+    
+    const user = mockUsers[userId - 1];
+    const timeOptions = ["30s ago", "1m ago", "2m ago", "3m ago", "5m ago", "8m ago", "12m ago"];
+    const randomTime = timeOptions[songHash % timeOptions.length];
+    const randomComment = user.comments[songHash % user.comments.length];
+    
     return { 
-      userId: 1,
-      username: "music_lover", 
-      timeAgo: "2m ago", 
-      comment: "Perfect vibe for today"
+      userId: userId,
+      username: user.username, 
+      timeAgo: randomTime, 
+      comment: randomComment,
+      avatarUrl: getAvatarForUser(userId) // Use avatar service for consistent avatars
     };
   };
 
@@ -466,117 +450,55 @@ const SnippetCard = ({
     };
   }, [showUserModal]);
 
-  // UPDATED: Generate dynamic SVG artwork based on song data
-  const generateSongArtwork = (song) => {
-    // Create a unique hash from song data
-    const songString = `${song.track}-${song.artist}`;
-    let hash = 0;
-    for (let i = 0; i < songString.length; i++) {
-      hash = songString.charCodeAt(i) + ((hash << 5) - hash);
+  // Function to render album artwork using Spotify artist images
+  const renderAlbumArtwork = () => {
+    // Use Spotify artist image as album artwork
+    if (currentCard.artistImage && currentCard.artistImage !== '') {
+      return (
+        <img
+          src={currentCard.artistImage}
+          alt={`${currentCard.artist} image`}
+          className="absolute inset-0 w-full h-full object-cover"
+          onError={(e) => {
+            // Fallback to gradient background if image fails to load
+            e.target.style.display = 'none';
+            e.target.nextSibling.style.display = 'block';
+          }}
+        />
+      );
     }
     
-    // Color palettes based on song color
-    const getGradientColors = (baseColor) => {
-      const colorMap = {
-        '#1DB954': ['#1DB954', '#14A085', '#0F7B8A'], // Green theme
-        '#E91E63': ['#E91E63', '#C2185B', '#AD1457'], // Pink theme  
-        '#FF9800': ['#FF9800', '#F57C00', '#E65100'], // Orange theme
-        '#9C27B0': ['#9C27B0', '#7B1FA2', '#6A1B9A'], // Purple theme
-        '#2196F3': ['#2196F3', '#1976D2', '#1565C0'], // Blue theme
-      };
-      
-      return colorMap[baseColor] || ['#666666', '#555555', '#444444'];
-    };
-    
-    const colors = getGradientColors(song.color);
-    const patternType = Math.abs(hash) % 4; // 4 different patterns
-    
+    // Fallback to gradient background with music icon
     return (
-      <svg className="w-full h-full" viewBox="0 0 200 200">
-        <defs>
-          <linearGradient id={`grad-${song.id}`} x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" style={{stopColor: colors[0], stopOpacity: 1}} />
-            <stop offset="50%" style={{stopColor: colors[1], stopOpacity: 0.8}} />
-            <stop offset="100%" style={{stopColor: colors[2], stopOpacity: 1}} />
-          </linearGradient>
-          <radialGradient id={`radial-${song.id}`} cx="50%" cy="50%" r="50%">
-            <stop offset="0%" style={{stopColor: colors[0], stopOpacity: 0.8}} />
-            <stop offset="100%" style={{stopColor: colors[2], stopOpacity: 1}} />
-          </radialGradient>
-        </defs>
-        
-        {/* Background */}
-        <rect width="200" height="200" fill={`url(#grad-${song.id})`} />
-        
-        {/* Pattern based on hash */}
-        {patternType === 0 && (
-          // Circular pattern
-          <>
-            <circle cx="100" cy="100" r="80" fill="none" stroke="white" strokeWidth="2" opacity="0.3" />
-            <circle cx="100" cy="100" r="60" fill="none" stroke="white" strokeWidth="2" opacity="0.4" />
-            <circle cx="100" cy="100" r="40" fill="none" stroke="white" strokeWidth="2" opacity="0.5" />
-            <circle cx="100" cy="100" r="20" fill="white" opacity="0.6" />
-          </>
-        )}
-        
-        {patternType === 1 && (
-          // Wave pattern
-          <>
-            <path d="M0,100 Q50,50 100,100 T200,100" stroke="white" strokeWidth="3" fill="none" opacity="0.4" />
-            <path d="M0,120 Q50,70 100,120 T200,120" stroke="white" strokeWidth="2" fill="none" opacity="0.3" />
-            <path d="M0,80 Q50,30 100,80 T200,80" stroke="white" strokeWidth="2" fill="none" opacity="0.3" />
-          </>
-        )}
-        
-        {patternType === 2 && (
-          // Geometric pattern
-          <>
-            <polygon points="100,40 140,80 140,120 100,160 60,120 60,80" fill="white" opacity="0.3" />
-            <polygon points="100,60 120,80 120,120 100,140 80,120 80,80" fill="white" opacity="0.4" />
-            <circle cx="100" cy="100" r="15" fill="white" opacity="0.6" />
-          </>
-        )}
-        
-        {patternType === 3 && (
-          // Music note pattern
-          <>
-            <ellipse cx="70" cy="140" rx="12" ry="8" fill="white" opacity="0.5" />
-            <ellipse cx="130" cy="120" rx="12" ry="8" fill="white" opacity="0.5" />
-            <rect x="77" y="80" width="3" height="60" fill="white" opacity="0.5" />
-            <rect x="137" y="60" width="3" height="60" fill="white" opacity="0.5" />
-            <path d="M80,80 Q120,60 140,60" stroke="white" strokeWidth="3" fill="none" opacity="0.5" />
-          </>
-        )}
-        
-        {/* Overlay gradient for depth */}
-        <rect width="200" height="200" fill={`url(#radial-${song.id})`} opacity="0.3" />
-      </svg>
+      <div className="absolute inset-0 bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center">
+        <div className="text-gray-500">
+          <PureMusicIcon size={80} color="currentColor" />
+        </div>
+      </div>
     );
   };
 
   return (
     <div className="flex justify-center relative p-8">
-      {/* Hidden audio element for preview playback */}
-      {currentCard.previewUrl && (
-        <audio 
-          ref={audioRef}
-          onEnded={handleAudioEnded}
-          onError={handleAudioError}
-          preload="metadata"
-        />
-      )}
-      
       {/* Main Card Container */}
       <div className={`w-80 flex flex-col items-center relative ${getAnimationClass()}`}>
-        {/* User Header with Avatar */}
+        {/* User Header with Avatar - NOW USING AVATAR SERVICE */}
         <div className="flex w-full items-center mb-3 px-1">
           <div 
             ref={userAvatarRef}
             className="user-avatar-clickable mr-3 flex h-12 w-12 items-center justify-center rounded-full overflow-hidden bg-gradient-to-b from-[#1a1a1a] to-black border border-white/10 shadow-[0_4px_12px_-2px_rgba(0,0,0,0.5)] cursor-pointer hover:ring-2 hover:ring-[#1DB954] transition-all"
             onClick={handleUserAvatarClick}
           >
-            {/* PURE SVG user placeholder - NO IMAGES */}
-            <PureUserIcon size={24} className="text-gray-400" />
+            {/* Avatar Image from Assets */}
+            <img 
+              src={userData.avatarUrl} 
+              alt={`${userData.username} avatar`}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                // Fallback to a default image if the avatar fails to load
+                e.target.src = '/assets/users/assets2/image1.png';
+              }}
+            />
           </div>
           <div className="flex-1">
             <div className="flex items-center">
@@ -605,10 +527,11 @@ const SnippetCard = ({
           {/* Snippet Card */}
           <div className="flex w-full select-none flex-col overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-b from-[#1a1a1a] to-black shadow-[0_10px_25px_-5px_rgba(0,0,0,0.5)]">
             <div className="relative h-96 w-full flex items-center justify-center bg-black/40 border border-white/10">
-              {/* UPDATED: Simple album art placeholder - restored original design */}
+              {/* UPDATED: Album Artwork - Use Apple Music artwork or fallback */}
               <div className="absolute inset-0">
-                <div className="absolute inset-0 bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center">
-                  {/* Original music icon placeholder - larger size */}
+                {renderAlbumArtwork()}
+                {/* Fallback gradient (hidden by default, shown on image error) */}
+                <div className="absolute inset-0 bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center" style={{ display: 'none' }}>
                   <div className="text-gray-500">
                     <PureMusicIcon size={80} color="currentColor" />
                   </div>
@@ -633,6 +556,18 @@ const SnippetCard = ({
                       <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                     </svg>
                     Room Artist
+                  </div>
+                </div>
+              )}
+
+              {/* Widget Badge */}
+              {currentCard.isFromWidget && (
+                <div className="absolute top-3 right-16 z-10">
+                  <div className="flex items-center bg-blue-500/90 text-white px-2 py-1 rounded-full text-xs font-bold backdrop-blur-sm">
+                    <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" />
+                    </svg>
+                    Your Pick
                   </div>
                 </div>
               )}
@@ -675,21 +610,8 @@ const SnippetCard = ({
                     isLoading ? 'opacity-50 cursor-not-allowed' : ''
                   }`}
                 >
-                  {/* RESTORED: Original play button design */}
-                  {audioError || !currentCard.previewUrl ? (
-                    <PureMusicIcon size={19} color="currentColor" />
-                  ) : isPlaying ? (
-                    <PauseIcon size={19} />
-                  ) : (
-                    <PlayIcon size={19} />
-                  )}
-                  
-                  {/* Small indicator if no preview is available */}
-                  {(audioError || !currentCard.previewUrl) && !isLoading && (
-                    <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-gray-600 rounded-full flex items-center justify-center">
-                      <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
-                    </div>
-                  )}
+                  {/* Always show music icon - no audio playback */}
+                  <PureMusicIcon size={19} color="currentColor" />
                 </button>
               </div>
 
@@ -702,7 +624,7 @@ const SnippetCard = ({
               </div>
             </div>
 
-            {/* Song Info */}
+            {/* Song Info - Now displays real song data */}
             <div className="px-4 py-4 bg-black/70 backdrop-blur-sm border-t border-white/10">
               <h3 
                 className="text-xl font-bold truncate transition-all duration-300"
