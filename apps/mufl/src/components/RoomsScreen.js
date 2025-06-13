@@ -144,7 +144,6 @@ const generateTrendingRooms = async (count = 8) => {
     
     return rooms;
   } catch (error) {
-    console.error('Failed to generate trending rooms:', error);
     // Fallback to mock data
     return Array.from({ length: count }, (_, i) => ({
       id: `trending-${i}`,
@@ -251,7 +250,6 @@ const RoomsScreen = ({
         const trending = await generateTrendingRooms(8);
         setTrendingRooms(trending);
       } catch (error) {
-        console.error('Failed to load trending rooms:', error);
       }
       setTabLoading(prev => ({ ...prev, trending: false }));
     }
@@ -259,7 +257,6 @@ const RoomsScreen = ({
 
   // NEW: Enhanced room joining with artist data
   const handleJoinRoom = useCallback((station) => {
-    console.log('Joining room with full data:', station);
     
     // Create comprehensive room data object
     const roomData = {

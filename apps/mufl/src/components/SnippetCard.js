@@ -146,19 +146,10 @@ const SnippetCard = ({
     setIsBookmarked(false); // Reset bookmark state for new song
     
     // Debug: Log Apple Music data to verify album and preview URL
-    if (currentSong) {
-      console.log('🎵 SnippetCard received Apple Music data:', {
-        track: currentSong.track,
-        artist: currentSong.artist,
-        album: currentSong.album,
-        previewUrl: currentSong.previewUrl,
-        artworkUrl: currentSong.artworkUrl
-      });
-    }
+
     
     // Load new audio if preview URL is available
     if (currentCard.previewUrl && audioRef.current) {
-      console.log('🎵 Loading Apple Music preview:', currentCard.previewUrl);
       audioRef.current.src = currentCard.previewUrl;
       audioRef.current.load();
     }
@@ -313,7 +304,6 @@ const SnippetCard = ({
             triggerAnimation();
           })
           .catch((error) => {
-            console.error('Audio playback failed:', error);
             setAudioError(true);
             triggerAnimation(); // Still show animation even if audio fails
           });
@@ -327,7 +317,6 @@ const SnippetCard = ({
   };
 
   const handleAudioError = () => {
-    console.error('Audio error for:', currentCard.track);
     setAudioError(true);
     setIsPlaying(false);
   };
@@ -531,16 +520,10 @@ const SnippetCard = ({
             className="user-avatar-clickable mr-3 flex h-12 w-12 items-center justify-center rounded-full overflow-hidden bg-gradient-to-b from-[#1a1a1a] to-black border border-white/10 shadow-[0_4px_12px_-2px_rgba(0,0,0,0.5)] cursor-pointer hover:ring-2 hover:ring-[#1DB954] transition-all"
             onClick={handleUserAvatarClick}
           >
-            {/* Use actual avatar image instead of icon */}
-            <img 
-              src={userData.avatar} 
-              alt={userData.username}
-              className="w-full h-full object-cover"
-              onError={(e) => {
-                // Fallback to a default avatar if image fails to load
-                e.target.src = getAvatarForUser(1);
-              }}
-            />
+            {/* Grey SVG user placeholder */}
+            <svg className="w-8 h-8 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+            </svg>
           </div>
           <div className="flex-1">
             <div className="flex items-center">
@@ -577,7 +560,6 @@ const SnippetCard = ({
                     alt={`${currentCard.album} by ${currentCard.artist}`}
                     className="w-full h-full object-cover"
                     onError={(e) => {
-                      console.log('Failed to load artwork:', currentCard.artworkUrl);
                       // Fallback to placeholder if image fails
                       e.target.style.display = 'none';
                     }}

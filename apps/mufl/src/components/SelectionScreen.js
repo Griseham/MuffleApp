@@ -93,7 +93,6 @@ const SelectionScreen = ({ onContinue }) => {
     try {
       return await apiCall();
     } catch (error) {
-      console.error(errorMsg, error.message);
       setError(errorMsg);
       return fallbackData;
     }
@@ -139,7 +138,6 @@ const SelectionScreen = ({ onContinue }) => {
     // Only allow alphanumeric, spaces, hyphens, apostrophes, and basic punctuation
     const allowedPattern = /^[a-zA-Z0-9\s\-'.,&()]+$/;
     if (sanitized && !allowedPattern.test(sanitized)) {
-      console.warn('Invalid characters detected in search query');
       return sanitized.replace(/[^a-zA-Z0-9\s\-'.,&()]/g, '');
     }
     
@@ -190,7 +188,6 @@ const searchArtists = useCallback(async (query) => {
     
     setSearchResults(filteredResults);
   } catch (err) {
-    console.error('Search failed', err);
     
     // More descriptive error message based on error type
     const errorMessage = err.response?.status === 500 
@@ -237,7 +234,6 @@ const fetchMainArtists = useCallback(async () => {
     setDisplayedArtists(shuffleArray(filteredArtists));
     setHasMore(true);
   } catch (err) {
-    console.error('Spotify fetch error', err);
     setError('Could not load artists');
     
     // Fallback to mock data if API fails
@@ -271,7 +267,6 @@ const fetchArtistsByGenre = useCallback(async (genre) => {
     setDisplayedArtists(filteredArtists);
     setHasMore(true);
   } catch (err) {
-    console.error(`Could not load ${genre} artists`, err);
     setError(`Could not load ${genre} artists`);
     
     // Fallback to mock data if API fails
@@ -316,7 +311,6 @@ const fetchArtistsByGenre = useCallback(async (genre) => {
         setHasMore(false);
       }
     } catch (err) {
-      console.error('Failed to load more artists', err);
       
       // Fallback to mock data if API fails
       const moreArtists = generateMockArtists([
@@ -391,7 +385,6 @@ const fetchArtistsByGenre = useCallback(async (genre) => {
       const similarArtists = await fetchSimilarArtists([artist]);
       return similarArtists;
     } catch (err) {
-      console.error('Failed to fetch similar artists', err);
       
       // Fallback to mock data
       return generateMockArtists([
