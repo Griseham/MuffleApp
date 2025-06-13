@@ -377,14 +377,14 @@ const SnippetCard = ({
     
     const usernames = ["music_lover", "beat_seeker", "rhythm_guru", "sound_wave", "melody_finder"];
     const comments = [
-      "This track hits different 🔥",
       "Perfect vibe for today",
       "Can't stop listening to this",
-      "Such a banger!",
       "This artist never disappoints",
       "Added to my playlist instantly",
       "The production is insane",
-      "This beat is everything"
+      "This beat is everything",
+      "Another one",
+      "A second one",
     ];
     
     // Use song ID to generate consistent user data
