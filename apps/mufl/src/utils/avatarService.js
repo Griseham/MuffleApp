@@ -1,100 +1,80 @@
 /**
- * Avatar Service - Manages random avatar assignment from public/assets/image1.png to image200.png
- * Uses public folder assets for direct URL access without imports
+ * Avatar Service - Manages random avatar assignment from /assets/users/assets2/image1.png … image200.png
+ * Uses root-level assets folder for direct URL access without bundler imports
  */
 
 // Cache for consistent avatar assignments
 const avatarCache = new Map();
 
 /**
- * Get a random avatar URL from the 200 available images
- * @param {string|number} userId - Unique identifier to ensure consistent avatars per user
- * @returns {string} Avatar URL path
+ * Get a consistent “random” avatar URL for a given userId
+ * @param {string|number} userId  – Unique identifier to ensure the same avatar each time
+ * @returns {string}  Absolute URL under /assets/users/assets2
  */
 export const getAvatarForUser = (userId) => {
-  // Check cache first for consistency
   if (avatarCache.has(userId)) {
     return avatarCache.get(userId);
   }
 
-  // Generate random number 1-1000 based on userId
+  // Hash userId → 0…199, then +1 → 1…200
   const hash = hashCode(userId.toString());
-  let imageNumber = Math.abs(hash % 200) + 1;
-  if (imageNumber === 50) {
-    imageNumber = 51; // Skip image50, use image51 instead
-  }
-  const avatarUrl = `/assets/image${imageNumber}.png`;
-  
-  // Cache the result
+  const imageNumber = Math.abs(hash % 200) + 1;
+
+  // Build the URL into your root assets
+  const avatarUrl = `/assets/users/assets2/image${imageNumber}.png`;
+
   avatarCache.set(userId, avatarUrl);
-  
   return avatarUrl;
 };
 
 /**
- * Get multiple random avatars (for artist pool when no specific artist image available)
- * @param {number} count - Number of avatars needed
- * @returns {string[]} Array of avatar URLs
+ * Get N distinct random avatars (e.g. for an artist pool)
+ * @param {number} count  – Number of avatars to pick
+ * @returns {string[]}   List of absolute URLs under /assets/users/assets2
  */
 export const getRandomAvatars = (count) => {
   const avatars = [];
-  const usedNumbers = new Set();
-  
-  for (let i = 0; i < count; i++) {
-    let imageNumber;
-    do {
-      imageNumber = Math.floor(Math.random() * 200) + 1;
-      if (imageNumber === 50) {
-        imageNumber = 51; // Skip image50, use image51 instead
-      }
-    } while (usedNumbers.has(imageNumber));
-    
-    usedNumbers.add(imageNumber);
-    avatars.push(`/assets/users/assets2/image${imageNumber}.png`);
+  const used = new Set();
+
+  while (avatars.length < count) {
+    const num = Math.floor(Math.random() * 200) + 1;
+    if (used.has(num)) continue;
+    used.add(num);
+    avatars.push(`/assets/users/assets2/image${num}.png`);
   }
-  
+
   return avatars;
 };
 
-/**
- * Simple hash function for consistent avatar assignment
- * @param {string} str - String to hash
- * @returns {number} Hash value
- */
+/** Simple string → 32-bit integer hash */
 const hashCode = (str) => {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // Convert to 32-bit integer
+    hash = ((hash << 5) - hash) + str.charCodeAt(i);
+    hash |= 0;
   }
   return hash;
 };
 
 /**
- * Get avatar with fallback for artist images
- * @param {Object} artist - Artist object with potential image
- * @param {string} fallbackId - ID to use for avatar fallback
- * @returns {string} Image URL (artist image or avatar fallback)
+ * Return either a valid artist.image URL or fallback to a generated avatar
+ * @param {Object} artist     – May have an .image property
+ * @param {string} fallbackId – Used if artist.image is invalid
+ * @returns {string}
  */
 export const getArtistImageWithFallback = (artist, fallbackId) => {
-  // If artist has a valid image, use it
-  if (artist.image && 
-      artist.image !== 'fallback.jpg' && 
-      artist.image !== '/placeholder-200.png' &&
-      !artist.image.includes('placeholder') &&
-      !artist.image.includes('picsum') &&
-      artist.image.startsWith('http')) {
+  if (
+    artist.image &&
+    artist.image.startsWith('http') &&
+    !artist.image.includes('placeholder') &&
+    !artist.image.includes('picsum')
+  ) {
     return artist.image;
   }
-  
-  // Otherwise use avatar
   return getAvatarForUser(fallbackId || artist.id || artist.name);
 };
 
-/**
- * Clear avatar cache (useful for testing or resetting)
- */
+/** Clear the in-memory cache (for testing) */
 export const clearAvatarCache = () => {
   avatarCache.clear();
 };

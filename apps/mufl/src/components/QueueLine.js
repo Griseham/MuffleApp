@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { VolumeIcon } from "./Icons/Icons";
 import UserHoverCard from "./UserHoverCard";
+import { getAvatarForUser } from "../utils/avatarService";
 
 // Trend arrow components - Smaller sizes
 const UpArrow = ({ className = "" }) => (
@@ -16,59 +17,10 @@ const DownArrow = ({ className = "" }) => (
 );
 
 const StableIcon = ({ className = "" }) => (
-  <svg width="14" height="14" viewBox="0 0 24 24" className={`text-gray-500 ${className}`}>
+  <svg width="14" height="14" viewBox="0 24 24" className={`text-gray-500 ${className}`}>
     <path d="M5 12H19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
   </svg>
 );
-
-// Pure SVG User Avatar Component with Dynamic Colors
-const PureUserAvatar = ({ userId, size = 48, className = "" }) => {
-  // Generate consistent colors based on user ID
-  const getUserColor = (id) => {
-    const colors = [
-      { bg: 'bg-gradient-to-br from-blue-500 to-blue-700', icon: 'text-blue-100' },
-      { bg: 'bg-gradient-to-br from-green-500 to-green-700', icon: 'text-green-100' },
-      { bg: 'bg-gradient-to-br from-purple-500 to-purple-700', icon: 'text-purple-100' },
-      { bg: 'bg-gradient-to-br from-red-500 to-red-700', icon: 'text-red-100' },
-      { bg: 'bg-gradient-to-br from-yellow-500 to-yellow-700', icon: 'text-yellow-100' },
-      { bg: 'bg-gradient-to-br from-pink-500 to-pink-700', icon: 'text-pink-100' },
-      { bg: 'bg-gradient-to-br from-indigo-500 to-indigo-700', icon: 'text-indigo-100' },
-      { bg: 'bg-gradient-to-br from-orange-500 to-orange-700', icon: 'text-orange-100' },
-      { bg: 'bg-gradient-to-br from-teal-500 to-teal-700', icon: 'text-teal-100' },
-      { bg: 'bg-gradient-to-br from-cyan-500 to-cyan-700', icon: 'text-cyan-100' },
-      { bg: 'bg-gradient-to-br from-emerald-500 to-emerald-700', icon: 'text-emerald-100' },
-      { bg: 'bg-gradient-to-br from-violet-500 to-violet-700', icon: 'text-violet-100' },
-      { bg: 'bg-gradient-to-br from-rose-500 to-rose-700', icon: 'text-rose-100' },
-      { bg: 'bg-gradient-to-br from-lime-500 to-lime-700', icon: 'text-lime-100' },
-      { bg: 'bg-gradient-to-br from-amber-500 to-amber-700', icon: 'text-amber-100' },
-    ];
-    
-    return colors[(id - 1) % colors.length];
-  };
-
-  const userColor = getUserColor(userId);
-  const iconSize = Math.floor(size * 0.5); // Icon is 50% of container size
-
-  return (
-    <div 
-      className={`w-${size === 48 ? '12' : '10'} h-${size === 48 ? '12' : '10'} rounded-full ${userColor.bg} flex items-center justify-center shadow-lg ${className}`}
-      style={{ width: `${size}px`, height: `${size}px` }}
-    >
-      <svg 
-        width={iconSize} 
-        height={iconSize} 
-        viewBox="0 0 24 24" 
-        fill="none" 
-        stroke="currentColor" 
-        strokeWidth="2" 
-        className={userColor.icon}
-      >
-        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-        <circle cx="12" cy="7" r="4"/>
-      </svg>
-    </div>
-  );
-};
 
 const QueueLine = ({ qlUsers }) => {
   // Track which user is selected (clicked)
@@ -81,14 +33,15 @@ const QueueLine = ({ qlUsers }) => {
   // Reference to the container element for boundary checking
   const containerRef = useRef(null);
 
-  // State for users with ranking logic - COMPLETELY AVATAR-FREE
+  // State for users with ranking logic - NOW USING AVATAR SERVICE
   const [users, setUsers] = useState(() => 
     qlUsers.slice(0, 8).map((user, index) => ({ 
       ...user, 
       score: 100 - (index * 8) + Math.random() * 10, // Initial scores based on volume order
       trend: 'stable', 
       lastPosition: index + 1,
-      position: index + 1
+      position: index + 1,
+      avatarUrl: getAvatarForUser(user.id) // Add avatar URL using the service
     }))
   );
 
@@ -132,7 +85,7 @@ const QueueLine = ({ qlUsers }) => {
     return () => clearInterval(interval);
   }, []);
 
-  // UPDATED: Create unique random data for each user - NO AVATAR SERVICE
+  // Create unique random data for each user
   const generateRandomUserData = (user) => {
     // Each month has an equal chance
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -178,11 +131,12 @@ const QueueLine = ({ qlUsers }) => {
     };
   };
 
-  // UPDATED: Create static user data with unique values for each user - NO AVATAR SERVICE
+  // Create static user data with unique values for each user - NOW USING AVATAR SERVICE
   const staticUserData = useRef(users.map(user => ({
     id: user.id,
     name: user.name,
     volume: user.volume,
+    avatarUrl: getAvatarForUser(user.id), // Use avatar service instead of generating data
     userData: generateRandomUserData(user)
   }))).current;
 
@@ -280,7 +234,7 @@ const QueueLine = ({ qlUsers }) => {
 
   return (
     <div className="ql-content relative" ref={containerRef}>
-      {/* Grid of user profiles - Scaled down for better fit */}
+      {/* Grid of user profiles - Now using real avatar images */}
       <div className="grid grid-cols-4 gap-x-6 gap-y-6 px-3 pt-2 pb-2">
         {users.map((user, index) => (
           <div 
@@ -304,9 +258,9 @@ const QueueLine = ({ qlUsers }) => {
               <span className="text-gray-300 font-medium text-xs">{user.volume}</span>
             </div>
             
-            {/* UPDATED: User Circle with Pure SVG avatar - NO MORE IMAGE REFERENCES */}
+            {/* User Circle with Avatar Image from Assets */}
             <div 
-              className={`user-circle rounded-full overflow-hidden shadow-md transition cursor-pointer relative ${
+              className={`user-circle w-12 h-12 rounded-full overflow-hidden shadow-md transition cursor-pointer relative ${
                 selectedUser?.id === user.id ? 'ring-[#1DB954] ring-2' : 
                 index === 0 ? 'ring-2 ring-yellow-500 hover:ring-yellow-400' :
                 index === 1 ? 'ring-2 ring-gray-300 hover:ring-gray-200' :
@@ -315,8 +269,16 @@ const QueueLine = ({ qlUsers }) => {
               }`}
               onClick={() => handleUserClick(user.id, index)}
             >
-              {/* Pure SVG User Avatar with dynamic colors */}
-              <PureUserAvatar userId={user.id} size={48} />
+              {/* Avatar Image from Assets */}
+              <img 
+                src={user.avatarUrl} 
+                alt={`${user.name} avatar`}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  // Fallback to a default image if the avatar fails to load
+                  e.target.src = '/assets/users/assets2/image1.png';
+                }}
+              />
             </div>
             
             {/* Username - Smaller text */}

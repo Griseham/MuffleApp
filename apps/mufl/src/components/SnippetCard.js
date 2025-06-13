@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { UserIcon, PlayIcon, PauseIcon, BookmarkIcon, VolumeIcon } from "./Icons/Icons";
 import InfoIconModal from "./InfoIconModal";
 import UserHoverCard from "./UserHoverCard";
+import { getAvatarForUser } from "../utils/avatarService";
 
 const GENRES = ["Rock", "Pop", "R&B", "Jazz", "Hip-Hop"];
 const GENRE_COLORS = {
