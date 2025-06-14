@@ -1,31 +1,29 @@
-# nixpacks.toml  ── revised to pull Git-LFS assets
+# nixpacks.toml  ── include node + npm + git-lfs
 
-# 0) Tools the build image needs
 [phases.setup]
-# Add git-lfs so we can fetch large media
-nixPkgs = ["git-lfs"]
+# Install Git LFS **and** Node
+nixPkgs = ["git-lfs" "nodejs_20"]   # or nodejs_18 if you prefer
 
-# 1) Install dependencies + pull LFS objects
+# Pull LFS objects first, *then* install Node deps
 [phases.install]
 cmds = [
-  # Initialise and download all LFS objects (videos, images, etc.)
   "git lfs install --local",
   "git lfs fetch --all",
   "git lfs checkout",
 
-  # Now install Node deps
+  # root deps (if any)
   "npm install",
+
+  # React apps
   "cd apps/mufl && npm install",
   "cd apps/threads && npm install"
 ]
 
-# 2) Build both SPAs
 [phases.build]
 cmds = [
   "cd apps/mufl && npm run build",
   "cd apps/threads && npm run build"
 ]
 
-# 3) Launch the unified Express backend
 [start]
 cmd = "node server.js"
