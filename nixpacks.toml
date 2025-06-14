@@ -1,29 +1,5 @@
-# nixpacks.toml  ── include node + npm + git-lfs
-
 [phases.setup]
-# Install Git LFS **and** Node
-nixPkgs = ["git-lfs" "nodejs_20"]   # or nodejs_18 if you prefer
+nixPkgs = ["git-lfs"]
 
-# Pull LFS objects first, *then* install Node deps
-[phases.install]
-cmds = [
-  "git lfs install --local",
-  "git lfs fetch --all",
-  "git lfs checkout",
-
-  # root deps (if any)
-  "npm install",
-
-  # React apps
-  "cd apps/mufl && npm install",
-  "cd apps/threads && npm install"
-]
-
-[phases.build]
-cmds = [
-  "cd apps/mufl && npm run build",
-  "cd apps/threads && npm run build"
-]
-
-[start]
-cmd = "node server.js"
+[hooks.preInstall]
+cmd = "git lfs install --local && git lfs fetch --all && git lfs checkout"
