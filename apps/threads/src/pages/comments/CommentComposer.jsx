@@ -3,7 +3,8 @@ import { Play, Music, Pause, X, Search, Send, Disc } from 'lucide-react';
 import { Info } from "lucide-react";
 import InfoIconModal from "../InfoIconModal";
 import { validateAndSanitizeInput, sanitizeSearchQuery, checkRateLimit } from '../../utils/security';
-import { authorToAvatar } from '../utils/utils';
+import { getAvatarForUser } from '../../utils/avatarService';
+
 
 
 const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
@@ -88,7 +89,6 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
     audio.play().then(() => {
       setIsPlaying(true);
     }).catch(err => {
-      console.error("Error playing audio:", err);
     });
   };
 
@@ -108,14 +108,12 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
     
     // Rate limiting check
     if (!checkRateLimit('music_search', 20, 60000)) {
-      console.warn('Search rate limit exceeded');
       return;
     }
     
     // Sanitize search query
     const sanitizedQuery = sanitizeSearchQuery(searchQuery);
     if (!sanitizedQuery) {
-      console.warn('Invalid search query');
       return;
     }
     
@@ -131,7 +129,6 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
         setSearchResults([]);
       }
     } catch (error) {
-      console.error("Error searching for music:", error);
       setSearchResults([]);
     } finally {
       setIsSearching(false);
@@ -191,7 +188,6 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
     
     // Rate limiting check for comment submission
     if (!checkRateLimit('comment_submit', 5, 60000)) {
-      console.warn('Comment submission rate limit exceeded');
       return;
     }
     
@@ -203,7 +199,6 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
     });
     
     if (!validation.isValid) {
-      console.warn('Invalid comment:', validation.error);
       return;
     }
     
@@ -256,7 +251,7 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
         {/* User Avatar */}
         <div style={styles.avatarContainer}>
           <img
-            src={authorToAvatar('You')}
+            src={getAvatarForUser('You')}
             alt="Your avatar"
             style={styles.avatar}
           />

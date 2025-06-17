@@ -16,6 +16,7 @@ registerUnifiedRoutes(app);
 
 // 3) Serve all videos/images/etc from root-level assets/
 app.use('/assets', express.static(path.join(__dirname, 'assets')));
+app.use('/rooms/assets', express.static(path.join(__dirname, 'assets')));
 
 // 4) Rooms SPA at /rooms
 app.use('/rooms', express.static(path.join(__dirname, 'apps/mufl/build')));

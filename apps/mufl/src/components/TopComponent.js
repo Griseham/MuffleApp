@@ -855,7 +855,13 @@ However that could be wrong, but we'd have to find out during playtesting.`
             grid-template-columns: repeat(3, minmax(0, 1fr));
             gap: 1rem;
           }
+
+          
         }
+          @media (max-width:420px){
+  .grid-cols-3{grid-template-columns:repeat(2,minmax(0,1fr));}
+}
+
       `}</style>
     </div>
   );

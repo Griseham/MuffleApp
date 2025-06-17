@@ -35,7 +35,6 @@ export default function GenreWheel({ forcedGenres = null }) {
   // 1. Handle forced genres (from clicking in FeedInfoDisplay)
   useEffect(() => {
     if (forcedGenres) {
-      console.log("Showing forced genre:", forcedGenres);
       
       // Smoothly transition to the forced genre
       setCurrentArcs(forcedGenres);
@@ -55,7 +54,6 @@ export default function GenreWheel({ forcedGenres = null }) {
     
     // If we detect scrolling while in forced mode, go back to normal
     if (isScrolling && isInForcedMode) {
-      console.log("User scrolled - returning to normal genre display");
       setIsInForcedMode(false);
     }
   }, [forcedGenres, isScrolling, isInForcedMode]);
@@ -148,7 +146,6 @@ export default function GenreWheel({ forcedGenres = null }) {
   
   // Handle genre selection
   const handleGenreSelect = (genre) => {
-    console.log("Genre selected in wheel:", genre);
     
     // Set the selected genre and mark as showing single genre
     setSelectedGenre(genre);

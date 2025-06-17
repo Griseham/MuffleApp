@@ -383,11 +383,9 @@ export default function ParameterThreadDetail({ postId, onBack, onSelectUser }) 
           }
         }
         
-        console.log("Parameter thread not found in cache");
         setIsLoading(false);
         
       } catch (error) {
-        console.error("Error loading parameter thread:", error);
         setIsLoading(false);
       }
     }

@@ -13,7 +13,6 @@ export default function StarPanel({ star, onClose, onViewThread }) {
   
   // Set up dimensions
   const panelWidth = isFullscreen ? 400 : 320;
-  const panelHeight = 350; // Approximate panel height
   
   // Use star's original coordinates in the starfield
   const starX = star.x;

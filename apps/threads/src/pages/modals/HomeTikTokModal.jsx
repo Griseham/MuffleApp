@@ -141,7 +141,6 @@ export default function HomeTikTokModal({ onClose, cachedPosts = [], onNavigateT
         
         setSnippets(placeholderSnippets);
       } catch (err) {
-        console.error("Error loading snippets:", err);
       } finally {
         setLoading(false);
       }
@@ -291,10 +290,8 @@ export default function HomeTikTokModal({ onClose, cachedPosts = [], onNavigateT
         // Call the navigation function with the full post object
         onNavigateToThread(post);
       } else {
-        console.error(`Post with ID ${postId} not found in cachedPosts`);
       }
     } else {
-      console.log(`Navigate to thread: ${postId} (navigation function not provided)`);
     }
   };
   
@@ -308,7 +305,6 @@ export default function HomeTikTokModal({ onClose, cachedPosts = [], onNavigateT
     const fraction = 1 - (y / height);
     const newRating = Math.round(fraction * 100);
     
-    console.log(`Rating song "${currentSnippet.songName}" with value: ${newRating}`);
     
     // Update the snippet's rating
     setSnippets(prevSnippets => 

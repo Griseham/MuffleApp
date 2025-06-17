@@ -1,6 +1,8 @@
 // Helper functions for PostCard components
 export const getRandomNumber = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
 export const getRandomPercentage = () => (Math.random() * 0.02).toFixed(4);
+import { getAvatarForUser } from '../../utils/avatarService';
+
 
 // Genre data with colors
 export const GENRE_COLORS = {
@@ -87,14 +89,20 @@ export function hashString(str) {
 }
 
 // Get avatar source based on post
+// Get avatar source based on post / author
 export function getAvatarSrc(post) {
-  if (post.author === 'You') return '/assets/users/assets2/user.png';
-  
-  // Handle cases where post.id might be undefined
-  const idStr = post.id ? post.id.toString() : post.author || 'default';
-  const num = hashString(idStr);
-  return `/assets/users/assets2/image${(num % 100) + 1}.png`;
+  // Keep the special “You” icon
+  if (post.author === 'You') {
+    return '/assets/user.png';
+  }
+
+  // Derive a deterministic id for hashing
+  const identifier = post.author || post.username || post.id;
+
+  // Re-use the central resolver; it handles CRA ↔︎ Vite base-URL quirks
+  return getAvatarForUser(identifier);
 }
+
 // Generate username based on author
 export function generateUsername(author) {
   if (!author) return `user${getRandomNumber(1000, 9999)}`;

@@ -1,12 +1,12 @@
 // src/components/CommentItem.jsx
 import React from "react";
-import { authorToAvatar } from "../utils/utils";
+import { getAvatarForUser } from '../../utils/avatarService';
 import styles from "../threads/ThreadDetailStyles";
 
 export default function CommentItem({ comment, snippet, onPlaySnippet, activeSnippet, onSetRating }) {
   return (
     <div style={styles.commentCard}>
-      <img src={authorToAvatar(comment.author)} alt="Avatar" style={styles.tweetAvatar} />
+      <img src={getAvatarForUser(comment.author)} alt="Avatar" style={styles.tweetAvatar} />
       <div style={styles.tweetContent}>
         <div style={styles.tweetHeader}>
           <span style={styles.tweetUsername}>{comment.author}</span>

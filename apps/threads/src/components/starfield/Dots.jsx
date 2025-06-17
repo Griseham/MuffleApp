@@ -30,18 +30,15 @@ export default function Dots({
 
   // Update dots when posts change
   useEffect(() => {
-    console.log("Posts passed to Dots component:", posts.length);
     
     // Log post types for debugging
     const redditCount = posts.filter(p => !p.hasCachedData && p.id !== 'example_post_001').length;
     const cachedCount = posts.filter(p => p.hasCachedData).length;
-    console.log(`Dots: ${redditCount} Reddit posts, ${cachedCount} cached posts`);
     
     // Always regenerate dots when posts change (including when Reddit posts are added)
     if (posts.length > 0) {
       postsRef.current = posts;
       dotsRef.current = null; // Force re-generation of dots
-      console.log("Forcing dots regeneration due to posts change");
     }
   }, [posts]);
 
@@ -75,10 +72,7 @@ export default function Dots({
     const cachedPostsAvailable = postsToUse.filter(p => p.hasCachedData);
     const examplePosts = postsToUse.filter(p => p.id === 'example_post_001');
     
-    console.log("Generating dots with posts:", postsToUse.length);
-    console.log(`  - Reddit posts: ${redditPostsAvailable.length}`);
-    console.log(`  - Cached posts: ${cachedPostsAvailable.length}`);
-    console.log(`  - Example posts: ${examplePosts.length}`);
+
     
     // Default post to use when no posts are available
     const defaultPost = {
@@ -180,13 +174,11 @@ export default function Dots({
           
           // Log post types for debugging
           if (dots.length < 5) {
-            console.log(`Dot ${dots.length}: Post type: ${post.postType}, ID: ${post.id}`);
           }
         }
         
         // Debug logging for first few dots to see what's being assigned
         if (dots.length < 10) {
-          console.log(`Dot ${dots.length}: using ${postSource} post "${post.title?.substring(0, 30)}..."`);
         }
         
         // Generate a reasonable thread name based on post
@@ -234,10 +226,7 @@ export default function Dots({
     const rect = e.target.getBoundingClientRect();
     const x = rect.left + rect.width / 2;
     const y = rect.top + rect.height / 2;
-    
-    console.log("CLICKED dot:", dot);
-    console.log("Dot has post:", !!dot.post);
-    
+
     // Pass both the dot and its screen position
     onDotClick(dot, { x, y });
   };
@@ -267,7 +256,6 @@ export default function Dots({
       );
     });
     
-    console.log(`Rendering ${dotsInViewport.length} of ${dotsRef.current.length} dots (${Math.round(dotsInViewport.length / dotsRef.current.length * 100)}%)`);
     
     return dotsInViewport;
   }, [scrollPos, containerDimensions, isFullscreen]);

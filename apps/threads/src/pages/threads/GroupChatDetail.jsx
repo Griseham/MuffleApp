@@ -6,6 +6,9 @@ import styles from "./GroupChatDetailStyles";
 import { validateAndSanitizeInput, checkRateLimit, sanitizeComment, sanitizeSearchQuery } from "../../utils/security";
 import { getAvatarForUser } from '../../utils/avatarService';
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL;
+
+
 
 // Helper function to generate avatar URLs
 function authorToAvatar(author) {
@@ -78,8 +81,10 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
         setLoading(true);
         
         // Fetch comments
-        const commentsResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}/posts/${post.id}/comments`);
-        const commentsData = await commentsResponse.json();
+         const commentsResponse = await fetch(
+             `${API_BASE}/posts/${post.id}/comments?subreddit=${post.subreddit || 'music'}`
+           );       
+          const commentsData = await commentsResponse.json();
         
         // Fetch snippets
         let snippetsData = [];

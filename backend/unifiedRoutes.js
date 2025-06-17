@@ -1,7 +1,10 @@
 require('dotenv').config({ path: './.env' });
+const fs   = require('fs');
+const path = require('path');
 const axios = require('axios');
 const express = require('express');
 const cors = require('cors');
+
 
 const unifiedRouter = express.Router();
 
@@ -528,6 +531,82 @@ unifiedRouter.post('/apple-music/artist-search', async (req, res) => {
     });
   }
 });
+// ─────────────────────────────────────────────────────────────
+//  /reddit/posts   – proxy to Reddit’s public JSON API
+//    • supports  hot (default)  →  /hot.json
+//    • supports  top by period  →  /top.json?t=year|month|week|day
+//    • tags posts from r/music   →  postType = 'news'
+// ─────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+//  /reddit/posts – proxy to Reddit’s JSON API
+//    • /hot.json  (default)   or  /top.json?t=year|month|week
+//    • r/music   → postType 'news'
+//    • trending  → postType 'groupchat'
+//    • robust image detection (url, preview, thumbnail)
+// ─────────────────────────────────────────────────────────────
+unifiedRouter.get('/reddit/posts', async (req, res) => {
+  const sub   = (req.query.sub || 'music').toLowerCase();   // subreddit
+  const limit = req.query.limit || 25;                      // ≤ 100
+  const t     = req.query.t;                                // year|month|week|…
+
+  const redditUrl = t
+    ? `https://www.reddit.com/r/${sub}/top.json?t=${t}&limit=${limit}`
+    : `https://www.reddit.com/r/${sub}/hot.json?limit=${limit}`;
+
+  try {
+    const { data } = await axios.get(redditUrl, { timeout: 7000 });
+
+    const posts = data.data.children.map(({ data: p }) => {
+      /* ── image detection ─────────────────────────────────────── */
+      let imageUrl = null;
+
+      // direct link (jpg/png/gif/webp)
+      if (/\.(jpe?g|png|gif|webp)$/i.test(p.url_overridden_by_dest || '')) {
+        imageUrl = p.url_overridden_by_dest;
+      }
+      // preview image
+      else if (p.preview?.images?.[0]?.source?.url) {
+        imageUrl = p.preview.images[0].source.url.replace(/&amp;/g, '&');
+      }
+      // Reddit thumbnail (falls back to 140×140)
+      else if (p.thumbnail && p.thumbnail.startsWith('http')) {
+        imageUrl = p.thumbnail;
+      }
+
+      /* ── post-type logic ─────────────────────────────────────── */
+      const trending =
+        (p.num_comments ?? 0) >= 250 || (p.ups ?? 0) >= 1500;
+
+      let postType = 'thread';
+      if (sub === 'music')          postType = 'news';
+      if (trending)                 postType = 'groupchat';
+
+      return {
+        id:           p.id,
+        subreddit:    sub,
+        author:       p.author,
+        title:        p.title,
+        selftext:     p.selftext,
+        createdUtc:   p.created_utc,
+        ups:          p.ups,
+        num_comments: p.num_comments,
+        postType,
+        imageUrl,
+        snippets: []                           // filled later on the client
+      };
+    });
+
+    res.json({ success: true, data: posts });
+  } catch (err) {
+    console.error('Reddit fetch failed:', err.message);
+    res
+      .status(502)
+      .json({ success: false, error: 'Reddit API unavailable' });
+  }
+});
+
+
+
 
 // Additional routes for Threads app compatibility
 unifiedRouter.get('/spotify-token', async (req, res) => {
@@ -645,25 +724,7 @@ unifiedRouter.get('/cached-posts/:postId', async (req, res) => {
   });
 });
 
-unifiedRouter.get('/posts/:postId/comments', async (req, res) => {
-  const { postId } = req.params;
-  
-  // Return mock comments
-  res.json([
-    {
-      id: `comment-1-${postId}`,
-      content: 'Mock comment 1',
-      author: 'user1',
-      timestamp: new Date().toISOString()
-    },
-    {
-      id: `comment-2-${postId}`,
-      content: 'Mock comment 2', 
-      author: 'user2',
-      timestamp: new Date().toISOString()
-    }
-  ]);
-});
+
 
 unifiedRouter.get('/posts/:postId/snippets', async (req, res) => {
   const { postId } = req.params;
@@ -701,130 +762,121 @@ unifiedRouter.get('/posts', async (req, res) => {
 });
 
 // Generate diverse mock posts for threads app with snippets and albums
-const generateDiverseMockPosts = (count = 10) => {
-  const postTypes = ['thread', 'news', 'groupchat', 'parameter', 'tweet'];
-  const authors = ['MusicFan42', 'BeatCollector', 'SoundExplorer', 'VibesOnly', 'MelodyMaster', 'RhythmSeeker'];
-  const titles = [
-    'Need recommendations for late-night studying vibes',
-    'Just discovered this amazing indie band!',
-    'What\'s your go-to workout playlist?',
-    'Breaking: Major festival lineup announced',
-    'Live discussion: Album release party tonight',
-    'Compare: 90s vs 2000s hip-hop',
-    'Underrated artists that deserve more recognition',
-    'Best streaming quality for audiophiles?',
-    'Local music scene appreciation thread',
-    'Nostalgic songs that hit different'
-  ];
 
-  // Mock music data for snippets
-  const mockSongs = [
-    { name: 'Midnight Studies', artist: 'Lo-Fi Dreams', album: 'Focus Flow' },
-    { name: 'Electric Sunset', artist: 'Neon Waves', album: 'City Lights' },
-    { name: 'Heavy Bassline', artist: 'Underground Kings', album: 'Street Symphony' },
-    { name: 'Acoustic Morning', artist: 'Coffee House', album: 'Sunday Sessions' },
-    { name: 'Digital Rain', artist: 'Synthwave Valley', album: 'Retro Future' },
-    { name: 'Jazz in the Rain', artist: 'Blue Note Collective', album: 'Rainy Day Sessions' },
-    { name: 'Indie Anthem', artist: 'Garage Band Heroes', album: 'DIY Dreams' },
-    { name: 'Classical Remix', artist: 'Modern Orchestra', album: 'Timeless Reborn' }
-  ];
-  
-  return Array.from({ length: count }, (_, i) => {
-    const randomSong = mockSongs[Math.floor(Math.random() * mockSongs.length)];
-    const postId = `diverse_post_${Date.now()}_${i}`;
-    const hasSnippets = Math.random() > 0.3; // 70% chance of having snippets
-    
-    const post = {
-      id: postId,
-      author: authors[Math.floor(Math.random() * authors.length)],
-      title: titles[Math.floor(Math.random() * titles.length)],
-      selftext: '',
-      createdUtc: Date.now() / 1000,
-      postType: postTypes[Math.floor(Math.random() * postTypes.length)],
-      ups: Math.floor(Math.random() * 100) + 1,
-      bookmarks: Math.floor(Math.random() * 50) + 1,
-      num_comments: Math.floor(Math.random() * 25) + 1,
-      imageUrl: null,
-      username: authors[Math.floor(Math.random() * authors.length)],
-      avatar: null
-    };
 
-    // Add snippets for thread and groupchat posts
-    if (hasSnippets && (post.postType === 'thread' || post.postType === 'groupchat')) {
-      const snippetCount = Math.floor(Math.random() * 3) + 1; // 1-3 snippets
-      post.snippets = Array.from({ length: snippetCount }, (_, j) => {
-        const song = mockSongs[Math.floor(Math.random() * mockSongs.length)];
-        return {
-          commentId: `comment_${postId}_${j}`,
-          query: `${song.artist} ${song.name}`,
-          songName: song.name,
-          artistName: song.artist,
-          albumName: song.album,
-          artworkUrl: `https://via.placeholder.com/300x300/000000/FFFFFF?text=${encodeURIComponent(song.album)}`,
-          previewUrl: null, // Will use fallback
-          duration: Math.floor(Math.random() * 180000) + 120000, // 2-5 minutes
-          releaseDate: `${2015 + Math.floor(Math.random() * 9)}-${String(Math.floor(Math.random() * 12) + 1).padStart(2, '0')}-01`
-        };
-      });
+// NEW: loads real files from apps/threads/src/cached_posts
+unifiedRouter.get('/cached-posts', (req, res) => {
+  try {
+    const cacheDir = path.resolve(__dirname, '..', 'apps', 'threads', 'src', 'cached_posts');
+    const posts = fs.readdirSync(cacheDir)
+      .filter(f => f.endsWith('.json'))
+      .map(f => JSON.parse(fs.readFileSync(path.join(cacheDir, f), 'utf8')));
+    res.json({ success: true, data: posts });
+  } catch (err) {
+    console.error('Cached-posts error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
 
-      // Add comments corresponding to snippets
-      post.comments = post.snippets.map((snippet, j) => ({
-        id: snippet.commentId,
-        author: authors[Math.floor(Math.random() * authors.length)],
-        body: `Check out this track: ${snippet.songName} by ${snippet.artistName}`,
-        createdUtc: Date.now() / 1000,
-        ups: Math.floor(Math.random() * 50) + 1
-      }));
+// GET /cached-posts/:id  → return one cached post file with its comments/snippets
+unifiedRouter.get('/cached-posts/:id', async (req, res) => {
+  try {
+    const postId   = req.params.id;                          // e.g. 1hqs8yj
+    const cacheDir = path.resolve(__dirname, '..',
+                                   'apps', 'threads', 'src', 'cached_posts');
+
+    // File name is "<postId>.json" or "<postId>_something.json"
+    const fileName = fs.readdirSync(cacheDir)
+      .find(f => f.startsWith(postId) && f.endsWith('.json'));
+
+    if (!fileName) {
+      return res.status(404).json({ success: false, error: 'Post not found' });
     }
 
-    return post;
-  });
-};
+    const fullPath = path.join(cacheDir, fileName);
+    const data     = JSON.parse(fs.readFileSync(fullPath, 'utf8'));
 
-unifiedRouter.get('/diverse-posts', async (req, res) => {
-  try {
-    const diversePosts = generateDiverseMockPosts(15);
-    res.json({
-      success: true,
-      data: diversePosts
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: 'Failed to generate diverse posts'
-    });
+       if (!Array.isArray(data.comments) || data.comments.length === 0) {
+           const fallbackAuthor = data.author || 'RedditUser';
+           data.comments = [
+             {
+               id: `auto_${Date.now()}`,
+               author: fallbackAuthor,
+               body: "No cached comments were found for this thread, so here's a placeholder.",
+             createdUtc: Math.floor(Date.now() / 1000),
+               ups: 1,
+               replies: []
+             }
+           ];
+         }
+
+    // Make sure createdUtc is sane (matches useThreadData helper)
+    const now         = Date.now() / 1000;
+    const oneYearAgo  = now - 365 * 24 * 60 * 60;
+    if (!data.createdUtc || data.createdUtc <= 0 || data.createdUtc > now) {
+      data.createdUtc = oneYearAgo + Math.random() * (now - oneYearAgo);
+    }
+
+    res.json({ success: true, data });
+  } catch (err) {
+    console.error('Single-cache route error:', err);
+    res.status(500).json({ success: false, error: 'Server error' });
   }
 });
 
-unifiedRouter.get('/refresh', async (req, res) => {
+unifiedRouter.get('/diverse-posts/:id/comments', (req, res, next) => {
+  const { id } = req.params;
+  res.redirect(307, `/cached-posts/${id}`);  // 307 keeps it a GET
+});
+
+// GET /posts/:id/comments?subreddit=<sub>
+// ---------------------------------------
+// Proxies to Reddit and returns a flat array of comments
+// GET /posts/:id/comments?subreddit=<sub>
+unifiedRouter.get('/posts/:id/comments', async (req, res) => {
+
+  const subreddit =
+  (req.query.subreddit || req.headers['x-thread-subreddit'] || 'music').toLowerCase();
+
+  const { id } = req.params;
+  const sub    = (req.query.subreddit || 'music').toLowerCase();
+  const url    = `https://www.reddit.com/r/${sub}/comments/${id}.json?limit=100`;
+
   try {
-    const refreshPosts = generateDiverseMockPosts(12);
-    res.json({
-      success: true,
-      data: refreshPosts
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: 'Failed to refresh posts'
-    });
+    const { data } = await axios.get(url, { timeout: 7000 });
+
+    // second listing ([1]) holds the comment tree
+    const children = data?.[1]?.data?.children || [];
+
+    const flatten = (items) =>
+      items.flatMap(c => {
+        const d = c.data || {};
+        const node = {
+          id:         d.id,
+          author:     d.author,
+          body:       d.body || '',
+          createdUtc: d.created_utc,
+          ups:        d.ups,
+          replies:    []
+        };
+        if (d.replies?.data?.children?.length) {
+          node.replies = flatten(d.replies.data.children);
+        }
+        return node;
+      });
+
+    return res.json({ success: true, data: flatten(children) });
+  } catch (err) {
+    console.error('Reddit comments fetch failed:', err.message);
+    return res
+      .status(502)
+      .json({ success: false, error: 'Reddit API unavailable' });
   }
 });
 
-unifiedRouter.get('/cached-posts', async (req, res) => {
-  try {
-    const cachedPosts = generateDiverseMockPosts(20);
-    res.json({
-      success: true,
-      data: cachedPosts
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: 'Failed to load cached posts'
-    });
-  }
-});
+
+
+
 
 // Health check
 unifiedRouter.get('/health', async (req, res) => {

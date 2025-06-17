@@ -1,5 +1,4 @@
 import React, { useRef, useState, useEffect } from "react";
-import { UserIcon, PlayIcon, PauseIcon, MusicNoteIcon, AlbumIcon } from "./Icons/Icons";
 import QueueLine from "./QueueLine";
 import ArtistPool from "./ArtistPool";
 import Widget from "./Widget";
@@ -14,6 +13,7 @@ const LeftSwipeIcon = ({ size = 24, className = "" }) => (
     <path d="M5 12H19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 );
+
 
 const RightSwipeIcon = ({ size = 24, className = "" }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
@@ -671,10 +671,16 @@ const renderSwipeContent = (songs, type) => {
           box-sizing: border-box;
         }
 
-        .bottom-container.expanded {
-          min-height: 360px;
-          height: 360px;
-        }
+  .bottom-container.expanded{
+  height:clamp(300px,48vh,360px);   /* never taller than ~½ the screen */
+}
+
+@media (max-width:768px){
+  .bottom-container.expanded{
+    height:clamp(260px,54vh,340px);
+  }
+}
+
         
         .bottom-container.collapsed {
           height: 72px;

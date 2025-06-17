@@ -191,7 +191,6 @@ export default function TikTokModal({
           setAudioProgress(0);
         })
         .catch(err => {
-          console.error("Error playing audio:", err);
           setModalIsPlaying(false);
         });
     }
@@ -271,7 +270,6 @@ export default function TikTokModal({
     const fraction = 1 - (y / height);
     const newRating = Math.round(fraction * 100);
     
-    console.log(`Rating song "${currentSnippet.snippetData?.attributes?.name}" with value: ${newRating}`);
     
     // Call the onUserRate function if provided
     if (onUserRate) {
