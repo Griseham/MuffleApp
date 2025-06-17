@@ -276,7 +276,7 @@ const QueueLine = ({ qlUsers }) => {
                 className="w-full h-full object-cover"
                 onError={(e) => {
                   // Fallback to a default image if the avatar fails to load
-                  e.currentTarget.src = '/assets/image1.png'; 
+                  e.currentTarget.src = '/assets/users/assets2/image1.png'; 
                 }}
               />
             </div>

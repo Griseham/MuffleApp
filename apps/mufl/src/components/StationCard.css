@@ -576,3 +576,9 @@
       gap: 10px;
     }
   }
+
+  /* ── Extra narrow phones (≤360 px) ───────────────────────────────────── */
+@media (max-width: 360px) {
+  .frequency-number          { font-size: 24px; }
+  .frequency-container       { width: 100%; }      /* don’t enforce 280 px */
+}

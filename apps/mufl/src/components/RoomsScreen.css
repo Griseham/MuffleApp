@@ -493,3 +493,19 @@
     font-size: 13px;
   }
 }
+/* ── Mobile (≤480 px) tweaks for overall Rooms screen ────────────────── */
+@media (max-width: 480px) {
+  /* pull content off the edges a bit more */
+  .radio-rooms-container        { padding: 16px 12px 64px; }
+
+  /* back / info buttons */
+  .back-button                  { top: 20px; left: 12px; padding: 6px 14px; font-size: 20px; }
+  .radio-info-button            { top: 26px; right: 12px; }
+
+  /* selected-artists strip – allow single-row scroll */
+  .selected-artists-container   { padding: 14px; }
+  .selected-artist-image        { width: 56px; height: 56px; }
+
+  /* tuner wrapper border + shadow feel lighter on phones */
+  .tuner-container              { border-width: 1px; box-shadow: 0 2px 10px rgba(0,0,0,0.35); }
+}

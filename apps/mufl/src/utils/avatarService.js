@@ -1,37 +1,36 @@
 /**
- * Avatar Service - Manages random avatar assignment from /assets/users/assets2/image1.png … image200.png
- * Uses root-level assets folder for direct URL access without bundler imports
+ * Avatar Service – picks consistent avatars from
+ * /assets/users/assets2/image1.png … image200.png
  */
 
-// Cache for consistent avatar assignments
 const avatarCache = new Map();
+const BASE_URL = process.env.PUBLIC_URL || '';   // '' in dev, '/rooms' when homepage is set
 
-/**
- * Get a consistent “random” avatar URL for a given userId
- * @param {string|number} userId  – Unique identifier to ensure the same avatar each time
- * @returns {string}  Absolute URL under /assets/users/assets2
- */
-export const getAvatarForUser = (userId) => {
-  if (avatarCache.has(userId)) {
-    return avatarCache.get(userId);
+const buildAvatarPath = (n) =>
+  `${BASE_URL}/assets/users/assets2/image${n}.png`;
+
+/** Hash a string → deterministic 0…199 index */
+const hashCode = (str) => {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) - hash) + str.charCodeAt(i);
+    hash |= 0;          // 32-bit
   }
-
-  // Hash userId → 0…199, then +1 → 1…200
-  const hash = hashCode(userId.toString());
-  const imageNumber = Math.abs(hash % 200) + 1;
-
-  // Interpolate the file name
-  const baseURL = process.env.PUBLIC_URL || '';   // '' in plain CRA, '/rooms' when homepage is set
-  const avatarUrl = `${baseURL}/assets/image${imageNumber}.png`;
-  avatarCache.set(userId, avatarUrl);
-  return avatarUrl;
+  return hash;
 };
 
-/**
- * Get N distinct random avatars (e.g. for an artist pool)
- * @param {number} count  – Number of avatars to pick
- * @returns {string[]}   List of absolute URLs under /assets/users/assets2
- */
+/** Consistent avatar for a given userId */
+export const getAvatarForUser = (userId) => {
+  if (avatarCache.has(userId)) return avatarCache.get(userId);
+
+  const imageNumber = Math.abs(hashCode(String(userId)) % 200) + 1; // 1-200
+  const url = buildAvatarPath(imageNumber);
+
+  avatarCache.set(userId, url);
+  return url;
+};
+
+/** Get N distinct random avatars */
 export const getRandomAvatars = (count) => {
   const avatars = [];
   const used = new Set();
@@ -40,32 +39,15 @@ export const getRandomAvatars = (count) => {
     const num = Math.floor(Math.random() * 200) + 1;
     if (used.has(num)) continue;
     used.add(num);
-    avatars.push(`/assets/image${num}.png`);
+    avatars.push(buildAvatarPath(num));
   }
-
   return avatars;
 };
 
-/** Simple string → 32-bit integer hash */
-const hashCode = (str) => {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = ((hash << 5) - hash) + str.charCodeAt(i);
-    hash |= 0;
-  }
-  return hash;
-};
-
-/**
- * Return either a valid artist.image URL or fallback to a generated avatar
- * @param {Object} artist     – May have an .image property
- * @param {string} fallbackId – Used if artist.image is invalid
- * @returns {string}
- */
+/** Artist image helper */
 export const getArtistImageWithFallback = (artist, fallbackId) => {
   if (
-    artist.image &&
-    artist.image.startsWith('http') &&
+    artist?.image?.startsWith('http') &&
     !artist.image.includes('placeholder') &&
     !artist.image.includes('picsum')
   ) {
@@ -74,7 +56,5 @@ export const getArtistImageWithFallback = (artist, fallbackId) => {
   return getAvatarForUser(fallbackId || artist.id || artist.name);
 };
 
-/** Clear the in-memory cache (for testing) */
-export const clearAvatarCache = () => {
-  avatarCache.clear();
-};
+/** Clear cache (useful in tests) */
+export const clearAvatarCache = () => avatarCache.clear();

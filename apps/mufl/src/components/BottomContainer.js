@@ -968,6 +968,31 @@ const renderSwipeContent = (songs, type) => {
             padding: 12px 2px;
           }
         }
+
+
+  /* ---------- PHONE  ≤420 px ---------- */
+  @media (max-width:420px){
+    /* bigger, always-visible handle */
+    .expand-collapse-button{
+      position:absolute;           /* sits above scroll-area */
+      top:8px;
+      right:8px;
+      width:44px;                  /* 44 × 44 = comfortable thumb target */
+      height:44px;
+      z-index:60;                  /* above everything inside the panel */
+      touch-action:manipulation;   /* removes 300 ms tap-delay */
+    }
+
+    /* keep room for content when expanded, but never taller than ~55 % */
+    .bottom-container.expanded{
+      height:clamp(260px,55vh,340px);
+    }
+
+    /* slightly slimmer bar when collapsed */
+    .bottom-container.collapsed{
+      height:56px;
+    }
+  }
       `}</style>
     </div>
   );
