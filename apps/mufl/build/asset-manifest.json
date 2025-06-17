@@ -1,0 +1,15 @@
+{
+  "files": {
+    "main.css": "/rooms/static/css/main.10e29f81.css",
+    "main.js": "/rooms/static/js/main.aa3facec.js",
+    "static/js/488.4b62e2de.chunk.js": "/rooms/static/js/488.4b62e2de.chunk.js",
+    "index.html": "/rooms/index.html",
+    "main.10e29f81.css.map": "/rooms/static/css/main.10e29f81.css.map",
+    "main.aa3facec.js.map": "/rooms/static/js/main.aa3facec.js.map",
+    "488.4b62e2de.chunk.js.map": "/rooms/static/js/488.4b62e2de.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.10e29f81.css",
+    "static/js/main.aa3facec.js"
+  ]
+}

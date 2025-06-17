@@ -20,9 +20,9 @@ export const getAvatarForUser = (userId) => {
   const hash = hashCode(userId.toString());
   const imageNumber = Math.abs(hash % 200) + 1;
 
-  // Build the URL into your root assets
-  const avatarUrl = `/assets/users/assets2/image${imageNumber}.png`;
-
+  // Interpolate the file name
+  const baseURL = process.env.PUBLIC_URL || '';   // '' in plain CRA, '/rooms' when homepage is set
+  const avatarUrl = `${baseURL}/assets/image${imageNumber}.png`;
   avatarCache.set(userId, avatarUrl);
   return avatarUrl;
 };
@@ -40,7 +40,7 @@ export const getRandomAvatars = (count) => {
     const num = Math.floor(Math.random() * 200) + 1;
     if (used.has(num)) continue;
     used.add(num);
-    avatars.push(`/assets/users/assets2/image${num}.png`);
+    avatars.push(`/assets/image${num}.png`);
   }
 
   return avatars;

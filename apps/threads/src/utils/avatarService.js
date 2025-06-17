@@ -20,8 +20,23 @@ export const getAvatarForUser = (userId) => {
   // Generate random number 1-200 based on userId
   const hash = hashCode(userId.toString());
   const imageNumber = Math.abs(hash % 200) + 1;
-  const avatarUrl = `/assets/users/assets2/image${imageNumber}.png`;
-  
+
+  /**
+ * Resolve the public-url / base-url regardless of bundler
+ * – CRA injects process.env.PUBLIC_URL
+ * – Vite injects import.meta.env.BASE_URL
+ * – Plain browsers fall back to ''
+ */
+let baseURL = '';
+if (typeof process !== 'undefined' && process.env?.PUBLIC_URL) {
+  baseURL = process.env.PUBLIC_URL;                  // CRA / Webpack
+} else if (typeof import.meta === 'object' && import.meta.env?.BASE_URL) {
+  baseURL = import.meta.env.BASE_URL.replace(/\/$/, '');  // Vite
+}
+
+
+  const avatarUrl = `${baseURL}/assets/image${imageNumber}.png`;
+    
   // Cache the result
   avatarCache.set(userId, avatarUrl);
   
@@ -44,7 +59,7 @@ export const getRandomAvatars = (count) => {
     } while (usedNumbers.has(imageNumber));
     
     usedNumbers.add(imageNumber);
-    avatars.push(`/assets/users/assets2/image${imageNumber}.png`);
+    avatars.push(`/assets/image${imageNumber}.png`);
   }
   
   return avatars;

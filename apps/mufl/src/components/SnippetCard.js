@@ -640,6 +640,8 @@ const SnippetCard = ({
           </div>
 
           {/* Left Arrows (negative) - Only show if not loading */}
+
+
           {!isLoading && (
             <div className="absolute -left-16 top-1/2 transform -translate-y-1/2 flex flex-col gap-3">
               <button 
@@ -693,6 +695,7 @@ const SnippetCard = ({
           )}
 
           {/* Right Arrows (positive) - Only show if not loading */}
+
           {!isLoading && (
             <div className="absolute -right-16 top-1/2 transform -translate-y-1/2 flex flex-col gap-3">
               <button 
@@ -744,6 +747,8 @@ const SnippetCard = ({
               </button>
             </div>
           )}
+
+          
         </div>
 
         {/* Zone controls spacer */}

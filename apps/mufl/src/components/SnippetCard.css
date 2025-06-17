@@ -77,3 +77,21 @@
 .animate-slide-left  {animation:slideLeft 320ms ease-out forwards}
 .animate-slide-right {animation:slideRight 320ms ease-out forwards}
 .animate-scale-in-out{animation:scaleInOut 420ms ease-out forwards}
+
+
+/* ---------- MOBILE  ≤420 px ---------- */
+@media (max-width:420px){
+  /* container padding */
+  .snippet-card-container{padding:0 4vw;}
+
+  /* card itself */
+  .snippet-card{
+    width:90vw;          /* shrink instead of fixed 340 px           */
+  }
+
+  /* artwork height scales with width (≈ 4:5) */
+  .artwork-box{height:75vw;}
+
+  /* hide the side-mounted vote bars – users still swipe the card */
+  .mobile-hide-votes{display:none;}
+}

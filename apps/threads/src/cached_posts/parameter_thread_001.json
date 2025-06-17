@@ -1,0 +1,245 @@
+{
+  "id": "parameter_thread_001",
+  "subreddit": "musicrecommendations",
+  "title": "Comparing music from my 4 favorite bands, dying to know which songs end up being recommended",
+  "author": "MusicComparison23",
+  "selftext": "I've been obsessed with these 4 bands lately and want to see what songs you all think represent them best. Drop your favorite tracks from Imagine Dragons, Green Day, OneRepublic, and Maroon 5. Really curious to see which direction this goes!",
+  "imageUrl": "/threads/assets/Parameter1.png",
+  "postType": "parameter",
+  "createdUtc": 1736442600,
+  "parameters": [
+    "Imagine Dragons",
+    "Green Day",
+    "OneRepublic",
+    "Maroon 5"
+  ],
+  "comments": [
+    {
+      "id": "param_comment_001",
+      "author": "RockFan2024",
+      "body": "Imagine Dragons hits different when you listen to Demons live. The raw emotion Adam Levine puts into it is incredible!",
+      "hasSnippet": true,
+      "parameter": "Imagine Dragons",
+      "replies": []
+    },
+    {
+      "id": "param_comment_002",
+      "author": "PunkRockLover",
+      "body": "Green Day will always be legendary for this track. Basket Case perfectly captures that 90s anxiety and energy that defined a generation.",
+      "hasSnippet": true,
+      "parameter": "Green Day",
+      "replies": []
+    },
+    {
+      "id": "param_comment_003",
+      "author": "PopRockDaily",
+      "body": "OneRepublic's songwriting is next level. Counting Stars is pure perfection - the way it builds up is just *chef's kiss*",
+      "hasSnippet": true,
+      "parameter": "OneRepublic",
+      "replies": []
+    },
+    {
+      "id": "param_comment_004",
+      "author": "MelodyMaster",
+      "body": "Maroon 5 before they went full pop was incredible. This Love showcases Adam's vocal range and the band's rock roots perfectly.",
+      "hasSnippet": true,
+      "parameter": "Maroon 5",
+      "replies": []
+    },
+    {
+      "id": "param_comment_005",
+      "author": "DragonFan99",
+      "body": "Thunder is such an underrated Imagine Dragons track! The experimental sound and those drums... this song got me through some tough times.",
+      "hasSnippet": true,
+      "parameter": "Imagine Dragons",
+      "replies": []
+    },
+    {
+      "id": "param_comment_006",
+      "author": "GuitarHero2000",
+      "body": "When I Grow Up by Green Day is criminally underrated. The guitar work and Billie Joe's lyrics about growing up hit so hard.",
+      "hasSnippet": true,
+      "parameter": "Green Day",
+      "replies": []
+    },
+    {
+      "id": "param_comment_007",
+      "author": "IndieVibes",
+      "body": "Apologize by OneRepublic is a masterpiece of songwriting. Ryan Tedder really knows how to craft a hook that sticks with you forever.",
+      "hasSnippet": true,
+      "parameter": "OneRepublic",
+      "replies": []
+    },
+    {
+      "id": "param_comment_008",
+      "author": "VocalRange",
+      "body": "Sunday Morning by Maroon 5 is so chill and perfect for lazy weekends. Adam's falsetto in this is absolutely gorgeous.",
+      "hasSnippet": true,
+      "parameter": "Maroon 5",
+      "replies": []
+    },
+    {
+      "id": "param_comment_009",
+      "author": "NightVisionMusic",
+      "body": "Radioactive changed everything for Imagine Dragons. This song put them on the map and for good reason - it's an absolute anthem!",
+      "hasSnippet": true,
+      "parameter": "Imagine Dragons",
+      "replies": []
+    },
+    {
+      "id": "param_comment_010",
+      "author": "AlternativeRocks",
+      "body": "Good Riddance (Time of Your Life) by Green Day is pure poetry. This acoustic masterpiece shows their softer side while still being powerful.",
+      "hasSnippet": true,
+      "parameter": "Green Day",
+      "replies": []
+    },
+    {
+      "id": "param_comment_011",
+      "author": "MusicCritic2024",
+      "body": "Great selection of bands! Each one brings something unique to the table. Imagine Dragons with their anthemic sound, Green Day with punk rock energy, OneRepublic with incredible songwriting, and Maroon 5 with those smooth vocals.",
+      "hasSnippet": false,
+      "replies": []
+    },
+    {
+      "id": "param_comment_012",
+      "author": "BandAnalyst",
+      "body": "It's interesting how all these bands evolved over time. Green Day went from punk to rock opera, Maroon 5 shifted to pop, while Imagine Dragons and OneRepublic found their signature sounds early and stuck with them.",
+      "hasSnippet": false,
+      "replies": []
+    },
+    {
+      "id": "param_comment_013",
+      "author": "ConcertGoer",
+      "body": "I've seen all four of these bands live and they each bring completely different energy. Green Day was insane, Imagine Dragons was like a religious experience, OneRepublic was surprisingly intimate, and Maroon 5 was pure entertainment.",
+      "hasSnippet": false,
+      "replies": []
+    },
+    {
+      "id": "param_comment_014",
+      "author": "LyricsLover",
+      "body": "What I love about these bands is how they all tackle different themes. Mental health, growing up, love, social issues... there's something for every mood and situation.",
+      "hasSnippet": false,
+      "replies": []
+    },
+    {
+      "id": "param_comment_015",
+      "author": "RadioPlaylist",
+      "body": "These four bands probably make up like 30% of modern rock radio playlists haha. But honestly, they've earned it with consistently great music.",
+      "hasSnippet": false,
+      "replies": []
+    }
+  ],
+  "snippets": [
+    {
+      "commentId": "param_comment_001",
+      "query": "Demons - Imagine Dragons",
+      "songName": "Demons",
+      "artistName": "Imagine Dragons",
+      "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music112/v4/1f/fa/09/1ffa092f-f52f-4a66-7d10-4cc5982dc747/12UMGIM46901.rgb.jpg/300x300bb.jpg",
+      "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview122/v4/a0/d5/39/a0d53912-c0b8-dd9b-9984-3024efea19d0/mzaf_12895838630521728473.plus.aac.p.m4a",
+      "albumName": "Night Visions",
+      "releaseDate": "2012-09-04",
+      "duration": 177120
+    },
+    {
+      "commentId": "param_comment_002",
+      "query": "Basket Case - Green Day",
+      "songName": "Basket Case",
+      "artistName": "Green Day",
+      "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music125/v4/88/83/e7/8883e74b-1b7c-0725-09de-21e4e00d54b5/093624915713.jpg/300x300bb.jpg",
+      "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview126/v4/c2/c9/0f/c2c90fef-f994-111d-2afc-17747de6bc03/mzaf_8917420879191568081.plus.aac.p.m4a",
+      "albumName": "Dookie",
+      "releaseDate": "1994-02-01",
+      "duration": 181760
+    },
+    {
+      "commentId": "param_comment_003",
+      "query": "Counting Stars - OneRepublic",
+      "songName": "Counting Stars",
+      "artistName": "OneRepublic",
+      "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music126/v4/25/46/a7/2546a71a-b2bb-b4c9-4c52-a4daa3ae23ca/13UMGIM15076.rgb.jpg/300x300bb.jpg",
+      "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview122/v4/c2/80/0c/c2800c2a-0b68-43c9-3701-7cb1ece6ef24/mzaf_9589312089850013533.plus.aac.p.m4a",
+      "albumName": "Native",
+      "releaseDate": "2013-03-22",
+      "duration": 257040
+    },
+    {
+      "commentId": "param_comment_004",
+      "query": "This Love - Maroon 5",
+      "songName": "This Love",
+      "artistName": "Maroon 5",
+      "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music122/v4/eb/12/fe/eb12fe62-1e28-ebfd-0daa-f9aa66bbb882/12UMGIM15818.rgb.jpg/300x300bb.jpg",
+      "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview112/v4/4f/04/74/4f047447-28a8-06fa-b270-f33abe45fc30/mzaf_12037734504450019266.plus.aac.p.m4a",
+      "albumName": "Songs About Jane",
+      "releaseDate": "2002-06-25",
+      "duration": 208000
+    },
+    {
+      "commentId": "param_comment_005",
+      "query": "Thunder - Imagine Dragons",
+      "songName": "Thunder",
+      "artistName": "Imagine Dragons",
+      "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music126/v4/11/7a/b8/117ab805-6811-8929-18b9-0fad7baf0c25/17UMGIM98210.rgb.jpg/300x300bb.jpg",
+      "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview112/v4/51/d7/55/51d75514-5e1d-ed01-52eb-76b30f7c8290/mzaf_6901903421309258968.plus.aac.p.m4a",
+      "albumName": "Evolve",
+      "releaseDate": "2017-06-23",
+      "duration": 187040
+    },
+    {
+      "commentId": "param_comment_006",
+      "query": "When I Come Around - Green Day",
+      "songName": "When I Come Around",
+      "artistName": "Green Day",
+      "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music125/v4/88/83/e7/8883e74b-1b7c-0725-09de-21e4e00d54b5/093624915713.jpg/300x300bb.jpg",
+      "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview116/v4/a9/46/e1/a946e1a8-52b4-67e6-4365-0603a478a1ae/mzaf_16849772022084832336.plus.aac.p.m4a",
+      "albumName": "Dookie",
+      "releaseDate": "1994-02-01",
+      "duration": 177600
+    },
+    {
+      "commentId": "param_comment_007",
+      "query": "Apologize - OneRepublic",
+      "songName": "Apologize",
+      "artistName": "OneRepublic",
+      "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/ff/1a/b8/ff1ab8c4-589c-37a2-3e62-78c88e3755a8/07UMGIM16721.rgb.jpg/300x300bb.jpg",
+      "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/29/51/7c/29517c9a-8619-a65f-114e-c7abf2a7829d/mzaf_3953698700543923496.plus.aac.p.m4a",
+      "albumName": "Dreaming Out Loud",
+      "releaseDate": "2007-11-20",
+      "duration": 208960
+    },
+    {
+      "commentId": "param_comment_008",
+      "query": "Sunday Morning - Maroon 5",
+      "songName": "Sunday Morning",
+      "artistName": "Maroon 5",
+      "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/d0/3e/25/d03e255d-e205-0e66-20f6-01e251896c25/14UMGIM27076.rgb.jpg/300x300bb.jpg",
+      "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview116/v4/62/97/f9/6297f901-0c4f-fd85-bea6-594bde85d227/mzaf_14699753681817939909.plus.aac.p.m4a",
+      "albumName": "Songs About Jane",
+      "releaseDate": "2002-06-25",
+      "duration": 246240
+    },
+    {
+      "commentId": "param_comment_009",
+      "query": "Radioactive - Imagine Dragons",
+      "songName": "Radioactive",
+      "artistName": "Imagine Dragons",
+      "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music112/v4/1f/fa/09/1ffa092f-f52f-4a66-7d10-4cc5982dc747/12UMGIM46901.rgb.jpg/300x300bb.jpg",
+      "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview122/v4/be/66/b7/be66b7f1-7e62-4565-69db-27cb411b7b5c/mzaf_13804899651271995698.plus.aac.p.m4a",
+      "albumName": "Night Visions",
+      "releaseDate": "2012-09-04",
+      "duration": 186720
+    },
+    {
+      "commentId": "param_comment_010",
+      "query": "Good Riddance (Time of Your Life) - Green Day",
+      "songName": "Good Riddance (Time of Your Life)",
+      "artistName": "Green Day",
+      "artworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Music/8c/d4/17/mzi.uvxeaxai.jpg/300x300bb.jpg",
+      "previewUrl": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview115/v4/9b/7f/ff/9b7fffa8-5457-8802-0ef2-3171c94b9f71/mzaf_18234912912591898602.plus.aac.p.m4a",
+      "albumName": "Nimrod",
+      "releaseDate": "1997-10-14",
+      "duration": 144000
+    }
+  ]
+}

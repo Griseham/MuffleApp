@@ -19,7 +19,6 @@ const ModernGenreWheel = ({
   const [prevGenres, setPrevGenres] = useState(genres);
   const [transitionProgress, setTransitionProgress] = useState(1);
   const [wheelOpacity, setWheelOpacity] = useState(1);
-  const [pulseState, setPulseState] = useState(0);
   
   // Calculate wheel dimensions
   const wheelSize = isFullscreen ? 460 : 400;

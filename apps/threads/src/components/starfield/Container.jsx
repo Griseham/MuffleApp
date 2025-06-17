@@ -127,17 +127,14 @@ export default function Container({ onLoadFeed, onViewThread, activeFilters = []
   // Handle artist management
   const handleAddArtist = useCallback((artist) => {
     if (!artist || !artist.id) {
-      console.error("Invalid artist object:", artist);
       return;
     }
     
     setArtists(prevArtists => {
       if (prevArtists.some(a => a.id === artist.id)) {
-        console.log("Artist already exists:", artist.name);
         return prevArtists;
       }
       
-      console.log("Adding artist:", artist.name);
       // Add constellation index when adding a new artist
       return [...prevArtists, { 
         ...artist, 
@@ -169,7 +166,6 @@ export default function Container({ onLoadFeed, onViewThread, activeFilters = []
       ? constellationIndex 
       : (artistConstellations[artist.id] || 0);
     
-    console.log(`Selecting artist ${artist.name} with constellation index: ${nextIndex}`);
     
     // Update constellation index for this artist
     setArtistConstellations(prev => ({
@@ -219,7 +215,6 @@ export default function Container({ onLoadFeed, onViewThread, activeFilters = []
     // Calculate next index (cycle through 0, 1, 2)
     const nextIndex = (currentIndex + 1) % 3;
     
-    console.log(`Cycling constellation for ${artist.name} from ${currentIndex} to ${nextIndex}`);
     
     // Select the artist with the new index
     handleSelectArtist(artist, nextIndex);
@@ -426,9 +421,7 @@ useEffect(() => {
     
     // Call parent's handler
     if (onViewThread && post) {
-      console.log("Starfield navigating to post:", post);
-      console.log("Post ID:", post.id, "Post Type:", post.postType);
-      
+
       // Ensure the post has all necessary properties
       const enhancedPost = {
         ...post,

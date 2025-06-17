@@ -632,9 +632,7 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
               
               // Debug logging for parameter threads
               if (post?.postType === 'parameter') {
-                console.log(`Processing comment ${c.id}:`, c);
-                console.log(`Available snippets:`, snippetRecs);
-                console.log(`Looking for snippet with commentId: ${c.id}`);
+   
               }
               
               // For news threads, don't process any snippets

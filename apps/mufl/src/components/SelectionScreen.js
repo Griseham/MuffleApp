@@ -20,13 +20,13 @@ const shuffleArray = (array) => {
 const ArtistImage = ({ name, src, size = "large" }) => {
   return (
     <img
-      src={src || '/placeholder-200.png'}
+      src={src || '/placeholder-200.jpg'}
       alt={name}
       className="artist-circle-image"
       onError={(e) => { 
         // Only use placeholder for non-search results to avoid placeholder circles
         if (!src || !src.includes("api.spotify.com")) {
-          e.currentTarget.src = '/placeholder-200.png';
+          e.currentTarget.src = '/placeholder-200.jpg';
         }
       }}
     />

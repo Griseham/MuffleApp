@@ -1,34 +1,36 @@
-export function hashString(str) {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      hash = str.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    return Math.abs(hash);
-  }
-  
-  export function authorToAvatar(author) {
-    if (!author) return "/assets/image1.png";
-    let hash = 0;
-    for (let i = 0; i < author.length; i++) {
-      hash = author.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    const mod = Math.abs(hash) % 100;
-    return `/assets/image${mod + 1}.png`;
-  }
-  
-  export function removeLinks(text) {
-    if (!text) return "";
-    let cleaned = text.replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/gi, "$1");
-    cleaned = cleaned.replace(/https?:\/\/\S+/gi, "");
-    return cleaned;
-  }
-  
+/** remove markdown + naked links */
+export function removeLinks(text = '') {
+  return text
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/gi, '$1') // [title](link)
+    .replace(/https?:\/\/\S+/gi, '')                       // bare links
+    .trim();
+}
 
-export function getAvatarSrc(post) {
-    const idStr = post.id.toString();
-    const num = hashString(idStr);
-    return `/assets/image${(num % 100) + 1}.png`;
+/** try to extract song + artist from a comment line */
+export function extractSongQuery(text) {
+  const clean = removeLinks(text)
+    .replace(/\s+/g, ' ')
+    .replace(/[–—]/g, '-')          // unify long dashes
+    .trim();
+
+  const candidates = [
+    // “Song Name” – Artist
+    /["“”']([^"”']{3,80})["“”']\s*[-–—]\s*([^-\n]{2,60})/i,
+    // Song - Artist
+    /^(.{3,80})\s*-\s*(.{2,60})$/,
+    // Song by Artist
+    /^(.{3,80})\s+by\s+(.{2,60})$/i,
+  ];
+
+  for (const rex of candidates) {
+    const m = clean.match(rex);
+    if (m) {
+      const song   = m[1].trim();
+      const artist = m[2].trim();
+      // rudimentary rejection of long sentences
+      if (song.split(' ').length > 12 || artist.split(' ').length > 10) continue;
+      return `${song} ${artist}`;
+    }
   }
-  
-  
-  const COMMENT_LENGTH_THRESHOLD = 80;
+  return null;
+}
