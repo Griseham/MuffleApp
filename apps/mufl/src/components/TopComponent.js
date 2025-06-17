@@ -601,12 +601,15 @@ const TopComponent = ({
                 
                 {/* Expand/Collapse Button */}
                 <button 
-                  className="ml-4 p-2 rounded-full hover:bg-white/10 transition-all duration-200 focus:outline-none"
+                  className="ml-4 p-3 rounded-full hover:bg-white/10
+             transition duration-200 focus:outline-none
+             top-expand-collapse"
                   onClick={toggleExpanded}
                   aria-label={isExpanded ? "Collapse panel" : "Expand panel"}
                 >
                   <ExpandCollapseIcon isExpanded={isExpanded} />
                 </button>
+
               </div>
             </div>
           </div>
@@ -861,6 +864,14 @@ However that could be wrong, but we'd have to find out during playtesting.`
           @media (max-width:420px){
   .grid-cols-3{grid-template-columns:repeat(2,minmax(0,1fr));}
 }
+
+ @media (max-width:420px){
+    .top-expand-collapse{
+      width:44px;                  /* matches BottomContainer handle */
+      height:44px;
+      touch-action:manipulation;
+    }
+  }
 
       `}</style>
     </div>

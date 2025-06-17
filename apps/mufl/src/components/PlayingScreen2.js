@@ -67,6 +67,14 @@ const PlayingScreen = ({
     { id: 15, name: "track_layer", volume: 800, avatar: getAvatarForUser(15) }
   ];
 
+
+  // PlayingScreen2.js  – just after your state declarations
+useEffect(() => {
+  if (window.innerWidth < 480) {
+    setExpandedComponent(null);    // both panels start collapsed
+  }
+}, []);
+
   // Helper function to generate mock voting data for songs
 // In PlayingScreen2.js - Update the generateVotingData function (around line 85)
 

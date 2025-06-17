@@ -595,3 +595,36 @@
       margin-top: 16px;
     }
   }
+
+  /* ── Mobile (≤480 px) fixes for RadioTuner ───────────────────────────── */
+@media (max-width: 480px) {
+  /* Let the ruler shrink with the viewport */
+  .rt-frequency-display       { min-width: 260px; }   /* was 500px */
+  .rt-ruler                   { height: 5rem; }
+
+  /* Smaller LED read-out */
+  .rt-display                 { font-size: 1.8rem; }
+
+  /* Dial + label scale-down */
+  .rt-knob-zone               { transform: scale(0.85); }
+  .rt-dial-center             { font-size: 0.8rem; }
+}
+/* ── Final mobile tune-up (phones ≤480 px) ──────────────────────────── */
+@media (max-width: 480px) {
+  /* 1️⃣  Make the knob zone ~⅓ shorter */
+  .rt-knob-zone {
+    transform: scale(0.6);           /* was 0.85 → 40 % smaller */
+    margin: 4px 0 0;                 /* trim extra space above/below */
+  }
+
+  /* 2️⃣  Pull the dial closer to the ruler */
+  .rt-controls {
+    gap: 12px;                       /* was 24 px */
+  }
+
+  /* 3️⃣  Hand that saved space to the ruler */
+  .rt-ruler {
+    height: 9rem;                    /* was 8 rem (and 6 rem originally) */
+  }
+}
+
