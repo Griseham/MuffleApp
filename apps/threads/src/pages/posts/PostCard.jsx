@@ -34,8 +34,10 @@ const PostCard = ({ post, onClick, onUserClick, POST_TYPE_INDICATORS, isCached }
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const username = post.username || generateUsername(post.author);
-  const timeAgo = getTimeAgo(post.createdUtc);
+  const username = useMemo(
+      () => post.username || generateUsername(post.author),
+      [post.username, post.author]
+    );  const timeAgo = getTimeAgo(post.createdUtc);
 
   const getThemeColor = (postType) => {
     if (postType === 'news') return '#FF9500';
