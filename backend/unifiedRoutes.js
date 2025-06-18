@@ -578,8 +578,13 @@ unifiedRouter.get('/reddit/posts', async (req, res) => {
 
   try {
     console.log(`Fetching Reddit posts from: ${redditUrl}`);
-    const { data } = await fetchWithRetry(redditUrl);
-    
+        const { data } = await axios.get(                      // add header + timeout
+            redditUrl,
+            {
+              timeout : 7000,
+              headers : { 'User-Agent': 'MuflThreads/1.0 (+https://mufl.app)' }
+            }
+          );    
     const posts = data.data.children.map(({ data: p }) => {
       /* ── image detection ─────────────────────────────────────── */
       let imageUrl = null;
