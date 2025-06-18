@@ -643,39 +643,63 @@ export default function TikTokModal({
               }}
             >
               {/* Track Container with album art or placeholder */}
-              <div style={{
-                ...styles.trackImageContainer,
-                backgroundColor: currentSnippet?.albumColor || "#1e2732"
-              }} onClick={() => togglePlay(currentSnippet?.commentId)}>
-                {/* Show album artwork if available */}
-                {currentSnippet?.snippetData?.attributes?.artwork?.url ? (
-                  <img 
-                    src={currentSnippet.snippetData.attributes.artwork.url.replace("{w}x{h}", "400x400")}
-                    alt="Album artwork"
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "contain",
-                      borderRadius: "8px",
-                      backgroundColor: "rgba(15, 23, 42, 0.5)"
-                    }}
-                  />
-                ) : (
-                  <Music size={80} color="#3b82f6" />
-                )}
-                
-                <div style={{
-                  ...styles.playButton,
-                  position: "absolute",
-                  top: "50%",
-                  left: "50%",
-                  transform: "translate(-50%, -50%)"
-                }} className="play-button">
-                  {isThisSnippetPlaying ? 
-                    <FiPause size={32} color="#fff" /> : 
-                    <FiPlay size={32} color="#fff" style={{ marginLeft: "3px" }} />}
-                </div>
-              </div>
+<div
+  style={{
+    ...styles.trackImageContainer,
+    backgroundColor: currentSnippet?.albumColor || "#1e2732"
+  }}
+  onClick={() => togglePlay(currentSnippet?.commentId)}
+>
+  {(() => {
+    // prefer the already-formatted artwork URL, then fall back to raw snippetData
+    const raw =
+      currentSnippet?.artwork ||
+      currentSnippet?.artworkUrl ||
+      currentSnippet?.snippetData?.attributes?.artwork?.url;
+    const artworkUrl =
+      raw?.includes("{w}") && raw?.includes("{h}")
+        ? raw.replace("{w}", "400").replace("{h}", "400")
+        : raw;
+
+    return artworkUrl ? (
+      <img
+        src={artworkUrl}
+        alt="Album artwork"
+        style={{
+          width: "100%",
+          height: "100%",
+          objectFit: "contain",
+          borderRadius: "8px",
+          backgroundColor: "rgba(15, 23, 42, 0.5)"
+        }}
+        onError={e => {
+          e.currentTarget.onerror = null;
+          e.currentTarget.src = "/threads/assets/placeholder.jpg";
+        }}
+      />
+    ) : (
+      <Music size={80} color="#3b82f6" />
+    );
+  })()}
+
+  <div
+    style={{
+      ...styles.playButton,
+      position: "absolute",
+      top: "50%",
+      left: "50%",
+      transform: "translate(-50%, -50%)"
+    }}
+    className="play-button"
+  >
+    {isThisSnippetPlaying ? (
+      <FiPause size={32} color="#fff" />
+    ) : (
+      <FiPlay size={32} color="#fff" style={{ marginLeft: "3px" }} />
+    )}
+  </div>
+</div>
+
               
               {/* Genre tag - now between artwork and song info */}
               <div style={styles.genreContainer}>

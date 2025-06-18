@@ -614,18 +614,10 @@ export default function HomeTikTokModal({ onClose, cachedPosts = [], onNavigateT
                   {
                     icon: <Music size={18} color="#a9b6fc" />,
                     title: "TikTok-Style Music Discovery",
-                    content: "Swipe through song snippets from cached posts in a vertical TikTok-style format"
+                    content: "Title of the thread where this song recommendations came from, click it  to join the thread."
                   },
-                  {
-                    icon: <Headphones size={18} color="#a9b6fc" />,
-                    title: "30-Second Previews", 
-                    content: "Each song plays for up to 30 seconds. Rate songs using the vertical bar on the right."
-                  },
-                  {
-                    icon: <Users size={18} color="#a9b6fc" />,
-                    title: "Community Ratings",
-                    content: "See how many users rated each song and compare your rating with the average"
-                  }
+                 
+                
                 ]}
               />
             </div>
