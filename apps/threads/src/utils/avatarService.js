@@ -2,14 +2,11 @@
 const avatarCache = new Map();
 
 /** '' in dev, '/threads' after you build with  base:'/threads/' */
-const BASE_URL =
-  (typeof process !== 'undefined' && process.env.PUBLIC_URL) ||
-  (typeof import.meta === 'object' && import.meta.env?.BASE_URL) ||
-  '';
+const BASE_URL = process.env.PUBLIC_URL || '';   // '' in dev, '/rooms' when homepage is set
 
 /** remove trailing slash then build the path */
 const buildAvatarPath = (n) =>
-  `${BASE_URL.replace(/\/$/, '')}/assets/image${n}.png`;
+  `${BASE_URL}/assets/users/assets2/image${n}.png`;
 
 /** deterministic avatar for a user */
 export const getAvatarForUser = (userId) => {

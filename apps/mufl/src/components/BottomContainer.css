@@ -1,0 +1,82 @@
+/* Updated BottomContainer styles - Fixed width alignment with main content */
+
+/* Bottom container aligned with playing screen content */
+.bottom-container {
+    position: fixed;
+    left: 50%;
+    bottom: 0;
+    transform: translateX(-50%);
+    width: 100%;                    /* Full width of container */
+    max-width: 800px;               /* Match the main content max-width exactly */
+  
+    display: flex;
+    flex-direction: column;
+    background: linear-gradient(to bottom, #1a1a1a, #000000);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-top-left-radius: 1.5rem;
+    border-top-right-radius: 1.5rem;
+    box-shadow: 0 -10px 25px -5px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+    transition: height 0.3s ease;
+    z-index: 30;
+    margin: 0 auto;                 /* Center the container */
+    padding: 0 20px;                /* Internal horizontal padding */
+    box-sizing: border-box;         /* Include padding in width calculation */
+  }
+  
+  /* Alternative approach - if you want exact alignment with playing screen padding */
+  .bottom-container-alt {
+    position: fixed;
+    left: 50%;
+    bottom: 0;
+    transform: translateX(-50%);
+    width: calc(100% - 32px);       /* Account for the main content padding */
+    max-width: 768px;               /* Slightly less than 800px to account for padding */
+  
+    display: flex;
+    flex-direction: column;
+    background: linear-gradient(to bottom, #1a1a1a, #000000);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-top-left-radius: 1.5rem;
+    border-top-right-radius: 1.5rem;
+    box-shadow: 0 -10px 25px -5px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+    transition: height 0.3s ease;
+    z-index: 30;
+  }
+  
+  /* Adjust tab navigation padding since we're adding container padding */
+  .tab-navigation {
+    display: flex;
+    width: 100%;
+    height: 64px;
+    padding: 0 0;                   /* Remove horizontal padding since container has it */
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    justify-content: space-between;
+    align-items: center;
+    position: relative;
+    z-index: 10;
+    backdrop-filter: blur(5px);
+  }
+  
+  /* Adjust content area padding */
+  .content-area {
+    flex: 1;
+    padding: 16px 4px;              /* Reduce horizontal padding since container has it */
+    overflow: hidden;
+    position: relative;
+    height: calc(100% - 64px);
+  }
+  
+  /* Mobile responsiveness */
+  @media (max-width: 768px) {
+    .bottom-container {
+      width: calc(100% - 16px);     /* Less margin on mobile */
+      max-width: none;
+      padding: 0 12px;              /* Less padding on mobile */
+    }
+    
+    .content-area {
+      padding: 12px 2px;            /* Even less padding on mobile */
+    }
+  }
