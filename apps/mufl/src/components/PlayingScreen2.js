@@ -140,13 +140,12 @@ const handleSongFromWidget = (song) => {
 };
 
 
-  // NEW: Function to fetch a single song quickly from one artist
 // NEW: Function to fetch a single song quickly from one artist
 const fetchSingleSongFromArtist = async (artist) => {
   try {
     
     const res = await axios.post(
-      `${API_BASE_URL}/apple-music/artist-songs`,
+      `/apple-music/artist-songs`,
       { artist: artist.name }
     );
     if (!res.data.success) {

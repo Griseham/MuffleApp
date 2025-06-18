@@ -565,23 +565,21 @@ unifiedRouter.post('/apple-music/artist-search', async (req, res) => {
 //    • trending  → postType 'groupchat'
 //    • robust image detection (url, preview, thumbnail)
 // ─────────────────────────────────────────────────────────────
+
+// Then replace your existing /reddit/posts route with this updated version:
 unifiedRouter.get('/reddit/posts', async (req, res) => {
-  const sub   = (req.query.sub || 'music').toLowerCase();   // subreddit
-  const limit = req.query.limit || 25;                      // ≤ 100
-  const t     = req.query.t;                                // year|month|week|…
+  const sub   = (req.query.sub || 'music').toLowerCase();   
+  const limit = Math.min(req.query.limit || 25, 100);  // Cap at 100 (Reddit's max)
+  const t     = req.query.t;                                
 
   const redditUrl = t
     ? `https://www.reddit.com/r/${sub}/top.json?t=${t}&limit=${limit}`
     : `https://www.reddit.com/r/${sub}/hot.json?limit=${limit}`;
 
   try {
-     const { data } = await axios.get(
-         redditUrl,
-         {
-         timeout : 7000,
-           headers : { 'User-Agent': 'MuflThreads/1.0 (+https://mufl.app)' }
-         }
-       );
+    console.log(`Fetching Reddit posts from: ${redditUrl}`);
+    const { data } = await fetchWithRetry(redditUrl);
+    
     const posts = data.data.children.map(({ data: p }) => {
       /* ── image detection ─────────────────────────────────────── */
       let imageUrl = null;
@@ -618,15 +616,26 @@ unifiedRouter.get('/reddit/posts', async (req, res) => {
         num_comments: p.num_comments,
         postType,
         imageUrl,
-        snippets: []                           // filled later on the client
+        snippets: []                           
       };
     });
 
+    console.log(`Successfully fetched ${posts.length} posts from r/${sub}`);
     res.json({ success: true, data: posts });
   } catch (err) {
-    res
-      .status(502)
-      .json({ success: false, error: 'Reddit API unavailable' });
+    console.error('Reddit fetch failed after retries:', {
+      message: err.message,
+      code: err.code,
+      status: err.response?.status,
+      statusText: err.response?.statusText,
+      url: redditUrl
+    });
+    
+    res.status(502).json({ 
+      success: false, 
+      error: 'Reddit API unavailable',
+      details: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
   }
 });
 
@@ -847,9 +856,50 @@ unifiedRouter.get('/cached-posts/:id', async (req, res) => {
   }
 });
 
-unifiedRouter.get('/diverse-posts/:id/comments', (req, res, next) => {
+unifiedRouter.get('/posts/:id/comments', async (req, res) => {
   const { id } = req.params;
-  res.redirect(307, `/cached-posts/${id}`);  // 307 keeps it a GET
+  const sub = (req.query.subreddit || 'music').toLowerCase();
+  const url = `https://www.reddit.com/r/${sub}/comments/${id}.json?limit=100`;
+
+  try {
+    console.log(`Fetching Reddit comments from: ${url}`);
+    const { data } = await fetchWithRetry(url);
+    
+    // second listing ([1]) holds the comment tree
+    const children = data?.[1]?.data?.children || [];
+
+    const flatten = (items) =>
+      items.flatMap(c => {
+        const d = c.data || {};
+        const node = {
+          id:         d.id,
+          author:     d.author,
+          body:       d.body || '',
+          createdUtc: d.created_utc,
+          ups:        d.ups,
+          replies:    []
+        };
+        if (d.replies?.data?.children?.length) {
+          node.replies = flatten(d.replies.data.children);
+        }
+        return node;
+      });
+
+    console.log(`Successfully fetched comments for post ${id}`);
+    return res.json({ success: true, data: flatten(children) });
+  } catch (err) {
+    console.error('Reddit comments fetch failed:', {
+      message: err.message,
+      postId: id,
+      subreddit: sub
+    });
+    
+    return res.status(502).json({ 
+      success: false, 
+      error: 'Reddit API unavailable',
+      details: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
+  }
 });
 
 // GET /posts/:id/comments?subreddit=<sub>
