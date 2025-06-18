@@ -191,8 +191,7 @@ const MusicHome = () => {
   }, [currentFilter]);
 
   // Home.jsx
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
-
+  const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
 
   // Function to add fresh Reddit posts to main feed
 // Put this inside Home.jsx
