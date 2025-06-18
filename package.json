@@ -5,6 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
+    "build": "npm run build:mufl && npm run build:threads",
     "dev": "node server.js",
     "dev:mufl": "cd apps/mufl && npm run start",
     "dev:threads": "cd apps/threads && npm run dev",
