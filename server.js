@@ -14,6 +14,8 @@ app.use(express.json());
 // 2) Your API routes
 registerUnifiedRoutes(app);
 
+app.use('/assets', express.static(path.join(__dirname, 'assets')));
+
 
 // 4) Rooms SPA at /rooms
 app.use('/rooms', express.static(path.join(__dirname, 'apps/mufl/build')));
