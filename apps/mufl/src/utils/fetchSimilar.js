@@ -2,7 +2,7 @@
 import axios from 'axios';
 
 // Backend API url
-const API_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080';
+const API_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
 // Global cache for similar artists to avoid redundant API calls
 let similarArtistsCache = {

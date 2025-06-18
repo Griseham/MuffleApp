@@ -7,7 +7,7 @@ const RoomModal = ({ isOpen, onClose, station, onJoinRoom }) => {
   const [loading, setLoading] = useState(true); // Start with loading true
 
   // Get API base URL
-  const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080';
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
   // 1) Synchronously clear out previous artists BEFORE paint:
   useLayoutEffect(() => {
