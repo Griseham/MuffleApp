@@ -1,2 +1,12 @@
+# ─── build phase ────────────────────────────────────────────
+[phases.build]
+cmds = [
+  # install **with** dev-dependencies so react-scripts is present
+  "npm install",
+  # now run the root build script that builds both apps
+  "npm run build"
+]
+
+# ─── start phase (unchanged) ────────────────────────────────
 [start]
 cmd = "node server.js"
