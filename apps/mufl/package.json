@@ -1,7 +1,8 @@
 {
   "name": "muffle-mvp",
   "version": "0.1.0",
-  "homepage": "/rooms/",
+  "homepage": "/rooms",
+  
   "private": true,
   "dependencies": {
     "@headlessui/react": "^2.2.2",

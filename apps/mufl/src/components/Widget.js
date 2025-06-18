@@ -3,7 +3,7 @@ import { PlayIcon, PauseIcon, MusicNoteIcon, AlbumIcon } from './Icons/Icons';
 import axios from "axios";
 
 // Front-end → Back-end base URL
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
+const API_BASE = process.env.REACT_APP_API_BASE_URL || '/api';
 
 // Additional icons needed for the new design
 const SearchIcon = ({ size = 24, className = "" }) => (
