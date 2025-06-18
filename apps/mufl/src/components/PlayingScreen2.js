@@ -146,7 +146,7 @@ const fetchSingleSongFromArtist = async (artist) => {
   try {
     
     const res = await axios.post(
-      `${API_BASE_URL}/api/apple-music/artist-songs`,
+      `${API_BASE_URL}/apple-music/artist-songs`,
       { artist: artist.name }
     );
     if (!res.data.success) {
@@ -421,7 +421,7 @@ const fetchSingleSongFromArtist = async (artist) => {
       if (validRoomArtists.length < 10) {
         
         try {
-          const response = await fetch(`${API_BASE_URL}/api/apple-music/random-genre-artists?count=20`);
+          const response = await fetch(`${API_BASE_URL}/apple-music/random-genre-artists?count=20`);
           if (response.ok) {
             const data = await response.json();
             const appleArtists = data.artists || [];
@@ -456,7 +456,7 @@ const fetchSingleSongFromArtist = async (artist) => {
 
         try {
           // Fetch similar artists for this batch using Last.fm WITH FULL URL
-          const response = await fetch(`${API_BASE_URL}/api/lastfm/similar-artists`, {
+          const response = await fetch(`${API_BASE_URL}/lastfm/similar-artists`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ selectedArtists: batch.map(a => a.name) })
@@ -469,7 +469,7 @@ const fetchSingleSongFromArtist = async (artist) => {
 
             // Get images for similar artists using Spotify WITH FULL URL
             if (similarArtists.length > 0) {
-              const imageResponse = await fetch(`${API_BASE_URL}/api/spotify/fetch-images`, {
+              const imageResponse = await fetch(`${API_BASE_URL}/spotify/fetch-images`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ artistNames: similarArtists.map(a => a.name) })
@@ -537,7 +537,7 @@ const fetchSingleSongFromArtist = async (artist) => {
         
         try {
           const needed = TARGET_TOTAL_ARTISTS - validFinalArtists.length;
-          const response = await fetch(`${API_BASE_URL}/api/apple-music/random-genre-artists?count=${needed + 10}`);
+          const response = await fetch(`${API_BASE_URL}/apple-music/random-genre-artists?count=${needed + 10}`);
           
           if (response.ok) {
             const data = await response.json();

@@ -135,7 +135,7 @@ const fetchArtistSongs = async (artistName) => {
   try {
     // hit the generic search so we can grab a handful at once
     const { data } = await axios.post(
-      `${API_BASE}/api/apple-music/search`,
+      `${API_BASE}/apple-music/search`,
       { query: artistName }
     );
 
@@ -201,7 +201,7 @@ const fetchGlobalSongs = useCallback(async (query) => {
   setLoadingSearchResults(true); setSearchError('');
   try {
     const { data } = await axios.post(
-      `${API_BASE}/api/apple-music/search`,
+      `${API_BASE}/apple-music/search`,
       { query: validated }
     );
     setGlobalSearchResults(
@@ -218,7 +218,7 @@ const fetchArtistSearch = useCallback(async (query, artistName) => {
   setLoadingSearchResults(true); setSearchError('');
   try {
     const { data } = await axios.post(
-      `${API_BASE}/api/apple-music/search`,
+      `${API_BASE}/apple-music/search`,
       { query: `${artistName} ${validated}` }
     );
     setGlobalSearchResults(
