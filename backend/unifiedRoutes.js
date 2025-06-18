@@ -575,8 +575,13 @@ unifiedRouter.get('/reddit/posts', async (req, res) => {
     : `https://www.reddit.com/r/${sub}/hot.json?limit=${limit}`;
 
   try {
-    const { data } = await axios.get(redditUrl, { timeout: 7000 });
-
+     const { data } = await axios.get(
+         redditUrl,
+         {
+         timeout : 7000,
+           headers : { 'User-Agent': 'MuflThreads/1.0 (+https://mufl.app)' }
+         }
+       );
     const posts = data.data.children.map(({ data: p }) => {
       /* ── image detection ─────────────────────────────────────── */
       let imageUrl = null;
@@ -861,8 +866,13 @@ unifiedRouter.get('/posts/:id/comments', async (req, res) => {
   const url    = `https://www.reddit.com/r/${sub}/comments/${id}.json?limit=100`;
 
   try {
-    const { data } = await axios.get(url, { timeout: 7000 });
-
+     const { data } = await axios.get(
+         url,
+         {
+           timeout : 7000,
+           headers : { 'User-Agent': 'MuflThreads/1.0 (+https://mufl.app)' }
+         }
+       );
     // second listing ([1]) holds the comment tree
     const children = data?.[1]?.data?.children || [];
 

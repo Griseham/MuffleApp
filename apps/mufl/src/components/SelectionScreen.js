@@ -4,8 +4,8 @@ import './SelectionScreen.css';
 import { fetchSimilarArtists } from '../utils/fetchSimilar';
 
 // Set base URL for API requests
-axios.defaults.baseURL =
-  process.env.REACT_APP_API_BASE_URL || '/api';
+ axios.defaults.baseURL =
+  process.env.REACT_APP_API_BASE_URL || '';
 
 // Utility functions
 const shuffleArray = (array) => {
@@ -162,7 +162,7 @@ const searchArtists = useCallback(async (query) => {
   setLoading('search', true);
   try {
     // Use GET request with query parameter
-    const res = await axios.get('/api/spotify/search-artists', {
+    const res = await axios.get('/spotify/search-artists', {
       params: { query: finalQuery },
       // Add timeout to prevent hanging requests
       timeout: 10000
@@ -225,7 +225,7 @@ const searchArtists = useCallback(async (query) => {
 const fetchMainArtists = useCallback(async () => {
   setLoading('main', true);
   try {
-    const res = await axios.get('/api/spotify/artists', { params: { genre: 'pop' } });
+    const res = await axios.get('/spotify/artists', { params: { genre: 'pop' } });
     
     // Filter out artists without images
     const filteredArtists = res.data.filter(artist => 
@@ -258,7 +258,7 @@ const fetchArtistsByGenre = useCallback(async (genre) => {
   
   setLoading('genre', true);
   try {
-    const res = await axios.get('/api/spotify/artists', { params: { genre: genre.toLowerCase() } });
+    const res = await axios.get('/spotify/artists', { params: { genre: genre.toLowerCase() } });
     
     // Filter out artists without images
     const filteredArtists = res.data.filter(artist => 
@@ -296,7 +296,7 @@ const fetchArtistsByGenre = useCallback(async (genre) => {
     try {
       // Get the active genre
       const genre = selectedGenre === 'All' ? 'pop' : selectedGenre.toLowerCase();
-      const res = await axios.get('/api/spotify/artists', { 
+      const res = await axios.get('/spotify/artists', { 
         params: { 
           genre, 
           page: newPage,
