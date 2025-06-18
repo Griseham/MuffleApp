@@ -195,99 +195,7 @@ const MusicHome = () => {
 
   // Function to add fresh Reddit posts to main feed
 // Put this inside Home.jsx
-const handleLoadRedditPosts = async () => {
-  setIsLoadingReddit(true);
 
-  try {
-    /* 1 ─ Fetch four batches in parallel ─────────────────────────── */
-    const [
-      newsRes,                  // r/music  – top of month
-      groupRes,                 // r/musicsuggestions – top of year
-      suggMonthRes,             // r/musicsuggestions – top of month
-      recMonthRes               // r/musicrecommendations – top of month
-    ] = await Promise.all([
-      fetch(`${API_BASE}/reddit/posts?sub=music&limit=125&t=month`),
-      fetch(`${API_BASE}/reddit/posts?sub=musicsuggestions&limit=125&t=year`),
-      fetch(`${API_BASE}/reddit/posts?sub=musicsuggestions&limit=125&t=month`),
-      fetch(`${API_BASE}/reddit/posts?sub=musicrecommendations&limit=125&t=month`)
-    ]);
-
-    const toArr = async r => (r.ok ? (await r.json()).data ?? [] : []);
-    const [newsRaw, groupRaw, suggMonthRaw, recMonthRaw] = await Promise.all([
-      toArr(newsRes), toArr(groupRes), toArr(suggMonthRes), toArr(recMonthRes)
-    ]);
-
-    /* 2 ─ Categorise ─────────────────────────────────────────────── */
-    const news = newsRaw.map(p => ({ ...p, postType: 'news', hasCachedData: false, isFromAPI: true}));
-
-    const GROUP_MIN_COMMENTS = 75;   // less strict than 150
-    const GROUP_MIN_UPS      = 500;  // less strict than 1000
-
-    const groupchats = groupRaw
-      .filter(p =>
-        p.imageUrl &&
-        ((p.num_comments ?? 0) >= GROUP_MIN_COMMENTS ||
-         (p.ups ?? 0)          >= GROUP_MIN_UPS)
-      )
-      .map(p => ({ ...p, postType: 'groupchat', hasCachedData: false, isFromAPI: true }));
-
-    const threadPool = [...suggMonthRaw, ...recMonthRaw]
-      .map(p => ({ ...p, postType: 'thread', hasCachedData: false, isFromAPI: true }));
-
-    const threadsWithImg    = threadPool.filter(p => p.imageUrl);
-    const threadsWithoutImg = threadPool.filter(p => !p.imageUrl);
-
-    /* 3 ─ Quotas & fallback ──────────────────────────────────────── */
-    const WANT = { news: 12, group: 8, thread: 20 };
-
-    const pick = (arr, n) => arr.sort(() => 0.5 - Math.random()).slice(0, n);
-
-    const chosenNews       = pick(news,       WANT.news);
-    let   chosenGroupChats = pick(groupchats, WANT.group);     // may be < 8
-    let   chosenThreads    = [];
-
-    const needImgThreads = Math.ceil(WANT.thread / 3);         // ≥ ⅓ w/ image
-    chosenThreads = [
-      ...pick(threadsWithImg,    Math.min(threadsWithImg.length, needImgThreads)),
-      ...pick(threadsWithoutImg, WANT.thread - needImgThreads)
-    ];
-
-    /* Fallback #1 – if we have < 8 groupchats, convert trending threads */
-    if (chosenGroupChats.length < WANT.group) {
-      const shortage = WANT.group - chosenGroupChats.length;
-      const extras   = threadPool
-        .filter(p =>
-          p.imageUrl &&
-          ((p.num_comments ?? 0) >= GROUP_MIN_COMMENTS ||
-           (p.ups ?? 0)          >= GROUP_MIN_UPS) &&
-          !chosenThreads.find(t => t.id === p.id)
-        )
-        .slice(0, shortage)
-        .map(p => ({ ...p, postType: 'groupchat', hasCachedData: false, isFromAPI: true }));
-
-      chosenGroupChats = [...chosenGroupChats, ...extras];
-    }
-
-    /* Fallback #2 – still short? relax thresholds again */
-    while (chosenGroupChats.length < 2 && threadsWithImg.length) {
-      const p = threadsWithImg.pop();
-      chosenGroupChats.push({ ...p, postType: 'groupchat' });
-    }
-
-    /* 4 ─ Shuffle & commit ───────────────────────────────────────── */
-    const freshFeed = [
-      ...chosenNews,
-      ...chosenGroupChats,
-      ...chosenThreads
-    ].sort(() => 0.5 - Math.random());
-
-    setPosts(freshFeed);
-    setRedditPosts(freshFeed);
-  } catch (err) {
-  } finally {
-    setIsLoadingReddit(false);
-  }
-};
 
 
   // Function to get all available posts (cached + reddit) for starfield
@@ -386,30 +294,7 @@ const handleLoadRedditPosts = async () => {
     loadCachedPosts();
   }, []);
 
-  useEffect(() => {
-    const loadStarfieldPosts = async () => {
-      if (isLoadingReddit) return;
-      setIsLoadingReddit(true);
-  
-      try {
-        // just one subreddit is enough for random dots
-        const res = await fetch(
-          `${import.meta.env.VITE_API_BASE_URL}/reddit/posts?sub=music&limit=50`
-        );
-        if (!res.ok) throw new Error('Reddit API error');
-  
-        const json = await res.json();
-        if (json.success && json.data?.length) setStarfieldPosts(json.data);
-      } catch (err) {
-      } finally {
-        setIsLoadingReddit(false);
-      }
-    };
-  
-    // start once cached posts are visible
-    if (!isLoading && posts.length && !starfieldPosts.length) loadStarfieldPosts();
-  }, [isLoading, posts.length, starfieldPosts.length, isLoadingReddit]);
-  
+ 
 
   const handleFilterChange = useCallback((filter) => {
     setCurrentFilter(filter);

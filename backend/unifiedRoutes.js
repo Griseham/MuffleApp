@@ -552,19 +552,7 @@ unifiedRouter.post('/apple-music/artist-search', async (req, res) => {
     });
   }
 });
-// ─────────────────────────────────────────────────────────────
-//  /reddit/posts   – proxy to Reddit’s public JSON API
-//    • supports  hot (default)  →  /hot.json
-//    • supports  top by period  →  /top.json?t=year|month|week|day
-//    • tags posts from r/music   →  postType = 'news'
-// ─────────────────────────────────────────────────────────────
-// ─────────────────────────────────────────────────────────────
-//  /reddit/posts – proxy to Reddit’s JSON API
-//    • /hot.json  (default)   or  /top.json?t=year|month|week
-//    • r/music   → postType 'news'
-//    • trending  → postType 'groupchat'
-//    • robust image detection (url, preview, thumbnail)
-// ─────────────────────────────────────────────────────────────
+
 
 // Then replace your existing /reddit/posts route with this updated version:
 unifiedRouter.get('/reddit/posts', async (req, res) => {
