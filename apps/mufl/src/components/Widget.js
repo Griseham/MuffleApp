@@ -135,7 +135,7 @@ const fetchArtistSongs = async (artistName) => {
   try {
     // hit the generic search so we can grab a handful at once
     const { data } = await axios.post(
-      `${API_BASE}/apple-music/search`,
+      `/apple-music/search`,
       { query: artistName }
     );
 
