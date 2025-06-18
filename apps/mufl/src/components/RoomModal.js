@@ -29,7 +29,7 @@ const RoomModal = ({ isOpen, onClose, station, onJoinRoom }) => {
     setLoading(true);
     try {
       // Step 1: Get random artists from Apple Music (similar to TopComponent approach)
-      const response = await fetch(`${API_BASE_URL}/api/apple-music/random-genre-artists?count=12`);
+      const response = await fetch(`${API_BASE_URL}/apple-music/random-genre-artists?count=12`);
       
       if (!response.ok) {
         throw new Error(`Failed to fetch artists: ${response.status}`);
@@ -51,7 +51,7 @@ const RoomModal = ({ isOpen, onClose, station, onJoinRoom }) => {
         if (artistsWithoutImages.length > 0) {
           try {
             // Use Spotify to get images for artists without valid images
-            const imageResponse = await fetch(`${API_BASE_URL}/api/spotify/fetch-images`, {
+            const imageResponse = await fetch(`${API_BASE_URL}/spotify/fetch-images`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ 
