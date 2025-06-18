@@ -272,7 +272,7 @@ const InfoIconModal = ({
       </div>
       
       {/* Custom scrollbar styles */}
-      <style jsx>{`
+      <style>{`
         /* Custom scrollbar for card container */
         div::-webkit-scrollbar {
           width: 6px;
@@ -376,7 +376,7 @@ const InfoIconModal = ({
       )}
 
       {/* Keyframes for animations */}
-      <style jsx>{`
+      <style>{`
         @keyframes modalFadeIn {
           from { opacity: 0; transform: translateY(20px); }
           to { opacity: 1; transform: translateY(0); }

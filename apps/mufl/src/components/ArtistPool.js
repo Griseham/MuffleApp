@@ -1,4 +1,7 @@
 import React, { useState, useEffect } from "react";
+import { getAvatarForUser } from "../utils/avatarService";   // ⬅️ NEW
+
+
 
 const ArtistPool = ({ 
 poolArtists = [], // Dynamic artists from room + related artists
@@ -37,16 +40,21 @@ const startUserSelectionSimulation = (artists) => {
   // Clear any existing timeouts first
   userSelectionTimeouts.forEach(timeout => clearTimeout(timeout));
   
-  const mockUsers = [
-    { id: 'user1', name: 'Alex', initials: 'A' },
-    { id: 'user2', name: 'Beth', initials: 'B' },
-    { id: 'user3', name: 'Chris', initials: 'C' },
-    { id: 'user4', name: 'Dana', initials: 'D' },
-    { id: 'user5', name: 'Eve', initials: 'E' },
-    { id: 'user6', name: 'Frank', initials: 'F' },
-    { id: 'user7', name: 'Grace', initials: 'G' },
-    { id: 'user8', name: 'Henry', initials: 'H' },
+// ArtistPool.js  – inside startUserSelectionSimulation (replace mockUsers array)
+const mockUsers = Array.from({ length: 15 }, (_, i) => {
+  const id = `user${i + 1}`;
+  const names = [
+    "Alex", "Beth", "Chris", "Dana", "Eve",
+    "Frank", "Grace", "Henry", "Isla", "Jack",
+    "Kara", "Leo", "Mira", "Noah", "Owen"
   ];
+  return {
+    id,
+    name: names[i],
+    avatar: getAvatarForUser(i + 1)      // ⬅️ avatar URL
+  };
+});
+
   
   // Only ~60% of artists will get users
   const artistsToGetUsers = artists.filter(() => Math.random() < 0.6);
@@ -353,24 +361,14 @@ const renderUserAvatars = (artistId) => {
   return (
     <div className="floating-users">
       {users.slice(0, 4).map((user, index) => (
-        <div 
-          key={user.id || index} 
+        <img
+          key={user.id || index}
+          src={user.avatar || getAvatarForUser(index + 1)}
+          alt={user.name}
           className={`user-avatar user-${(index % 8) + 1}`}
-          style={{
-            animationDelay: `${index * 0.2}s` // Stagger the animations
-          }}
-        >
-          {/* SVG User Icon */}
-          <svg className="w-full h-full text-white" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-          </svg>
-        </div>
+          style={{ animationDelay: `${index * 0.2}s` }}   // keeps the stagger
+        />
       ))}
-      {users.length > 4 && (
-        <div className="user-avatar user-count" style={{ animationDelay: '0.8s' }}>
-          +{users.length - 4}
-        </div>
-      )}
     </div>
   );
 };
@@ -484,7 +482,7 @@ return (
     </div>
 
     {/* Design 1 Specific Styles */}
-    <style jsx>{`
+    <style>{`
       .artist-item {
         display: flex;
         flex-direction: column;
@@ -510,11 +508,10 @@ return (
         box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
       }
       
-      .artist-circle.has-users {
-        border-color: #4ade80;
-        box-shadow: 0 0 20px rgba(74, 222, 128, 0.4);
-      }
-      
+       .artist-circle.has-users {
+    border-color: #333;   /* same as the default circle border   */
+    box-shadow: none;
+  }
       .artist-circle.selected-by-current-user {
         border-color: #4ade80;
         box-shadow: 0 0 25px rgba(74, 222, 128, 0.6);

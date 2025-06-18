@@ -423,7 +423,7 @@ const FeedInfoDisplay = ({ genres = [], artists = [], coordinates = { x: 2, y: 1
       </div>
       
       {/* Scrollbar styling */}
-      <style jsx>{`
+      <style>{`
         /* For webkit browsers */
         ::-webkit-scrollbar {
           width: 6px;

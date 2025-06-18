@@ -3,14 +3,16 @@
 import React, { useState, useEffect } from 'react';
 
 /**
- * Minimal loading overlay component that displays while rooms are being generated
+ * Loading component that displays while rooms are being generated
  * @param {boolean} isLoading - Whether the loader should be displayed
- * @param {function} onBack - Optional back button handler
+ * @param {function} onBack - Optional back button handler for full screen mode
  * @param {number} progress - Progress percentage (0-100), optional
- * @returns {React.ReactNode} - Loading overlay or null
+ * @param {boolean} fullScreen - Whether to show full screen overlay or compact icon
+ * @returns {React.ReactNode} - Loading overlay/icon or null
  */
-const RoomLoader = ({ isLoading, onBack, progress = null }) => {
+const RoomLoader = ({ isLoading, onBack, progress = null, fullScreen = false }) => {
   const [animatedProgress, setAnimatedProgress] = useState(0);
+  const [visible, setVisible] = useState(false);
 
   // Update progress with smooth animation
   useEffect(() => {
@@ -25,10 +27,31 @@ const RoomLoader = ({ isLoading, onBack, progress = null }) => {
   
     setAnimatedProgress(prev => (next > prev ? next : prev));
   }, [isLoading, progress]);
+
+  // Debounce visibility to avoid flicker
+  useEffect(() => {
+    if (isLoading) {
+      setVisible(true);
+    } else {
+      // Keep visible for at least 300ms to avoid flicker
+      setTimeout(() => setVisible(false), 300);
+    }
+  }, [isLoading]);
   
 
-  if (!isLoading) return null;
+  if (!visible) return null;
   
+  // Compact loading icon for room generation
+  if (!fullScreen) {
+    return (
+      <div className="room-loader-icon">
+        <div className="spinner"></div>
+        <div className="loading-text-compact">Loading rooms...</div>
+      </div>
+    );
+  }
+  
+  // Full screen loading overlay for initial screen transition
   return (
     <div className="room-loader-overlay">
       {onBack && (
@@ -52,7 +75,45 @@ const RoomLoader = ({ isLoading, onBack, progress = null }) => {
         </div>
       </div>
       
-      <style jsx>{`
+      <style>{`
+        .room-loader-icon {
+          position: fixed;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 12px;
+          background: rgba(0, 0, 0, 0.8);
+          padding: 24px;
+          border-radius: 12px;
+          z-index: 1000;
+          backdrop-filter: blur(8px);
+        }
+
+        .spinner {
+          width: 24px;
+          height: 24px;
+          border: 2px solid rgba(255, 255, 255, 0.2);
+          border-top: 2px solid #4ade80;
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+        }
+
+        .loading-text-compact {
+          font-size: 14px;
+          color: white;
+          font-weight: 400;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+          opacity: 0.9;
+        }
+
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+
         .room-loader-overlay {
           display: flex;
           flex-direction: column;

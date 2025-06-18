@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { CSSTransition, TransitionGroup } from 'react-transition-group';
 
 // Import components
@@ -14,6 +14,11 @@ function App() {
   const [step, setStep] = useState('selection');
   const [selectedArtists, setSelectedArtists] = useState([]);
   const [activeStation, setActiveStation] = useState(null);
+
+  // Refs for CSSTransition components to avoid findDOMNode deprecation warnings
+  const selectionRef = useRef(null);
+  const roomsRef = useRef(null);
+  const playingRef = useRef(null);
 
   // For demo purposes, let's create some mock selected artists if needed
   const mockSelectedArtists = [
@@ -62,41 +67,50 @@ function App() {
       <TransitionGroup component={null}>
         {step === 'selection' && (
           <CSSTransition
+            nodeRef={selectionRef}
             key="selection"
             timeout={300}
             classNames="slide"
             unmountOnExit
           >
-            <SelectionScreen onContinue={handleContinue} />
+            <div ref={selectionRef} style={{ width: '100%' }}>
+              <SelectionScreen onContinue={handleContinue} />
+            </div>
           </CSSTransition>
         )}
 
         {step === 'rooms' && (
           <CSSTransition
+            nodeRef={roomsRef}
             key="rooms"
             timeout={300}
             classNames="slide"
             unmountOnExit
           >
-            <RoomsScreen
-              selectedArtists={selectedArtists}
-              onJoinRoom={handleJoinRoom}
-              onBack={handleBackToSelection}
-            />
+            <div ref={roomsRef} style={{ width: '100%' }}>
+              <RoomsScreen
+                selectedArtists={selectedArtists}
+                onJoinRoom={handleJoinRoom}
+                onBack={handleBackToSelection}
+              />
+            </div>
           </CSSTransition>
         )}
 
         {step === 'playing' && (
           <CSSTransition
+            nodeRef={playingRef}
             key="playing"
             timeout={300}
             classNames="slide"
             unmountOnExit
           >
-            <PlayingScreen
-              station={activeStation}        // <— important
-              onBack={handleBackToRooms}
-            />
+            <div ref={playingRef} style={{ width: '100%' }}>
+              <PlayingScreen
+                station={activeStation}        // <— important
+                onBack={handleBackToRooms}
+              />
+            </div>
           </CSSTransition>
         )}
       </TransitionGroup>

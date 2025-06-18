@@ -640,7 +640,6 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
                 snippetObj = snippetRecs.find((s) => s.commentId === c.id);
                 
                 if (post?.postType === 'parameter' && snippetObj) {
-                  console.log(`Found snippet for ${c.id}:`, snippetObj);
                 }
                 
                 if (c.id === 'example_comment_001') {
@@ -661,15 +660,12 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
                 } else if (snippetObj) {
                   snippetObj = formatSnippetData(snippetObj, c, comments);
                   if (post?.postType === 'parameter') {
-                    console.log(`Formatted snippet:`, snippetObj);
                   }
                 }
               }
-              
-              const isThisSnippetPlaying = !isNewsThread &&
-                activeSnippet && 
-                activeSnippet.snippetId === getSnippetId(snippetObj) && 
-                activeSnippet.isPlaying;
+              const isThisSnippetPlaying =
+              activeSnippet?.snippetId === getSnippetId(snippetObj) &&
+              activeSnippet?.isPlaying;
               
               const commentKey = c.id || `comment-${c.author}-${c.createdUtc || Date.now()}`;
               

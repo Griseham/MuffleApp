@@ -82,7 +82,7 @@ const ArtistCarousel = ({ artists, ArtistCircle, ArtistVolumeBar }) => {
       <div className={`artists-grid ${animationDirection || ''}`}>
         {filledArtists.map((artist, idx) => (
           !artist.isEmpty ? (
-            <div key={artist.id || idx} className="artist-cell">
+            <div key={`${artist.id}-${idx}-${currentPage}`} className="artist-cell">
               <div className="artist-info">
                 <ArtistCircle 
                   name={artist.name} 
@@ -96,7 +96,7 @@ const ArtistCarousel = ({ artists, ArtistCircle, ArtistVolumeBar }) => {
               <div className="artist-name">{artist.name}</div>
             </div>
           ) : (
-            <div key={artist.id} className="artist-cell empty-cell"></div>
+            <div key={`${artist.id}-${idx}-${currentPage}`} className="artist-cell empty-cell"></div>
           )
         ))}
       </div>

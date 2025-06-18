@@ -90,7 +90,6 @@ const getAccessToken = async () => {
     tokenExpiration = Date.now() + (response.data.expires_in * 1000);
     return spotifyToken;
   } catch (error) {
-    console.error('Failed to get Spotify access token:', error.message);
     throw error;
   }
 };
@@ -130,7 +129,6 @@ const getPopArtists = async (genre = 'pop') => {
       };
     }).filter(artist => artist.image) || []; // Only return artists with images
   } catch (error) {
-    console.error('Failed to fetch artists, using mock data:', error.message);
     // Return mock data when Spotify is unavailable
     return getRandomMockArtists(20, genre);
   }
@@ -171,13 +169,11 @@ const fetchImagesFor = async (artistNames) => {
           }
         }
       } catch (artistError) {
-        console.error(`Failed to fetch image for ${name}:`, artistError.message);
       }
     }
     
     return artists;
   } catch (error) {
-    console.error('Failed to fetch artist images:', error.message);
     throw error;
   }
 };
@@ -210,7 +206,6 @@ const fetchSimilarArtists = async (selectedArtists) => {
         const similar = response.data?.similarartists?.artist || [];
         allSimilar.push(...similar.map(artist => ({ name: artist.name })));
       } catch (artistError) {
-        console.error(`Failed to fetch similar artists for ${artistName}:`, artistError.message);
       }
     }
 
@@ -227,7 +222,6 @@ const fetchSimilarArtists = async (selectedArtists) => {
 
     return uniqueArtists;
   } catch (error) {
-    console.error('Failed to fetch similar artists:', error.message);
     throw error;
   }
 };
@@ -264,7 +258,6 @@ const searchAppleMusic = async (query) => {
       genres: (artist.attributes?.genreNames || []).slice(0, 3),
     }));
   } catch (error) {
-    console.error('Apple Music search failed:', error.message);
     throw error;
   }
 };
@@ -412,92 +405,120 @@ unifiedRouter.get('/apple-music/random-genre-artists', async (req, res) => {
   const { count = 50 } = req.query;
   
   try {
-    // Generate random genre artists using mock data (since we don't have real Apple Music random endpoint)
-    const genres = ['pop', 'rock', 'hip-hop', 'electronic', 'indie', 'jazz', 'country'];
-    const randomGenre = genres[Math.floor(Math.random() * genres.length)];
-    
-    // Use our existing Spotify endpoint to get artists by genre
-    const artists = await getPopArtists(randomGenre);
-    
-    // Shuffle and limit the results
-    const shuffled = artists.sort(() => 0.5 - Math.random());
-    const limited = shuffled.slice(0, parseInt(count));
-    
-    res.json(limited);
-  } catch (error) {
-    res.status(500).json({ 
-      error: 'Failed to fetch random genre artists',
-      message: error.message 
-    });
-  }
-});
-
-// Apple Music artist songs endpoint for Widget and PlayingScreen
-unifiedRouter.post('/apple-music/artist-songs', async (req, res) => {
-  const { artist } = req.body;
-  
-  if (!artist) {
-    return res.status(400).json({ error: 'Artist name is required' });
-  }
-  
-  try {
-    // Return a single popular song for the artist in the expected format
-    const mockSong = {
-      id: `artist_song_${Date.now()}_${Math.random()}`,
-      attributes: {
-        name: `${artist} - Popular Song`,
-        artistName: artist,
-        albumName: `${artist} Greatest Hits`,
-        artwork: {
-          url: `https://via.placeholder.com/300x300/1a1a1a/ffffff?text=${encodeURIComponent(artist)}`
-        },
-        previews: [{
-          url: null // No preview available for mock data
-        }]
-      }
-    };
-    
-    res.json({
-      success: true,
-      data: mockSong
-    });
-  } catch (error) {
-    res.status(500).json({ 
-      success: false,
-      error: 'Failed to fetch artist songs',
-      message: error.message 
-    });
-  }
-});
-
-// Apple Music general search endpoint
-unifiedRouter.post('/apple-music/search', async (req, res) => {
-  const { query } = req.body;
-  
-  if (!query) {
-    return res.status(400).json({ error: 'Search query is required' });
-  }
-  
-  try {
-    // Mock search results
-    const mockResults = [
-      {
-        id: `search_${Date.now()}_1`,
-        name: `${query} - Result 1`,
-        artistName: 'Various Artists',
-        albumName: 'Search Results Album',
-        artworkUrl: `https://via.placeholder.com/300x300/1a1a1a/ffffff?text=${encodeURIComponent(query)}`,
-        previewUrl: null,
-        duration: Math.floor(Math.random() * 180000) + 120000
-      }
+    // For negative similarity, we want truly diverse artists from different genres
+    // Use a wide variety of genres that are different from typical pop/rock/hip-hop
+    const diverseGenres = [
+      'jazz', 'classical', 'country', 'reggae', 'folk', 'blues', 
+      'world', 'latin', 'electronic', 'ambient', 'metal', 'punk',
+      'funk', 'r&b', 'alternative', 'indie', 'experimental'
     ];
     
-    res.json({ results: mockResults });
+    const allArtists = [];
+    const targetCount = parseInt(count);
+    const artistsPerGenre = Math.max(3, Math.ceil(targetCount / diverseGenres.length));
+    
+    // Fetch artists from multiple diverse genres to ensure variety
+    for (const genre of diverseGenres) {
+      try {
+        const genreArtists = await getPopArtists(genre);
+        if (genreArtists && genreArtists.length > 0) {
+          // Take a few artists from each genre and shuffle them
+          const shuffledGenreArtists = genreArtists.sort(() => 0.5 - Math.random());
+          allArtists.push(...shuffledGenreArtists.slice(0, artistsPerGenre));
+        }
+      } catch (genreError) {
+        // Continue with other genres if one fails
+      }
+      
+      // Stop if we have enough artists
+      if (allArtists.length >= targetCount) {
+        break;
+      }
+    }
+    
+    // Final shuffle and limit to requested count
+    const finalArtists = allArtists
+      .sort(() => 0.5 - Math.random())
+      .slice(0, targetCount);
+    
+    // Fallback to mock data if we don't have enough real artists
+    if (finalArtists.length < targetCount) {
+      const fallbackArtists = getRandomMockArtists(targetCount - finalArtists.length);
+      finalArtists.push(...fallbackArtists);
+    }
+    
+    res.json({ artists: finalArtists });
   } catch (error) {
-    res.status(500).json({ 
-      error: 'Failed to search Apple Music',
-      message: error.message 
+    console.error('Random genre artists error:', error);
+    // Fallback to mock data
+    const fallbackArtists = getRandomMockArtists(parseInt(count));
+    res.json({ artists: fallbackArtists });
+  }
+});
+
+unifiedRouter.post('/apple-music/artist-songs', async (req, res) => {
+  const { artist } = req.body;
+  if (!artist) return res.status(400).json({ error: 'Artist name is required' });
+
+  try {
+    const token = process.env.APPLE_DEVELOPER_TOKEN;
+    const url   = `https://api.music.apple.com/v1/catalog/us/search` +
+                  `?term=${encodeURIComponent(artist)}` +
+                  `&types=songs&limit=10`;
+
+    const { data } = await axios.get(url, {
+      headers: { Authorization: `Bearer ${token}` }
     });
+
+    const pick = data.results?.songs?.data.find(
+      s => Array.isArray(s.attributes?.previews) &&
+           s.attributes.previews[0]?.url
+    );
+
+    if (!pick) {
+      return res.json({ success: false, error: 'No song with preview found' });
+    }
+
+    const attr = pick.attributes;
+    res.json({
+      success: true,
+      data: {
+        id: pick.id,
+        trackName: attr.name,
+        artistName: attr.artistName,
+        albumName: attr.albumName,
+        artworkUrl: attr.artwork.url.replace('{w}x{h}', '300x300'),
+        previewUrl: attr.previews[0].url
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Apple Music fetch failed', details: err.message });
+  }
+});
+
+
+
+// General Apple Music search
+unifiedRouter.post('/apple-music/search', async (req, res) => {
+  const { query } = req.body;
+  if (!query) return res.status(400).json({ error: 'Query required' });
+  try {
+    const token = process.env.APPLE_DEVELOPER_TOKEN;
+    const url = `https://api.music.apple.com/v1/catalog/us/search?term=${encodeURIComponent(query)}&types=songs&limit=10`;
+    const { data } = await axios.get(url, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const results = data.results.songs.data.map(song => ({
+      id: song.id,
+      trackName: song.attributes.name,
+      artistName: song.attributes.artistName,
+      albumName: song.attributes.albumName,
+      artworkUrl: song.attributes.artwork.url.replace('{w}x{h}', '100x100'),
+      previewUrl: song.attributes.previews[0]?.url || null
+    }));
+    res.json({ results });
+  } catch (err) {
+    res.status(500).json({ error: 'Apple Music search failed', details: err.message });
   }
 });
 
@@ -598,7 +619,6 @@ unifiedRouter.get('/reddit/posts', async (req, res) => {
 
     res.json({ success: true, data: posts });
   } catch (err) {
-    console.error('Reddit fetch failed:', err.message);
     res
       .status(502)
       .json({ success: false, error: 'Reddit API unavailable' });
@@ -773,7 +793,6 @@ unifiedRouter.get('/cached-posts', (req, res) => {
       .map(f => JSON.parse(fs.readFileSync(path.join(cacheDir, f), 'utf8')));
     res.json({ success: true, data: posts });
   } catch (err) {
-    console.error('Cached-posts error:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
@@ -819,7 +838,6 @@ unifiedRouter.get('/cached-posts/:id', async (req, res) => {
 
     res.json({ success: true, data });
   } catch (err) {
-    console.error('Single-cache route error:', err);
     res.status(500).json({ success: false, error: 'Server error' });
   }
 });
@@ -867,7 +885,6 @@ unifiedRouter.get('/posts/:id/comments', async (req, res) => {
 
     return res.json({ success: true, data: flatten(children) });
   } catch (err) {
-    console.error('Reddit comments fetch failed:', err.message);
     return res
       .status(502)
       .json({ success: false, error: 'Reddit API unavailable' });

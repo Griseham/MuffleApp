@@ -43,7 +43,6 @@ const EnhancedArtistCircle = ({ artist }) => {
         const newStatus = { loaded: true, error: true };
         IMAGE_CACHE[artist.id] = newStatus; // Cache the error
         setImageStatus(newStatus);
-        console.warn(`Failed to load image for artist: ${artist.name}`);
       }
     };
 

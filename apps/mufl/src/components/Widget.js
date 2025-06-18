@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { PlayIcon, PauseIcon, MusicNoteIcon, AlbumIcon } from './Icons/Icons';
+import axios from "axios";
 
 // Front-end → Back-end base URL
 const API_BASE = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080';
@@ -47,6 +48,34 @@ const PlusIcon = ({ size = 24, className = "" }) => (
   </svg>
 );
 
+/* ------------------------------------------------------------------ *
+ * SHARED HELPERS                                                     *
+ * ------------------------------------------------------------------ */
+
+// 1) Normalise anything we get back from Apple Music or our mocks into
+//    the internal shape the UI expects.
+const normaliseSong = raw => ({
+  id:             raw.id               ?? `tmp-${Date.now()}-${Math.random()}`,
+  track:          raw.track            ?? raw.trackName   ?? raw.name        ?? 'Unknown',
+  artist:         raw.artist           ?? raw.artistName  ?? 'Unknown',
+  album:          raw.album            ?? raw.albumName   ?? '',
+  artworkUrl:     raw.artworkUrl       ?? (raw.attributes?.artwork?.url
+                       ? raw.attributes.artwork.url.replace('{w}x{h}', '300x300')
+                       : ''),
+  previewUrl:     raw.previewUrl       ?? raw.previews?.[0]?.url ?? '',
+});
+
+// 2) Image-sanity checker (unchanged, just moved down a little)
+// Helper function to validate if an image URL is real
+const hasValidImage = (imageUrl) => {
+  return imageUrl && 
+         imageUrl !== 'fallback.jpg' && 
+         imageUrl !== '/placeholder-200.png' &&
+         !imageUrl.includes('placeholder') &&
+         !imageUrl.includes('picsum') &&
+         imageUrl.startsWith('http');
+};
+
 const Widget = ({ selectedArtists = [], queuedSongs = [], setWidgetSelectedArtist, onRemoveArtist, onSongFromWidget }) => {
   // States
   const [selectedArtist, setSelectedArtist] = useState(null);
@@ -61,21 +90,17 @@ const Widget = ({ selectedArtists = [], queuedSongs = [], setWidgetSelectedArtis
   const [globalSearchResults, setGlobalSearchResults] = useState([]);
   const [loadingSearchResults, setLoadingSearchResults] = useState(false);
   const [searchTimeout, setSearchTimeout] = useState(null);
-
-  // Helper function to validate if an image URL is real
-  const hasValidImage = (imageUrl) => {
-    return imageUrl && 
-           imageUrl !== 'fallback.jpg' && 
-           imageUrl !== '/placeholder-200.png' &&
-           !imageUrl.includes('placeholder') &&
-           !imageUrl.includes('picsum') &&
-           imageUrl.startsWith('http');
-  };
+  const audioRef = useRef(null);
 
   // Filter selected artists to only show those with valid images and from artist pool
-  const validSelectedArtists = selectedArtists.filter(artist => 
-    hasValidImage(artist.image) && artist.name && artist.id
-  );
+// Memoised list so the reference is stable between renders
+const validSelectedArtists = useMemo(
+  () =>
+    selectedArtists.filter(
+      artist => hasValidImage(artist.image) && artist.name && artist.id
+    ),
+  [selectedArtists]
+);
 
   // UPDATED: Generate mock popular songs based on artist name (no API calls)
   const generateMockPopularSongs = (artistName) => {
@@ -97,37 +122,44 @@ const Widget = ({ selectedArtists = [], queuedSongs = [], setWidgetSelectedArtis
     }));
   };
 
-  // UPDATED: Fetch artist's popular songs using mock data (no API calls)
-  const fetchArtistSongs = async (artistName) => {
-    if (artistSongs[artistName]) {
-      return artistSongs[artistName]; // Return cached songs
+/* ------------------------------------------------------------------ *
+ * FETCH helpers                                                      *
+ * ------------------------------------------------------------------ */
+
+const MAX_SONGS = 5;                       // show ≤ 5 songs for clarity
+
+// a) Popular songs for the artist panel (real Apple Music data first,
+//    fallback to deterministic mock)
+const fetchArtistSongs = async (artistName) => {
+  setLoadingSongs(true);
+  try {
+    // hit the generic search so we can grab a handful at once
+    const { data } = await axios.post(
+      `${API_BASE}/api/apple-music/search`,
+      { query: artistName }
+    );
+
+    const songs = (data.results || [])
+      .filter(s => s.previewUrl)      // must be playable
+      .slice(0, MAX_SONGS)            // keep it tidy
+      .map(normaliseSong);
+
+    // if nothing playable came back, fall through to mock
+    if (songs.length) {
+      setArtistSongs(prev => ({ ...prev, [artistName]: songs }));
+      return;
     }
+  } catch (err) {
+  } finally {
+    setLoadingSongs(false);
+  }
 
-    setLoadingSongs(true);
-    setSearchError('');
-
-    try {
-      // Small delay to simulate loading
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Generate mock popular songs
-      const songs = generateMockPopularSongs(artistName);
-
-      // Cache the songs
-      setArtistSongs(prev => ({
-        ...prev,
-        [artistName]: songs
-      }));
-
-      return songs;
-
-    } catch (error) {
-      setSearchError(`Failed to load songs for ${artistName}`);
-      return [];
-    } finally {
-      setLoadingSongs(false);
-    }
-  };
+  // deterministic mock so the UI never shows "empty"
+  setArtistSongs(prev => ({
+    ...prev,
+    [artistName]: generateMockPopularSongs(artistName),
+  }));
+};
 
   // Sanitize search input to prevent injection attacks
   const sanitizeSearchInput = (input) => {
@@ -162,86 +194,40 @@ const Widget = ({ selectedArtists = [], queuedSongs = [], setWidgetSelectedArtis
     return sanitized;
   }, []);
 
-  // UPDATED: Search using Spotify API (no audio, only song names and artist names)
-  const fetchGlobalSongs = useCallback(async (query) => {
-    const validatedQuery = validateSearchQuery(query);
-    if (!validatedQuery || validatedQuery.length < 2) {
-      setGlobalSearchResults([]);
-      return;
-    }
-    
-    setLoadingSearchResults(true);
-    setSearchError('');
-    
-    try {
-      // Use existing Spotify search endpoint from unifiedRoutes.js
-      const response = await fetch(`${API_BASE}/api/spotify/search-artists?query=${encodeURIComponent(validatedQuery)}`);
+const fetchGlobalSongs = useCallback(async (query) => {
+  const validated = validateSearchQuery(query);
+  if (!validated || validated.length < 2) return setGlobalSearchResults([]);
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+  setLoadingSearchResults(true); setSearchError('');
+  try {
+    const { data } = await axios.post(
+      `${API_BASE}/api/apple-music/search`,
+      { query: validated }
+    );
+    setGlobalSearchResults(
+      (data.results || []).slice(0, MAX_SONGS).map(normaliseSong)
+    );
+  } catch { setSearchError('Search failed – try again'); }
+  finally   { setLoadingSearchResults(false); }
+}, [validateSearchQuery]);
 
-      const artists = await response.json();
-      
-      // Convert Spotify artists to songs format (generate song names based on artist)
-      const songs = artists.slice(0, 10).map(artist => ({
-        track: `${artist.name} - Popular Song`,
-        artist: artist.name,
-        album: `${artist.name} Collection`,
-        artworkUrl: artist.image || '', // Use Spotify artist image
-        previewUrl: '' // No audio
-      }));
+const fetchArtistSearch = useCallback(async (query, artistName) => {
+  const validated = validateSearchQuery(query);
+  if (!validated || validated.length < 2) return setGlobalSearchResults([]);
 
-      setGlobalSearchResults(songs);
-    } catch (err) {
-      console.error('Search failed:', err);
-      setSearchError('Search failed – try again');
-      setGlobalSearchResults([]);
-    } finally {
-      setLoadingSearchResults(false);
-    }
-  }, [validateSearchQuery]);
+  setLoadingSearchResults(true); setSearchError('');
+  try {
+    const { data } = await axios.post(
+      `${API_BASE}/api/apple-music/search`,
+      { query: `${artistName} ${validated}` }
+    );
+    setGlobalSearchResults(
+      (data.results || []).slice(0, MAX_SONGS).map(normaliseSong)
+    );
+  } catch { setSearchError('Search failed – try again'); }
+  finally   { setLoadingSearchResults(false); }
+}, [validateSearchQuery]);
 
-  // UPDATED: Search within a specific artist's catalog using mock data
-  const fetchArtistSearch = useCallback(async (query, artistName) => {
-    const validatedQuery = validateSearchQuery(query);
-    const validatedArtistName = sanitizeSearchInput(artistName);
-    
-    if (!validatedQuery || validatedQuery.length < 2 || !validatedArtistName) {
-      setGlobalSearchResults([]);
-      return;
-    }
-    
-    setLoadingSearchResults(true);
-    setSearchError('');
-    
-    try {
-      // Small delay to simulate search
-      await new Promise(resolve => setTimeout(resolve, 300));
-      
-      // Generate mock search results for this artist
-      const mockResults = [
-        `${validatedQuery} (Acoustic Version)`,
-        `${validatedQuery} (Radio Edit)`,
-        `${validatedQuery} (Live Version)`,
-        `${validatedQuery} (Remix)`,
-        `${validatedQuery} (Deluxe Edition)`
-      ].map(trackName => ({
-        track: trackName,
-        artist: validatedArtistName,
-        album: `${validatedArtistName} Singles`,
-        artworkUrl: '', // No artwork
-        previewUrl: '' // No audio
-      }));
-      
-      setGlobalSearchResults(mockResults);
-    } catch (err) {
-      setSearchError('Search failed – try again');
-      setGlobalSearchResults([]);
-    } finally {
-      setLoadingSearchResults(false);
-    }
-  }, [validateSearchQuery]);
 
   // Handle artist selection
   const handleSelectArtist = async (artistId) => {
@@ -278,10 +264,27 @@ const Widget = ({ selectedArtists = [], queuedSongs = [], setWidgetSelectedArtis
   };
 
   // Toggle play state for a song (visual only - no audio)
-  const togglePlay = (songId) => {
-    setPlayingSong(playingSong === songId ? null : songId);
+  const togglePlay = (songKey, previewUrl) => {
+    // pause the current track if it's already playing
+    if (playingSong === songKey) {
+      audioRef.current?.pause();
+      setPlayingSong(null);
+      return;
+    }
+  
+    // stop any previous audio
+    if (audioRef.current) audioRef.current.pause();
+  
+    // start the new preview
+    if (previewUrl) {
+      audioRef.current = new Audio(previewUrl);
+      audioRef.current.play().catch(() => {});
+      setPlayingSong(songKey);
+    }
   };
-
+  
+  // clean-up on unmount
+  useEffect(() => () => audioRef.current?.pause(), []);
   // Add song to personal queue with validation and timer
   const addToPersonalQueue = (song) => {
     // Validate song object
@@ -295,8 +298,8 @@ const Widget = ({ selectedArtists = [], queuedSongs = [], setWidgetSelectedArtis
       artist: sanitizeSearchInput(song.artist),
       album: song.album ? sanitizeSearchInput(song.album) : '',
       artworkUrl: song.artworkUrl && song.artworkUrl.startsWith('http') ? song.artworkUrl : '',
-      previewUrl: '' // No audio
-    };
+      previewUrl: song.previewUrl || ''
+        };
     
     // Check for duplicate songs in queue
     const isDuplicate = personalQueue.some(item => 
@@ -315,6 +318,16 @@ const Widget = ({ selectedArtists = [], queuedSongs = [], setWidgetSelectedArtis
       setTimeout(() => setSearchError(''), 2000);
       return;
     }
+    onSongFromWidget({
+    
+   id: song.id,
+   track: song.track,
+   artist: song.artist,
+  album: song.album,
+      artworkUrl: song.artworkUrl,
+      previewUrl: song.previewUrl,
+      isFromWidget: true
+    });
     
     const newQueueItem = {
       ...sanitizedSong,
@@ -419,9 +432,12 @@ const Widget = ({ selectedArtists = [], queuedSongs = [], setWidgetSelectedArtis
     const validatedQuery = validateSearchQuery(searchQuery);
     
     if (!validatedQuery || validatedQuery.length < 2) {
-      setGlobalSearchResults([]);
+      if (globalSearchResults.length) {          // only clear if not already empty
+        setGlobalSearchResults([]);
+      }
       return;
     }
+    
     
     // Debounce search to prevent excessive API calls
     const timeout = setTimeout(() => {
@@ -442,7 +458,8 @@ const Widget = ({ selectedArtists = [], queuedSongs = [], setWidgetSelectedArtis
         clearTimeout(timeout);
       }
     };
-  }, [searchQuery, selectedArtist, searchTimeout, validSelectedArtists, fetchArtistSearch, fetchGlobalSongs, validateSearchQuery]);
+  }, [searchQuery, selectedArtist, validSelectedArtists.length,
+    fetchArtistSearch, fetchGlobalSongs, validateSearchQuery]);
 
   // Get current artist's songs
   const getCurrentArtistSongs = () => {
@@ -571,33 +588,30 @@ const Widget = ({ selectedArtists = [], queuedSongs = [], setWidgetSelectedArtis
                         </div>
                         
                         {/* Song info */}
-                        <div className="flex-1 min-w-0 mr-2">
+                        <div className="flex-1 min-w-0 mr-2 leading-tight">
                           <h4 className="text-sm font-medium text-white truncate">
                             {song.track}
                           </h4>
                           <p className="text-xs text-gray-400 truncate">
                             {song.artist}
+                            {song.album && <> • {song.album}</>}
                           </p>
                         </div>
                         
                         {/* Controls */}
                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           {/* Visual-only play button */}
-                          <button 
-                            onClick={() => togglePlay(`${song.track}-${index}`)}
-                            className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                              playingSong === `${song.track}-${index}`
-                                ? 'bg-[#1DB954]' 
-                                : 'bg-gray-800 hover:bg-gray-700'
-                            }`}
-                            title="Visual preview only - no audio"
-                          >
-                            {playingSong === `${song.track}-${index}` ? (
-                              <PauseIcon size={12} className="text-black" />
-                            ) : (
-                              <PlayIcon size={12} className="text-white" />
-                            )}
-                          </button>
+                          <button
+  onClick={() => togglePlay(`${song.track}-${index}`, song.previewUrl)}
+  className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-800"
+>
+  {playingSong === `${song.track}-${index}` ? (
+    <PauseIcon size={12} className="text-black" />
+  ) : (
+    <PlayIcon  size={12} className="text-white" />
+  )}
+</button>
+
                           
                           {/* Add to queue button */}
                           <button 

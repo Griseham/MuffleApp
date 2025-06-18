@@ -114,6 +114,7 @@ const SnippetCard = ({
         album: currentSong.album || `${currentSong.artist} Collection`,
         artistImage: currentSong.sourceArtist?.image || '', // Spotify artist image
         color: currentSong.color || '#1DB954',
+        artworkUrl:  currentSong.artworkUrl || '',
         isFromRoomArtist: currentSong.isFromRoomArtist || false,
         isFromWidget: currentSong.isFromWidget || false
       };
@@ -134,13 +135,38 @@ const SnippetCard = ({
 
   const currentCard = getCurrentCard();
 
-  // Handle audio playbook and reset states when song changes
-  useEffect(() => {
-    // No audio functionality - removed all audio-related code
+// Reset audio state when song changes
+useEffect(() => {
+  setIsPlaying(false);
+  setAudioError(false);
+  
+  if (audioRef.current) {
+    audioRef.current.load();
+  }
+}, [currentSong?.id, currentSong?.previewUrl]);
+
+// Play/pause toggle function
+const togglePlay = () => {
+  if (!currentSong?.previewUrl || !audioRef.current) {
+    return;
+  }
+
+
+  if (audioRef.current.paused) {
+    audioRef.current
+      .play()
+      .then(() => {
+        setIsPlaying(true);
+      })
+      .catch(err => {
+        setAudioError(true);
+      });
+  } else {
+    audioRef.current.pause();
     setIsPlaying(false);
-    setAudioError(false);
-    setIsBookmarked(false); // Reset bookmark state for new song
-  }, [currentCard.id, currentSong]);
+  }
+};
+
 
   // Handle voting and card animation
   const handleVote = (type, strength) => {
@@ -268,10 +294,6 @@ const SnippetCard = ({
     animTimers.current.push(hideTimer);
   };
 
-  const handlePlay = () => {
-    // No audio playback - just trigger animation for visual feedback
-    triggerAnimation();
-  };
 
   // Handle audio events
   const handleAudioEnded = () => {
@@ -431,6 +453,8 @@ const SnippetCard = ({
     }
   };
 
+  
+
   // Close modal when clicking outside
   useEffect(() => {
     const handleGlobalClick = (e) => {
@@ -452,23 +476,31 @@ const SnippetCard = ({
 
   // Function to render album artwork using Spotify artist images
   const renderAlbumArtwork = () => {
-    // Use Spotify artist image as album artwork
-    if (currentCard.artistImage && currentCard.artistImage !== '') {
+    // 1) real album artwork from Apple Music
+    if (currentCard.artworkUrl) {
+      return (
+        <img
+          src={currentCard.artworkUrl}
+          alt={`${currentCard.track} artwork`}
+          className="absolute inset-0 w-full h-full object-cover"
+          onError={(e) => (e.target.style.display = 'none')}
+        />
+      );
+    }
+  
+    // 2) fallback to the artist’s profile image (Spotify)
+    if (currentCard.artistImage) {
       return (
         <img
           src={currentCard.artistImage}
           alt={`${currentCard.artist} image`}
           className="absolute inset-0 w-full h-full object-cover"
-          onError={(e) => {
-            // Fallback to gradient background if image fails to load
-            e.target.style.display = 'none';
-            e.target.nextSibling.style.display = 'block';
-          }}
+          onError={(e) => (e.target.style.display = 'none')}
         />
       );
     }
-    
-    // Fallback to gradient background with music icon
+  
+    // 3) gradient placeholder + music icon
     return (
       <div className="absolute inset-0 bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center">
         <div className="text-gray-500">
@@ -477,7 +509,7 @@ const SnippetCard = ({
       </div>
     );
   };
-
+  
   return (
     <div className="flex justify-center relative p-8">
       {/* Main Card Container */}
@@ -589,6 +621,16 @@ const SnippetCard = ({
                 </div>
               )}
               
+              {/* Hidden Audio Element */}
+              <audio
+                ref={audioRef}
+                src={currentSong?.previewUrl}
+                onEnded={handleAudioEnded}
+                onError={handleAudioError}
+                preload="metadata"
+                style={{ display: 'none' }}
+              />
+
               {/* Control Buttons */}
               <div className="absolute top-0 right-0 flex h-full flex-col justify-between py-4 pr-4 z-10">
                 <button
@@ -604,14 +646,23 @@ const SnippetCard = ({
                 </button>
 
                 <button
-                  onClick={handlePlay}
-                  disabled={isLoading}
-                  className={`flex h-11 w-11 items-center justify-center rounded-md border border-gray-800 bg-gray-900/80 text-[#1DB954] transition-colors hover:bg-gray-800 backdrop-blur-sm relative ${
-                    isLoading ? 'opacity-50 cursor-not-allowed' : ''
-                  }`}
+                  onClick={togglePlay}
+                  disabled={isLoading || !currentSong?.previewUrl}
+                  className={`flex h-11 w-11 items-center justify-center rounded-md border transition-colors backdrop-blur-sm ${
+                    audioError || !currentSong?.previewUrl
+                      ? 'border-gray-800 bg-gray-900/80 text-gray-600 cursor-not-allowed'
+                      : 'border-gray-800 bg-gray-900/80 text-white hover:bg-gray-800'
+                  } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
-                  {/* Always show music icon - no audio playback */}
-                  <PureMusicIcon size={19} color="currentColor" />
+                  {audioError ? (
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                  ) : isPlaying ? (
+                    <PauseIcon size={19} />
+                  ) : (
+                    <PlayIcon size={19} />
+                  )}
                 </button>
               </div>
 
@@ -817,35 +868,15 @@ const SnippetCard = ({
       )}
       
       {/* Animation styles */}
-      <style jsx>{`
-        @keyframes slideLeft {
-          0% { transform: translateX(0); opacity: 1; }
-          100% { transform: translateX(-100%); opacity: 0; }
-        }
-        
-        @keyframes slideRight {
-          0% { transform: translateX(0); opacity: 1; }
-          100% { transform: translateX(100%); opacity: 0; }
-        }
-        
-        @keyframes scaleInOut {
-          0% { transform: scale(0.5); opacity: 0.5; }
-          50% { transform: scale(1.2); opacity: 1; }
-          100% { transform: scale(1); opacity: 1; }
-        }
-        
-        .animate-slide-left {
-          animation: slideLeft 300ms ease-out forwards;
-        }
-        
-        .animate-slide-right {
-          animation: slideRight 300ms ease-out forwards;
-        }
-        
-        .animate-scale-in-out {
-          animation: scaleInOut 400ms ease-out forwards;
-        }
-      `}</style>
+      <style>{`
+  @keyframes slideLeft  {0%{transform:translateX(0);opacity:1;}100%{transform:translateX(-100%);opacity:0;}}
+  @keyframes slideRight {0%{transform:translateX(0);opacity:1;}100%{transform:translateX(100%);opacity:0;}}
+  @keyframes scaleInOut {0%{transform:scale(0.5);opacity:0.5;}50%{transform:scale(1.2);opacity:1;}100%{transform:scale(1);opacity:1;}}
+
+  .animate-slide-left  {animation:slideLeft 300ms ease-out forwards;}
+  .animate-slide-right {animation:slideRight 300ms ease-out forwards;}
+  .animate-scale-in-out{animation:scaleInOut 400ms ease-out forwards;}
+`}</style>
     </div>
   );
 };

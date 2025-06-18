@@ -1,7 +1,7 @@
 // StarInfoPanel.jsx - Displays information about a selected star
 import React, { useContext, useState, useEffect, useRef } from "react";
 import styles from "../styles";
-import { getAvatarSrc } from "../utils";
+import { getAvatarForUser } from "../../utils/avatarService"; // Updated import
 import { StarfieldContext } from "../context/Context";
 import { Info, Heart, MessageCircle, Volume2 } from 'lucide-react';
 
@@ -116,7 +116,7 @@ export default function StarPanel({ star, onClose, onViewThread }) {
         <>
           <div style={{ display: "flex", gap: "10px", marginBottom: "15px" }}>
             <img 
-              src={getAvatarSrc(star.post.id)}
+              src={getAvatarForUser(star.post.id)} // Updated to use avatar service
               alt="User avatar"
               style={{ 
                 width: "50px", 
@@ -338,7 +338,7 @@ export default function StarPanel({ star, onClose, onViewThread }) {
       )}
       
       {/* Styles for animations */}
-      <style jsx>{`
+      <style>{`
         @keyframes fadeInScale {
           from { opacity: 0; transform: scale(0.9); }
           to { opacity: 1; transform: scale(1); }

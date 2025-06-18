@@ -282,7 +282,7 @@ const InfoIconModal = ({
       </div>
       
       {/* Custom scrollbar styles */}
-      <style jsx>{`
+      <style>{`
         /* Custom scrollbar for card container */
         div::-webkit-scrollbar {
           width: 6px;
@@ -308,35 +308,33 @@ const InfoIconModal = ({
   return (
     <>
       {/* Info Button with optional text label */}
-      <button
-        onClick={handleOpenModal}
-        className="info-icon-button"
-        aria-label="Information"
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: '8px',
-          padding: showButtonText ? '8px 16px' : '8px',
-          borderRadius: showButtonText ? '24px' : '50%',
-          backgroundColor: 'rgba(30, 41, 59, 0.8)',
-          border: 'none',
-          cursor: 'pointer',
-          zIndex: 50000, // Significantly increased z-index
-          position: 'relative', // Ensure z-index works properly
-          pointerEvents: 'auto' // Ensure button can receive clicks
-        }}
-      >
-        <InfoIcon size={iconSize} color={iconColor} />
-        {showButtonText && (
-          <span style={{ 
-            fontSize: '0.875rem',
-            color: 'white',
-            fontWeight: '500'
-          }}>
-            {buttonText}
-          </span>
-        )}
-      </button>
+      <div              /* or <span> if you prefer                       */
+  role="button"    /* makes it keyboard-accessible                  */
+  tabIndex={0}     /* focusable so Space/Enter still work           */
+  onClick={handleOpenModal}
+  className="info-icon-button"
+  aria-label="Information"
+  style={{
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '8px',
+    padding: showButtonText ? '8px 16px' : '8px',
+    borderRadius: showButtonText ? '24px' : '50%',
+    backgroundColor: 'rgba(30, 41, 59, 0.8)',
+    border: 'none',
+    cursor: 'pointer',
+    zIndex: 50000,
+    position: 'relative',
+    pointerEvents: 'auto'
+  }}
+>
+  <InfoIcon size={iconSize} color={iconColor} />
+  {showButtonText && (
+    <span style={{ fontSize: '0.875rem', color: 'white', fontWeight: 500 }}>
+      {buttonText}
+    </span>
+  )}
+</div> 
 
       {/* Modal Portal with Design 1: Smoky Gradient Match */}
       {portalContainer && isModalOpen && ReactDOM.createPortal(
@@ -388,7 +386,7 @@ const InfoIconModal = ({
       )}
 
       {/* Keyframes for animations */}
-      <style jsx>{`
+      <style>{`
         @keyframes modalFadeIn {
           from { 
             opacity: 0; 

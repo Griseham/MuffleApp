@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { getAvatarForUser } from '../../utils/avatarService';
 import {extractSongQuery, removeLinks} from '../utils/utils';
+import { formatSnippetData } from './threadHelpers';
+
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
@@ -14,6 +16,8 @@ export default function useThreadData(postId, postData = null) {
   const [users, setUsers] = useState([]);
   const [usedCache, setUsedCache] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingComments, setIsLoadingComments] = useState(false);
+  const [isLoadingSnippets, setIsLoadingSnippets] = useState(false);
   const [error, setError] = useState(null);
 
   const ensureValidDate = (postData) => {
@@ -56,8 +60,10 @@ const fetchCachedPostData = async (postId) => {
             commentId: snippet.commentId,
             query: snippet.query,
             name: snippet.songName,
+            songName: snippet.songName,
             artistName: snippet.artistName,
             artwork: snippet.artworkUrl || getAvatarForUser(snippetAuthor),
+            artworkUrl: snippet.artworkUrl || getAvatarForUser(snippetAuthor),
             previewUrl: snippet.previewUrl || `/public/HeartShapedBox.mp3`,
             snippetData: {
               attributes: {
@@ -81,8 +87,12 @@ const fetchCachedPostData = async (postId) => {
           };
         });
         // Processed snippets
-        setSnippetRecs(snippetsWithAvatars);
-      }
+        setSnippetRecs(
+          snippetsWithAvatars.map(s =>
+            formatSnippetData(s, null, data.data?.comments ?? [])
+          )
+        );
+              }
       setUsedCache(true);
       return true;
     }
@@ -114,7 +124,6 @@ useEffect(() => {
         return;
       }
     } catch (err) {
-      console.error("Error loading cached post data:", err);
     }
 
     // 3. Try your /cached-posts endpoint:
@@ -135,8 +144,10 @@ useEffect(() => {
                 commentId: snippet.commentId,
                 query: snippet.query,
                 name: snippet.songName,
+                songName: snippet.songName,
                 artistName: snippet.artistName,
                 artwork: snippet.artworkUrl || getAvatarForUser(author),
+                artworkUrl: snippet.artworkUrl || getAvatarForUser(author),
                 previewUrl:
                   snippet.previewUrl || "/public/HeartShapedBox.mp3",
                 snippetData: {
@@ -177,7 +188,6 @@ useEffect(() => {
         }
       }
     } catch (err) {
-      console.error("Error fetching direct cache:", err);
     }
 
     // 4. Try listing all posts and picking one:
@@ -208,7 +218,6 @@ useEffect(() => {
         }
       }
     } catch (err) {
-      console.error("Error fetching all posts:", err);
     }
 
     // 5. Try the diverse-posts endpoint:
@@ -240,7 +249,6 @@ useEffect(() => {
         }
       }
     } catch (err) {
-      console.error("Error fetching diverse posts:", err);
     }
 
     // 6. Finally, try fetching the single post endpoint:
@@ -270,7 +278,6 @@ useEffect(() => {
         }
       }
     } catch (err) {
-      console.error("Error fetching direct post:", err);
     }
 
     // 7. If *all* else fails, show a placeholder:
@@ -302,6 +309,11 @@ useEffect(() => {
     if (!post) return;
     if (usedCache && comments.length > 0) return;
     
+    // If this is an API post (not cached), set loading state
+    if (postData && !postData.hasCachedData) {
+      setIsLoadingComments(true);
+    }
+    
     try {
       const cacheResp = await fetch(`${import.meta.env.VITE_API_BASE_URL}/cached-posts/${postId}`);
       if (cacheResp.ok) {
@@ -315,10 +327,12 @@ useEffect(() => {
             }))
           );
           setUsedCache(true);
+          setIsLoadingComments(false);
           return;
         }
       }
-    } catch (err) {}
+    } catch (err) {
+    }
     
     try {
        const resp = await fetch(
@@ -341,10 +355,13 @@ useEffect(() => {
           });
           
           setComments(formattedComments);
-          await generateSnippetsFromComments(formattedComments);
-
+          setIsLoadingComments(false);
           
-
+          // For API posts, generate snippets from comments
+          if (postData && !postData.hasCachedData) {
+            await generateSnippetsFromComments(formattedComments);
+          }
+          
           return;
         }
       }
@@ -366,18 +383,25 @@ useEffect(() => {
             }));
             
             setComments(formattedDiverseComments);
+            setIsLoadingComments(false);
             
-        
+            // For API posts, generate snippets from comments
+            if (postData && !postData.hasCachedData) {
+              await generateSnippetsFromComments(formattedDiverseComments);
+            }
             
             return;
           }
         }
-      } catch (error) {}
+      } catch (error) {
+      }
       
       setComments([]);
+      setIsLoadingComments(false);
       
     } catch (error) {
       setComments([]);
+      setIsLoadingComments(false);
     }
   }
   
@@ -439,16 +463,52 @@ useEffect(() => {
     return null;
   };
 
+  // Helper function to extract songs from very short comments
+  const extractShortCommentSong = (commentText) => {
+    if (!commentText || commentText.length > 100) return null;
+    
+    const text = commentText.trim().toLowerCase();
+    
+    // Common patterns in short music comments
+    const patterns = [
+      /^(.+?)\s*-\s*(.+?)$/,  // "Song - Artist" or "Artist - Song"
+      /^(.+?)\s+by\s+(.+?)$/i, // "Song by Artist"
+      /^['"](.+?)['"]$/,       // Quoted text (likely song name)
+    ];
+    
+    for (const pattern of patterns) {
+      const match = text.match(pattern);
+      if (match) {
+        return match[0]; // Return the whole match
+      }
+    }
+    
+    // If very short (likely just song/artist name), return as-is
+    if (text.length <= 30 && text.length >= 3) {
+      return text;
+    }
+    
+    return null;
+  };
+
   // Function to generate snippets from comments using Apple Music API
   const generateSnippetsFromComments = async (commentsToProcess) => {
     if (!commentsToProcess || commentsToProcess.length === 0) return;
   
+    setIsLoadingSnippets(true);
+    
     const newSnippets = [];
-    const maxToCheck = 40;
-    const minSnippetsRequired = 3;
-    const maxSnippets = 8;
+    const minSnippetsRequired = 6; // Increased from 3
+    const maxSnippets = 12; // Increased from 8
+    
+    // Sort comments by length (shorter first) and filter relevant ones
+    const sortedComments = commentsToProcess
+      .filter(c => c.body && c.author !== '[deleted]' && c.body.trim().length > 2)
+      .sort((a, b) => a.body.length - b.body.length) // Shorter comments first
+      .slice(0, 60); // Check more comments
+    
   
-    for (const c of commentsToProcess.slice(0, maxToCheck)) {
+    for (const c of sortedComments) {
       if (!c.body || c.author === '[deleted]') continue;
   
       const q = extractSongQuery(c.body);
@@ -592,12 +652,16 @@ useEffect(() => {
             const song = result.data;
             const commentId = `apple_music_${i}_${postId}`;
             const author = `MusicFan${Math.floor(Math.random() * 900) + 100}`;
+            const artworkUrl = song.attributes.artwork?.url
+  ? song.attributes.artwork.url.replace('{w}', '300').replace('{h}', '300')
+  : '/threads/assets/placeholder-300.png';
             
             // Use real Apple Music data
             const snippet = {
               id: commentId,
               commentId,
               query: `${song.attributes.name} - ${song.attributes.artistName}`,
+              artwork: artworkUrl, 
               snippetData: {
                 attributes: {
                   name: song.attributes.name,
@@ -640,8 +704,12 @@ useEffect(() => {
           new Map(realArtists.map((a) => [a.name, a])).values()
         );
         
-        setSnippetRecs(realSnippets);
-        setArtistList(uniqueRealArtists);
+        setSnippetRecs(
+          realSnippets.map(s =>
+            formatSnippetData(s, null, comments)
+          )
+        );
+                setArtistList(uniqueRealArtists);
         // Successfully loaded real Apple Music snippets
         return;
       }
@@ -679,8 +747,12 @@ useEffect(() => {
       avgRating: Math.floor(Math.random() * 5) + 1,
     }));
     
-    setSnippetRecs(fallbackSnippets);
-    setArtistList(fallbackArtists);
+    setSnippetRecs(
+      fallbackSnippets.map(s =>
+        formatSnippetData(s, null, comments)
+      )
+    );
+        setArtistList(fallbackArtists);
   };
 
 useEffect(() => {
@@ -706,8 +778,10 @@ useEffect(() => {
               commentId: snippet.commentId,
               query: snippet.query,
               name: snippet.songName,
+              songName: snippet.songName,
               artistName: snippet.artistName,
               artwork: snippet.artworkUrl || getAvatarForUser(snippetAuthor),
+              artworkUrl: snippet.artworkUrl || getAvatarForUser(snippetAuthor),
               previewUrl: snippet.previewUrl || `/public/HeartShapedBox.mp3`,
               snippetData: {
                 attributes: {
@@ -742,8 +816,12 @@ useEffect(() => {
             new Map(extractedArtists.map((a) => [a.name, a])).values()
           );
           
-          setSnippetRecs(processedSnippets);
-          setArtistList(uniqueArtists);
+          setSnippetRecs(
+            processedSnippets.map(s =>
+              formatSnippetData(s, null, comments)
+            )
+          );
+                    setArtistList(uniqueArtists);
           return;
         }
       }
@@ -925,8 +1003,12 @@ useEffect(() => {
           avgRating: Math.floor(Math.random() * 5) + 1,
         }));
         
-        setSnippetRecs(fallbackSnippets);
-        setArtistList(fallbackArtists);
+        setSnippetRecs(
+          fallbackSnippets.map(s =>
+            formatSnippetData(s, null, comments)
+          )
+        );
+                setArtistList(fallbackArtists);
       }
       
     } catch (error) {
@@ -978,8 +1060,12 @@ useEffect(() => {
         avgRating: Math.floor(Math.random() * 5) + 1,
       }));
       
-      setSnippetRecs(fallbackSnippets);
-      setArtistList(fallbackArtists);
+      setSnippetRecs(
+        fallbackSnippets.map(s =>
+          formatSnippetData(s, null, comments)
+        )
+      );
+            setArtistList(fallbackArtists);
     }
   }
   
@@ -1094,5 +1180,9 @@ useEffect(() => {
     setSnippetRecs,
     usedCache,
     fetchMoreComments,
+    isLoading,
+    isLoadingComments,
+    isLoadingSnippets,
+    error
   };
 }

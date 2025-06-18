@@ -14,9 +14,6 @@ app.use(express.json());
 // 2) Your API routes
 registerUnifiedRoutes(app);
 
-// 3) Serve all videos/images/etc from root-level assets/
-app.use('/assets', express.static(path.join(__dirname, 'assets')));
-app.use('/rooms/assets', express.static(path.join(__dirname, 'assets')));
 
 // 4) Rooms SPA at /rooms
 app.use('/rooms', express.static(path.join(__dirname, 'apps/mufl/build')));
@@ -40,5 +37,5 @@ app.get('/health', (req, res) => res.sendStatus(200));
 
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, '0.0.0.0', () =>
-  console.log(`✅ Unified backend running on port ${PORT}`)
+  console.log(`✅ Unified backend running`)
 );
