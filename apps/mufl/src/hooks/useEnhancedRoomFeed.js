@@ -43,6 +43,10 @@ export const useEnhancedRoomFeed = (selectedArtists = []) => {
     lastSelectedArtists: []
   });
   
+  // AbortControllers for cleanup
+  const abortControllerRef = useRef(null);
+  const roomGenerationAbortRef = useRef(null);
+  
   // Debounced similarity to avoid too frequent updates
   const debouncedSimilarity = useDebounce(currentSimilarity, 300);
   
@@ -67,24 +71,36 @@ export const useEnhancedRoomFeed = (selectedArtists = []) => {
       return;
     }
     
+    // Create new AbortController for this request
+    abortControllerRef.current = new AbortController();
+    
     updateLoadingState({ similarArtists: true, progress: 0 });
     setError(null);
     
     try {
       const enhanced = await fetchEnhancedSimilarArtists(
         selectedArtists,
-        (progress) => updateLoadingState({ progress })
+        (progress) => updateLoadingState({ progress }),
+        abortControllerRef.current.signal
       );
       
+      // Check if request was aborted
+      if (abortControllerRef.current?.signal.aborted) {
+        return;
+      }
       
       setRelatedArtists(enhanced);
       fetchedDataRef.current.relatedArtists = enhanced;
       fetchedDataRef.current.lastSelectedArtists = [...selectedArtists];
       
     } catch (err) {
-      setError('Failed to fetch similar artists. Please try again.');
+      if (err.name !== 'AbortError') {
+        setError('Failed to fetch similar artists. Please try again.');
+      }
     } finally {
-      updateLoadingState({ similarArtists: false, progress: 100 });
+      if (!abortControllerRef.current?.signal.aborted) {
+        updateLoadingState({ similarArtists: false, progress: 100 });
+      }
     }
   }, [selectedArtists, updateLoadingState]);
   
@@ -97,8 +113,8 @@ export const useEnhancedRoomFeed = (selectedArtists = []) => {
     
     try {
       const random = await fetchRandomGenreArtists(50, (progress) => {
+        // Progress callback
       });
-      
       
       setRandomArtists(random);
       fetchedDataRef.current.randomArtists = random;
@@ -117,6 +133,14 @@ export const useEnhancedRoomFeed = (selectedArtists = []) => {
   
   // Generate rooms based on current mode (volume or similarity)
   const generateRooms = useCallback(async (primaryValue, targetSecondaryValue = null, mode = 'similarity') => {
+    // Abort any ongoing room generation
+    if (roomGenerationAbortRef.current) {
+      roomGenerationAbortRef.current.abort();
+    }
+    
+    // Create new AbortController for this room generation
+    roomGenerationAbortRef.current = new AbortController();
+    const signal = roomGenerationAbortRef.current.signal;
     
     updateLoadingState({ roomGeneration: true });
     
@@ -131,26 +155,40 @@ export const useEnhancedRoomFeed = (selectedArtists = []) => {
           // Use random artists for negative similarity
           if (randomArtists.length === 0) {
             await fetchRandomArtists();
+            if (signal.aborted) return;
             artistsToUse = fetchedDataRef.current.randomArtists;
           } else {
             artistsToUse = randomArtists;
           }
           
+          // Check if aborted before generating
+          if (signal.aborted) return;
+          
           // Generate rooms with random artists only
           const generatedRooms = generateSimplifiedRooms([], artistsToUse, primaryValue, 8, targetSecondaryValue, 'similarity');
+          
+          // Check if aborted before setting state
+          if (signal.aborted) return;
           setRooms(generatedRooms);
           
         } else {
           // Use related artists for positive similarity
           if (relatedArtists.length === 0 && selectedArtists.length > 0) {
             await fetchSimilarArtists();
+            if (signal.aborted) return;
             artistsToUse = fetchedDataRef.current.relatedArtists;
           } else {
             artistsToUse = relatedArtists;
           }
           
+          // Check if aborted before generating
+          if (signal.aborted) return;
+          
           // Generate rooms with selected + related artists
           const generatedRooms = generateSimplifiedRooms(selectedArtists, artistsToUse, primaryValue, 8, targetSecondaryValue, 'similarity');
+          
+          // Check if aborted before setting state
+          if (signal.aborted) return;
           setRooms(generatedRooms);
         }
         
@@ -159,20 +197,31 @@ export const useEnhancedRoomFeed = (selectedArtists = []) => {
         // Always use related artists (no negative ranges in volume mode)
         if (relatedArtists.length === 0 && selectedArtists.length > 0) {
           await fetchSimilarArtists();
+          if (signal.aborted) return;
           artistsToUse = fetchedDataRef.current.relatedArtists;
         } else {
           artistsToUse = relatedArtists;
         }
         
+        // Check if aborted before generating
+        if (signal.aborted) return;
+        
         // Generate rooms with selected + related artists
         const generatedRooms = generateSimplifiedRooms(selectedArtists, artistsToUse, primaryValue, 8, targetSecondaryValue, 'volume');
+        
+        // Check if aborted before setting state
+        if (signal.aborted) return;
         setRooms(generatedRooms);
       }
       
     } catch (err) {
-      setError('Failed to generate rooms. Please try again.');
+      if (err.name !== 'AbortError') {
+        setError('Failed to generate rooms. Please try again.');
+      }
     } finally {
-      updateLoadingState({ roomGeneration: false });
+      if (!signal.aborted) {
+        updateLoadingState({ roomGeneration: false });
+      }
     }
   }, [selectedArtists, relatedArtists, randomArtists, fetchSimilarArtists, fetchRandomArtists, updateLoadingState]);
   
@@ -237,6 +286,19 @@ export const useEnhancedRoomFeed = (selectedArtists = []) => {
       generateRooms(debouncedSimilarity);
     }
   }, [debouncedSimilarity, generateRooms, loadingState.initialLoad, loadingState.similarArtists]);
+  
+  // Cleanup effect
+  useEffect(() => {
+    return () => {
+      // Abort any ongoing requests when component unmounts
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      if (roomGenerationAbortRef.current) {
+        roomGenerationAbortRef.current.abort();
+      }
+    };
+  }, []);
   
   // Regenerate rooms manually
   const regenerateRooms = useCallback(() => {

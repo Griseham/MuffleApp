@@ -155,7 +155,7 @@ const YourSelectionsTab = ({ yourSelections = [] }) => {
         )}
       </div>
 
-      <style jsx>{`
+      <style>{`
        .your-selections-container {
           height: 100%;
           max-height: 350px;
@@ -363,10 +363,9 @@ const TopComponent = ({
     setCurrentValues({ volume, similarity });
   }, [volume, similarity]);
 
-  // NEW: Create radar artists from pool with proper formatting - MORE ARTISTS for scrolling
   const radarArtists = useMemo(() => {
     let artists = [];
-    
+  
     if (poolArtists.length === 0) {
       artists = stationArtists.map(artist => ({
         ...artist,
@@ -381,15 +380,20 @@ const TopComponent = ({
         image: artist.image,
         volume: artist.volume || Math.floor(Math.random() * 6) + 1,
         isSeed: artist.isRoomArtist, // Mark room artists as seed artists
-        count: artist.otherUsers > 0 ? artist.otherUsers : Math.floor(Math.random() * 8) + 8, // Use 8-15 range
+        count: artist.otherUsers > 0 ? artist.otherUsers : Math.floor(Math.random() * 8) + 8, // Use 8–15 range
         exponents: artist.exponents || 0
       }));
     }
-    
-    // Allow more artists for scrolling - up to 20
-    return artists.slice(0, 20);
+  
+    // Deduplicate any accidental duplicate IDs:
+    const uniqueArtists = Array.from(
+      new Map(artists.map(a => [a.id, a])).values()
+    );
+  
+    // Allow more artists for scrolling — up to 20
+    return uniqueArtists.slice(0, 20);
   }, [poolArtists, stationArtists]);
-
+  
   // Format numbers with proper padding - UPDATED to keep sign
   const formatNumber = (num) =>
     `${num < 0 ? '-' : ''}${Math.abs(num).toString().padStart(4,'0')}`;
@@ -537,6 +541,8 @@ const TopComponent = ({
     </div>
   );
 
+  
+
   // Expand/Collapse arrow icon
   const ExpandCollapseIcon = ({ isExpanded }) => (
     <svg 
@@ -652,7 +658,7 @@ const TopComponent = ({
                     <div className="px-3">
                       <div className="grid grid-cols-3 gap-x-4 gap-y-6">
                         {radarArtists.map((artist, idx) => (
-                          <ArtistCell key={artist.id || `radar-artist-${idx}`} artist={artist} index={idx} />
+                          <ArtistCell key={`${artist.id}-${idx}`} artist={artist} index={idx} />
                         ))}
                       </div>
                     </div>
@@ -813,7 +819,7 @@ However that could be wrong, but we'd have to find out during playtesting.`
         </div>
       </div>
  
-      <style jsx>{`
+<style>{`
         @keyframes fade-in {
           from {
             opacity: 0;

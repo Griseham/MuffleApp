@@ -444,7 +444,7 @@ const currentBandFreqs = useMemo(() => {
 
 // Notify parent only after user finishes interacting
 
-// Keep the notifyParent function for the RotaryKnob component
+// Notify parent when knob is clicked (commit=true)
 const notifyParent = useCallback(() => {
 // Clear any pending timers
 clearTimeout(snapTimer.current);
@@ -456,14 +456,42 @@ const snappedSimilarity = snap(similarity);
 // Update state with snapped values
 setVolume(snappedVolume);
 setSimilarity(snappedSimilarity);
-}, [volume, similarity]);
+
+// Get current band info
+const { BAND, MIN } = getBandParams(activeSection);
+const idx = Math.floor(((activeSection === 'volume' ? volume : similarity) - MIN) / BAND);
+
+const points = activeSection === 'volume'
+  ? freqPoints.filter(p => p.band === idx).map(p => p.freq)
+  : similarityBandFreqPoints.filter(p => p.bandIndex === idx).map(p => p.freq);
+
+// Handle landed frequency
+let landedFrequency = null;
+if (landedPoint) {
+  if (activeSection === 'volume') {
+    landedFrequency = landedPoint.freq;
+  } else {
+    landedFrequency = landedPoint.freq;
+  }
+}
+
+// Send commit=true to trigger room regeneration
+onChange({
+  activeSection,
+  volume: snappedVolume,
+  similarity: snappedSimilarity,
+  bandIndex: idx,
+  bandFreqs: points,
+  landedFreq: landedFrequency,
+  hasPoint: !!landedPoint,
+  commit: true  // This triggers room regeneration
+});
+}, [volume, similarity, activeSection, landedPoint, freqPoints, similarityBandFreqPoints, onChange]);
 
 // Create throttled onChange function once, not on every render
 const throttledOnChange = useMemo(() => buildThrottler(onChange), []);
 
-// Unified effect to notify parent of all state changes
-// Unified effect to notify parent of all state changes
-// Unified effect to notify parent of all state changes
+// Unified effect to notify parent of all state changes during dragging (no commit)
 useEffect(() => {
 if (!onChange) return;
 
@@ -500,7 +528,7 @@ if (landedPoint) {
   }
 }
 
-// Send one consistent payload to parent using throttled function
+// Send state updates during dragging (no commit flag - don't regenerate rooms)
 throttledOnChange({
   activeSection,
   volume: snappedVolume,
@@ -508,7 +536,8 @@ throttledOnChange({
   bandIndex: idx,
   bandFreqs: points,
   landedFreq: landedFrequency,
-  hasPoint: !!landedPoint
+  hasPoint: !!landedPoint,
+  commit: false  // Don't regenerate rooms during dragging
 });
 
 }, [volume, similarity, landedPoint, freqPoints, similarityBandFreqPoints, activeSection, throttledOnChange]);

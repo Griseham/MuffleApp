@@ -872,7 +872,7 @@ export default function UserProfile({ user = profileData.userInfo, onBack }) {
       </div>
 
       {/* Add keyframes for animations */}
-      <style jsx>{`
+      <style>{`
   @keyframes fadeSlideDown {
     from {
       opacity: 0;

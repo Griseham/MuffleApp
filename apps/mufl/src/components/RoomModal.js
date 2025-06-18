@@ -68,7 +68,6 @@ const RoomModal = ({ isOpen, onClose, station, onJoinRoom }) => {
               finalArtists = [...finalArtists, ...validSpotifyArtists].slice(0, 6);
             }
           } catch (spotifyError) {
-            console.warn('Failed to fetch Spotify images:', spotifyError);
           }
         }
       }
@@ -83,7 +82,6 @@ const RoomModal = ({ isOpen, onClose, station, onJoinRoom }) => {
       setModalArtists(artistsWithData);
       
     } catch (error) {
-      console.error('Error fetching artists for modal:', error);
       // Fallback to empty array
       setModalArtists([]);
     } finally {

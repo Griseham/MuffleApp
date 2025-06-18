@@ -66,9 +66,7 @@ const ThreadCommentCard = ({
   const [isHovering, setIsHovering] = useState(false);
   const [hoverRating, setHoverRating] = useState(0);
 
-  // Local progress timer
-  const [localElapsedSeconds, setLocalElapsedSeconds] = useState(0);
-  const timeIntervalRef = useRef(null);
+
 
   if (!comment) {
     return null;
@@ -125,70 +123,14 @@ const ThreadCommentCard = ({
   }, [snippet]);
 
   // Get the current progress percentage for the progress bar
-  const getProgressPercent = () => {
-    if (!snippet) return 0;
-    
-    const snippetId = snippet.id?.toString();
-    const activeId = activeSnippet?.snippetId?.toString();
-    
-    if (snippetId && activeId && snippetId === activeId && isPlaying) {
-      return (localElapsedSeconds / 30) * 100;
-    }
-    return 0;
-  };
+// Get the current progress percentage for the progress bar
+// Derive progress straight from the global player
+const uniqueId = (snippet?.id ?? snippet?.commentId)?.toString();
+const activeId = activeSnippet?.snippetId?.toString();
+const isCurrent = uniqueId && activeId && uniqueId === activeId && isPlaying;
 
-  // Sync with the parent component's active snippet state
-  useEffect(() => {
-    if (activeSnippet && snippet) {
-      const isActiveSnippet = snippet.id?.toString() === activeSnippet.snippetId?.toString();
-      
-      // If this is the active snippet, sync the elapsed seconds
-      if (isActiveSnippet) {
-        setLocalElapsedSeconds(activeSnippet.elapsedSeconds || 0);
-      } else {
-        // Reset for non-active snippets
-        setLocalElapsedSeconds(0);
-      }
-    }
-  }, [activeSnippet, snippet]);
-
-  // Handle the timer interval for the currently playing snippet
-  useEffect(() => {
-    // Clear any existing interval first
-    if (timeIntervalRef.current) {
-      clearInterval(timeIntervalRef.current);
-      timeIntervalRef.current = null;
-    }
-
-    // Only set up timer if this snippet is active and playing
-    if (
-      snippet &&
-      activeSnippet &&
-      snippet.id?.toString() === activeSnippet.snippetId?.toString() &&
-      isPlaying
-    ) {
-      // Start a new interval to increment the elapsed seconds
-      timeIntervalRef.current = setInterval(() => {
-        setLocalElapsedSeconds((prev) => {
-          // Stop at 30 seconds
-          if (prev >= 30) {
-            clearInterval(timeIntervalRef.current);
-            timeIntervalRef.current = null;
-            return 30;
-          }
-          return prev + 1;
-        });
-      }, 1000);
-    }
-
-    // Cleanup on unmount or when dependencies change
-    return () => {
-      if (timeIntervalRef.current) {
-        clearInterval(timeIntervalRef.current);
-        timeIntervalRef.current = null;
-      }
-    };
-  }, [snippet, activeSnippet, isPlaying]);
+const elapsed = isCurrent ? activeSnippet?.elapsedSeconds ?? 0 : 0;
+const getProgressPercent = () => (isCurrent ? (elapsed / 30) * 100 : 0);
   
   // Handle rating click
   function handleRatingClick(e) {
@@ -206,8 +148,8 @@ const ThreadCommentCard = ({
       onRate(snippet, newRating);
     }
     // Mark when we rated
-    setRatedTimestamp(localElapsedSeconds || 0);
-
+// Mark when we rated
+setRatedTimestamp(elapsed || 0);
     // If we want the snippet to stop playing once rated:
     if (onRatingPause) {
       onRatingPause(snippet);
@@ -233,27 +175,15 @@ const ThreadCommentCard = ({
   const displayedAvgRating = Math.round(snippet?.avgRating || 0);
 
   // Play/pause button
-  function handlePlayPause(e) {
-    e.preventDefault();
-    e.stopPropagation();
-    if (onPlayPause && snippet) {
-      // If starting a new snippet, reset local progress
-      const isDifferentSnippet =
-        activeSnippet &&
-        activeSnippet.snippetId?.toString() !== snippet.id?.toString();
-      if (!isPlaying || isDifferentSnippet) {
-        setLocalElapsedSeconds(0);
-      }
-      onPlayPause(snippet);
-    }
+// Play/pause button
+function handlePlayPause(e) {
+  e.preventDefault();
+  e.stopPropagation();
+  if (onPlayPause && snippet) {
+    onPlayPause(snippet);
   }
+}
 
-  // Is this snippet playing?
-  const isThisSnippetPlaying =
-    activeSnippet &&
-    snippet &&
-    activeSnippet.snippetId?.toString() === snippet.id?.toString() &&
-    isPlaying;
 
   // Modern Side Album Art Design
   return (
@@ -305,6 +235,9 @@ const ThreadCommentCard = ({
             border: "2px solid rgba(255, 255, 255, 0.1)",
             flexShrink: 0,
           }}
+          onError={(e) =>
+            (e.currentTarget.src = "/threads/assets/placeholder-200.jpg")
+          }
         />
         
         <div style={{
@@ -360,32 +293,40 @@ const ThreadCommentCard = ({
                 position: "relative",
                 flexShrink: 0
               }}>
-                {/* Display actual album artwork if available */}
-                {snippet.artwork ? (
-                  <img 
-                    src={snippet.artwork}
-                    alt="Album artwork"
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "contain",
-                      backgroundColor: "rgba(15, 23, 42, 0.8)",
-                      border: "1px solid rgba(255, 255, 255, 0.1)",
-                    }}
-                  />
-                ) : (
-                  <div style={{
-                    width: "100%",
-                    height: "100%",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    backgroundColor: "rgba(15, 23, 42, 0.8)",
-                    border: "1px solid rgba(255, 255, 255, 0.1)",
-                  }}>
-                    <Music size={40} color="#3b82f6" />
-                  </div>
-                )}
+                {/* Album artwork (falls back smartly) */}
+{(() => {
+  const artwork =
+    snippet?.artwork ??
+    snippet?.artworkUrl ??
+    snippet?.snippetData?.attributes?.artwork?.url ??
+    snippet?.artistImage ??
+    "/threads/assets/placeholder.jpg";
+
+  // Replace placeholder dimensions with actual size
+  const artworkUrl = artwork.includes("{w}") && artwork.includes("{h}")
+    ? artwork.replace("{w}", "300").replace("{h}", "300")
+    : artwork;
+
+  return (
+    <img
+      src={artworkUrl}
+      alt="Album artwork"
+      style={{
+        width: "100%",
+        height: "100%",
+        objectFit: "cover",
+        backgroundColor: "rgba(15,23,42,0.8)",
+        border: "1px solid rgba(255,255,255,0.1)"
+      }}
+      onError={(e) => {
+        // prevent infinite loop if placeholder also errors
+        e.currentTarget.onerror = null;
+        e.currentTarget.src = "/threads/assets/placeholder.jpg";
+      }}
+    />
+  );
+})()}
+
                 
                 <button
                   type="button"
@@ -408,11 +349,11 @@ const ThreadCommentCard = ({
                     transition: "transform 0.2s",
                   }}
                 >
-                  {isThisSnippetPlaying ? (
-                    <Pause size={28} color="#ffffff" />
-                  ) : (
-                    <Play size={28} color="#ffffff" />
-                  )}
+                  {isPlaying ? (
+  <Pause size={28} color="#ffffff" />
+) : (
+  <Play size={28} color="#ffffff" />
+)}
                 </button>
               </div>
               
@@ -438,7 +379,7 @@ const ThreadCommentCard = ({
                       fontWeight: "600",
                       color: "#ffffff",
                     }}>
-                      {snippet.name || 'Unknown track'}
+                      {snippet.name || snippet.songName || 'Unknown track'}
                     </div>
                   </div>
                   <div style={{
@@ -481,10 +422,9 @@ const ThreadCommentCard = ({
                     color: "#94a3b8",
                     marginTop: "6px",
                   }}>
-                    <span>{isThisSnippetPlaying ? `${localElapsedSeconds}s` : '0s'}</span>
-                    <span>30s</span>
-                  </div>
-                </div>
+<span>{isCurrent ? `${elapsed}s` : '0s'}</span>
+<span>30s</span>
+</div>                </div>
                 
                 {/* Rating info */}
                 {/* Rating info */}

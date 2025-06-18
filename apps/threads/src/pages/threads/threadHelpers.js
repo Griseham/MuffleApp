@@ -58,8 +58,12 @@ export const formatSnippetData = (snippet, relatedComment, comments) => {
   const commentAuthor = relatedComment?.author || comments.find(c => c.id === snippetId)?.author || "Unknown";
   
   if (snippet.snippetData) {
-    const artworkUrl = snippet.snippetData.attributes?.artwork?.url || snippet.artistImage || "/threads/assets/default-artist.png";
-    
+    const artworkRaw = snippet.snippetData.attributes?.artwork?.url || snippet.artwork || snippet.artworkUrl;
+    const artworkUrl = artworkRaw
+      ? artworkRaw.replace('{w}', '300').replace('{h}', '300')
+      : snippet.artistImage || "/threads/assets/placeholder.jpg";
+
+        
     return {
       id: snippetId,
       commentId: snippetId,

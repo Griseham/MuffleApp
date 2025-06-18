@@ -708,7 +708,7 @@ export default function UserProfileWithGenres() {
       </div>
 
       {/* Add keyframes for animations */}
-      <style jsx>{`
+      <style>{`
         @keyframes fadeSlideDown {
           from {
             opacity: 0;

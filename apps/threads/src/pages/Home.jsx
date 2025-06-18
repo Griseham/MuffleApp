@@ -219,7 +219,7 @@ const handleLoadRedditPosts = async () => {
     ]);
 
     /* 2 ─ Categorise ─────────────────────────────────────────────── */
-    const news = newsRaw.map(p => ({ ...p, postType: 'news', hasCachedData: false}));
+    const news = newsRaw.map(p => ({ ...p, postType: 'news', hasCachedData: false, isFromAPI: true}));
 
     const GROUP_MIN_COMMENTS = 75;   // less strict than 150
     const GROUP_MIN_UPS      = 500;  // less strict than 1000
@@ -230,10 +230,10 @@ const handleLoadRedditPosts = async () => {
         ((p.num_comments ?? 0) >= GROUP_MIN_COMMENTS ||
          (p.ups ?? 0)          >= GROUP_MIN_UPS)
       )
-      .map(p => ({ ...p, postType: 'groupchat', hasCachedData: false }));
+      .map(p => ({ ...p, postType: 'groupchat', hasCachedData: false, isFromAPI: true }));
 
     const threadPool = [...suggMonthRaw, ...recMonthRaw]
-      .map(p => ({ ...p, postType: 'thread', hasCachedData: false }));
+      .map(p => ({ ...p, postType: 'thread', hasCachedData: false, isFromAPI: true }));
 
     const threadsWithImg    = threadPool.filter(p => p.imageUrl);
     const threadsWithoutImg = threadPool.filter(p => !p.imageUrl);
@@ -264,7 +264,7 @@ const handleLoadRedditPosts = async () => {
           !chosenThreads.find(t => t.id === p.id)
         )
         .slice(0, shortage)
-        .map(p => ({ ...p, postType: 'groupchat' }));
+        .map(p => ({ ...p, postType: 'groupchat', hasCachedData: false, isFromAPI: true }));
 
       chosenGroupChats = [...chosenGroupChats, ...extras];
     }
@@ -285,7 +285,6 @@ const handleLoadRedditPosts = async () => {
     setPosts(freshFeed);
     setRedditPosts(freshFeed);
   } catch (err) {
-    console.error('Load-More Reddit error:', err);
   } finally {
     setIsLoadingReddit(false);
   }
@@ -403,7 +402,6 @@ const handleLoadRedditPosts = async () => {
         const json = await res.json();
         if (json.success && json.data?.length) setStarfieldPosts(json.data);
       } catch (err) {
-        console.error('Starfield fetch failed:', err);
       } finally {
         setIsLoadingReddit(false);
       }
@@ -445,6 +443,7 @@ const handleLoadRedditPosts = async () => {
           />
         ) : (
           <ThreadDetail 
+          
             postId={selectedThread.id}
             postData={selectedThread}
             onSelectUser={(user) => {
@@ -563,68 +562,7 @@ const handleLoadRedditPosts = async () => {
               </div>
             )}
 
-            {/* Load more posts from Reddit API button */}
-            <div style={{
-              display: 'flex',
-              justifyContent: 'center',
-              margin: '1rem 0',
-              gap: '1rem'
-            }}>
-              <button
-                onClick={handleLoadRedditPosts}
-                disabled={isLoadingReddit}
-                style={{
-                  background: isLoadingReddit 
-                    ? 'linear-gradient(45deg, #6b7280, #4b5563)' 
-                    : 'linear-gradient(45deg, #9c27b0, #3f51b5)',
-                  color: 'white',
-                  padding: '12px 24px',
-                  borderRadius: '12px',
-                  border: 'none',
-                  fontSize: '1rem',
-                  fontWeight: '600',
-                  cursor: isLoadingReddit ? 'not-allowed' : 'pointer',
-                  transition: 'all 0.2s ease',
-                  boxShadow: isLoadingReddit 
-                    ? '0 4px 12px rgba(107, 114, 128, 0.3)' 
-                    : '0 4px 12px rgba(156, 39, 176, 0.3)',
-                  opacity: isLoadingReddit ? 0.7 : 1,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
-                }}
-                onMouseEnter={(e) => {
-                  if (!isLoadingReddit) {
-                    e.target.style.transform = 'translateY(-2px)';
-                    e.target.style.boxShadow = '0 6px 16px rgba(156, 39, 176, 0.4)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!isLoadingReddit) {
-                    e.target.style.transform = 'translateY(0)';
-                    e.target.style.boxShadow = '0 4px 12px rgba(156, 39, 176, 0.3)';
-                  }
-                }}
-              >
-                {isLoadingReddit ? (
-                  <>
-                    <div style={{
-                      width: '16px',
-                      height: '16px',
-                      border: '2px solid rgba(255, 255, 255, 0.3)',
-                      borderTop: '2px solid white',
-                      borderRadius: '50%',
-                      animation: 'spin 1s linear infinite'
-                    }}></div>
-                    Loading Fresh Posts...
-                  </>
-                ) : (
-                  <>
-                    🌟 Load More Posts from Reddit API
-                  </>
-                )}
-              </button>
-            </div>
+           
 
             <div className="content-wrapper" style={{
               backgroundColor: 'rgba(12, 17, 27, 0.7)',
@@ -851,7 +789,7 @@ const handleLoadRedditPosts = async () => {
         </div>
       )}
       
-      <style jsx>{`
+      <style>{`
         @keyframes spin {
           0% { transform: rotate(0deg); }
           100% { transform: rotate(360deg); }

@@ -646,7 +646,7 @@ const renderSwipeContent = (songs, type) => {
       </div>
       
       {/* Enhanced Styles for Design 3 and Full Width - IMAGE-FREE VERSION */}
-      <style jsx>{`
+      <style>{`
         /* Bottom container centered with playing screen */
         .bottom-container {
           position: fixed;

@@ -216,8 +216,11 @@ export const fetchRandomGenreArtists = async (count = 50, progressCallback = nul
     
     if (progressCallback) progressCallback(80);
     
+    // Handle both old format (direct array) and new format ({ artists: [...] })
+    const artistsArray = data.artists || data || [];
+    
     // Filter out any artists without images
-    const filteredArtists = (data.artists || [])
+    const filteredArtists = artistsArray
       .filter(artist => artist.image && !artist.image.includes('fallback') && !artist.image.includes('placeholder'));
     
     if (progressCallback) progressCallback(100);

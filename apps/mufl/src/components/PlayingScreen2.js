@@ -3,6 +3,8 @@ import SnippetCard from "./SnippetCard";
 import BottomContainer from "./BottomContainer";
 import TopComponent from "./TopComponent";
 import { getAvatarForUser } from "../utils/avatarService";
+import axios from "axios";
+
 
 /**
  * PlayingScreen Component
@@ -139,49 +141,40 @@ const handleSongFromWidget = (song) => {
 
 
   // NEW: Function to fetch a single song quickly from one artist
-  const fetchSingleSongFromArtist = async (artist) => {
-    try {
-      
-      const response = await fetch(`${API_BASE_URL}/api/apple-music-search?query=${encodeURIComponent(artist.name)}`);
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch songs for ${artist.name}: ${response.status}`);
-      }
-
-      const result = await response.json();
-      
-      if (result.success && result.data) {
-        const song = result.data;
-        
-        // Always prioritize Apple Music artwork URL over artist image
-        let artworkUrl = '';
-        if (song.attributes.artwork?.url) {
-          // Apple Music artwork URLs use {w} and {h} placeholders
-          artworkUrl = song.attributes.artwork.url.replace('{w}', '300').replace('{h}', '300');
-        } else {
-          // Fallback to artist image if no song artwork
-          artworkUrl = artist.image;
-        }
-        
-        const previewUrl = song.attributes.previews?.[0]?.url || '';
-        
-        return {
-          id: `${artist.id || artist.name}-${Date.now()}-${Math.random()}`,
-          track: song.attributes.name,
-          artist: song.attributes.artistName,
-          album: song.attributes.albumName || '',
-          artworkUrl: artworkUrl,
-          previewUrl: previewUrl,
-          sourceArtist: artist,
-          isFromRoomArtist: artist.isRoomArtist || false,
-          isFromWidget: false,
-          color: generateSongColor(artist.name)
-        };
-      }
-    } catch (error) {
+// NEW: Function to fetch a single song quickly from one artist
+const fetchSingleSongFromArtist = async (artist) => {
+  try {
+    
+    const res = await axios.post(
+      `${API_BASE_URL}/api/apple-music/artist-songs`,
+      { artist: artist.name }
+    );
+    if (!res.data.success) {
+      throw new Error(`No song returned for ${artist.name}`);
     }
-    return null;
-  };
+    const song = res.data.data;
+    if (!song.previewUrl) return null;   // try the next artist
+
+    
+    const artworkUrl = song.artworkUrl || artist.image;
+    const previewUrl = song.previewUrl || '';
+    
+    return {
+      id: `widget-${Date.now()}-${Math.random()}`,
+      track: song.trackName || song.track,
+      artist: song.artistName || song.artist,
+      album: song.albumName || song.album,
+      artworkUrl,
+      previewUrl,
+      sourceArtist: artist,
+      isFromRoomArtist: artist.isRoomArtist || false,
+      isFromWidget: false,
+      color: generateSongColor(artist.name)
+    };
+  } catch (error) {
+  }
+  return null;
+};
 
   // NEW: Super optimized first song fetcher - highest priority
   const fetchFirstSongWithPriority = async (artists) => {
@@ -847,7 +840,7 @@ const handleSwipe = (song, type, strength) => {
       </div>
 
       {/* Background Styles */}
-      <style jsx>{`
+<style>{`
         /* Smoky Gradient background */
         .smoky-gradient {
           background: radial-gradient(circle at 50% 50%, #222222 0%, #111111 40%, #000000 100%);

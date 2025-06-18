@@ -30,10 +30,11 @@ const TabButton = ({ active, onClick, children, disabled = false }) => (
   </button>
 );
 
-// Loading progress component
+// Loading progress component - only for initial transition from selection screen
 const LoadingProgress = ({ loadingState }) => {
-  const { initialLoad, similarArtists, roomGeneration, progress } = loadingState;
+  const { initialLoad, similarArtists, progress } = loadingState;
   
+  // Only show this full-screen loading for the initial transition from selection screen
   if (initialLoad) {
     return (
       <div className="loading-progress">
@@ -65,18 +66,9 @@ const LoadingProgress = ({ loadingState }) => {
     );
   }
   
-  if (roomGeneration) {
-    return (
-      <div className="loading-progress simple">
-        <div className="loading-spinner"></div>
-        <p>Generating new stations...</p>
-      </div>
-    );
-  }
-  
+  // Don't show full screen loading for room generation - that's handled by RoomLoader
   return null;
 };
-
 // Utility functions for generating fake room data
 const generateRandomVolume = (min, max) => {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -216,26 +208,25 @@ const RoomsScreen = ({
   }, [rooms, activeTab]);
   
   // Handle tuner value changes
-  const handleTunerChange = useCallback(payload => {
-    setTuner(current => ({
-      ...current,
-      ...payload
-    }));
-    
-    // Handle mode-specific changes only for tuned tab
-    if (activeTab === 'tuned') {
-      if (payload.activeSection === 'similarity' && payload.similarity !== undefined) {
-        // In similarity mode, we also need to pass the landed frequency (volume)
-        const landedVolume = payload.landedFreq;
-        handleSimilarityChange(payload.similarity, landedVolume);
-      } else if (payload.activeSection === 'volume' && payload.volume !== undefined) {
-        // In volume mode, we need to pass the landed frequency (similarity)
-        const landedSimilarity = payload.landedFreq;
-        handleVolumeChange(payload.volume, landedSimilarity);
+  const handleTunerChange = useCallback((payload) => {
+    // Defer all state updates to avoid render phase update warning
+    setTimeout(() => {
+      setTuner(t => ({ ...t, ...payload }));
+     
+      // Only regenerate when the knob sends a confirmed "commit"
+      if (!payload.commit || activeTab !== 'tuned') return;
+     
+      // Show feed overlay loading for 1.5 seconds
+      setFeedOverlayLoading(true);
+      setTimeout(() => setFeedOverlayLoading(false), 1500);
+     
+      if (payload.activeSection === 'similarity') {
+        handleSimilarityChange(payload.similarity, payload.landedFreq);
+      } else {
+        handleVolumeChange(payload.volume, payload.landedFreq);
       }
-    }
-  }, [handleSimilarityChange, handleVolumeChange, activeTab]);
-
+    }, 0);
+   }, [handleSimilarityChange, handleVolumeChange, activeTab]);
   // Handle tab changes
   const handleTabChange = useCallback(async (tab) => {
     if (tab === activeTab) return;
@@ -297,14 +288,18 @@ const RoomsScreen = ({
     }
   };
 
+  // Feed overlay loading state - separate from main loading
+  const [feedOverlayLoading, setFeedOverlayLoading] = useState(false);
+
   // Show main loading screen if initial load
   if (loadingState.initialLoad) {
-    return <RoomLoader isLoading={true} onBack={onBack} progress={loadingState.progress} />;
+    return <RoomLoader isLoading={true} onBack={onBack} progress={loadingState.progress} fullScreen={true} />;
   }
 
   return (
-    <div className="radio-rooms-container">
-      <button className="back-button" onClick={onBack}>← Back</button>
+     <div className="radio-rooms-container">
+      
+          <button className="back-button" onClick={onBack}>← Back</button>
       <div className="radio-info-button">
       <InfoIconModal
   title="Rooms"
@@ -386,6 +381,13 @@ const RoomsScreen = ({
             Recents
           </TabButton>
         </div>
+        
+        {/* Loading indicator - positioned at top for visibility while scrolled up */}
+        {getCurrentLoading() && (
+          <div className="loading-indicator-top">
+            <RoomLoader isLoading={true} fullScreen={false} />
+          </div>
+        )}
       </div>
 
       {/* Show info messages only for tuned tab */}
@@ -427,11 +429,21 @@ const RoomsScreen = ({
         </div>
       )}
 
-      <div className="feed-section">
-        {/* Loading indicator */}
-        {getCurrentLoading() && <RoomLoader isLoading={true} />}
-        
+<div className="feed-section" style={{ position: 'relative' }}>   
+    {/* only cover the feed under the radio */}
+    {feedOverlayLoading && (
+    <div className="feed-overlay-loading">
+      <div className="feed-overlay-content">
+        <div className="feed-spinner"></div>
+        <span>Finding rooms.</span>
+      </div>
+    </div>
+  )}
+     
         <div className="stations-list">
+          {/* Feed overlay loading - shows for 1.5s when tuner generates new rooms */}
+         
+          
           {getCurrentRooms().map((station, index) => (
             <StationCard
               key={station.id}
