@@ -730,13 +730,42 @@ const progressPercentage = calculateProgressPercentage(activeSection, volume, si
 
 // Optimized frequencyPointsToRender function for RadioTuner.js
 
-// Updated frequencyPointsToRender function for consistent styling in both modes
+const SIMILARITY_RANGE = MAX_SIMILARITY - MIN_SIMILARITY;
+const normalizedSim = (similarity - MIN_SIMILARITY) / SIMILARITY_RANGE;
 
 const frequencyPointsToRender = useMemo(() => {
 // pick the right dataset
 const pts = activeSection === 'similarity'
   ? similarityBandFreqPoints.filter(p => p.bandIndex === simBandIndex)
   : freqPoints.filter(p => p.band === bandIndex);
+
+  /* ── NEW: show ¼ fewer boxes in VOLUME ───────────────────────── */
+/* ensure we have at least 4 similarity-boxes per band */
+if (activeSection === 'similarity' && pts.length < 4) {
+  // draw a richer pool, then pull just enough from this band
+  const richer = generateFrequencyPoints(normalizedSim, 60)   // 60 raw points
+    .filter(p => p.bandIndex === simBandIndex);
+
+  // merge until we reach 4 unique boxes
+  richer.some(extra => {
+    if (pts.length >= 4) return true;          // stop once we have 4
+    if (!pts.find(p => p.freq === extra.freq)) pts.push(extra);
+    return false;
+  });
+}
+
+  /* 2 ▸ show 25 % fewer boxes when we are in VOLUME mode */
+  if (activeSection === 'volume') {
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 500;
+
+    /* Similarity draws 12 boxes on desktop, 8 on phones.
+       25 % fewer → 9 and 6 respectively.                      */
+    const maxVolBoxes = isMobile ? 6 : 9;
+
+    pts.splice(maxVolBoxes);    // trim in-place
+  }
+/* ─────────────────────────────────────────────────────────────── */
+
 
 // compute where we "landed" in this band
 const positionInBand = activeSection === 'similarity'
@@ -831,6 +860,7 @@ bandIndex,
 simBandIndex,
 volume,
 similarity,
+normalizedSim,
 indicatorOffsetPx,
 visibleRulerWidth
 ]);

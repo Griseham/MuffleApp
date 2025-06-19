@@ -19,6 +19,7 @@ import InfoIconModal from './InfoIconModal';
 // Set base URL for API requests
 axios.defaults.baseURL = process.env.REACT_APP_API_BASE_URL || '/api';
 
+
 // Tab component
 const TabButton = ({ active, onClick, children, disabled = false }) => (
   <button
@@ -88,77 +89,60 @@ const generateRandomStationName = () => {
 };
 
 // Generate trending rooms with Spotify artists
+// --- NEW Apple-only, cache-aware generator ---------------------------
 const generateTrendingRooms = async (count = 8) => {
+  /* ①  read the list SelectionScreen saved */
+  let pool = [];
   try {
-    // Fetch popular artists from Spotify (using pop genre as trending)
-    const res = await axios.get('/api/spotify/artists', { 
-      params: { 
-        genre: 'pop',
-        limit: count * 6 // Get enough artists to fill multiple rooms with 6 each
-      } 
+    pool = JSON.parse(localStorage.getItem('mufl_popularArtists')) || [];
+  } catch (_) {}
+
+  /* ②  if the cache is missing, pull once from the Apple endpoint
+         (it’s in RAM on the server, so this is cheap) */
+  if (pool.length === 0) {
+    const { data } = await axios.get('/apple-music/popular-artists', {
+      params: { limit: 120, offset: 0 }
     });
-    
-    const allArtists = res.data.filter(artist => 
-      artist.image && artist.image !== 'fallback.jpg' && !artist.image.includes('/api/placeholder/')
-    );
-    
-    const rooms = [];
-    
-    for (let i = 0; i < count; i++) {
-      const volume = generateRandomVolume(600, 3300);
-      const similarity = generateRandomSimilarity(-1000, 300);
-      
-      // Get 6 random artists for this room
-      const roomArtists = allArtists
-        .sort(() => 0.5 - Math.random())
-        .slice(0, 6)
-        .map((artist, idx) => ({
-          ...artist,
-          volume: Math.floor(Math.random() * 6) + 1,
-          isSelected: false,
-          count: 1
-        }));
-      
-      rooms.push({
-        id: `trending-${i}`,
-        name: generateRandomStationName(), // Random 4-letter name
-        volume,
-        similarity,
-        freqNumber: `${volume}.${Math.abs(similarity)}${similarity < 0 ? '-' : ''}`,
-        artists: roomArtists,
-        listeners: Math.floor(Math.random() * 10000) + 1000,
-        minutes: [15, 30, 45, 60][Math.floor(Math.random() * 4)],
-        userCount: Math.floor(Math.random() * 100) + 10,
-        dominantGenre: 'Pop',
-        showGenreBadge: true
-      });
-    }
-    
-    return rooms;
-  } catch (error) {
-    // Fallback to mock data
-    return Array.from({ length: count }, (_, i) => ({
-      id: `trending-${i}`,
-      name: generateRandomStationName(),
-      volume: generateRandomVolume(600, 3300),
-      similarity: generateRandomSimilarity(-1000, 300),
-      artists: Array.from({ length: 6 }, (_, j) => ({
-        id: `trending-artist-${i}-${j}`,
-        name: `Trending Artist ${j + 1}`,
-        image: '/api/placeholder/200/200',
-        volume: Math.floor(Math.random() * 6) + 1
-      })),
-      listeners: Math.floor(Math.random() * 10000) + 1000,
-      minutes: 30,
-      userCount: Math.floor(Math.random() * 100) + 10
-    }));
+    pool = data.artists || [];
+    localStorage.setItem('mufl_popularArtists', JSON.stringify(pool));
   }
+
+  /* ③  filter out any entry that somehow lost its artwork */
+  const usable = pool.filter(a => a.image && !a.image.includes('placeholder'));
+
+  /* ④  build <count> rooms, 6 random artists each, no repeats inside a room */
+  const rooms = [];
+  for (let i = 0; i < count; i++) {
+    const picks = [...usable].sort(() => 0.5 - Math.random()).slice(0, 6);
+    rooms.push({
+      id         : `trending-${i}`,
+      name       : generateRandomStationName(),
+      volume     : generateRandomVolume(600, 3300),
+      similarity : generateRandomSimilarity(-1000, 300),
+      freqNumber : `${generateRandomVolume(600, 3300)}.${Math.abs(generateRandomSimilarity(-1000,300))}`,
+      artists    : picks.map(p => ({
+        ...p,
+        volume   : Math.floor(Math.random() * 6) + 1,
+        isSelected: false,
+        count     : 1
+      })),
+      listeners  : Math.floor(Math.random() * 10000) + 1000,
+      minutes    : [15, 30, 45, 60][Math.floor(Math.random() * 4)],
+      userCount  : Math.floor(Math.random() * 100) + 10,
+      dominantGenre: 'Pop',
+      showGenreBadge: true
+    });
+  }
+
+  return rooms;
 };
+
 
 // Main RoomsScreen Component with enhanced similarity support and tabs
 const RoomsScreen = ({ 
   selectedArtists = [], 
   onJoinRoom = () => {}, 
+  onPickTrending = () => {},
   onBack = () => {} 
 }) => {
   // Single source of truth for all tuner state
@@ -174,6 +158,11 @@ const RoomsScreen = ({
   const [tabLoading, setTabLoading] = useState({
     trending: false
   });
+
+
+useEffect(() => {
+  localStorage.removeItem('trendingSpotify');   // old key we don’t use now
+}, []);
 
   // Use the enhanced hook to get rooms and manage data
   const { 
@@ -246,7 +235,7 @@ const RoomsScreen = ({
     }
   }, [activeTab, trendingRooms.length]);
 
-  // NEW: Enhanced room joining with artist data
+  // existing "join a room" handler for the Tuned tab
   const handleJoinRoom = useCallback((station) => {
     
     // Create comprehensive room data object
@@ -265,6 +254,12 @@ const RoomsScreen = ({
     // Pass the full room data to the parent component
     onJoinRoom(roomData);
   }, [onJoinRoom]);
+
+  // NEW: when you click a Trending card, grab its radar artists
+  const handleTrendingPick = useCallback(station => {
+    onPickTrending(station);      // pass the *whole* card object
+  }, [onPickTrending]);
+  
   
   // Get range info for current similarity
   const rangeInfo = getSimilarityRangeInfo(currentSimilarity);
@@ -448,13 +443,17 @@ const RoomsScreen = ({
             <StationCard
               key={station.id}
               station={station}
-              onJoinRoom={handleJoinRoom}
+              onJoinRoom={
+                activeTab === 'trending'
+                  ? handleTrendingPick    // Trending cards fire this
+                  : handleJoinRoom        // Tuned cards fire join-room
+              }
               isCurrentStation={selectedRoom?.id === station.id && activeTab === 'tuned'}
               activeSection={tuner.activeSection}
               selectedArtists={selectedArtists}
               stationIndex={index}
               totalStations={getCurrentRooms().length}
-              isInteractive={activeTab === 'tuned'}
+              isInteractive={activeTab !== 'recents'}
             />
           ))}
           

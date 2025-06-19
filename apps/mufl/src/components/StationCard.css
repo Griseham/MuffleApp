@@ -121,6 +121,23 @@
     gap: 24px;
   }
   
+  .frequency-number {
+    font-family: monospace;
+    font-size: 42px; /* Reduced from 48px */
+    font-weight: bold;
+    color: var(--primary);
+    text-shadow: 0 0 10px var(--primary-glow);
+    letter-spacing: 1px;
+    transition: color 0.3s, text-shadow 0.3s;
+    line-height: 1.1;
+    text-align: center;
+    white-space: nowrap; /* Prevent line breaks */
+    word-break: normal; /* Changed from break-all */
+    overflow: hidden; /* Hide overflow if needed */
+    text-overflow: ellipsis; /* Add ellipsis if text is too long */
+  }
+  
+  /* Also update the container to ensure it has enough width */
   .frequency-container {
     width: 280px;
     min-width: 280px;
@@ -130,19 +147,7 @@
     align-items: center;
     border-right: 1px solid #2a2a2a;
     padding-right: 24px;
-  }
-  
-  .frequency-number {
-    font-family: monospace;
-    font-size: 48px;
-    font-weight: bold;
-    color: var(--primary);
-    text-shadow: 0 0 10px var(--primary-glow);
-    letter-spacing: 1px;
-    transition: color 0.3s, text-shadow 0.3s;
-    line-height: 1.1;
-    text-align: center;
-    word-break: break-all;
+    padding-left: 12px; /* Add some left padding for negative numbers */
   }
   
   .frequency-number.negative-similarity {
@@ -581,4 +586,15 @@
 @media (max-width: 360px) {
   .frequency-number          { font-size: 24px; }
   .frequency-container       { width: 100%; }      /* don’t enforce 280 px */
+}
+@media (max-width: 768px) {
+  .frequency-number {
+    font-size: 32px; /* Reduced from 36px */
+  }
+}
+
+@media (max-width: 480px) {
+  .frequency-number {
+    font-size: 24px; /* Reduced from 28px */
+  }
 }

@@ -1,4 +1,9 @@
 require('dotenv').config({ path: './.env' });
+console.log(
+  'Apple token loaded:',
+  Boolean(process.env.APPLE_DEVELOPER_TOKEN)
+);
+
 const fs   = require('fs');
 const path = require('path');
 const axios = require('axios');
@@ -34,6 +39,118 @@ const mockArtists = [
   { id: 'mock-19', name: 'Kendrick Lamar', image: 'https://i.scdn.co/image/ab6761610000e5ebce1c0c1c0c1c0c1c0c1c0c1c', genres: ['hip-hop', 'rap'], popularity: 82 },
   { id: 'mock-20', name: 'The Chainsmokers', image: 'https://i.scdn.co/image/ab6761610000e5ebde1c0c1c0c1c0c1c0c1c0c1c', genres: ['electronic', 'pop'], popularity: 81 }
 ];
+
+/* ---------- Apple Music playlist-artist helper (auto-resolves IDs) -- */
+const PLAYLIST_NAMES = ["Top 100: USA", "Today's Hits"];
+const playlistArtistCache = { data: [], ts: 0 };          // 1-hour cache
+
+const fetchPlaylistId = async (name, token) => {
+  const { data } = await axios.get(
+    'https://api.music.apple.com/v1/catalog/us/search',
+    {
+      headers: { Authorization: `Bearer ${token}` },
+      params : { term: name, types: 'playlists', limit: 1 }
+    }
+  );
+  return data.results.playlists?.data?.[0]?.id || null;
+};
+
+const fetchPlaylistArtists = async () => {
+  /* serve 1-hour cache if warm */
+  if (playlistArtistCache.data.length &&
+      Date.now() - playlistArtistCache.ts < 3_600_000) {
+    return playlistArtistCache.data;
+  }
+
+  const token = process.env.APPLE_DEVELOPER_TOKEN;
+  const uniq  = new Map();                       // name → artist object
+
+  /* helper to sanitize search strings */
+  const clean = (s) => s.replace(/[:’'"]/g, '');
+
+  /* ① loop over editorial playlist names */
+  for (const name of PLAYLIST_NAMES) {
+    const id =
+      (await fetchPlaylistId(name, token))      // try exact
+      || (await fetchPlaylistId(clean(name), token)); // try sanitized
+
+    if (!id) {
+      console.warn(`Playlist "${name}" not found in Apple catalog.`);
+      continue;
+    }
+
+    try {
+      const url =
+        `https://api.music.apple.com/v1/catalog/us/playlists/${id}?include=tracks`;
+      const { data } = await axios.get(url, {
+        headers: { Authorization: `Bearer ${token}` },
+        timeout : 7_000
+      });
+
+      const tracks = data.data?.[0]?.relationships?.tracks?.data || [];
+      if (tracks.length === 0) {
+        console.warn(`Playlist "${name}" (${id}) has 0 tracks – skipping`);
+        continue;
+      }
+
+      tracks.forEach((t, idx) => {
+        const a   = t.attributes;
+        const key = a.artistName?.toLowerCase();
+        if (!key || uniq.has(key)) return;               // de-dupe
+        uniq.set(key, {
+          id   : `pl-${t.id}`,
+          name : a.artistName,
+          image: a.artwork.url.replace('{w}x{h}', '300x300'),
+          popularity: idx + 1                            // keep list order
+        });
+      });
+    } catch (e) {
+      console.warn(`Playlist fetch failed (${id}):`, e.response?.status || e.message);
+    }
+  }
+
+  /* ② guaranteed fallback – Top-Songs chart */
+  if (uniq.size === 0) {
+    try {
+      const chartUrl =
+        'https://api.music.apple.com/v1/catalog/us/charts' +
+        '?types=songs&chart=most-played&limit=100';
+      const { data } = await axios.get(chartUrl, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      (data.results.songs?.[0]?.data || []).forEach((song, idx) => {
+        const a   = song.attributes;
+        const key = a.artistName?.toLowerCase();
+        if (!uniq.has(key)) {
+          uniq.set(key, {
+            id   : `ch-${song.id}`,
+            name : a.artistName,
+            image: a.artwork.url.replace('{w}x{h}', '300x300'),
+            popularity: idx + 1
+          });
+        }
+      });
+      console.info('Used Top-Songs chart fallback – got', uniq.size, 'artists');
+    } catch (e) {
+      console.error('Chart fallback failed:', e.message);
+    }
+  }
+
+  /* ③ absolute last resort – mock list */
+  if (uniq.size === 0) {
+    console.warn('Falling back to mock artist list');
+    getRandomMockArtists(120).forEach((a) =>
+      uniq.set(a.name.toLowerCase(), a)
+    );
+  }
+
+  playlistArtistCache.data = Array.from(uniq.values());
+  playlistArtistCache.ts   = Date.now();
+  return playlistArtistCache.data;
+};
+
+
 
 const getRandomMockArtists = (count = 20, genre = null) => {
   let filteredArtists = mockArtists;
@@ -93,46 +210,71 @@ const getAccessToken = async () => {
     throw error;
   }
 };
+/* ---------- getPopArtists (overwrite the whole function) ------------- */
+/* ---------- Apple Music popular artists (charts) ------------------- */
+/* ---------- Apple Music popular artists (Top-Songs chart) ---------- */
+/* ---------- Apple Music popular artists (Charts API) ------------- */
+/* backend/unifiedRoutes.js  – overwrite getPopularAppleArtists */
+const appleArtistCache = { data: null, ts: 0 };        // 1-hour cache
 
-const getPopArtists = async (genre = 'pop') => {
+const getPopularAppleArtists = async (limit = 20) => {
+  if (appleArtistCache.data && Date.now() - appleArtistCache.ts < 3_600_000) {
+    return appleArtistCache.data.slice(0, limit);      // serve from cache
+  }
+
   try {
-    const token = await getAccessToken();
-    const response = await axios.get('https://api.spotify.com/v1/search', {
-      headers: { Authorization: `Bearer ${token}` },
-      params: {
-        q: `genre:${genre}`,
-        type: 'artist',
-        limit: 50
+    const token = process.env.APPLE_DEVELOPER_TOKEN;
+    const url   = 'https://api.music.apple.com/v1/catalog/us/charts' +
+                  '?types=songs&limit=100&chart=most-played';
+
+    const { data } = await axios.get(url, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    /* make a unique-artist list from the Top-Songs chart */
+    const seen = new Map();                            // name → artist obj
+    (data.results.songs?.[0]?.data || []).forEach(s => {
+      const a = s.attributes;
+      if (!seen.has(a.artistName)) {
+        seen.set(a.artistName, {
+          id   : `am-${s.id}`,
+          name : a.artistName,
+          image: a.artwork.url.replace('{w}x{h}', '300x300'),
+          genres: a.genreNames || [],
+          popularity: s.chartRank ?? 100
+        });
       }
     });
 
-    return response.data.artists?.items.map(artist => {
-      // Find the best quality image (prefer 640x640, fallback to largest available)
-      let imageUrl = null;
-      if (artist.images && artist.images.length > 0) {
-        // Try to find 640x640 image first
-        const preferredImage = artist.images.find(img => img.height === 640 && img.width === 640);
-        if (preferredImage) {
-          imageUrl = preferredImage.url;
-        } else {
-          // Use the first (largest) image available
-          imageUrl = artist.images[0].url;
-        }
-      }
-      
-      return {
-        id: artist.id,
-        name: artist.name,
-        image: imageUrl,
-        genres: artist.genres || [],
-        popularity: artist.popularity,
-      };
-    }).filter(artist => artist.image) || []; // Only return artists with images
-  } catch (error) {
-    // Return mock data when Spotify is unavailable
-    return getRandomMockArtists(20, genre);
+    const artists = Array.from(seen.values()).slice(0, limit);
+    appleArtistCache.data = artists;
+    appleArtistCache.ts   = Date.now();
+    return artists;
+
+  } catch (e) {
+    console.warn('Apple charts failed → mock list:', e.message);
+    return getRandomMockArtists(limit);
   }
 };
+
+
+/* ---------- playlist-driven “popular artists” endpoint ------------- */
+unifiedRouter.get('/apple-music/popular-artists', async (req, res) => {
+  const limit  = Number(req.query.limit)  || 20;
+  const offset = Number(req.query.offset) || 0;
+
+  try {
+    const all    = await fetchPlaylistArtists();        // deduped once
+    const slice  = all.slice(offset, offset + limit);
+    const hasMore = offset + slice.length < all.length;
+
+    res.json({ artists: slice, hasMore });
+  } catch (err) {
+    console.error('Playlist artists error:', err.message);
+    res.status(500).json({ error: 'Failed to load playlist artists' });
+  }
+});
+
 
 const fetchImagesFor = async (artistNames) => {
   try {
@@ -267,21 +409,37 @@ const searchAppleMusic = async (query) => {
 //======================//
 
 // Spotify Routes
+// 🚩 UPDATE the route so the front-end can set the floor & list size
 unifiedRouter.get('/spotify/artists', async (req, res) => {
-  const { genre } = req.query;
-  if (!genre) {
-    return res.status(400).json({ error: 'Genre parameter is missing' });
-  }
+  const {
+    genre          = 'pop',
+    minPopularity  = 70,
+    limit          = 40
+  } = req.query;
+
   try {
-    const artists = await getPopArtists(genre);
+    const artists = await getPopArtists(
+      genre,
+      Number(minPopularity),
+      Number(limit)
+    );
     res.json(artists);
-  } catch (error) {
+  } catch (err) {
     res.status(500).json({ error: 'Failed to fetch artists' });
   }
 });
 
+
 unifiedRouter.get('/spotify/search-artists', async (req, res) => {
   const { query } = req.query;
+
+  const key = query.toLowerCase();
+if (searchCache.has(key) && Date.now() - searchCache.get(key).ts < CACHE_TTL) {
+  return res.json(searchCache.get(key).data);
+}
+
+searchCache.set(key, { ts: Date.now(), data: results });
+
   
   if (!query) {
     return res.status(400).json({ error: 'Search query is required' });
@@ -377,29 +535,59 @@ unifiedRouter.post('/lastfm/similar-artists', async (req, res) => {
 });
 
 // Apple Music Routes
+// Apple Music Routes
+/* ---------------- Apple Music search artists ---------------- */
+const searchCache = new Map();            // key → { ts, data }
+const CACHE_TTL   = 900_000;              // 15 min
+
 unifiedRouter.get('/apple-music/search-artists', async (req, res) => {
-  const { query } = req.query;
-  
-  if (!query || typeof query !== 'string') {
-    return res.status(400).json({ error: 'Valid search query is required' });
+  const { query = '' } = req.query;
+  if (!query.trim()) {
+    return res.status(400).json({ error: 'Search query is required' });
   }
-  
+
+  const key = query.toLowerCase();
+  if (searchCache.has(key) && Date.now() - searchCache.get(key).ts < CACHE_TTL) {
+    return res.json(searchCache.get(key).data);        // ← serve from cache
+  }
+
   try {
-    const results = await searchAppleMusic(query.trim());
-    res.json(results);
-  } catch (error) {
-    if (error.response) {
-      return res.status(error.response.status).json({ 
-        error: 'Apple Music API error', 
-        details: error.response.data?.errors?.[0]?.title || 'Unknown API error'
+    const token = process.env.APPLE_DEVELOPER_TOKEN;
+    const { data } = await axios.get(
+      'https://api.music.apple.com/v1/catalog/us/search',
+      {
+        headers: { Authorization: `Bearer ${token}` },
+        params : { term: query, types: 'artists', limit: 20 }
+      }
+    );
+
+        const results = (data.results.artists?.data || [])
+      .flatMap(a => {
+        const attr = a.attributes || {};
+        const art  = attr.artwork?.url;
+        /* skip entries that have no artwork or no name */
+        if (!attr.name || !art) return [];
+        return [{
+          id   : a.id,
+          name : attr.name,
+          image: art.replace('{w}x{h}', '300x300')
+        }];
       });
-    } else if (error.request) {
-      return res.status(504).json({ error: 'Apple Music API timeout or no response' });
-    } else {
-      return res.status(500).json({ error: 'Failed to search for artists', message: error.message });
+    searchCache.set(key, { ts: Date.now(), data: results });   // ← save
+    return res.json(results);
+  } catch (err) {
+    const status = err.response?.status || 500;
+
+    if (status === 400 || status === 404) {
+      console.warn('Apple search miss:', query, '→', status);
+      return res.json([]);                 // empty array = harmless
     }
-  }
+  
+    console.error('Apple search failed:', status, err.message);
+    return res.status(500).json({ error: 'Apple search failed' });  }
 });
+
+  
 
 unifiedRouter.get('/apple-music/random-genre-artists', async (req, res) => {
   const { count = 50 } = req.query;

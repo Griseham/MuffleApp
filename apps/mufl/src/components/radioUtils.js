@@ -239,7 +239,10 @@ export const generateFrequencyPoints = (normalizedSim, count = 12) => {
     }
   }
   
-  return points;
+    // ─── MOBILE THROTTLE ────────────────────────────────
+    const maxBoxes = (typeof window !== 'undefined' && window.innerWidth < 500) ? 9 : 14; // 5 on phones, 8 on larger screens
+    const visiblePoints = points.slice(0, maxBoxes);
+    return visiblePoints;
 };
 
 // Hook to generate fixed window of ticks around center - originally from useTicks.js

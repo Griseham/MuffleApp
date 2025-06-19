@@ -95,3 +95,57 @@
   min-height: 80px;             /* ~5 rem – keeps everything centred */
 }
 /* turn the wrapper into a "visible" canvas */
+/* ────────────────────────────────────────────────────────────────
+   MOBILE ( ≤480 px ) – compact single-column layout
+   ────────────────────────────────────────────────────────────────*/
+   @media (max-width: 480px) {
+
+    /* 1 ▸ wrapper padding & gaps */
+    .rt-wrapper            { padding: .75rem .5rem; gap: 1rem; }
+  
+    /* 2 ▸ LED read-out */
+    .rt-display            { font-size: 1.45rem;   }         /* used to be 1.8-2 rem */
+  
+    /* 3 ▸ stack ruler + dial vertically, keep them centred */
+    .rt-controls           { flex-direction: column; gap: 16px; }
+  
+    /* 4 ▸ ruler box */
+    .rt-ruler              {
+      width: 100%;
+      height: 5rem;                     /* was 5-8 rem */
+      padding: .5rem .5rem;
+    }
+    .rt-frequency-display  { min-width: 220px; min-height:90px;}             /* was 260-500px */
+  
+     /* keep the decorative waveform hidden */
+  .rt-waveform           { display:none; }
+
+  /* but leave the container itself alive so the freq-boxes can render */
+  .rt-waveform-container { display:block !important; }
+  
+    /* 5 ▸ frequency boxes & tick labels a bit smaller */
+    .rt-freq-point-box     { font-size: .8rem; padding: .25rem .35rem; }
+  
+    /* 6 ▸ rotary dial */
+    .rt-knob-zone          { width: 72px; height: 72px; }    /* was 100-120px */
+  
+    /* 7 ▸ progress bar height */
+    .rt-progress-bar       { height: .3rem; }
+  
+  }
+  /* ─── MOBILE: tighten vertical rhythm so the knob fits ─── */
+@media (max-width:480px){
+
+  /* shrink LED block */
+  .rt-header{
+    padding: .45rem .8rem;      /* was .65rem 1rem */
+    min-height: 3.5rem;         /* was 3.6rem */
+  }
+
+  /* pull the ruler up closer to the LED */
+  .rt-header + .rt-progress-bar{ margin-top: .05rem; }  /* was .5rem */
+  .rt-ruler{ margin-top: -.95rem; }                       /* was .75rem */
+
+  /* just a hair smaller knob to guarantee clearance */
+  .rt-knob-zone{ transform: scale(.85); }
+}

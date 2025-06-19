@@ -628,3 +628,75 @@
   }
 }
 
+/* ─── Ruler labels: brighter & responsive ───────────────────────── */
+.rt-tick-label{
+  position:absolute;
+  bottom:.15rem;               /* hug the baseline */
+  left:50%;
+  transform:translateX(-50%);
+  font-family:ui-monospace,monospace;
+  font-size:.70rem;            /* ≈11 px desktop */
+  font-weight:600;
+  letter-spacing:.3px;
+  color:#e5e7eb;               /* light-gray for volume */
+  text-shadow:0 0 3px rgba(0,0,0,.9);
+  white-space:nowrap;
+  pointer-events:none;
+}
+/* similarity mode – cyan above zero, red below */
+.rt-tick-label.sim-label{color:#00F5FF;}
+.rt-tick[data-major="true"][data-sim-neg="true"] .rt-tick-label{
+  color:#FF3D5A;
+}
+
+/* Make labels bigger on tiny screens */
+@media (max-width:480px){
+  .rt-tick-label{font-size:.78rem;}   /* ≈12.5 px */
+}
+/* ──────────────────────────────────────────────────────────
+   MOBILE VISIBILITY FIX  (≤480 px)
+   enlarges LED bar + ruler + tick labels
+   ──────────────────────────────────────────────────────────*/
+   @media (max-width:480px){
+
+    /* 1 ▸ LED HEADER  (volume · similarity)  */
+    .rt-header{                    /* taller container */
+      padding: .65rem 1rem;
+      min-height: 3.6rem;          /* was ≈2.8rem – lets digits breathe */
+    }
+    .rt-display{                   /* bigger digits */
+      font-size: 1.85rem;          /* was 1.45rem */
+      line-height: 1.1;
+    }
+  
+    /* 2 ▸ RULER BODY  */
+    .rt-ruler{
+      height: 5rem;                /* +1 rem so boxes & ticks show */
+    }
+    .rt-frequency-display{
+      min-height: 5rem;            /* match ruler height */
+    }
+  
+    /* 3 ▸ TICK LABELS  */
+    .rt-tick-label{
+      font-size: .9rem;            /* up from .78/.8rem */
+      bottom: .15rem;              /* hug baseline */
+      color:#F3F4F6;               /* very-light gray for contrast */
+      text-shadow:0 0 6px rgba(0,0,0,.9);
+    }
+  
+    /* 4 ▸ GREEN/RED BOXES  (frequency points)  */
+    .rt-freq-point-box{
+      font-size: .95rem;           /* restore legibility */
+      padding:.28rem .45rem;
+    }
+  }
+
+  /* ─── MOBILE: let the boxes spill outside the ruler, otherwise they get clipped ─── */
+@media (max-width:480px){
+  .rt-frequency-display{
+    overflow: visible;     /* was hidden by the ruler frame */
+  }
+}
+
+  

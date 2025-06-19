@@ -43,18 +43,28 @@ const Tick = React.memo(
         data-major={isMajor}
         data-medium={isMedium}
         data-minor={!isMajor && !isMedium}
+        data-sim-neg={activeSection==='similarity' && tick<0}
+
         style={{
           left: `calc(50% + ${offset}px)`,
           backgroundColor: getColor(),
           height: tickHeight,
-          opacity: isMajor ? 1 : isMedium ? 0.8 : 0.5,
-          // No transitions - make ticks fixed in place for all modes
+          opacity: isMajor ? 1 : isMedium ? 0.8 : 0.5
         }}
       >
-        {/* Only show tick numbers in volume mode */}
-        {isMajor && activeSection === 'volume' && <span className="rt-tick-label">{formatNumber(tick)}</span>}
+        {/* always label MAJOR ticks in both modes */}
+        {isMajor && (
+          <span
+            className={`rt-tick-label ${
+              activeSection === 'similarity' ? 'sim-label' : ''
+            }`}
+          >
+            {formatNumber(tick)}
+          </span>
+        )}
       </div>
     );
+    
   },
 );
 

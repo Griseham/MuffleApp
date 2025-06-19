@@ -3,6 +3,13 @@
 const CACHE_KEY = 'enhanced_similar_artists_cache';
 const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
 
+/* ---------- top of file (add just under CACHE_DURATION line) ---------- */
+const RATE_DELAY_MS   = 300;               // 4 req/sec
+const imageRequestMem = new Map();         // session-cache: name → artist
+
+const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
+
+
 // Cache management
 const getFromCache = (key) => {
   try {
@@ -64,56 +71,46 @@ const fetchLastFmSimilarArtists = async (selectedArtists, targetCount = 50) => {
 };
 
 // Fetch images from Apple Music for artists
+/* ---------- replace the whole fetchAppleMusicImages function ----------- */
 const fetchAppleMusicImages = async (artistNames, progressCallback = null) => {
   const API_BASE = process.env.REACT_APP_API_BASE_URL || '/api';
   const artistsWithImages = [];
-  const batchSize = 5; // Process in smaller batches to avoid rate limits
-  
-  for (let i = 0; i < artistNames.length; i += batchSize) {
-    const batch = artistNames.slice(i, i + batchSize);
-    
+
+  for (let i = 0; i < artistNames.length; i++) {
+    const name = artistNames[i];
+
+    /* ① session cache – no fetch if we’ve asked for this name already */
+    if (imageRequestMem.has(name)) {
+      artistsWithImages.push(imageRequestMem.get(name));
+      if (progressCallback) progressCallback(((i + 1) / artistNames.length) * 100);
+      continue;
+    }
+
     try {
-      // Search for each artist individually to get better results
-      for (const artistName of batch) {
-        try {
-          const response = await fetch(`${API_BASE}/apple-music/search-artists?query=${encodeURIComponent(artistName)}`);
-          
-          if (response.ok) {
-            const results = await response.json();
-            
-            // Find the best match (exact name match preferred)
-            const exactMatch = results.find(artist => 
-              artist.name.toLowerCase() === artistName.toLowerCase()
-            );
-            
-            const bestMatch = exactMatch || results[0];
-            
-            if (bestMatch && bestMatch.image && !bestMatch.image.includes('fallback')) {
-              artistsWithImages.push({
-                id: bestMatch.id,
-                name: bestMatch.name,
-                image: bestMatch.image,
-                genres: bestMatch.genres || []
-              });
-            }
-          }
-          
-        } catch (error) {
+      const res = await fetch(`${API_BASE}/apple-music/search-artists?query=${encodeURIComponent(name)}`);
+      if (res.ok) {
+        const results = await res.json();
+        const best   = results.find(a => a.name.toLowerCase() === name.toLowerCase()) || results[0];
+
+        if (best && best.image && !best.image.includes('fallback')) {
+          imageRequestMem.set(name, best);          // memoise for this session
+          artistsWithImages.push(best);
         }
       }
-      
-      // Update progress
-      if (progressCallback) {
-        const progress = Math.min(100, ((i + batchSize) / artistNames.length) * 100);
-        progressCallback(progress);
-      }
-      
-    } catch (error) {
+    } catch (_) {
+      /* swallow network errors – we’ll just skip the image */
     }
+
+    if (progressCallback)
+      progressCallback(((i + 1) / artistNames.length) * 100);
+
+    /* ② throttle – wait before the next Apple request */
+    await sleep(RATE_DELAY_MS);
   }
-  
+
   return artistsWithImages;
 };
+
 
 // Remove duplicates based on artist name (case insensitive)
 const removeDuplicates = (artists, selectedArtists = []) => {
