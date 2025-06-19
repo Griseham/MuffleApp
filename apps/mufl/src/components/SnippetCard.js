@@ -511,9 +511,9 @@ const togglePlay = () => {
   };
   
   return (
-    <div className="flex justify-center relative p-8">
-      {/* Main Card Container */}
-      <div className={`w-80 flex flex-col items-center relative ${getAnimationClass()}`}>
+<div className="flex justify-center relative sm:p-8 p-4">
+{/* Main Card Container */}
+<div className={`sm:w-80 md:w-[26rem] w-64 flex flex-col items-center relative ${getAnimationClass()}`}>
         {/* User Header with Avatar - NOW USING AVATAR SERVICE */}
         <div className="flex w-full items-center mb-3 px-1">
           <div 
@@ -558,8 +558,8 @@ const togglePlay = () => {
         <div className="relative w-full mb-6">
           {/* Snippet Card */}
           <div className="flex w-full select-none flex-col overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-b from-[#1a1a1a] to-black shadow-[0_10px_25px_-5px_rgba(0,0,0,0.5)]">
-            <div className="relative h-96 w-full flex items-center justify-center bg-black/40 border border-white/10">
-              {/* UPDATED: Album Artwork - Use Apple Music artwork or fallback */}
+          <div className="relative sm:h-96 h-72 w-full flex items-center justify-center bg-black/40 border border-white/10">
+          {/* UPDATED: Album Artwork - Use Apple Music artwork or fallback */}
               <div className="absolute inset-0">
                 {renderAlbumArtwork()}
                 {/* Fallback gradient (hidden by default, shown on image error) */}
@@ -580,17 +580,7 @@ const togglePlay = () => {
                 }}
               />
 
-              {/* Room Artist Badge */}
-              {currentCard.isFromRoomArtist && (
-                <div className="absolute top-3 left-3 z-10">
-                  <div className="flex items-center bg-yellow-500/90 text-black px-2 py-1 rounded-full text-xs font-bold backdrop-blur-sm">
-                    <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                    </svg>
-                    Room Artist
-                  </div>
-                </div>
-              )}
+           
 
               {/* Widget Badge */}
               {currentCard.isFromWidget && (
@@ -694,8 +684,8 @@ const togglePlay = () => {
 
 
           {!isLoading && (
-            <div className="absolute -left-16 top-1/2 transform -translate-y-1/2 flex flex-col gap-3">
-              <button 
+            <div className="absolute sm:-left-16 md:-left-20 -left-12 top-1/2 transform -translate-y-1/2 flex flex-col gap-3">
+            <button 
                 onClick={() => handleVote('down', 1)}
                 className="w-14 h-12 rounded-md bg-gradient-to-b from-[#1a1a1a] to-black flex items-center justify-center border border-white/10 text-red-400 hover:bg-black/70 transition-colors shadow-[0_4px_12px_-2px_rgba(0,0,0,0.5)] relative backdrop-blur-sm"
               >
@@ -748,8 +738,8 @@ const togglePlay = () => {
           {/* Right Arrows (positive) - Only show if not loading */}
 
           {!isLoading && (
-            <div className="absolute -right-16 top-1/2 transform -translate-y-1/2 flex flex-col gap-3">
-              <button 
+            <div className="absolute sm:-right-16 md:-right-20 -right-12 top-1/2 transform -translate-y-1/2 flex flex-col gap-3">
+            <button 
                 onClick={() => handleVote('up', 1)}
                 className="w-14 h-12 rounded-md bg-gradient-to-b from-[#1a1a1a] to-black flex items-center justify-center border border-white/10 text-[#1DB954] hover:bg-black/70 transition-colors shadow-[0_4px_12px_-2px_rgba(0,0,0,0.5)] relative backdrop-blur-sm"
               >
@@ -810,7 +800,14 @@ const togglePlay = () => {
 
       {/* Animation popup */}
       {showAnim && (
-        <div className="absolute right-0 top-1/2 transform -translate-y-1/2 translate-x-full ml-8">
+        <div
+        className="
+          absolute left-1/2 top-1/2 -translate-x-1/2
+          w-[85vw] max-w-[14rem]
+          sm:left-auto sm:right-0 sm:translate-x-full sm:-translate-y-1/2 sm:w-auto sm:ml-8
+        "
+      >
+
           <div className="bg-gray-900/90 rounded-lg p-4 border border-gray-800 shadow-lg backdrop-blur-sm">
             {animItems.map((item, index) => (
               <div

@@ -461,7 +461,6 @@ const renderSwipeContent = (songs, type) => {
               className={`tab-button ${activeTab === "LeftSwipes" ? "active" : ""} relative`}
               onClick={() => handleTabClick("LeftSwipes")}
             >
-              <LeftSwipeIcon size={16} className="inline-block mr-1" />
               LEFT
               {leftSwipeSongs.length > 0 && (
                 <span className="ml-1 flex h-5 w-5 items-center justify-center rounded-full bg-gray-200 text-xs text-black">{getLeftSwipesBadgeCount()}</span>
@@ -553,7 +552,6 @@ const renderSwipeContent = (songs, type) => {
               className={`tab-button ${activeTab === "RightSwipes" ? "active" : ""} relative`}
               onClick={() => handleTabClick("RightSwipes")}
             >
-              <RightSwipeIcon size={16} className="inline-block mr-1" />
               RIGHT
               {rightSwipeSongs.length > 0 && (
                 <span className="ml-1 flex h-5 w-5 items-center justify-center rounded-full bg-gray-200 text-xs text-black">{getRightSwipesBadgeCount()}</span>
@@ -628,372 +626,321 @@ const renderSwipeContent = (songs, type) => {
             )}
             
             {/* Widget Tab Content - Only real selections from artist pool */}
-            {activeTab === 'Widget' && (
-              <Widget 
-                selectedArtists={selectedArtistsForWidget} 
-                queuedSongs={queuedSongs} 
-                setWidgetSelectedArtist={setWidgetSelectedArtist} 
-                onRemoveArtist={(artistId) => {
-                  setSelectedArtistsForWidget(prev => 
-                    prev.filter(artist => artist.id !== artistId)
-                  );
-                }}
-                onSongFromWidget={onSongFromWidget}
-              />
-            )}
+{activeTab === 'Widget' && (
+    <Widget 
+      selectedArtists={selectedArtistsForWidget} 
+      queuedSongs={queuedSongs} 
+      setWidgetSelectedArtist={setWidgetSelectedArtist} 
+      onRemoveArtist={(artistId) => {
+        setSelectedArtistsForWidget(prev => 
+          prev.filter(artist => artist.id !== artistId)
+        );
+      }}
+      onSongFromWidget={onSongFromWidget}
+    />
+)}
           </div>
         )}
       </div>
       
-      {/* Enhanced Styles for Design 3 and Full Width - IMAGE-FREE VERSION */}
-      <style>{`
-        /* Bottom container centered with playing screen */
-        .bottom-container {
-          position: fixed;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          margin: 0 auto;
-          width: 100%;
-          max-width: 800px;
+{/* Enhanced Styles for Design 3 and Full Width - IMAGE-FREE VERSION */}
+<style>{`
 
-          display: flex;
-          flex-direction: column;
-          background: linear-gradient(to bottom, #1a1a1a, #000000);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          border-top-left-radius: 1.5rem;
-          border-top-right-radius: 1.5rem;
-          box-shadow: 0 -10px 25px -5px rgba(0, 0, 0, 0.5);
-          overflow: hidden;
-          transition: height 0.3s ease;
-          z-index: 30;
-          padding: 0 20px;
-          box-sizing: border-box;
-        }
-
-  .bottom-container.expanded{
-  height:clamp(300px,48vh,360px);   /* never taller than ~½ the screen */
+/* ---------- structural wrapper ---------- */
+.bottom-container{
+  position:fixed;left:0;right:0;bottom:0;margin:0 auto;
+  width:100%;max-width:800px;
+  display:flex;flex-direction:column;
+  background:linear-gradient(to bottom,#1a1a1a,#000);
+  border:1px solid rgba(255,255,255,.08);
+  border-top-left-radius:1.5rem;border-top-right-radius:1.5rem;
+  box-shadow:0 -10px 25px -5px rgba(0,0,0,.5);
+  overflow:hidden;z-index:30;padding:0 18px;box-sizing:border-box;
+  transition:height .3s ease;
 }
 
-@media (max-width:768px){
-  .bottom-container.expanded{
-    height:clamp(260px,54vh,340px);
+/* Expanded height scales with viewport, but never overwhelms the screen  */
+.bottom-container.expanded{height:clamp(300px,52vh,380px);}
+@media(max-width:768px){.bottom-container.expanded{height:clamp(250px,58vh,340px);}}
+
+/* Collapsed "grab-bar" */
+.bottom-container.collapsed{height:64px;}
+
+/* ---------- tab bar ---------- */
+.tab-navigation{
+  position:relative;                    /* makes arrow absolute-pos reference */
+  display:flex;align-items:center;width:100%;height:60px;
+  border-bottom:1px solid rgba(255,255,255,.08);
+  padding-inline:0;
+  backdrop-filter:blur(6px);
+}
+
+/* buttons live in their own scrollable row so text never squashes arrow */
+/* ---------- buttons row ---------- */
+.tab-buttons{
+  display:flex;
+  flex:1;                         /* let the row fill the whole bar */
+  gap:8px;
+  overflow-x:auto;
+  scrollbar-width:none;
+  padding-right:52px;             /* leave room for the arrow button */
+  justify-content:space-between;  /* spread tabs edge-to-edge */
+  flex-wrap:nowrap;
+}
+
+/* On narrow screens keep the original scrollable layout */
+@media (max-width:640px){
+  .tab-buttons{
+    justify-content:flex-start;
   }
 }
 
-        
-        .bottom-container.collapsed {
-          height: 72px;
-        }
-        
-        /* Tab navigation */
-        .tab-navigation {
-          display: flex;
-          width: 100%;
-          height: 64px;
-          padding: 0 0;
-          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-          justify-content: space-between;
-          align-items: center;
-          position: relative;
-          z-index: 10;
-          backdrop-filter: blur(5px);
-        }
-        
-        /* Tab buttons container */
-        .tab-buttons {
-          display: flex;
-          justify-content: center;
-          flex: 1;
-          gap: 12px;
-        }
-        
-        /* Tab button styling */
-        .tab-button {
-          position: relative;
-          font-size: 12px;
-          font-weight: bold;
-          letter-spacing: 0.05em;
-          padding: 8px 10px;
-          transition: all 0.2s;
-          border: none;
-          background: transparent;
-          color: #808080;
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          white-space: nowrap;
-        }
-        
-        .tab-button:hover {
-          color: white;
-        }
-        
-        .tab-button.active {
-          color: white;
-        }
-        
-        .tab-button.active:after {
-          content: '';
-          position: absolute;
-          bottom: -1px;
-          left: 0;
-          width: 100%;
-          height: 1px;
-          background-color: white;
-        }
-        
-        /* Enhanced styling for pool tab when it has room artists */
-        .tab-button.enhanced {
-          color: #4ade80;
-        }
-        
-        .tab-button.enhanced:hover {
-          color: #22c55e;
-        }
-        
-        .tab-button.enhanced.active {
-          color: #4ade80;
-        }
-        
-        /* Expand/collapse button */
-        .expand-collapse-button {
-          background: transparent;
-          border: none;
-          color: white;
-          width: 36px;
-          height: 36px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          border-radius: 50%;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-        
-        .expand-collapse-button:hover {
-          background-color: rgba(255, 255, 255, 0.1);
-        }
-        
-        /* Content area with fixed height */
-        .content-area {
-          flex: 1;
-          padding: 16px 4px;
-          overflow: hidden;
-          position: relative;
-          height: calc(100% - 64px);
-        }
+.tab-buttons::-webkit-scrollbar{display:none;}
 
-        /* Swipe content styles */
-        .swipe-content {
-          height: 100%;
-          overflow-y: auto;
-          scrollbar-width: thin;
-          scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
-        }
-        
-        .swipe-header {
-          display: flex;
-          align-items: center;
-          color: white;
-          font-size: 18px;
-          font-weight: medium;
-          margin-bottom: 16px;
-        }
-        
-        /* Design 3 Song Card Layout - COMPLETELY IMAGE-FREE */
-        .song-card-design3 {
-          display: flex;
-          align-items: stretch;
-          margin-bottom: 12px;
-          padding: 16px;
-          background-color: rgba(255, 255, 255, 0.05);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          border-radius: 12px;
-          transition: all 0.2s;
-        }
-        
-        .song-card-design3:hover {
-          background-color: rgba(255, 255, 255, 0.08);
-          transform: translateY(-2px);
-          box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-        }
-        
-        /* PURE SVG Song Icon Container - NO IMAGES */
-        .song-icon {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          width: 44px;
-          height: 44px;
-          background-color: rgba(75, 85, 99, 0.3);
-          border: 1px solid rgba(147, 51, 234, 0.3);
-          border-radius: 8px;
-          margin-right: 16px;
-          flex-shrink: 0;
-        }
-        
-        .song-info {
-          flex: 1;
-          min-width: 0;
-          margin-right: 16px;
-        }
-        
-        .song-title {
-          font-weight: medium;
-          font-size: 15px;
-          color: white;
-          margin-bottom: 4px;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-        }
-        
-        .song-artist {
-          font-size: 13px;
-          color: #a0a0a0;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-        }
-        
-        /* Middle section - User info with PURE SVG avatar */
-        .middle-section {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          margin: 0 20px;
-          min-width: 60px;
-        }
-        
-        .by-label {
-          font-size: 10px;
-          color: #666;
-          margin-bottom: 2px;
-        }
-        
-        .user-container {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 4px;
-        }
-        
-        /* PURE SVG User Avatar - NO IMAGES */
-        .user-avatar {
-          width: 28px;
-          height: 28px;
-          border-radius: 50%;
-          background-color: rgba(59, 130, 246, 0.2);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          border: 2px solid rgba(59, 130, 246, 0.3);
-        }
-        
-        .user-name {
-          font-size: 10px;
-          color: #888;
-          font-weight: 500;
-        }
-        
-        /* Indicators container */
-        .indicators-container {
-          display: flex;
-          align-items: center;
-          gap: 24px;
-        }
-        
-        .separator {
-          width: 1px;
-          height: 30px;
-          background-color: rgba(255, 255, 255, 0.2);
-        }
-        
-        /* Chat content styles with SVG user avatars */
-        .chat-content {
-          height: 100%;
-          overflow-y: auto;
-          scrollbar-width: thin;
-          scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
-        }
-        
-        .chat-message {
-          margin-bottom: 12px;
-          padding: 12px 14px;
-          background-color: rgba(255, 255, 255, 0.05);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          border-radius: 10px;
-        }
-        
-        /* PURE SVG Chat User Avatar - NO IMAGES */
-        .chat-user-avatar {
-          width: 20px;
-          height: 20px;
-          border-radius: 50%;
-          background-color: rgba(59, 130, 246, 0.2);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          border: 1px solid rgba(59, 130, 246, 0.3);
-          flex-shrink: 0;
-        }
-        
-        /* Filter for glow effect */
-        .drop-shadow {
-          filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.3));
-        }
-        
-        /* Scrollbars */
-        .chat-content::-webkit-scrollbar-thumb,
-        .swipe-content::-webkit-scrollbar-thumb {
-          background-color: rgba(255, 255, 255, 0.3);
-          border-radius: 4px;
-        }
-        
-        .chat-content::-webkit-scrollbar-track,
-        .swipe-content::-webkit-scrollbar-track {
-          background-color: rgba(0, 0, 0, 0.3);
-        }
+/* ---------- individual tab buttons ---------- */
+/* ---------- individual tab buttons (wider, nicer) ---------- */
+/* ---------- individual tab buttons – bigger, like TopComponent ---------- */
+.tab-button{
+  /* layout */
+  flex:1 1 0;                         /* equal slice for every tab          */
+  min-width:0;                        /* allow text to shrink if necessary  */
+  display:flex;align-items:center;justify-content:center;
+  /* visuals */
+  position:relative;border:none;background:none;cursor:pointer;user-select:none;
+  font-weight:700;                    /* bolder like the top tabs           */
+  font-size:15px;                     /* ↑ size                             */
+  letter-spacing:.06em;               /* match “tracking-wider” feel        */
+  text-transform:uppercase;
+  padding:10px 0;                     /* taller click area                  */
+  color:#cfcfcf;                      /* slightly lighter gray              */
+  line-height:1;transition:color .15s,transform .15s;
+}
+.tab-button:hover,
+.tab-button.active{
+  color:#ffffff;
+  transform:translateY(-1px);         /* subtle lift on hover/active        */
+}
+.tab-button.active::after{
+  content:"";
+  position:absolute;left:12%;right:12%;bottom:-4px;height:2px;
+  background:#22c55e;                 /* slim green accent bar              */
+  border-radius:1px;
+}
 
-        @media (max-width: 768px) {
-          .bottom-container {
-            width: calc(100% - 16px);
-            max-width: none;
-            padding: 0 12px;
-          }
-          
-          .content-area {
-            padding: 12px 2px;
-          }
-        }
-
-
-  /* ---------- PHONE  ≤420 px ---------- */
-  @media (max-width:420px){
-    /* bigger, always-visible handle */
-    .expand-collapse-button{
-      position:absolute;           /* sits above scroll-area */
-      top:8px;
-      right:8px;
-      width:44px;                  /* 44 × 44 = comfortable thumb target */
-      height:44px;
-      z-index:60;                  /* above everything inside the panel */
-      touch-action:manipulation;   /* removes 300 ms tap-delay */
-    }
-
-    /* keep room for content when expanded, but never taller than ~55 % */
-    .bottom-container.expanded{
-      height:clamp(260px,55vh,340px);
-    }
-
-    /* slightly slimmer bar when collapsed */
-    .bottom-container.collapsed{
-      height:56px;
-    }
+/* highlight for “POOL” when room artists exist */
+.tab-button.enhanced{color:#4ade80;}
+.tab-button.enhanced:hover{color:#22c55e;}
+/* —— mobile tweaks (≤ 640 px) —— */
+@media (max-width:640px){
+  /* keep the tab bar scrollable */
+  .tab-button{
+    flex:0 0 auto;
+    font-size:12px;
+    padding:8px 12px;
   }
-      `}</style>
+
+  /* ───────── swipe-card layout ───────── */
+  .song-card-design3{
+    flex-direction:column;            /* stack everything vertically      */
+    padding:12px;
+  }
+  .song-icon{
+    width:34px;height:34px;
+    margin:0 0 10px 0;                /* icon above the text              */
+  }
+  .song-info{
+    margin-right:0;                   /* reset the old gap                */
+    margin-bottom:8px;                /* space beneath title/artist       */
+  }
+
+  /* user info now forms a small row */
+  .middle-section{
+    flex-direction:row;
+    justify-content:flex-start;
+    margin:0 0 8px 0;
+    min-width:0;
+  }
+  .by-label{font-size:10px;margin-right:6px;}
+  .user-container{
+    flex-direction:row;align-items:center;gap:6px;
+  }
+  .user-avatar{width:22px;height:22px;border-width:1px;}
+  .user-name{font-size:11px;}
+
+  /* arrows + vote counts: full-width row */
+  .indicators-container{
+    width:100%;
+    justify-content:space-between;    /* stretch counts edge-to-edge      */
+    gap:6px;
+  }
+  .separator{display:none;}           /* hide the thin divider            */
+}
+
+
+
+/* ---------- collapse / expand arrow ---------- */
+.expand-collapse-button{
+  position:absolute;right:8px;top:50%;
+  width:34px;height:34px;
+  display:flex;align-items:center;justify-content:center;
+  border-radius:50%;border:none;background:transparent;color:#fff;
+  transform:translateY(-50%);transition:background .15s;
+  flex-shrink:0;                         /* ensures arrow never shrinks away */
+}
+.expand-collapse-button:hover{background:rgba(255,255,255,.08);}
+.expand-collapse-button svg{transition:transform .3s;}
+.expand-collapse-button svg.rotate-180{transform:rotate(180deg);}
+
+/* ---------- content pane ---------- */
+.content-area{
+  flex:1;padding:16px 4px;height:calc(100% - 60px);overflow:hidden;position:relative;
+}
+
+/* ---------- swipe-content lists ---------- */
+.swipe-content{height:100%;overflow-y:auto;
+  scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.28) transparent;}
+.swipe-header{display:flex;align-items:center;margin-bottom:14px;
+  font-size:17px;font-weight:500;color:#fff;}
+
+/* ---------- song cards (image-free design-3) ---------- */
+.song-card-design3{
+  display:flex;align-items:stretch;margin-bottom:10px;padding:14px;
+  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);
+  border-radius:12px;transition:transform .15s,background .15s;
+}
+.song-card-design3:hover{background:rgba(255,255,255,.07);transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,.2);}
+.song-icon{display:flex;align-items:center;justify-content:center;
+  width:42px;height:42px;margin-right:14px;flex-shrink:0;
+  background:rgba(75,85,99,.3);border:1px solid rgba(147,51,234,.3);border-radius:8px;}
+.song-info{flex:1;min-width:0;margin-right:12px;}
+.song-title{font-size:14px;font-weight:500;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px;}
+.song-artist{font-size:12px;color:#a0a0a0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+.middle-section{display:flex;flex-direction:column;align-items:center;justify-content:center;margin:0 18px;min-width:58px;}
+.by-label{font-size:9px;color:#666;margin-bottom:1px;}
+.user-container{display:flex;flex-direction:column;align-items:center;gap:3px;}
+.user-avatar{width:26px;height:26px;border-radius:50%;overflow:hidden;background:rgba(59,130,246,.25);border:2px solid rgba(59,130,246,.3);}
+.user-name{font-size:10px;color:#ccc;text-align:center;max-width:56px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+.indicators-container{display:flex;align-items:center;gap:4px;}
+.separator{width:1px;height:24px;background:rgba(255,255,255,.12);}
+
+/* ---------- very small screens (≤ 390 px) ---------- */
+@media(max-width:390px){
+  .tab-button{font-size:10px;padding:5px 8px;}
+  .tab-navigation{height:56px;}
+  .bottom-container.collapsed{height:60px;}
+}
+
+/* Widget – tiny-screen tweaks only */
+@media (max-width:480px){
+  .widget-left  { min-height: 55%; }        /* list or artist view  */
+  .widget-right { max-height: 45%; }        /* personal queue       */
+  .widget-left h3,
+  .widget-right h3         { font-size:13px; }
+  .widget-left .text-sm,
+  .widget-right .text-sm   { font-size:12px; }
+}
+
+@media (max-width:640px) {
+  .widget-left .p-3 { padding:8px; }
+  .widget-left h3.text-sm   { font-size:14px; }
+  .widget-left p.text-xs    { font-size:12px; }
+  .widget-left input        { font-size:14px; }
+  .widget-left .w-12.h-12   { width:48px; height:48px; }
+  .widget-right .p-3        { padding:8px; }
+  .widget-right h3.text-sm  { font-size:14px; }
+}
+
+@media (max-width:480px) {
+  /* 1) compress the header (artist image + name) */
+  .widget-left > .flex.items-center {
+    padding:6px 10px;            /* was p-3 => now p-1.5/2.5 */
+  }
+  .widget-left .w-12.h-12 {
+    width:36px; height:36px;     /* shrink the profile circle */
+  }
+  .widget-left h3.text-sm {
+    font-size:14px;              /* a tad smaller name */
+  }
+  .widget-left p.text-xs {
+    font-size:11px;              /* shrink “Popular songs” label */
+  }
+
+  /* 2) compress the search bar */
+  .widget-left > .border-b > .relative {
+    padding:6px 10px;            /* was p-3 */
+  }
+  .widget-left input {
+    padding-top:6px;             /* was py-2 */
+    padding-bottom:6px;
+    font-size:14px;              /* slightly smaller text */
+  }
+}
+/* ─── Chat tab: desktop tweaks ───────────────────────── */
+@media (min-width: 768px) {
+  .chat-content {
+    height: 100%;                  /* fill the content area */
+    overflow-y: auto;              /* scroll when it overflows */
+    padding: 16px;                 /* comfy padding */
+    display: flex;
+    flex-direction: column;
+    gap: 12px;                     /* space between messages */
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.3) transparent;
+  }
+  .chat-content::-webkit-scrollbar {
+    width: 6px;
+  }
+  .chat-content::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.3);
+    border-radius: 3px;
+  }
+  .chat-content::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .chat-message {
+    background: rgba(255,255,255,0.05); /* subtle bubble */
+    padding: 12px 16px;
+    border-radius: 8px;
+    transition: background .2s;
+  }
+  .chat-message:hover {
+    background: rgba(255,255,255,0.1);
+  }
+}
+/* ─── Chat tab: mobile refinements ───────────────────────── */
+@media (max-width: 640px) {
+  .chat-content {
+    padding: 8px;               /* tighten the overall gutter */
+    gap: 10px;                  /* space between each message */
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.3) transparent;
+  }
+  .chat-content::-webkit-scrollbar {
+    width: 4px;
+  }
+  .chat-content::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.3);
+    border-radius: 2px;
+  }
+
+  .chat-message {
+    background: rgba(255,255,255,0.06); /* light bubble */
+    padding: 10px 12px;                 /* roomy yet compact */
+    border-radius: 8px;                 /* softer corners */
+    font-size: 14px;                    /* slightly smaller text */
+    line-height: 1.3;
+    transition: background .2s;
+  }
+  .chat-message:hover {
+    background: rgba(255,255,255,0.1);
+  }
+}
+
+
+`}</style>
     </div>
   );
 };

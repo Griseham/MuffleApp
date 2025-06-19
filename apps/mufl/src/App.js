@@ -57,6 +57,18 @@ function App() {
   const handleBackToRooms = () => {
     setStep('rooms');
   };
+  // in App.js, inside the App() function, alongside handleContinue, handleJoinRoom, etc.
+
+  const handlePickTrending = (station) => {
+    // keep radar & pool in sync
+  
+    // make this the active room
+    setActiveStation(station);          // contains name, freqNumber, listeners …
+  
+    // jump straight into PlayingScreen
+    setStep('playing');
+  };
+
 
   return (
     <div className="app-container">
@@ -92,6 +104,7 @@ function App() {
                 selectedArtists={selectedArtists}
                 onJoinRoom={handleJoinRoom}
                 onBack={handleBackToSelection}
+                onPickTrending={handlePickTrending}
               />
             </div>
           </CSSTransition>

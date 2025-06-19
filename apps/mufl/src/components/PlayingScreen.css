@@ -35,7 +35,7 @@
   
   /* Update SnippetCard sizing for wider container */
   .playing-screen-container .relative.w-full.max-w-md {
-    max-width: 480px; /* Slightly larger to match wider container */
+    max-width: 640px; /* Slightly larger to match wider container */
   }
   
   /* Keep the smoky gradient for background continuity */

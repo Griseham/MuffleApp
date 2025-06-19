@@ -772,15 +772,18 @@ const handleSwipe = (song, type, strength) => {
     <div className="smoky-gradient relative mx-auto h-screen text-white overflow-hidden flex flex-col" style={{ maxWidth: '800px', boxSizing: 'border-box' }}>
       {/* Back button - as specified */}
 <button
-  className="absolute top-4 left-4 z-20 text-white bg-black/80 backdrop-blur-sm border-none text-2xl cursor-pointer px-5 py-2.5 rounded-lg transition-colors duration-300 hover:bg-gray-700 focus:outline-none"
-  onClick={onBack}
+className="absolute top-3 left-3 z-20 text-white bg-black/80 backdrop-blur-sm
+border-none text-lg px-3 py-1.5 rounded-md cursor-pointer
+transition-all duration-300 hover:bg-gray-700 focus:outline-none
+transform scale-75 md:scale-100"  
+onClick={onBack}
 >
   ← Back
 </button>
       
       
       {/* Top bar with collapsible content - UPDATED to pass yourPicks */}
-      <div className="mt-14">
+      <div className="mt-5">
         <TopComponent
           volume={currentVolume}
           similarity={currentSimilarity}

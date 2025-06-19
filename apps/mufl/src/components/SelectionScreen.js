@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import axios from 'axios';
 import './SelectionScreen.css';
 import { fetchSimilarArtists } from '../utils/fetchSimilar';
+import _ from 'lodash';
+
 
 // Set base URL for API requests
  axios.defaults.baseURL =
@@ -21,13 +23,13 @@ const shuffleArray = (array) => {
 const ArtistImage = ({ name, src, size = "large" }) => {
   return (
     <img
-      src={src || '/placeholder-200.jpg'}
+      src={src || '/placeholder.jpg'}
       alt={name}
       className="artist-circle-image"
       onError={(e) => { 
         // Only use placeholder for non-search results to avoid placeholder circles
         if (!src || !src.includes("api.spotify.com")) {
-          e.currentTarget.src = '/placeholder-200.jpg';
+          e.currentTarget.src = '/placeholder.jpg';
         }
       }}
     />
@@ -56,6 +58,7 @@ const SelectionScreen = ({ onContinue }) => {
   const [displayedArtists, setDisplayedArtists] = useState([]);
   const [selectedArtists, setSelectedArtists] = useState([]);
   const [searchResults, setSearchResults] = useState([]);
+
   
   // UI control states
   const [error, setError] = useState(null);
@@ -68,6 +71,7 @@ const SelectionScreen = ({ onContinue }) => {
   // Refs
   const genreFiltersRef = useRef(null);
   const artistsAreaRef = useRef(null);
+
 
 
   
@@ -151,7 +155,9 @@ const searchArtists = useCallback(async (query) => {
     setSearchResults([]);
     return;
   }
-  
+
+
+
   // Additional server-side validation
   const finalQuery = validateSearchQuery(query);
   if (!finalQuery || finalQuery.length < 2) {
@@ -162,11 +168,12 @@ const searchArtists = useCallback(async (query) => {
   setLoading('search', true);
   try {
     // Use GET request with query parameter
-    const res = await axios.get('/spotify/search-artists', {
-      params: { query: finalQuery },
-      // Add timeout to prevent hanging requests
-      timeout: 10000
+    const res = await axios.get('/apple-music/search-artists', {
+      params : { query: finalQuery },
+      timeout: 10_000
     });
+    
+    
     
     // Validate response structure
     if (!Array.isArray(res.data)) {
@@ -219,35 +226,38 @@ const searchArtists = useCallback(async (query) => {
   }
   setLoading('search', false);
 }, [generateMockArtists, setLoading, validateSearchQuery]);
+const debouncedSearch = useRef(_.debounce(searchArtists, 400)).current;
 
 // Also, let's apply the same filtering to the main artists fetch and genre fetch:
 // For fetchMainArtists
+// SelectionScreen.js
 const fetchMainArtists = useCallback(async () => {
   setLoading('main', true);
   try {
-    const res = await axios.get('/spotify/artists', { params: { genre: 'pop' } });
-    
-    // Filter out artists without images
-    const filteredArtists = res.data.filter(artist => 
-      artist.image && artist.image !== 'fallback.jpg' && !artist.image.includes('/api/placeholder/')
+    const { data } = await axios.get('/apple-music/popular-artists', {
+      params: { limit: 20, offset: 0 }
+    });
+
+    setDisplayedArtists(data.artists);
+    setHasMore(data.hasMore);
+
+    /* 👉 store the whole pool NOW, while `data` is in scope */
+    localStorage.setItem(
+      'mufl_popularArtists',
+      JSON.stringify(data.artists)      // we’ll re-use this in Rooms
     );
-    
-    setDisplayedArtists(shuffleArray(filteredArtists));
-    setHasMore(true);
   } catch (err) {
-    setError('Could not load artists');
-    
-    // Fallback to mock data if API fails
-    const mockArtistNames = [
-      'Taylor Swift', 'Drake', 'Billie Eilish', 'The Weeknd', 'Bad Bunny',
-      'Dua Lipa', 'Post Malone', 'Ariana Grande', 'Travis Scott', 'BTS'
-    ];
-    const mockArtists = generateMockArtists(mockArtistNames, 'artist');
-    setDisplayedArtists(shuffleArray(mockArtists));
+    setError('Could not load artists – showing sample list');
+    setDisplayedArtists(
+      generateMockArtists(
+        ['Taylor Swift','Drake','Billie Eilish','The Weeknd','Bad Bunny'],
+        'apple-fallback'
+      )
+    );
+    setHasMore(false);
   }
   setLoading('main', false);
-  setPage(1);
-}, [generateMockArtists, setLoading, shuffleArray]);
+}, [generateMockArtists, setLoading]);
 
 // For fetchArtistsByGenre
 const fetchArtistsByGenre = useCallback(async (genre) => {
@@ -258,14 +268,17 @@ const fetchArtistsByGenre = useCallback(async (genre) => {
   
   setLoading('genre', true);
   try {
-    const res = await axios.get('/spotify/artists', { params: { genre: genre.toLowerCase() } });
+    const res = await axios.get('/spotify/artists', {
+      params: {
+        genre        : genre.toLowerCase(),          // or the selected genre
+        minPopularity: 75,     // tweak as you like (70–90 works well)
+        limit: 40
+      }
+    });
     
-    // Filter out artists without images
-    const filteredArtists = res.data.filter(artist => 
-      artist.image && artist.image !== 'fallback.jpg' && !artist.image.includes('/api/placeholder/')
-    );
-    
+    const filteredArtists = res.data;        // already pre-filtered
     setDisplayedArtists(filteredArtists);
+    
     setHasMore(true);
   } catch (err) {
     setError(`Could not load ${genre} artists`);
@@ -289,45 +302,27 @@ const fetchArtistsByGenre = useCallback(async (genre) => {
   // Load more artists
   const loadMoreArtists = useCallback(async () => {
     if (loadingState.more || !hasMore) return;
-    
+  
     setLoading('more', true);
-    const newPage = page + 1;
-    
     try {
-      // Get the active genre
-      const genre = selectedGenre === 'All' ? 'pop' : selectedGenre.toLowerCase();
-      const res = await axios.get('/spotify/artists', { 
-        params: { 
-          genre, 
-          page: newPage,
-          limit: 10 
-        } 
+      const { data } = await axios.get('/apple-music/popular-artists', {
+        params: {
+          limit : 20,
+          offset: displayedArtists.length
+        }
       });
-      
-      // Add new artists to the displayed list
-      if (res.data && res.data.length > 0) {
-        setDisplayedArtists(prev => [...prev, ...res.data]);
-        setHasMore(res.data.length >= 10); // If we got a full page, there might be more
+  
+      if (data.artists.length) {
+        setDisplayedArtists(prev => [...prev, ...data.artists]);
+        setHasMore(data.hasMore);
       } else {
-        setHasMore(false);
+        setHasMore(false);                 // nothing left across both playlists
       }
-    } catch (err) {
-      
-      // Fallback to mock data if API fails
-      const moreArtists = generateMockArtists([
-        `More Artist ${newPage}-1`,
-        `More Artist ${newPage}-2`,
-        `More Artist ${newPage}-3`,
-        `More Artist ${newPage}-4`
-      ], `more-page-${newPage}`);
-      
-      setDisplayedArtists(prev => [...prev, ...moreArtists]);
-      setHasMore(newPage < 3); // Limit to 3 pages for mock data
+    } catch (_) {
+      setError('Could not load more artists');
     }
-    
-    setPage(newPage);
     setLoading('more', false);
-  }, [page, loadingState.more, hasMore, generateMockArtists, setLoading, selectedGenre]);
+  }, [loadingState.more, hasMore, displayedArtists.length, setLoading]);
   
   // Handle genre selection
   const handleGenreSelect = useCallback((genre) => {
@@ -352,32 +347,11 @@ const fetchArtistsByGenre = useCallback(async (genre) => {
   }, [loadingState.more, hasMore, searchQuery, loadMoreArtists]);
 
   // Handle search input with security measures
-  const handleSearchChange = useCallback((e) => {
-    const rawQuery = e.target.value;
-    const validatedQuery = validateSearchQuery(rawQuery);
-    
-    // Update input with validated value if it was modified
-    if (validatedQuery !== rawQuery) {
-      e.target.value = validatedQuery;
-    }
-    
-    setSearchQuery(validatedQuery);
-    
-    // Clear existing timeout
-    if (searchTimeout) clearTimeout(searchTimeout);
-    
-    // Debounce search with additional validation
-    const timeout = setTimeout(() => {
-      if (validatedQuery && validatedQuery.length >= 2) {
-        searchArtists(validatedQuery);
-      } else if (validatedQuery.length === 0) {
-        setSearchResults([]);
-      }
-    }, 500);
-    
-    setSearchTimeout(timeout);
-  }, [searchTimeout, searchArtists, validateSearchQuery]);
-  
+  const handleSearchChange = (e) => {
+    const value = validateSearchQuery(e.target.value);   // keeps your “security” rules
+    setSearchQuery(value);
+    debouncedSearch(value);                              // ≤ 1 call / 400 ms
+  };
   
   // Fetch similar artists - Now using the centralized fetchSimilarArtists utility
   const fetchSimilarForArtist = useCallback(async (artist) => {

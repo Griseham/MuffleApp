@@ -564,7 +564,7 @@ const TopComponent = ({
   );
 
   return (
-    <div className="w-full pt-6 pb-4 relative" style={{ padding: '0 20px', boxSizing: 'border-box' }}>
+    <div className="w-full pt-6 pb-4 relative mobile-top-component" style={{ padding: '0 20px', boxSizing: 'border-box' }}>
       {/* Room Modal */}
       <RoomModal 
         isOpen={modalOpen}
@@ -582,50 +582,50 @@ const TopComponent = ({
           <div className="absolute inset-0 border border-white/10 rounded-2xl"></div>
         </div>
         
-        <div className="relative p-6">
-          {/* Top Section with expand/collapse button */}
-          <div className={`mb-6 ${isExpanded ? 'h-16' : 'h-10'} transition-all duration-300`}>
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-5xl font-mono font-bold text-white tracking-wide">
-                  {roomName || '----'}   {/* 4-letter room name */}
-                </div>
-              </div>
-              
-              <div className="flex items-center">
-                <div className="text-right">
-                  <div className="font-mono font-bold text-6xl">
-                    <span className="text-white">
-                      {formatNumber(currentValues.volume)}
-                    </span>
-                    <span className="text-white text-4xl align-middle mx-1">·</span>
-                    <span className="text-gray-400">
-                      {formatNumber(currentValues.similarity)}
-                    </span>
-                  </div>
-                </div>
-                
-                {/* Expand/Collapse Button */}
-                <button 
-                  className="ml-4 p-3 rounded-full hover:bg-white/10
-             transition duration-200 focus:outline-none
-             top-expand-collapse"
-                  onClick={toggleExpanded}
-                  aria-label={isExpanded ? "Collapse panel" : "Expand panel"}
-                >
-                  <ExpandCollapseIcon isExpanded={isExpanded} />
-                </button>
-
-              </div>
-            </div>
+        <div className="relative px-4 py-4 md:p-6">
+        {/* Top Section with expand/collapse button - MOBILE OPTIMIZED */}
+          <div className={`mb-6 ${isExpanded ? 'mobile-header-expanded' : 'mobile-header-collapsed'} transition-all duration-300`}>
+          <div className="flex items-baseline justify-between w-full">
+          <div>
+          <div className="font-mono font-bold text-white tracking-wide leading-none
+                whitespace-nowrap
+                text-[clamp(1.75rem,4.5vw,4rem)]">   {/* 28 px → ~64 px */}
+      {roomName || '----'}
+    </div>
+  </div>
+  
+  <div className="flex items-center">
+    <div className="text-right">
+    <div className="font-mono font-bold text-gray-100 leading-none whitespace-nowrap
+                text-[clamp(1.5rem,4vw,3.5rem)]">
+        <span className="text-white">
+          {formatNumber(currentValues.volume)}
+        </span>
+        <span className="text-white text-xl sm:text-2xl md:text-3xl align-middle mx-1">·</span>
+        <span className="text-gray-400">
+          {formatNumber(currentValues.similarity)}
+        </span>
+      </div>
+    </div>
+    
+    <button 
+      className="ml-4 p-3 rounded-full hover:bg-white/10 transition duration-200 focus:outline-none top-expand-collapse"
+      onClick={toggleExpanded}
+      aria-label={isExpanded ? "Collapse panel" : "Expand panel"}
+    >
+      <ExpandCollapseIcon isExpanded={isExpanded} />
+    </button>
+  </div>
+</div>
           </div>
           
           {/* Content area - FIXED height optimized for radio tab */}
-          <div 
-            className={`mt-2 mb-6 overflow-hidden transition-all duration-300 w-full ${
-              isExpanded ? 'opacity-100 h-[280px]' : 'opacity-0 h-0'
-            }`}
-          >
+          <div
+  className={`mt-2 mb-6 overflow-hidden transition-all duration-300 w-full ${
+    isExpanded ? 'opacity-100 h-[252px] md:h-[280px]' : 'opacity-0 h-0'
+  }`}
+>
+
             {/* Complete radio component */}
             {activeTab === 'radio' && (
               <div className="h-full w-full">
@@ -656,7 +656,7 @@ const TopComponent = ({
                 <div className="pb-6">
                   {radarArtists.length > 0 ? (
                     <div className="px-3">
-                      <div className="grid grid-cols-3 gap-x-4 gap-y-6">
+                      <div className="grid grid-cols-3 gap-x-4 gap-y-6 mobile-radar-grid">
                         {radarArtists.map((artist, idx) => (
                           <ArtistCell key={`${artist.id}-${idx}`} artist={artist} index={idx} />
                         ))}
@@ -673,11 +673,10 @@ const TopComponent = ({
             )}
           </div>
           
-          {/* Tabs - Always visible - Now with 3 tabs and info icons */}
-          <div className="flex items-center justify-center space-x-8 h-8">
-            <button
-              className={`relative flex items-center gap-2 ${activeTab === 'radio' ? 'text-white' : 'text-gray-500'}`}
-              onClick={() => {
+          {/* Tabs - Always visible - MOBILE OPTIMIZED */}
+<div className="flex items-center justify-center space-x-8 h-8">            <button
+  className={`relative flex items-center gap-2 ${activeTab === 'radio' ? 'text-white' : 'text-gray-500'}`}
+  onClick={() => {
                 if (activeTab === 'radio' && isExpanded) {
                   // Collapse if clicking the same active tab
                   onToggleExpand(false);
@@ -689,8 +688,8 @@ const TopComponent = ({
                 }
               }}
             >
-              <span className="text-lg font-bold tracking-wider">RADIO</span>
-              <InfoIconModal
+  <span className="text-lg font-bold tracking-wider">RADIO</span>
+  <InfoIconModal
                 title="Radio"
                 modalId="top-radio-modal"
                 steps={[
@@ -712,176 +711,391 @@ For example, if the number of the room I am in is 2221.700, then i got lucky bec
 
 If i use the radio and scroll by volume, i might find a room like 2732.800, this is good because not only does the room have a higher volume it also has a higher similarity.
 
-This is meant to incentivise users to constantly look for better rooms instead of feeling like they are stuck in one.`
-                  },
-                  {
-                    icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFA500" strokeWidth="2">
-                      <path d="M9 12l2 2 4-4" />
-                      <path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9c2.74 0 5.23 1.23 6.88 3.17" />
-                    </svg>,
-                    title: "Edge Cases",
-                    content: `What if a user just adds songs to multiple rooms and just keeps joining and leaving?
+This is meant to incentivise users to constantly look for better rooms instead of feeling like they are stuck in one.`},
+{
+  icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFA500" strokeWidth="2">
+    <path d="M9 12l2 2 4-4" />
+    <path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9c2.74 0 5.23 1.23 6.88 3.17" />
+  </svg>,
+  title: "Edge Cases",
+  content: `What if a user just adds songs to multiple rooms and just keeps joining and leaving?
 
-• If they don't listen to any other user's song recommendations, their picks might not be seen at all
-• However, if they do eventually stop and listen, then their recommendations might just have lower priority in the queue
+- If they don't listen to any other user's song recommendations, their picks might not be seen at all
+- However, if they do eventually stop and listen, then their recommendations might just have lower priority in the queue
 
 This is not to say that the users who keep joining and leaving wont have their songs listened to at all, but it mostly depends on how many songs are even in the room's queue.
 
 We expect most users to join rooms, listen to many song recommendations and maybe only add one song to the queue, so this allows us to value each song recommendation.
 
 However that could be wrong, but we'd have to find out during playtesting.`
-                  }
-                ]}
-                iconSize={14}
-                iconColor="#FFA500"
-                showButtonText={false}
-                sidePanel={true}
-              />
-            </button>
+}
+]}
+iconSize={14}
+iconColor="#FFA500"
+showButtonText={false}
+sidePanel={true}
+/>
+</button>
 
-            <button
-              className={`relative flex items-center gap-2 ${activeTab === 'radar' ? 'text-white' : 'text-gray-500'}`}
-              onClick={() => {
-                if (activeTab === 'radar' && isExpanded) {
-                  // Collapse if clicking the same active tab
-                  onToggleExpand(false);
-                  setActiveTab(null);
-                } else {
-                  // Expand and set tab
-                  if (!isExpanded) onToggleExpand(true);
-                  setActiveTab('radar');
-                }
-              }}
-            >
-              <span className="text-lg font-bold tracking-wider">RADAR</span>
-              <InfoIconModal
-                title="Radar"
-                modalId="top-radar-modal"
-                steps={[
-                  {
-                    icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFA500" strokeWidth="2">
-                      <circle cx="12" cy="12" r="10" />
-                      <circle cx="12" cy="12" r="6" />
-                      <circle cx="12" cy="12" r="2" />
-                    </svg>,
-                    title: "Radar",
-                    content: "The radar still shows the top artists in this room by displaying how many users in this room have picked that artist from the selection screen and a volume representing how their songs (recommended by users) are being received/rated. Should update in real time."
-                  }
-                ]}
-                iconSize={14}
-                iconColor="#FFA500"
-                showButtonText={false}
-                sidePanel={true}
-              />
-            </button>
+<button
+className={`relative flex items-center gap-2 ${activeTab === 'yourPicks' ? 'text-white' : 'text-gray-500'}`}onClick={() => {
+if (activeTab === 'radar' && isExpanded) {
+// Collapse if clicking the same active tab
+onToggleExpand(false);
+setActiveTab(null);
+} else {
+// Expand and set tab
+if (!isExpanded) onToggleExpand(true);
+setActiveTab('radar');
+}
+}}
+>
+<span className="text-lg font-bold tracking-wider">RADAR</span>
+<InfoIconModal
+title="Radar"
+modalId="top-radar-modal"
+steps={[
+{
+  icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFA500" strokeWidth="2">
+    <circle cx="12" cy="12" r="10" />
+    <circle cx="12" cy="12" r="6" />
+    <circle cx="12" cy="12" r="2" />
+  </svg>,
+  title: "Radar",
+  content: "The radar still shows the top artists in this room by displaying how many users in this room have picked that artist from the selection screen and a volume representing how their songs (recommended by users) are being received/rated. Should update in real time."
+}
+]}
+iconSize={14}
+iconColor="#FFA500"
+showButtonText={false}
+sidePanel={true}
+/>
+</button>
 
-            <button
-              className={`relative flex items-center gap-2 ${activeTab === 'yourPicks' ? 'text-white' : 'text-gray-500'}`}
-              onClick={() => {
-                if (activeTab === 'yourPicks' && isExpanded) {
-                  // Collapse if clicking the same active tab
-                  onToggleExpand(false);
-                  setActiveTab(null);
-                } else {
-                  // Expand and set tab
-                  if (!isExpanded) onToggleExpand(true);
-                  setActiveTab('yourPicks');
-                }
-              }}
-            >
-              <span className="text-lg font-bold tracking-wider">YOUR PICKS</span>
-              <InfoIconModal
-                title="Your Selections"
-                modalId="top-yourpicks-modal"
-                steps={[
-                  {
-                    icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFA500" strokeWidth="2">
-                      <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
-                      <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
-                    </svg>,
-                    title: "Your Selections",
-                    content: "This tab shows how your song recommendations were received by other users."
-                  }
-                ]}
-                iconSize={14}
-                iconColor="#FFA500"
-                showButtonText={false}
-                sidePanel={true}
-              />
-              {yourSelections.length > 0 && (
-                <span className="ml-1 px-1.5 py-0.5 bg-white text-black text-xs rounded-full font-bold">
-                  {yourSelections.length}
-                </span>
-              )}
-            </button>
+<button
+className={`relative flex items-center gap-2 ${activeTab === 'radar' ? 'text-white' : 'text-gray-500'}`}onClick={() => {
+if (activeTab === 'yourPicks' && isExpanded) {
+// Collapse if clicking the same active tab
+onToggleExpand(false);
+setActiveTab(null);
+} else {
+// Expand and set tab
+if (!isExpanded) onToggleExpand(true);
+setActiveTab('yourPicks');
+}
+}}
+>
+<span className="text-lg font-bold tracking-wider">YOUR PICKS</span>
+<InfoIconModal
+title="Your Selections"
+modalId="top-yourpicks-modal"
+steps={[
+{
+  icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFA500" strokeWidth="2">
+    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+    <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+  </svg>,
+  title: "Your Selections",
+  content: "This tab shows how your song recommendations were received by other users."
+}
+]}
+iconSize={14}
+iconColor="#FFA500"
+showButtonText={false}
+sidePanel={true}
+/>
+{yourSelections.length > 0 && (
+<span className="ml-1 px-1.5 py-0.5 bg-white text-black text-xs rounded-full font-bold">
+{yourSelections.length}
+</span>
+)}
+</button>
 
-          </div>
-        </div>
-      </div>
- 
+</div>
+</div>
+</div>
+
 <style>{`
-        @keyframes fade-in {
-          from {
-            opacity: 0;
-            transform: translateY(10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        
-        .animate-fade-in {
-          animation: fade-in 0.3s ease-out forwards;
-        }
-
-        .custom-scrollbar {
-          /* keep the gutter whether the thumb is visible or not */
-          scrollbar-gutter: stable;   /* modern browsers - reserve space for scrollbar */
-        }
-
-        /* Custom scrollbar styles */
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 6px;
-        }
-        
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: rgba(255, 255, 255, 0.1);
-          border-radius: 3px;
-        }
-        
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: white;
-          border-radius: 3px;
-        }
-        
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: #e0e0e0;
-        }
-
-        @media (max-width: 768px) {
-          .grid-cols-3 {
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 1rem;
-          }
-
-          
-        }
-          @media (max-width:420px){
-  .grid-cols-3{grid-template-columns:repeat(2,minmax(0,1fr));}
+@keyframes fade-in {
+from {
+opacity: 0;
+transform: translateY(10px);
+}
+to {
+opacity: 1;
+transform: translateY(0);
+}
 }
 
- @media (max-width:420px){
-    .top-expand-collapse{
-      width:44px;                  /* matches BottomContainer handle */
-      height:44px;
-      touch-action:manipulation;
-    }
-  }
+.animate-fade-in {
+animation: fade-in 0.3s ease-out forwards;
+}
 
-      `}</style>
-    </div>
-  );
+.custom-scrollbar {
+/* keep the gutter whether the thumb is visible or not */
+scrollbar-gutter: stable;   /* modern browsers - reserve space for scrollbar */
+}
+
+/* Custom scrollbar styles */
+.custom-scrollbar::-webkit-scrollbar {
+width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+background: rgba(255, 255, 255, 0.1);
+border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+background: white;
+border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+background: #e0e0e0;
+}
+
+/* MOBILE OPTIMIZATIONS */
+@media (max-width: 480px) {
+/* Mobile tabs override desktop styling */
+.flex.items-center.justify-center.space-x-8.h-8 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 44px;
+  gap: 8px;
+  padding: 0 4px;
+}
+
+.flex.items-center.justify-center.space-x-8.h-8 button {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 44px;
+  padding: 8px 4px;
+}
+
+.flex.items-center.justify-center.space-x-8.h-8 button span {
+  font-size: 12px;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+  line-height: 1.2;
+  text-align: center;
+}
+.mobile-top-component {
+padding: 0 12px !important;
+}
+
+/* Mobile Header Styles */
+.mobile-header-expanded {
+height: 64px;
+}
+
+.mobile-header-collapsed {
+  height: 20px;        /* slimmer collapsed bar */
+}
+
+.mobile-header-collapsed + .flex.items-center.justify-center.space-x-8.h-8 {
+  margin-top: 4px !important;   
+}
+
+
+.mobile-header-flex {
+gap: 8px;
+}
+
+.mobile-room-name-container {
+flex: 0 0 auto;
+min-width: 0;
+}
+
+.mobile-room-name {
+  font-weight: bold;
+  font-size: 24px;
+  line-height: 1.1;
+  color: white;
+  letter-spacing: 0.5px;
+}
+
+.mobile-frequency-container {
+flex: 1;
+justify-content: flex-end;
+gap: 8px;
+}
+
+.mobile-frequency-display {
+  font-weight: bold;
+  font-size: 20px;
+  line-height: 1.1;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.mobile-volume-number {
+color: white;
+}
+
+.mobile-frequency-dot {
+color: white;
+font-size: 16px;
+margin: 0 2px;
+}
+
+.mobile-similarity-number {
+color: #9ca3af;
+}
+
+.mobile-expand-button {
+width: 44px;
+height: 44px;
+padding: 10px;
+border-radius: 50%;
+background: rgba(255, 255, 255, 0.1);
+border: none;
+display: flex;
+align-items: center;
+justify-content: center;
+cursor: pointer;
+transition: all 0.2s;
+touch-action: manipulation;
+flex-shrink: 0;
+}
+
+.mobile-expand-button:hover {
+background: rgba(255, 255, 255, 0.15);
+}
+
+/* Mobile Tabs Container */
+.mobile-tabs-container {
+display: flex;
+justify-content: space-between;
+align-items: center;
+height: 44px;
+gap: 8px;
+padding: 0 4px;
+}
+
+.mobile-tab-button {
+flex: 1;
+display: flex;
+align-items: center;
+justify-content: center;
+gap: 4px;
+min-height: 44px;
+padding: 8px 4px;
+border: none;
+background: none;
+cursor: pointer;
+transition: all 0.2s;
+touch-action: manipulation;
+position: relative;
+}
+
+.mobile-tab-active {
+color: white;
+}
+
+.mobile-tab-inactive {
+color: #6b7280;
+}
+
+.mobile-tab-text {
+font-size: 12px;
+font-weight: bold;
+letter-spacing: 0.5px;
+line-height: 1.2;
+text-align: center;
+}
+
+.mobile-tab-badge {
+position: absolute;
+top: 4px;
+right: 2px;
+background: white;
+color: black;
+font-size: 10px;
+font-weight: bold;
+padding: 2px 6px;
+border-radius: 10px;
+min-width: 16px;
+height: 16px;
+display: flex;
+align-items: center;
+justify-content: center;
+line-height: 1;
+}
+
+/* Mobile Radar Grid */
+.mobile-radar-grid {
+grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+gap: 16px !important;
+}
+
+/* Info icon adjustments for mobile */
+.mobile-tab-button .info-icon-modal {
+margin-left: 2px;
+}
+}
+
+/* Tablet optimizations */
+@media (max-width: 768px) and (min-width: 481px) {
+.grid-cols-3 {
+grid-template-columns: repeat(3, minmax(0, 1fr));
+gap: 1rem;
+}
+}
+
+/* Original mobile breakpoint */
+@media (max-width: 420px) {
+.top-expand-collapse {
+width: 44px;
+height: 44px;
+touch-action: manipulation;
+}
+}
+
+/* Desktop fallback styles for non-mobile classes */
+@media (min-width: 481px) {
+.mobile-header-expanded,
+.mobile-header-collapsed {
+height: auto;
+}
+
+.mobile-room-name {
+font-size: clamp(24px, 5vw, 48px);
+}
+
+.mobile-frequency-display {
+font-size: clamp(20px, 4vw, 40px);
+}
+
+.mobile-tabs-container {
+justify-content: center;
+gap: 32px;
+}
+
+.mobile-tab-button {
+flex: none;
+gap: 8px;
+}
+
+.mobile-tab-text {
+font-size: 18px;
+}
+
+.mobile-expand-button {
+width: auto;
+height: auto;
+padding: 12px;
+border-radius: 12px;
+}
+}
+`}</style>
+</div>
+);
 };
 
 export default TopComponent;

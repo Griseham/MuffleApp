@@ -403,8 +403,8 @@ return (
           </p>
         </div>
       ) : visibleArtists.length > 0 ? (
-        <div className="grid grid-cols-5 gap-x-4 gap-y-6 px-2 pt-1 pb-4">
-          {visibleArtists.map((artist, index) => {
+<div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-x-3 gap-y-5 px-1 sm:px-2 pt-1 pb-4">
+{visibleArtists.map((artist, index) => {
             const users = getUsersForArtist(artist.id || artist.name);
             const isSelected = isSelectedByCurrentUser(artist.id);
             const hasUsers = users.length > 0;
@@ -644,6 +644,36 @@ return (
           transform: rotate(360deg);
         }
       }
+
+      /* ─── mobile refinements (≤ 480 px) ───────────────────────── */
+@media (max-width:480px){
+  .artist-circle{
+    width:60px;        /* was 70 */
+    height:60px;
+  }
+  .artist-name{
+    font-size:10px;
+    max-width:60px;
+    margin-top:4px;
+  }
+  .user-avatar{
+    width:20px;        /* avatar chips shrink */
+    height:20px;
+    border-width:1.5px;
+  }
+  .room-indicator{
+    top:-3px;left:-3px;
+    width:14px;height:14px;
+    font-size:7px;
+  }
+}
+
+/* ─── ultra-small (≤ 360 px) ─────────────────────────────── */
+@media (max-width:360px){
+  .artist-circle{width:54px;height:54px;}
+  .artist-name{font-size:9px;max-width:54px;}
+}
+
     `}</style>
   </div>
 );

@@ -378,39 +378,37 @@ const fetchArtistSearch = useCallback(async (query, artistName) => {
   };
 
   // Update countdowns every second and move finished songs to main queue
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setPersonalQueue(prev => {
-        const songsToMoveToMain = [];
+// Update countdowns every second and move finished songs to main queue
+useEffect(() => {
+  const interval = setInterval(() => {
+    let songsFinished = [];
+    setPersonalQueue(prev => {
+      const updated = prev.map(item => {
+        if (item.isPaused) return item;
         
-        // Process each item in the queue
-        const updatedQueue = prev.map(item => {
-          if (item.isPaused) return item;
-          
-          const newCountdown = item.countdown - 1;
-          
-          // If countdown reaches 0, add to songs that should move to main queue
-          if (newCountdown <= 0) {
-            songsToMoveToMain.push(item);
-            return null; // Mark for removal
-          }
-          
-          return { ...item, countdown: newCountdown };
-        }).filter(item => item !== null); // Remove items that reached 0
+        const newCountdown = item.countdown - 1;
         
-        // Move finished songs to the main queue via callback
-        if (songsToMoveToMain.length > 0 && onSongFromWidget) {
-          songsToMoveToMain.forEach(song => {
-            onSongFromWidget(song);
-          });
+        if (newCountdown <= 0) {
+          songsFinished.push(item);
+          return null;
         }
         
-        return updatedQueue;
-      });
-    }, 1000);
-    
-    return () => clearInterval(interval);
-  }, [onSongFromWidget]);
+        return { ...item, countdown: newCountdown };
+      }).filter(Boolean);
+      
+      return updated;
+    });
+
+    /* fire AFTER React has finished updating Widget */
+    if (songsFinished.length && onSongFromWidget) {
+      Promise.resolve().then(() =>
+        songsFinished.forEach(onSongFromWidget)
+      );
+    }
+  }, 1000);
+  
+  return () => clearInterval(interval);
+}, [onSongFromWidget]);
 
   // Cleanup search timeout on unmount
   useEffect(() => {
@@ -478,9 +476,8 @@ const fetchArtistSearch = useCallback(async (query, artistName) => {
   const filteredSongs = getCurrentArtistSongs();
 
   return (
-    <div className="flex h-full rounded-lg overflow-hidden bg-gray-950 border border-gray-800">
-      {/* LEFT PANEL */}
-      <div className={`${selectedArtist ? 'w-3/5' : 'w-1/2'} bg-black transition-all duration-300 flex flex-col`}>
+<div className="flex flex-col sm:flex-row h-full rounded-lg overflow-hidden bg-gray-950 border border-gray-800">      {/* LEFT PANEL */}
+<div className={`widget-left ${selectedArtist ? 'sm:w-3/5' : 'sm:w-1/2'}  w-full h-[60%] h-1/2 sm:h-full bg-black transition-all duration-300 flex flex-col`}>
         {selectedArtist ? (
           // Artist Detail View with Search and Songs
           <div className="flex flex-col h-full">
@@ -692,8 +689,8 @@ const fetchArtistSearch = useCallback(async (query, artistName) => {
                           e.stopPropagation();
                           handleRemoveArtist(artist.id);
                         }}
-                        className="absolute -top-1 -right-1 w-6 h-6 bg-red-600 hover:bg-red-700 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                        title="Remove artist"
+                        className="absolute -top-1 -right-1 w-6 h-6 bg-red-600 hover:bg-red-700 rounded-full flex items-center justify-center
+                           opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"                        title="Remove artist"
                       >
                         <XIcon size={12} className="text-white" />
                       </button>
@@ -715,8 +712,7 @@ const fetchArtistSearch = useCallback(async (query, artistName) => {
       </div>
       
       {/* RIGHT PANEL - Personal Queue */}
-      <div className={`${selectedArtist ? 'w-2/5' : 'w-1/2'} bg-gradient-to-br from-gray-900 to-black transition-all duration-300 flex flex-col`}>
-        <div className="p-3 border-b border-gray-800 bg-gray-900/30 flex justify-between items-center">
+      <div className="widget-right flex-1 bg-gradient-to-br from-gray-900 to-black transition-all duration-300 flex flex-col sm:w-2/5 h-[40%] w-full h-1/2 sm:h-full">        <div className="p-3 border-b border-gray-800 bg-gray-900/30 flex justify-between items-center">
           <h3 className="text-sm uppercase font-semibold tracking-wider text-[#1DB954]">
             Your Queue
           </h3>

@@ -2,7 +2,7 @@
 const avatarCache = new Map();
 
 /** '' in dev, '/threads' after you build with  base:'/threads/' */
-const BASE_URL = process.env.PUBLIC_URL || '';   // '' in dev, '/rooms' when homepage is set
+const BASE_URL = (import.meta.env.BASE_URL || '').replace(/\/$/, '');
 
 /** remove trailing slash then build the path */
 const buildAvatarPath = (n) =>
