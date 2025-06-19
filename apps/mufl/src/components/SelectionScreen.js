@@ -63,30 +63,13 @@ const SelectionScreen = ({ onContinue }) => {
   // UI control states
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedGenre, setSelectedGenre] = useState('All');
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
-  const [searchTimeout, setSearchTimeout] = useState(null);
-  
+
   // Refs
   const genreFiltersRef = useRef(null);
   const artistsAreaRef = useRef(null);
-
-
+  const [hasMore, setHasMore] = useState(true);
 
   
-  // Constants
-  const genreOptions = useMemo(() => 
-    ['All', 'Pop', 'Hip-Hop', 'Rock', 'R&B', 'Electronic', 'Country', 'Indie', 'Latin', 'Jazz', 'K-Pop', 'Alternative'],
-    []
-  );
-  
-  const fetchGenres = useMemo(() => 
-    ['pop', 'rock', 'hip-hop', 'r-n-b', 'country', 'electronic', 'indie'],
-    []
-  );
-  
-  const artistsPerGenre = 8;
   
   // Helper for updating loading states
   const setLoading = useCallback((type, value) => {
@@ -260,45 +243,7 @@ const fetchMainArtists = useCallback(async () => {
 }, [generateMockArtists, setLoading]);
 
 // For fetchArtistsByGenre
-const fetchArtistsByGenre = useCallback(async (genre) => {
-  if (genre === 'All') {
-    fetchMainArtists();
-    return;
-  }
-  
-  setLoading('genre', true);
-  try {
-    const res = await axios.get('/spotify/artists', {
-      params: {
-        genre        : genre.toLowerCase(),          // or the selected genre
-        minPopularity: 75,     // tweak as you like (70–90 works well)
-        limit: 40
-      }
-    });
-    
-    const filteredArtists = res.data;        // already pre-filtered
-    setDisplayedArtists(filteredArtists);
-    
-    setHasMore(true);
-  } catch (err) {
-    setError(`Could not load ${genre} artists`);
-    
-    // Fallback to mock data if API fails
-    const genreArtists = generateMockArtists([
-      `${genre} Artist 1`,
-      `${genre} Artist 2`,
-      `${genre} Artist 3`,
-      `${genre} Artist 4`,
-      `${genre} Artist 5`,
-      `${genre} Artist 6`
-    ], `genre-${genre.toLowerCase()}`);
-    
-    setDisplayedArtists(genreArtists);
-  }
-  setLoading('genre', false);
-  setPage(1);
-}, [fetchMainArtists, generateMockArtists, setLoading]);
-  
+
   // Load more artists
   const loadMoreArtists = useCallback(async () => {
     if (loadingState.more || !hasMore) return;
@@ -325,15 +270,7 @@ const fetchArtistsByGenre = useCallback(async (genre) => {
   }, [loadingState.more, hasMore, displayedArtists.length, setLoading]);
   
   // Handle genre selection
-  const handleGenreSelect = useCallback((genre) => {
-    if (genre === selectedGenre || loadingState.genre) return;
-    
-    setSelectedGenre(genre);
-    fetchArtistsByGenre(genre);
-    setSearchQuery('');
-    setSearchResults([]);
-  }, [selectedGenre, loadingState.genre, fetchArtistsByGenre]);
-  
+
   // Handle infinite scroll
   const handleScroll = useCallback(() => {
     if (!artistsAreaRef.current || loadingState.more || !hasMore || searchQuery.trim()) return;
@@ -435,26 +372,7 @@ const fetchArtistsByGenre = useCallback(async (genre) => {
   }, [handleScroll]);
   
   // Scroll selected genre button into view
-  useEffect(() => {
-    if (genreFiltersRef.current && selectedGenre !== 'All') {
-      const button = genreFiltersRef.current.querySelector('.genre-button.active');
-      if (button) {
-        const containerWidth = genreFiltersRef.current.clientWidth;
-        const buttonLeft = button.offsetLeft;
-        const buttonWidth = button.clientWidth;
-        
-        // Center the button in the container
-        genreFiltersRef.current.scrollLeft = buttonLeft - (containerWidth / 2) + (buttonWidth / 2);
-      }
-    }
-  }, [selectedGenre]);
-  
-  // Clean up search timeout
-  useEffect(() => {
-    return () => {
-      if (searchTimeout) clearTimeout(searchTimeout);
-    };
-  }, [searchTimeout]);
+
   
   // Computed values ----------------
   
@@ -496,23 +414,7 @@ const fetchArtistsByGenre = useCallback(async (genre) => {
           {loadingState.search && <div className="search-spinner"></div>}
         </div>
         
-        {/* Genre filters - only when not searching */}
-        {!searchQuery.trim() && (
-          <div className="genre-filters-container">
-            <div className="genre-filters" ref={genreFiltersRef}>
-              {genreOptions.map(genre => (
-                <button
-                  key={genre}
-                  className={`genre-button ${selectedGenre === genre ? 'active' : ''}`}
-                  onClick={() => handleGenreSelect(genre)}
-                  disabled={loadingState.genre}
-                >
-                  {genre}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+      
       </div>
 
       <div className="artists-area" ref={artistsAreaRef}>
