@@ -4,6 +4,8 @@ import BottomContainer from "./BottomContainer";
 import TopComponent from "./TopComponent";
 import { getAvatarForUser } from "../utils/avatarService";
 import axios from "axios";
+import { fetchAppleMusicImages } from '../utils/appleMusicService';
+
 
 
 /**
@@ -467,43 +469,31 @@ const fetchSingleSongFromArtist = async (artist) => {
             
 
             // Get images for similar artists using Spotify WITH FULL URL
-            if (similarArtists.length > 0) {
-              const imageResponse = await fetch(`${API_BASE_URL}/spotify/fetch-images`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ artistNames: similarArtists.map(a => a.name) })
-              });
+           // 🔄 Get images from Apple Music instead of Spotify
+if (similarArtists.length > 0) {
+  const imageResults = await fetchAppleMusicImages(
+    similarArtists.map(a => a.name)
+  );
 
-              if (imageResponse.ok) {
-                const imageData = await imageResponse.json();
-                const artistsWithImages = imageData.artists || [];
+  const validArtistsWithImages = imageResults.filter(hasValidImage);
 
+  let addedFromBatch = 0;
+  validArtistsWithImages.forEach(artist => {
+    const payload = JSON.stringify({
+      id: artist.id || `related-${Date.now()}-${Math.random()}`,
+      name: artist.name,
+      image: artist.image,
+      isRoomArtist: false,
+      exponents: Math.floor(Math.random() * 6),
+      otherUsers: Math.floor(Math.random() * 5)
+    });
+    if (!allRelatedArtists.has(payload)) {
+      allRelatedArtists.add(payload);
+      addedFromBatch++;
+    }
+  });
+}
 
-                // Filter for artists with VALID images only
-                const validArtistsWithImages = artistsWithImages.filter(hasValidImage);
-
-                // Add to our pool - only artists with valid images
-                let addedFromBatch = 0;
-                
-                validArtistsWithImages.forEach(artist => {
-                  const artistData = JSON.stringify({
-                    id: artist.id || `related-${Date.now()}-${Math.random()}`,
-                    name: artist.name,
-                    image: artist.image,
-                    isRoomArtist: false,
-                    exponents: Math.floor(Math.random() * 6),
-                    otherUsers: Math.floor(Math.random() * 5)
-                  });
-                  
-                  // Check if we haven't already added this artist
-                  if (!allRelatedArtists.has(artistData)) {
-                    allRelatedArtists.add(artistData);
-                    addedFromBatch++;
-                  }
-                });
-                
-              }
-            }
           }
         } catch (batchError) {
         }

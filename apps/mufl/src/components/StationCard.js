@@ -340,4 +340,12 @@ const StationCard = React.memo(function StationCard({
   );
 });
 
-export default StationCard;
+const areEqual = (prev, next) =>
+  prev.station.id          === next.station.id   &&
+  prev.isCurrentStation    === next.isCurrentStation &&
+  prev.isInteractive       === next.isInteractive;
+
+
+export default React.memo(StationCard, areEqual);
+
+

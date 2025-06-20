@@ -1,93 +1,33 @@
 import React, { useState, useEffect, useLayoutEffect } from 'react';
-import axios from 'axios';
 import InfoIconModal from './InfoIconModal';
+
+
+// quick local placeholders ― no API required
+const generatePlaceholderArtists = (count = 6) =>
+  Array.from({ length: count }, (_, i) => ({
+    id: `ph-${i}`,
+    name: `Artist ${i + 1}`,
+    image: null,                  // forces SVG fallback
+    volume: Math.floor(Math.random() * 6) + 1,
+    picks: Math.floor(Math.random() * 15) + 1,
+  }));
 
 const RoomModal = ({ isOpen, onClose, station, onJoinRoom }) => {
   const [modalArtists, setModalArtists] = useState([]);
   const [loading, setLoading] = useState(true); // Start with loading true
 
   // Get API base URL
-  const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || '/api';
 
   // 1) Synchronously clear out previous artists BEFORE paint:
-  useLayoutEffect(() => {
-    if (isOpen && station) {
-      setLoading(true);
-      setModalArtists([]);
-    }
-  }, [isOpen, station?.id]);
+// whenever the modal opens, load six placeholders – no network calls
+useLayoutEffect(() => {
+  if (isOpen) {
+    setLoading(false);
+    setModalArtists(generatePlaceholderArtists(6));
+  }
+}, [isOpen]);
 
-  // 2) Then fetch artists (this runs right after paint)
-  useEffect(() => {
-    if (isOpen && station) {
-      fetchArtistsWithImages();
-    }
-  }, [isOpen, station?.id]);
 
-  // Updated function to fetch artists with proper images using the same approach as TopComponent
-  const fetchArtistsWithImages = async () => {
-    setLoading(true);
-    try {
-      // Step 1: Get random artists from Apple Music (similar to TopComponent approach)
-      const response = await fetch(`${API_BASE_URL}/apple-music/random-genre-artists?count=12`);
-      
-      if (!response.ok) {
-        throw new Error(`Failed to fetch artists: ${response.status}`);
-      }
-
-      const data = await response.json();
-      const appleArtists = data.artists || [];
-      
-      // Step 2: Filter for artists with valid images first
-      const artistsWithValidImages = appleArtists.filter(hasValidImage);
-      
-      // Step 3: If we don't have enough artists with valid images, get more from Spotify
-      let finalArtists = artistsWithValidImages.slice(0, 6);
-      
-      // If we need more artists, try to get images from Spotify for the ones without valid images
-      if (finalArtists.length < 6) {
-        const artistsWithoutImages = appleArtists.filter(artist => !hasValidImage(artist));
-        
-        if (artistsWithoutImages.length > 0) {
-          try {
-            // Use Spotify to get images for artists without valid images
-            const imageResponse = await fetch(`${API_BASE_URL}/spotify/fetch-images`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ 
-                artistNames: artistsWithoutImages.slice(0, 6).map(a => a.name) 
-              })
-            });
-
-            if (imageResponse.ok) {
-              const imageData = await imageResponse.json();
-              const artistsWithSpotifyImages = imageData.artists || [];
-              
-              // Add artists with Spotify images to our final list
-              const validSpotifyArtists = artistsWithSpotifyImages.filter(hasValidImage);
-              finalArtists = [...finalArtists, ...validSpotifyArtists].slice(0, 6);
-            }
-          } catch (spotifyError) {
-          }
-        }
-      }
-      
-      // Step 4: Add volume and pick count to each artist (same as before)
-      const artistsWithData = finalArtists.map(artist => ({
-        ...artist,
-        volume: Math.floor(Math.random() * 6) + 1,
-        picks: Math.floor(Math.random() * 15) + 1
-      }));
-      
-      setModalArtists(artistsWithData);
-      
-    } catch (error) {
-      // Fallback to empty array
-      setModalArtists([]);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // Helper function to validate if an image URL is real (same as TopComponent)
   const hasValidImage = (artist) => {
@@ -95,42 +35,28 @@ const RoomModal = ({ isOpen, onClose, station, onJoinRoom }) => {
            artist.image !== 'fallback.jpg' && 
            artist.image !== '/placeholder-200.png' &&
            !artist.image.includes('placeholder') &&
-           !artist.image.includes('picsum') &&
-           artist.image.startsWith('http');
+                    !artist.image.includes('picsum') &&
+                    !artist.image.includes('scdn.co') &&
+                      artist.image.startsWith('http');
   };
 
   // Generate artist avatar SVG (same as TopComponent)
-  const generateArtistSVG = (artist, index) => {
-    const gradients = [
-      { start: '#667eea', end: '#764ba2' },
-      { start: '#f093fb', end: '#f5576c' },
-      { start: '#4facfe', end: '#00f2fe' },
-      { start: '#fa709a', end: '#fee140' },
-      { start: '#a8edea', end: '#fed6e3' },
-      { start: '#ffecd2', end: '#fcb69f' },
-      { start: '#ff9a9e', end: '#fecfef' },
-      { start: '#a18cd1', end: '#fbc2eb' },
-      { start: '#fad0c4', end: '#ffd1ff' },
-      { start: '#ffeaa7', end: '#fab1a0' }
-    ];
-    
-    const gradient = gradients[index % gradients.length];
-    const gradientId = `modal-gradient-${artist.id || index}`;
-    
-    return (
-      <svg className="w-full h-full" viewBox="0 0 100 100">
-        <defs>
-          <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" style={{stopColor: gradient.start, stopOpacity: 1}} />
-            <stop offset="100%" style={{stopColor: gradient.end, stopOpacity: 1}} />
-          </linearGradient>
-        </defs>
-        <circle cx="50" cy="50" r="45" fill={`url(#${gradientId})`}/>
-        <circle cx="50" cy="35" r="15" fill="white" opacity="0.9"/>
-        <path d="M20,75 Q50,55 80,75 L80,85 Q50,65 20,85 Z" fill="white" opacity="0.9"/>
-      </svg>
-    );
-  };
+// Greyscale avatar – one flat circle + two simple face strokes
+// very simple grey user-icon avatar  – no backend needed
+const generateArtistSVG = () => (
+  <svg viewBox="0 0 100 100" className="w-full h-full">
+    {/* outer circle */}
+    <circle cx="50" cy="50" r="45" fill="#4b5563" />        {/* gray-600 */}
+    {/* head */}
+    <circle cx="50" cy="38" r="18" fill="#d1d5db" />        {/* gray-300 */}
+    {/* shoulders */}
+    <path
+      d="M20 80a30 18 0 0 1 60 0Z"
+      fill="#d1d5db"
+    />
+  </svg>
+);
+
 
   // Volume Icon (same as TopComponent)
   const VolumeIcon = () => (
@@ -174,8 +100,8 @@ const RoomModal = ({ isOpen, onClose, station, onJoinRoom }) => {
   const stationCode = station.name || station.code || `K${volumePart.slice(0,3)}`;
   
   return (
-    <div className="absolute top-0 right-0 mt-8 mr-4" style={{ zIndex: 30000 }}>
-      <div className="relative rounded-2xl p-6 w-96 max-w-[90vw] border border-white/10 shadow-xl overflow-hidden">
+<div className="absolute top-0 right-0 mt-8 mr-4" style={{ zIndex: 60000 }}>
+<div className="relative rounded-2xl p-6 w-96 max-w-[90vw] border border-white/10 shadow-xl overflow-hidden">
         {/* Updated background to match TopComponent gradient */}
         <div className="absolute inset-0 rounded-2xl overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-b from-[#1a1a1a] to-black"></div>
