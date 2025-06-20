@@ -94,14 +94,18 @@ const fetchPlaylistArtists = async () => {
       }
 
       tracks.forEach((t, idx) => {
-        const a   = t.attributes;
-        const key = a.artistName?.toLowerCase();
-        if (!key || uniq.has(key)) return;               // de-dupe
+        const a        = t.attributes;
+        const imageUrl = a.artwork?.url?.replace('{w}x{h}', '300x300');
+        if (!imageUrl) return;                                      // ← no image, skip
+      
+        const key = a.artistName?.trim().toLowerCase();             // ← tightened key
+        if (!key || uniq.has(key)) return;                          // de-dupe on name
+      
         uniq.set(key, {
           id   : `pl-${t.id}`,
           name : a.artistName,
-          image: a.artwork.url.replace('{w}x{h}', '300x300'),
-          popularity: idx + 1                            // keep list order
+          image: imageUrl,
+          popularity: idx + 1
         });
       });
     } catch (e) {
@@ -120,16 +124,20 @@ const fetchPlaylistArtists = async () => {
       });
 
       (data.results.songs?.[0]?.data || []).forEach((song, idx) => {
-        const a   = song.attributes;
-        const key = a.artistName?.toLowerCase();
-        if (!uniq.has(key)) {
-          uniq.set(key, {
-            id   : `ch-${song.id}`,
-            name : a.artistName,
-            image: a.artwork.url.replace('{w}x{h}', '300x300'),
-            popularity: idx + 1
-          });
-        }
+        const a        = song.attributes;
+        const imageUrl = a.artwork?.url?.replace('{w}x{h}', '300x300');
+        if (!imageUrl) return;
+      
+        const key = a.artistName?.trim().toLowerCase();
+        if (!key || seen.has(key)) return;
+      
+        seen.set(key, {
+          id   : `ch-${song.id}`,
+          name : a.artistName,
+          image: imageUrl,
+          genres: a.genreNames || [],
+          popularity: idx + 1
+        });
       });
       console.info('Used Top-Songs chart fallback – got', uniq.size, 'artists');
     } catch (e) {
@@ -272,6 +280,62 @@ unifiedRouter.get('/apple-music/popular-artists', async (req, res) => {
   } catch (err) {
     console.error('Playlist artists error:', err.message);
     res.status(500).json({ error: 'Failed to load playlist artists' });
+  }
+});
+/* ================================================
+ * Apple-Music helpers – fetch artwork by artist list
+ * ================================================ */
+const fetchAppleImagesFor = async (artistNames = []) => {
+  const token = process.env.APPLE_DEVELOPER_TOKEN;
+  if (!token) throw new Error('APPLE_DEVELOPER_TOKEN not set');
+
+  /* Search each name in parallel, but cap at 10 at a time
+     to stay well under Apple’s public rate limits.          */
+  const BATCH  = 10;
+  const chunks = Array.from({ length: Math.ceil(artistNames.length / BATCH) },
+                            (_, i) => artistNames.slice(i * BATCH, (i + 1) * BATCH));
+
+  const results = [];
+  for (const names of chunks) {
+    const queries = names.map((name) =>
+      axios.get('https://api.music.apple.com/v1/catalog/us/search', {
+        headers: { Authorization: `Bearer ${token}` },
+        params : { term: name, types: 'artists', limit: 1 }
+      }).then(({ data }) => {
+        const hit = data.results.artists?.data?.[0];
+        const art = hit?.attributes?.artwork?.url;
+        if (!hit || !art) return null;
+
+        return {
+          id   : hit.id,
+          name : hit.attributes.name,
+          image: art.replace('{w}x{h}', '300x300')
+        };
+      }).catch(() => null)  // swallow individual misses
+    );
+
+    const batch = await Promise.all(queries);
+    results.push(...batch.filter(Boolean));
+  }
+  return results;
+};
+
+/* ------------------------------------------------
+ *  POST /api/apple-music/artist-images
+ *  Body: { artistNames: [ 'Drake', 'Billie Eilish', … ] }
+ *  ------------------------------------------------ */
+unifiedRouter.post('/apple-music/artist-images', async (req, res) => {
+  const { artistNames } = req.body || {};
+  if (!Array.isArray(artistNames) || artistNames.length === 0) {
+    return res.status(400).json({ error: 'artistNames[] required' });
+  }
+
+  try {
+    const artists = await fetchAppleImagesFor(artistNames);
+    res.json({ artists });                    // ← front-end expects { artists: [...] }
+  } catch (err) {
+    console.error('Apple-images error:', err.message);
+    res.status(502).json({ error: 'Apple Music API unavailable' });
   }
 });
 
@@ -680,7 +744,10 @@ unifiedRouter.post('/apple-music/artist-songs', async (req, res) => {
       }
     });
   } catch (err) {
-    res.status(500).json({ error: 'Apple Music fetch failed', details: err.message });
+    console.error('Artist-song lookup failed:', err.message);
+
+    /* ➜ soft-fail so the front-end can pick another artist */
+    return res.json({ success: false, error: 'No preview returned' });
   }
 });
 

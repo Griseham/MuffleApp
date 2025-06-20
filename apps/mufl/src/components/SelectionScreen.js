@@ -19,6 +19,29 @@ const shuffleArray = (array) => {
   return newArray;
 };
 
+// Remove artists that normalise to the same name
+const normalise = (name) => {
+  const raw = name.trim().toLowerCase();
+
+  /* SPECIAL-CASE ── treat any “Morgan Wallen …” string as the same key */
+  if (raw.includes('morgan wallen')) return 'morganwallen';
+
+  /* default: strip spaces, quotes, punctuation */
+  return raw.replace(/[\u2019’'".\s]/g, '');
+};  // strips spaces & quotes
+
+
+const dedupeArtists = (arr) => {
+  const seen = new Set();
+  return arr.filter((a) => {
+    const key = normalise(a.name || '');
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+};
+
+
 // Reusable components
 const ArtistImage = ({ name, src, size = "large" }) => {
   return (
@@ -221,8 +244,9 @@ const fetchMainArtists = useCallback(async () => {
       params: { limit: 20, offset: 0 }
     });
 
-    setDisplayedArtists(data.artists);
-    setHasMore(data.hasMore);
+    setDisplayedArtists(
+      dedupeArtists(data.artists.filter(a => a.image))
+    );
 
     /* 👉 store the whole pool NOW, while `data` is in scope */
     localStorage.setItem(
@@ -231,12 +255,10 @@ const fetchMainArtists = useCallback(async () => {
     );
   } catch (err) {
     setError('Could not load artists – showing sample list');
-    setDisplayedArtists(
-      generateMockArtists(
-        ['Taylor Swift','Drake','Billie Eilish','The Weeknd','Bad Bunny'],
-        'apple-fallback'
-      )
-    );
+    setDisplayedArtists(dedupeArtists(generateMockArtists(
+      ['Taylor Swift','Drake','Billie Eilish','The Weeknd','Bad Bunny'],
+      'apple-fallback'
+    )));
     setHasMore(false);
   }
   setLoading('main', false);
@@ -258,8 +280,10 @@ const fetchMainArtists = useCallback(async () => {
       });
   
       if (data.artists.length) {
-        setDisplayedArtists(prev => [...prev, ...data.artists]);
-        setHasMore(data.hasMore);
+        setDisplayedArtists((prev) =>
+          dedupeArtists([...prev, ...data.artists])
+        );                                                    
+                setHasMore(data.hasMore);
       } else {
         setHasMore(false);                 // nothing left across both playlists
       }
@@ -332,11 +356,10 @@ const fetchMainArtists = useCallback(async () => {
         const similarArtists = await fetchSimilarForArtist(artist);
         
         if (similarArtists && similarArtists.length > 0) {
-          const relatedArtists = similarArtists.map(related => ({
-            ...related,
-            isMain: false,
-            fadeIn: true
-          }));
+          const relatedArtists = similarArtists
+  .filter(r => !displayedArtists.some(d => normalise(d.name) === normalise(r.name)))
+  .map(r => ({ ...r, isMain:false, fadeIn:true }));
+
           
           // Insert related artists after the selected artist
           setDisplayedArtists(prev => {

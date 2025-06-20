@@ -19,6 +19,18 @@ export default function RotaryKnob({
   // 🆕 whether knob is "armed" for input
   const [selected, setSelected] = useState(false);
   
+  /* ------------------------------------------------------------
+   * Fire parent callbacks *after* this component has re-rendered.
+   * This eliminates the "setState during render" warning.
+   * ---------------------------------------------------------- */
+    React.useEffect(() => {
+        // call the *latest* refs – we don’t care if the
+        // function object itself changed since last render
+        onKnobToggle?.(selected);
+    
+      if (!selected) onSelectChange?.();
+      }, [selected]);
+  
   const hitRef           = useRef(null);
   const lastCursorAngle  = useRef(0);
   const [dragging, setDragging] = useState(false);
@@ -118,24 +130,8 @@ export default function RotaryKnob({
         className={`rt-hit ${selected ? 'selected' : ''}`}
         onClick={e => {
           e.stopPropagation();
-          setSelected(prev => {
-            const next = !prev;
-          
-            // 1. new symmetrical callback  (armed ⇢ bool)
-            if (typeof onKnobToggle === 'function') {
-              onKnobToggle(next);
-            }
-          
-            // 2. keep the legacy "unarmed-only" callback
-            if (!next && typeof onSelectChange === 'function') {
-              onSelectChange();
-            }
-            return next;
-          });
-          
+          setSelected(prev => !prev);   // **just** flip the local flag
         }}
-        
-        
         
         onWheel={handleWheel}
         onPointerDown={startDrag}

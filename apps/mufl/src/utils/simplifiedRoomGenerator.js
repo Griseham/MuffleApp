@@ -1,4 +1,5 @@
 // utils/simplifiedRoomGenerator.js - Simplified room generation based on similarity ranges
+import { seeded } from './random';  
 
 // Similarity range configurations
 const SIMILARITY_RANGES = {
@@ -219,8 +220,8 @@ const generateRoomArtists = (selectedArtists, relatedArtists, similarityValue, r
 
 // Generate multiple rooms for a volume range with similarity targeting
 const generateRoomsForVolume = (selectedArtists, relatedArtists, volumeValue, roomCount = 8, targetSimilarity = null) => {
-  const rooms = [];
-  
+  const rand = seeded(volumeValue); // ← deterministic for this volume bucket
+  const rooms = [];  
   // Station names pool
   const stationNames = [
     'KBLX', 'KKSF', 'KITS', 'KMEL', 'KIOI', 'KBAY', 'KFOG', 'KSAN', 
@@ -279,6 +280,7 @@ const generateRoomsForVolume = (selectedArtists, relatedArtists, volumeValue, ro
   return rooms;
 };
 
+
 // Generate artists for volume mode rooms (simpler, randomized logic)
 const generateVolumeRoomArtists = (selectedArtists, relatedArtists, roomIndex) => {
   // Always include some selected artists (6-12 depending on how many we have for 3 slides)
@@ -314,7 +316,8 @@ const generateVolumeRoomArtists = (selectedArtists, relatedArtists, roomIndex) =
 
 // Generate multiple rooms for a similarity range with volume targeting
 const generateRoomsForSimilarity = (selectedArtists, relatedArtists, similarityValue, roomCount = 8, targetVolume = null) => {
-  const rooms = [];
+  const rand = seeded(similarityValue); 
+    const rooms = [];
   const similarityRange = getSimilarityRange(similarityValue);
   
   // Station names pool
@@ -325,7 +328,7 @@ const generateRoomsForSimilarity = (selectedArtists, relatedArtists, similarityV
   
   for (let i = 0; i < roomCount; i++) {
     // Generate slight variation in similarity for each room
-    const variation = (Math.random() - 0.5) * 40; // ±20 variation
+    const variation = (rand() - 0.5) * 40; // ±20 variation
     const roomSimilarity = Math.round(similarityValue + variation);
     
     // Generate volume based on target or random
@@ -335,11 +338,11 @@ const generateRoomsForSimilarity = (selectedArtists, relatedArtists, similarityV
       roomVolume = targetVolume;
     } else if (targetVolume !== null && i < 4) {
       // Next few rooms should be close to target volume
-      const volumeVariation = (Math.random() - 0.5) * 200; // ±100 variation
+      const volumeVariation = (rand() - 0.5) * 200; // ±100 variation
       roomVolume = Math.round(targetVolume + volumeVariation);
     } else {
       // Other rooms get random volumes
-      const baseVolume = 1000 + Math.random() * 2000;
+      const baseVolume = 1000 + rand() * 2000;
       roomVolume = Math.round(baseVolume);
     }
     
@@ -358,10 +361,10 @@ const generateRoomsForSimilarity = (selectedArtists, relatedArtists, similarityV
       volume: roomVolume,
       similarity: roomSimilarity,
       artists: artists,
-      listeners: Math.floor(Math.random() * 50) + 10,
-      userCount: Math.floor(Math.random() * 50) + 10,
-      minutes: Math.floor(Math.random() * 60) + 20,
-      recommendations: Math.floor(Math.random() * 30) + 5,
+      listeners: Math.floor(rand() * 50) + 10,
+      userCount: Math.floor(rand() * 50) + 10,
+      minutes: Math.floor(rand() * 60) + 20,
+      recommendations: Math.floor(rand() * 30) + 5,
       showGenreBadge: false,
       dominantGenre: similarityRange.name,
       isTargetRoom: targetVolume !== null && i === 0 // Mark the target room

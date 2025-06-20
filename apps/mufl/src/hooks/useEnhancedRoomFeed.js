@@ -34,6 +34,8 @@ export const useEnhancedRoomFeed = (selectedArtists = []) => {
     progress: 0
   });
   const [error, setError] = useState(null);
+
+  const lastParamsRef = useRef({ key: '', rooms: [] });
   
   // Refs for tracking
   const selectedArtistsRef = useRef([]);
@@ -133,6 +135,19 @@ export const useEnhancedRoomFeed = (selectedArtists = []) => {
   
   // Generate rooms based on current mode (volume or similarity)
   const generateRooms = useCallback(async (primaryValue, targetSecondaryValue = null, mode = 'similarity') => {
+
+       // ── 0. short-circuit if inputs are unchanged ────────────────
+   const paramKey = JSON.stringify([
+     mode,
+     primaryValue,
+     targetSecondaryValue,
+     selectedArtists.map(a => a.name).sort()
+   ]);
+
+   if (paramKey === lastParamsRef.current.key && lastParamsRef.current.rooms.length) {
+     setRooms(lastParamsRef.current.rooms);     // reuse stable copy
+     return;
+   }
     // Abort any ongoing room generation
     if (roomGenerationAbortRef.current) {
       roomGenerationAbortRef.current.abort();
@@ -169,6 +184,8 @@ export const useEnhancedRoomFeed = (selectedArtists = []) => {
           
           // Check if aborted before setting state
           if (signal.aborted) return;
+          lastParamsRef.current = { key: paramKey, rooms: generatedRooms };
+
           setRooms(generatedRooms);
           
         } else {
@@ -189,6 +206,8 @@ export const useEnhancedRoomFeed = (selectedArtists = []) => {
           
           // Check if aborted before setting state
           if (signal.aborted) return;
+          lastParamsRef.current = { key: paramKey, rooms: generatedRooms };
+
           setRooms(generatedRooms);
         }
         
@@ -211,6 +230,8 @@ export const useEnhancedRoomFeed = (selectedArtists = []) => {
         
         // Check if aborted before setting state
         if (signal.aborted) return;
+        lastParamsRef.current = { key: paramKey, rooms: generatedRooms };
+
         setRooms(generatedRooms);
       }
       
