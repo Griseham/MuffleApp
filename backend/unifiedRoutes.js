@@ -17,27 +17,30 @@ const unifiedRouter = express.Router();
 // Mock Data for Development/Demo
 //======================//
 
+// FIXED: Replace the mockArtists array in unifiedRoutes.js with this version
+// Remove all Spotify URLs and use null/empty strings to force SVG fallbacks
+
 const mockArtists = [
-  { id: 'mock-1', name: 'Taylor Swift', image: 'https://i.scdn.co/image/ab6761610000e5eb859e4c14fa59296c8649e0e4', genres: ['pop', 'country'], popularity: 100 },
-  { id: 'mock-2', name: 'Drake', image: 'https://i.scdn.co/image/ab6761610000e5eb40b5c07ab77b6b1a9192c4ce', genres: ['hip-hop', 'rap'], popularity: 99 },
-  { id: 'mock-3', name: 'Billie Eilish', image: 'https://i.scdn.co/image/ab6761610000e5eb60a3969b51b62e54658da069', genres: ['pop', 'alternative'], popularity: 98 },
-  { id: 'mock-4', name: 'The Weeknd', image: 'https://i.scdn.co/image/ab6761610000e5eb214f3cf1cbe7139c1e26ffbb', genres: ['pop', 'r&b'], popularity: 97 },
-  { id: 'mock-5', name: 'Bad Bunny', image: 'https://i.scdn.co/image/ab6761610000e5eb19c2790744c792d05570bb71', genres: ['latin', 'reggaeton'], popularity: 96 },
-  { id: 'mock-6', name: 'Dua Lipa', image: 'https://i.scdn.co/image/ab6761610000e5eb4c63c6b89e6fb3dd84b00e1f', genres: ['pop', 'dance'], popularity: 95 },
-  { id: 'mock-7', name: 'Post Malone', image: 'https://i.scdn.co/image/ab6761610000e5ebd0b53e3b8c6f6644c6e0d0fd', genres: ['pop', 'hip-hop'], popularity: 94 },
-  { id: 'mock-8', name: 'Ariana Grande', image: 'https://i.scdn.co/image/ab6761610000e5ebc6aa0c51bab10f8c9c8c4cc7', genres: ['pop', 'r&b'], popularity: 93 },
-  { id: 'mock-9', name: 'Travis Scott', image: 'https://i.scdn.co/image/ab6761610000e5ebb09e97e4b3b4e4e38eb5a7b6', genres: ['hip-hop', 'rap'], popularity: 92 },
-  { id: 'mock-10', name: 'BTS', image: 'https://i.scdn.co/image/ab6761610000e5eb82c3b0a0c1e1c0c1c1c0c1c1', genres: ['k-pop', 'pop'], popularity: 91 },
-  { id: 'mock-11', name: 'Lil Nas X', image: 'https://i.scdn.co/image/ab6761610000e5eb4d0c1e0c1c0c1c0c1c0c1c0c', genres: ['hip-hop', 'pop'], popularity: 90 },
-  { id: 'mock-12', name: 'Olivia Rodrigo', image: 'https://i.scdn.co/image/ab6761610000e5eb5e1c0c1c0c1c0c1c0c1c0c1c', genres: ['pop', 'alternative'], popularity: 89 },
-  { id: 'mock-13', name: 'Doja Cat', image: 'https://i.scdn.co/image/ab6761610000e5eb6e1c0c1c0c1c0c1c0c1c0c1c', genres: ['pop', 'hip-hop'], popularity: 88 },
-  { id: 'mock-14', name: 'Harry Styles', image: 'https://i.scdn.co/image/ab6761610000e5eb7e1c0c1c0c1c0c1c0c1c0c1c', genres: ['pop', 'rock'], popularity: 87 },
-  { id: 'mock-15', name: 'Justin Bieber', image: 'https://i.scdn.co/image/ab6761610000e5eb8e1c0c1c0c1c0c1c0c1c0c1c', genres: ['pop', 'r&b'], popularity: 86 },
-  { id: 'mock-16', name: 'Ed Sheeran', image: 'https://i.scdn.co/image/ab6761610000e5eb9e1c0c1c0c1c0c1c0c1c0c1c', genres: ['pop', 'folk'], popularity: 85 },
-  { id: 'mock-17', name: 'Imagine Dragons', image: 'https://i.scdn.co/image/ab6761610000e5ebae1c0c1c0c1c0c1c0c1c0c1c', genres: ['rock', 'alternative'], popularity: 84 },
-  { id: 'mock-18', name: 'Coldplay', image: 'https://i.scdn.co/image/ab6761610000e5ebbe1c0c1c0c1c0c1c0c1c0c1c', genres: ['rock', 'alternative'], popularity: 83 },
-  { id: 'mock-19', name: 'Kendrick Lamar', image: 'https://i.scdn.co/image/ab6761610000e5ebce1c0c1c0c1c0c1c0c1c0c1c', genres: ['hip-hop', 'rap'], popularity: 82 },
-  { id: 'mock-20', name: 'The Chainsmokers', image: 'https://i.scdn.co/image/ab6761610000e5ebde1c0c1c0c1c0c1c0c1c0c1c', genres: ['electronic', 'pop'], popularity: 81 }
+  { id: 'mock-1', name: 'Taylor Swift', image: null, genres: ['pop', 'country'], popularity: 100 },
+  { id: 'mock-2', name: 'Drake', image: null, genres: ['hip-hop', 'rap'], popularity: 99 },
+  { id: 'mock-3', name: 'Billie Eilish', image: null, genres: ['pop', 'alternative'], popularity: 98 },
+  { id: 'mock-4', name: 'The Weeknd', image: null, genres: ['pop', 'r&b'], popularity: 97 },
+  { id: 'mock-5', name: 'Bad Bunny', image: null, genres: ['latin', 'reggaeton'], popularity: 96 },
+  { id: 'mock-6', name: 'Dua Lipa', image: null, genres: ['pop', 'dance'], popularity: 95 },
+  { id: 'mock-7', name: 'Post Malone', image: null, genres: ['pop', 'hip-hop'], popularity: 94 },
+  { id: 'mock-8', name: 'Ariana Grande', image: null, genres: ['pop', 'r&b'], popularity: 93 },
+  { id: 'mock-9', name: 'Travis Scott', image: null, genres: ['hip-hop', 'rap'], popularity: 92 },
+  { id: 'mock-10', name: 'BTS', image: null, genres: ['k-pop', 'pop'], popularity: 91 },
+  { id: 'mock-11', name: 'Lil Nas X', image: null, genres: ['hip-hop', 'pop'], popularity: 90 },
+  { id: 'mock-12', name: 'Olivia Rodrigo', image: null, genres: ['pop', 'alternative'], popularity: 89 },
+  { id: 'mock-13', name: 'Doja Cat', image: null, genres: ['pop', 'hip-hop'], popularity: 88 },
+  { id: 'mock-14', name: 'Harry Styles', image: null, genres: ['pop', 'rock'], popularity: 87 },
+  { id: 'mock-15', name: 'Justin Bieber', image: null, genres: ['pop', 'r&b'], popularity: 86 },
+  { id: 'mock-16', name: 'Ed Sheeran', image: null, genres: ['pop', 'folk'], popularity: 85 },
+  { id: 'mock-17', name: 'Imagine Dragons', image: null, genres: ['rock', 'alternative'], popularity: 84 },
+  { id: 'mock-18', name: 'Coldplay', image: null, genres: ['rock', 'alternative'], popularity: 83 },
+  { id: 'mock-19', name: 'Kendrick Lamar', image: null, genres: ['hip-hop', 'rap'], popularity: 82 },
+  { id: 'mock-20', name: 'The Chainsmokers', image: null, genres: ['electronic', 'pop'], popularity: 81 }
 ];
 
 /* ---------- Apple Music playlist-artist helper (auto-resolves IDs) -- */
