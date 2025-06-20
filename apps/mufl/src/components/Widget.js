@@ -47,6 +47,13 @@ const PlusIcon = ({ size = 24, className = "" }) => (
     <path d="M12 5V19M5 12H19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 );
+const CheckIcon = ({ size = 24, className = "" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+       xmlns="http://www.w3.org/2000/svg" className={className}>
+    <path d="M20 6L9 17L4 12" stroke="currentColor" strokeWidth="2"
+          strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
 
 /* ------------------------------------------------------------------ *
  * SHARED HELPERS                                                     *
@@ -478,7 +485,7 @@ useEffect(() => {
 
   return (
 <div className="flex flex-col sm:flex-row h-full rounded-lg overflow-hidden bg-gray-950 border border-gray-800">      {/* LEFT PANEL */}
-<div className={`widget-left ${selectedArtist ? 'sm:w-3/5' : 'sm:w-1/2'}  w-full h-[60%] h-1/2 sm:h-full bg-black transition-all duration-300 flex flex-col`}>
+<div className={`widget-left ${selectedArtist ? 'sm:w-3/5' : 'sm:w-1/2'}  w-full flex-1 sm:h-full bg-black transition-all duration-300 flex flex-col`}>
         {selectedArtist ? (
           // Artist Detail View with Search and Songs
           <div className="flex flex-col h-full">
@@ -546,105 +553,118 @@ useEffect(() => {
             </div>
             
             {/* Song list */}
-            <div className="flex-1 overflow-y-auto">
-              <div className="p-2">
-                {loadingSearchResults && (
-                  <div className="flex flex-col items-center justify-center h-40 p-4">
-                    <div className="w-8 h-8 border-2 border-gray-600 border-t-[#1DB954] rounded-full animate-spin mb-2"></div>
-                    <p className="text-sm text-gray-400">Searching…</p>
-                  </div>
-                )}
-                {loadingSongs ? (
-                  <div className="flex flex-col items-center justify-center h-40 text-center p-4">
-                    <div className="w-8 h-8 border-2 border-gray-600 border-t-[#1DB954] rounded-full animate-spin mb-2"></div>
-                    <p className="text-sm text-gray-400">Loading songs...</p>
-                  </div>
-                ) : filteredSongs.length > 0 ? (
-                  <div className="space-y-1">
-                    {filteredSongs.map((song, index) => (
-                      <div 
-                        key={`${song.track}-${index}`}
-                        className={`flex items-center p-2 rounded-md ${
-                          playingSong === `${song.track}-${index}`
-                            ? 'bg-[#1DB954]/10 border border-[#1DB954]/30' 
-                            : 'hover:bg-gray-900/80'
-                        } group`}
-                      >
-                        {/* Song artwork or icon */}
-                        <div className="w-9 h-9 rounded mr-3 overflow-hidden bg-gray-800 flex-shrink-0">
-                          {song.artworkUrl && hasValidImage(song.artworkUrl) ? (
-                            <img 
-                              src={song.artworkUrl} 
-                              alt={song.track}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                              <AlbumIcon size={20} className="text-gray-600" />
-                            </div>
-                          )}
-                        </div>
-                        
-                        {/* Song info */}
-                        <div className="flex-1 min-w-0 mr-2 leading-tight">
-                          <h4 className="text-sm font-medium text-white truncate">
-                            {song.track}
-                          </h4>
-                          <p className="text-xs text-gray-400 truncate">
-                            {song.artist}
-                            {song.album && <> • {song.album}</>}
-                          </p>
-                        </div>
-                        
-                        {/* Controls */}
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          {/* Visual-only play button */}
-                          <button
-  onClick={() => togglePlay(`${song.track}-${index}`, song.previewUrl)}
-  className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-800"
->
-  {playingSong === `${song.track}-${index}` ? (
-    <PauseIcon size={12} className="text-black" />
-  ) : (
-    <PlayIcon  size={12} className="text-white" />
-  )}
-</button>
-
-                          
-                          {/* Add to queue button */}
-                          <button 
-                            onClick={() => addToPersonalQueue(song)}
-                            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-[#1DB954]/20 text-[#1DB954]"
-                            title="Add to queue"
-                          >
-                            <PlusIcon size={14} className="text-[#1DB954]" />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : searchQuery.trim() ? (
-                  <div className="flex flex-col items-center justify-center h-40 text-center p-4">
-                    <SearchIcon size={24} className="text-gray-600 mb-2" />
-                    <p className="text-sm text-gray-400">No songs found</p>
-                    <p className="text-xs text-gray-500 mt-1">Try a different search term</p>
-                  </div>
-                ) : filteredSongs.length === 0 && !searchQuery.trim() ? (
-                  <div className="flex flex-col items-center justify-center h-40 text-center p-4">
-                    <MusicNoteIcon size={24} className="text-gray-600 mb-2" />
-                    <p className="text-sm text-gray-400">No popular songs available</p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Try searching for specific song titles
-                    </p>
-                  </div>
+            {/* Song list */}
+<div className="flex-1 overflow-y-auto">
+  <div className="p-2">
+    {loadingSearchResults && (
+      <div className="flex flex-col items-center justify-center h-40 p-4">
+        <div className="w-8 h-8 border-2 border-gray-600 border-t-[#1DB954] rounded-full animate-spin mb-2"></div>
+        <p className="text-sm text-gray-400">Searching…</p>
+      </div>
+    )}
+    {loadingSongs ? (
+      <div className="flex flex-col items-center justify-center h-40 text-center p-4">
+        <div className="w-8 h-8 border-2 border-gray-600 border-t-[#1DB954] rounded-full animate-spin mb-2"></div>
+        <p className="text-sm text-gray-400">Loading songs...</p>
+      </div>
+    ) : filteredSongs.length > 0 ? (
+      <div className="space-y-1">
+        {filteredSongs.map((song, index) => {
+          const isInQueue = personalQueue.some(
+            item => item.track === song.track && item.artist === song.artist
+          );
+          return (
+            <div 
+              key={`${song.track}-${index}`}
+              className={`flex items-center p-2 rounded-md ${
+                playingSong === `${song.track}-${index}`
+                  ? 'bg-[#1DB954]/10 border border-[#1DB954]/30' 
+                  : 'hover:bg-gray-900/80'
+              } group`}
+            >
+              {/* Song artwork or icon */}
+              <div className="w-9 h-9 rounded mr-3 overflow-hidden bg-gray-800 flex-shrink-0">
+                {song.artworkUrl && hasValidImage(song.artworkUrl) ? (
+                  <img 
+                    src={song.artworkUrl} 
+                    alt={song.track}
+                    className="w-full h-full object-cover"
+                  />
                 ) : (
-                  <div className="flex flex-col items-center justify-center h-40 text-center p-4">
-                    <MusicNoteIcon size={24} className="text-gray-600 mb-2" />
-                    <p className="text-sm text-gray-400">Loading artist songs...</p>
+                  <div className="w-full h-full flex items-center justify-center">
+                    <AlbumIcon size={20} className="text-gray-600" />
                   </div>
                 )}
               </div>
+              
+              {/* Song info */}
+              <div className="flex-1 min-w-0 mr-2 leading-tight">
+                <h4 className="text-sm font-medium text-white truncate">
+                  {song.track}
+                </h4>
+                <p className="text-xs text-gray-400 truncate">
+                  {song.artist}
+                  {song.album && <> • {song.album}</>}
+                </p>
+              </div>
+              
+              {/* Controls */}
+              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                {/* Visual-only play button */}
+                <button
+                  onClick={() => togglePlay(`${song.track}-${index}`, song.previewUrl)}
+                  className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-800"
+                >
+                  {playingSong === `${song.track}-${index}` ? (
+                    <PauseIcon size={12} className="text-black" />
+                  ) : (
+                    <PlayIcon size={12} className="text-white" />
+                  )}
+                </button>
+                
+                {/* Add to queue button */}
+                {/* Add / Already-added button */}
+<button
+  onClick={() => !isInQueue && addToPersonalQueue(song)}
+  disabled={isInQueue}
+  className={`w-8 h-8 flex items-center justify-center rounded-full
+    ${isInQueue
+        ? 'bg-[#1DB954]/20 text-[#1DB954] cursor-default'
+        : 'hover:bg-[#1DB954]/20 text-[#1DB954]'}`}
+  title={isInQueue ? 'Already in queue' : 'Add to queue'}
+>
+  {isInQueue
+      ? <CheckIcon size={14} className="text-[#1DB954]" />
+      : <PlusIcon  size={14} className="text-[#1DB954]" />}
+</button>
+
+              </div>
             </div>
+          );
+        })}
+      </div>
+    ) : searchQuery.trim() ? (
+      <div className="flex flex-col items-center justify-center h-40 text-center p-4">
+        <SearchIcon size={24} className="text-gray-600 mb-2" />
+        <p className="text-sm text-gray-400">No songs found</p>
+        <p className="text-xs text-gray-500 mt-1">Try a different search term</p>
+      </div>
+    ) : filteredSongs.length === 0 && !searchQuery.trim() ? (
+      <div className="flex flex-col items-center justify-center h-40 text-center p-4">
+        <MusicNoteIcon size={24} className="text-gray-600 mb-2" />
+        <p className="text-sm text-gray-400">No popular songs available</p>
+        <p className="text-xs text-gray-500 mt-1">
+          Try searching for specific song titles
+        </p>
+      </div>
+    ) : (
+      <div className="flex flex-col items-center justify-center h-40 text-center p-4">
+        <MusicNoteIcon size={24} className="text-gray-600 mb-2" />
+        <p className="text-sm text-gray-400">Loading artist songs...</p>
+      </div>
+    )}
+  </div>
+</div>
           </div>
         ) : (
           // Artist Selection Grid - Only show artists from pool with valid Spotify images
@@ -713,7 +733,8 @@ useEffect(() => {
       </div>
       
       {/* RIGHT PANEL - Personal Queue */}
-      <div className="widget-right flex-1 bg-gradient-to-br from-gray-900 to-black transition-all duration-300 flex flex-col sm:w-2/5 h-[40%] w-full h-1/2 sm:h-full">        <div className="p-3 border-b border-gray-800 bg-gray-900/30 flex justify-between items-center">
+      <div className="widget-right hidden sm:flex flex-1 bg-gradient-to-br from-gray-900 to-black transition-all duration-300 flex-col sm:w-2/5">
+      <div className="p-3 border-b border-gray-800 bg-gray-900/30 flex justify-between items-center">
           <h3 className="text-sm uppercase font-semibold tracking-wider text-[#1DB954]">
             Your Queue
           </h3>
