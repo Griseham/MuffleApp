@@ -26,13 +26,15 @@ const [userSelectionTimeouts, setUserSelectionTimeouts] = useState([]); // Track
 const countdown = externalCountdown !== null ? externalCountdown : internalCountdown;
 
 // Helper function to validate if an image URL is real
+// FIXED VERSION - Add scdn.co filter to block Spotify URLs
 const hasValidImage = (artist) => {
   return artist.image && 
          artist.image !== 'fallback.jpg' && 
          artist.image !== '/placeholder-200.png' &&
          !artist.image.includes('placeholder') &&
-         !artist.image.includes('picsum') && // Remove any placeholder services
-         artist.image.startsWith('http'); // Ensure it's a real URL
+         !artist.image.includes('picsum') && 
+         !artist.image.includes('scdn.co') && // ← ADD THIS LINE to block Spotify URLs
+         artist.image.startsWith('http');
 };
 
 // NEW: Simulate users slowly selecting artists over time

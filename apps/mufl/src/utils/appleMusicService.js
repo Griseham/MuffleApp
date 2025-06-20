@@ -10,7 +10,7 @@ export const fetchAppleMusicImages = async (names = []) => {
   if (!names.length) return [];
 
   try {
-        const { data } = await axios.post(`${API}/apple-music/artist-images`, {
+        const { data } = await axios.post(`/apple-music/artist-images`, {
               artistNames: names          // ✅ matches the route
             });
             return data.artists || [];    // ✅ matches the response

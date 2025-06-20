@@ -73,6 +73,7 @@ const hasValidImage = (imageUrl) => {
          imageUrl !== '/placeholder-200.png' &&
          !imageUrl.includes('placeholder') &&
          !imageUrl.includes('picsum') &&
+         !imageUrl.includes('scdn.co') && // ← ADD THIS LINE
          imageUrl.startsWith('http');
 };
 
