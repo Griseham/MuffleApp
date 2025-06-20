@@ -938,6 +938,19 @@ const renderSwipeContent = (songs, type) => {
     background: rgba(255,255,255,0.1);
   }
 }
+/* ─── ultra-mobile tweaks (≤ 480 px) ───────────────────────── */
+@media (max-width:480px){
+
+  /* make the whole bottom sheet a bit shorter */
+  .bottom-container.expanded{
+    height: clamp(220px,46vh,300px);   /* was ~58 vh → now ~46 vh */
+  }
+
+  /* nudge the chevron flush with the edge */
+  .expand-collapse-button{
+    right: -24px;                        /* was 8 px */
+  }
+}
 
 
 `}</style>

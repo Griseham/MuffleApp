@@ -555,7 +555,14 @@ const togglePlay = () => {
         </div>
 
         {/* Snippet Card + Side Arrows */}
-        <div className="relative w-full mb-6">
+        <div
+  className="
+    relative w-full mb-6
+    transform scale-[.80]           /* 50 % size on mobile  */
+    sm:scale-100                    /* back to normal ≥ 640px */
+    origin-top                      /* so it shrinks upward, not downward */
+  "
+>
           {/* Snippet Card */}
           <div className="flex w-full select-none flex-col overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-b from-[#1a1a1a] to-black shadow-[0_10px_25px_-5px_rgba(0,0,0,0.5)]">
           <div className="relative sm:h-96 h-72 w-full flex items-center justify-center bg-black/40 border border-white/10">
