@@ -8,9 +8,9 @@
     "dev": "node server.js",
     "dev:mufl": "cd apps/mufl && npm run start",
     "dev:threads": "cd apps/threads && npm run dev",
-    "build:mufl":   "cd apps/mufl && npm ci && npm run build",
-    "build:threads":"cd apps/threads && npm ci && npm run build",
-
+    "build:mufl":   "cd apps/mufl && npm install --production=false && npm run build",
+    "build:threads":"cd apps/threads && npm install --production=false && npm run build",
+  
     "build": "npm run build:mufl && npm run build:threads",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
