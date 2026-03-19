@@ -1,280 +1,501 @@
-import React from 'react';
-import { 
-  BarChart, Bar, ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, 
-  Tooltip, Cell, ResponsiveContainer, ZAxis 
-} from 'recharts';
+import React, { useState } from 'react';
 import { BarChart3, GitBranch } from 'lucide-react';
 import InfoIconModal from '../InfoIconModal';
 
-export const VerticalRatingsGraph = ({ graphRatings, onOpenModal }) => (
-  <div style={{ 
-    height: '220px', 
-    marginBottom: '40px',
-    backgroundColor: 'rgba(15, 23, 42, 0.5)',
-    backdropFilter: 'blur(10px)',
-    borderRadius: '12px',
-    padding: '16px',
-    border: '1px solid rgba(255, 255, 255, 0.05)',
-    boxShadow: '0 4px 16px rgba(0, 0, 0, 0.2)',
-    cursor: 'pointer',
-  }}
-  onClick={onOpenModal}>
-    <ResponsiveContainer width="100%" height="100%">
-      <BarChart
-        data={graphRatings}
-        layout="vertical"
-        margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-        barGap={5}
-        barCategoryGap="20%"
-      >
-        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.05)" horizontal={false} />
-        <XAxis 
-          type="number" 
-          domain={[0, 100]} 
-          tickCount={6}
-          tick={{ fill: '#8899a6', fontSize: 12 }}
-          stroke="rgba(255, 255, 255, 0.05)"
-        />
-        <YAxis 
-          type="category" 
-          dataKey="snippetId" 
-          tick={(props) => {
-            const { x, y, payload } = props;
-            const item = graphRatings.find(d => d.snippetId === payload.value);
-            if (!item) return null;
-            
-            return (
-              <g transform={`translate(${x - 40},${y})`}>
-                <image 
-                  href={item.userAvatar} 
-                  x={0} 
-                  y={-12} 
-                  height={24} 
-                  width={24} 
-                  clipPath="inset(0% round 50%)" 
-                />
-              </g>
-            );
-          }}
-          width={50}
-          axisLine={false}
-          tickLine={false}
-        />
-        <Tooltip 
-          cursor={{ fill: 'rgba(59, 130, 246, 0.1)' }}
-          content={(props) => {
-            const { active, payload, label } = props;
-            if (active && payload && payload.length) {
-              const item = graphRatings.find(d => d.snippetId === label);
-              return (
-                <div style={{
-                  backgroundColor: '#0f172a',
-                  padding: '12px',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
-                  borderRadius: '8px',
-                  boxShadow: '0 4px 16px rgba(0, 0, 0, 0.3)'
-                }}>
-                  <div style={{ marginBottom: '8px', fontWeight: 'bold', color: '#fff' }}>
-                    {item ? item.snippetId : label}
+// Design 4: Bullet Chart Style for Vertical Ratings Graph
+export const VerticalRatingsGraph = ({ graphRatings, onOpenModal }) => {
+  const [hoveredIndex, setHoveredIndex] = useState(null);
+
+  return (
+    <div 
+      style={{ 
+        minHeight: '220px',
+        marginBottom: '40px',
+        backgroundColor: 'rgba(15, 23, 42, 0.5)',
+        backdropFilter: 'blur(10px)',
+        borderRadius: '12px',
+        padding: '20px',
+        border: '1px solid rgba(255, 255, 255, 0.05)',
+        boxShadow: '0 4px 16px rgba(0, 0, 0, 0.2)',
+        cursor: 'pointer',
+      }}
+      onClick={onOpenModal}
+    >
+      {/* Bullet chart rows */}
+      <div style={{ 
+        display: 'flex', 
+        flexDirection: 'column', 
+        gap: '12px',
+      }}>
+        {graphRatings.map((item, idx) => {
+          const isHovered = hoveredIndex === idx;
+          
+          return (
+            <div 
+              key={item.snippetId || idx}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                padding: '10px 12px',
+                borderRadius: '10px',
+                backgroundColor: isHovered ? 'rgba(167, 139, 250, 0.12)' : 'rgba(255,255,255,0.02)',
+                transition: 'all 0.2s ease',
+                border: isHovered ? '1px solid rgba(167, 139, 250, 0.25)' : '1px solid transparent',
+              }}
+              onMouseEnter={(e) => {
+                e.stopPropagation();
+                setHoveredIndex(idx);
+              }}
+              onMouseLeave={() => setHoveredIndex(null)}
+            >
+              {/* User avatar */}
+              <div style={{ position: 'relative', flexShrink: 0 }}>
+                {item.userAvatar ? (
+                  <img 
+                    src={item.userAvatar} 
+                    alt="avatar"
+                    style={{ 
+                      width: 36, 
+                      height: 36, 
+                      borderRadius: '50%', 
+                      objectFit: 'cover',
+                      border: '2px solid rgba(139, 92, 246, 0.5)',
+                      boxShadow: isHovered ? '0 0 12px rgba(167, 139, 250, 0.5)' : '0 2px 6px rgba(0,0,0,0.3)',
+                      transition: 'all 0.2s ease',
+                    }}
+                  />
+                ) : (
+                  <div style={{ 
+                    width: 36, 
+                    height: 36, 
+                    borderRadius: '50%', 
+                    backgroundColor: '#1e293b',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '14px',
+                    color: '#94a3b8',
+                    border: '2px solid rgba(139, 92, 246, 0.5)',
+                  }}>
+                    ?
                   </div>
-                  {payload.map((entry, index) => (
-                    <div key={`tooltip-${index}`} style={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      color: entry.name === 'Your Rating' ? '#a78bfa' : '#3b82f6',
-                      margin: '4px 0'
-                    }}>
-                      <div style={{ 
-                        width: '10px', 
-                        height: '10px', 
-                        backgroundColor: entry.name === 'Your Rating' ? '#a78bfa' : '#3b82f6', 
-                        marginRight: '8px',
-                        borderRadius: '2px'
-                      }} />
-                      <span>{entry.name}: {entry.value}%</span>
-                    </div>
+                )}
+              </div>
+              
+              {/* Bullet bar container */}
+              <div style={{ flex: 1, position: 'relative' }}>
+                <div style={{ 
+                  position: 'relative', 
+                  height: '28px', 
+                  backgroundColor: 'rgba(255,255,255,0.04)',
+                  borderRadius: '6px',
+                  overflow: 'visible',
+                }}>
+                  {/* Background gradient zones - subtle performance indicators */}
+                  <div style={{
+                    position: 'absolute',
+                    left: 0,
+                    top: 0,
+                    bottom: 0,
+                    width: '40%',
+                    backgroundColor: 'rgba(248, 113, 113, 0.06)',
+                    borderRadius: '6px 0 0 6px',
+                  }} />
+                  <div style={{
+                    position: 'absolute',
+                    left: '40%',
+                    top: 0,
+                    bottom: 0,
+                    width: '30%',
+                    backgroundColor: 'rgba(251, 191, 36, 0.06)',
+                  }} />
+                  <div style={{
+                    position: 'absolute',
+                    left: '70%',
+                    top: 0,
+                    bottom: 0,
+                    width: '30%',
+                    backgroundColor: 'rgba(74, 222, 128, 0.06)',
+                    borderRadius: '0 6px 6px 0',
+                  }} />
+                  
+                  {/* Your rating bar */}
+                  <div style={{
+                    position: 'absolute',
+                    top: '8px',
+                    left: 0,
+                    height: '12px',
+                    width: `${item.userRating || 0}%`,
+                    background: 'linear-gradient(90deg, #8b5cf6, #a78bfa)',
+                    borderRadius: '3px',
+                    transition: 'width 0.5s cubic-bezier(0.16, 1, 0.3, 1)',
+                    boxShadow: isHovered 
+                      ? '0 0 14px rgba(167, 139, 250, 0.6)' 
+                      : '0 0 8px rgba(167, 139, 250, 0.3)',
+                  }}>
+                    {/* Shine effect */}
+                    <div style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      height: '50%',
+                      background: 'linear-gradient(rgba(255,255,255,0.35), rgba(255,255,255,0))',
+                      borderRadius: '3px 3px 0 0',
+                    }}/>
+                  </div>
+                  
+                  {/* Average marker line */}
+                  <div style={{
+                    position: 'absolute',
+                    left: `${item.avgRating || 0}%`,
+                    top: '4px',
+                    bottom: '4px',
+                    width: '3px',
+                    backgroundColor: '#3b82f6',
+                    transform: 'translateX(-50%)',
+                    boxShadow: isHovered 
+                      ? '0 0 10px rgba(59, 130, 246, 0.9)' 
+                      : '0 0 6px rgba(59, 130, 246, 0.6)',
+                    borderRadius: '2px',
+                    zIndex: 2,
+                  }} />
+                  
+                  {/* Scale markers (subtle) */}
+                  {[25, 50, 75].map((mark) => (
+                    <div 
+                      key={mark}
+                      style={{
+                        position: 'absolute',
+                        left: `${mark}%`,
+                        top: 0,
+                        bottom: 0,
+                        width: '1px',
+                        backgroundColor: 'rgba(255,255,255,0.08)',
+                      }}
+                    />
                   ))}
                 </div>
-              );
-            }
-            return null;
-          }}
-        />
-        <Bar 
-          dataKey="avgRating" 
-          name="Average" 
-          barSize={16}
-        >
-          {graphRatings.map((entry, index) => (
-            <Cell key={`avg-cell-${index}`} 
-              fill="url(#linearGradientBlue)" 
-              radius={[0, 4, 4, 0]} 
-            />
-          ))}
-        </Bar>
-        <Bar 
-          dataKey="userRating" 
-          name="Your Rating" 
-          barSize={16}
-        >
-          {graphRatings.map((entry, index) => (
-            <Cell key={`user-cell-${index}`} 
-              fill="url(#linearGradientPurple)" 
-              radius={[0, 4, 4, 0]} 
-            />
-          ))}
-        </Bar>
-        <defs>
-          <linearGradient id="linearGradientPurple" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stopColor="#8b5cf6" />
-            <stop offset="100%" stopColor="#a78bfa" />
-          </linearGradient>
-          <linearGradient id="linearGradientBlue" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stopColor="#1d4ed8" />
-            <stop offset="100%" stopColor="#3b82f6" />
-          </linearGradient>
-        </defs>
-      </BarChart>
-    </ResponsiveContainer>
-  </div>
-);
-
-export const ScatterRatingsGraph = ({ scatterData, onOpenModal }) => (
-  <div style={{ 
-    height: '320px',
-    backgroundColor: 'rgba(15, 23, 42, 0.5)',
-    backdropFilter: 'blur(10px)',
-    borderRadius: '12px',
-    padding: '16px',
-    border: '1px solid rgba(255, 255, 255, 0.05)',
-    boxShadow: '0 4px 16px rgba(0, 0, 0, 0.2)',
-    cursor: 'pointer',
-  }}
-  onClick={onOpenModal}>
-    <ResponsiveContainer width="100%" height="100%">
-      <ScatterChart
-        margin={{ top: 20, right: 20, bottom: 40, left: 20 }}
-      >
-        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.05)" />
-        <XAxis 
-          type="number" 
-          dataKey="ratingCount" 
-          name="Ratings"
-          domain={['auto', 'auto']}
-          tick={{ fill: '#8899a6', fontSize: 12 }}
-          stroke="rgba(255, 255, 255, 0.05)"
-          label={{ 
-            value: 'Number of Ratings', 
-            position: 'insideBottom', 
-            fill: '#8899a6',
-            dy: 20
-          }}
-        />
-        <YAxis 
-          type="number" 
-          dataKey="average" 
-          name="Average" 
-          domain={[0, 100]}
-          tick={{ fill: '#8899a6', fontSize: 12 }}
-          stroke="rgba(255, 255, 255, 0.05)"
-          label={{ 
-            value: 'Rating Value', 
-            angle: -90, 
-            position: 'insideLeft',
-            fill: '#8899a6',
-            dx: -10
-          }}
-        />
-        <ZAxis range={[80, 80]} />
-        <Tooltip 
-          cursor={{ strokeDasharray: '3 3', stroke: 'rgba(167, 139, 250, 0.4)', strokeWidth: 2 }}
-          content={(props) => {
-            const { active, payload } = props;
-            if (active && payload && payload.length) {
-              const data = payload[0].payload;
-              return (
-                <div style={{
-                  backgroundColor: '#0f172a',
-                  padding: '12px',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
-                  borderRadius: '8px',
-                  boxShadow: '0 4px 16px rgba(0, 0, 0, 0.3)'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                
+                {/* Tooltip on hover */}
+                {isHovered && (
+                  <div style={{
+                    position: 'absolute',
+                    bottom: 'calc(100% + 10px)',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                    color: '#fff',
+                    borderRadius: '10px',
+                    padding: '12px 16px',
+                    boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    zIndex: 20,
+                    minWidth: '180px',
+                    pointerEvents: 'none',
+                    fontSize: '13px',
+                  }}>
                     <div style={{ 
-                      width: '24px', 
-                      height: '24px', 
-                      borderRadius: '50%', 
-                      backgroundColor: '#3b82f6',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: '#fff',
-                      fontSize: '12px',
-                      fontWeight: 'bold'
+                      marginBottom: '10px', 
+                      fontWeight: 'bold',
+                      fontSize: '14px',
+                      borderBottom: '1px solid rgba(255,255,255,0.1)',
+                      paddingBottom: '8px',
+                      color: '#a78bfa',
                     }}>
-                      {data.username ? data.username.charAt(0) : "?"}
+                      Rating Details
                     </div>
-                    <p style={{ color: '#fff', margin: '0', fontWeight: 'bold' }}>
-                      {data.username || "User"}
-                    </p>
+                    <div style={{ 
+                      display: 'flex', 
+                      justifyContent: 'space-between',
+                      marginBottom: '6px',
+                    }}>
+                      <span style={{ color: '#94a3b8' }}>Your Rating:</span>
+                      <span style={{ color: '#a78bfa', fontWeight: 'bold' }}>{item.userRating || 0}</span>
+                    </div>
+                    <div style={{ 
+                      display: 'flex', 
+                      justifyContent: 'space-between',
+                    }}>
+                      <span style={{ color: '#94a3b8' }}>Average:</span>
+                      <span style={{ color: '#3b82f6', fontWeight: 'bold' }}>{item.avgRating || 0}</span>
+                    </div>
                   </div>
-                  <div style={{ display: 'flex', marginTop: '8px', gap: '16px' }}>
-                    <div>
-                      <p style={{ color: '#64748b', margin: '0 0 4px 0', fontSize: '12px' }}>Ratings</p>
-                      <p style={{ color: '#a78bfa', margin: '0', fontWeight: 'bold' }}>{data.ratingCount}</p>
-                    </div>
-                    <div>
-                      <p style={{ color: '#64748b', margin: '0 0 4px 0', fontSize: '12px' }}>Average</p>
-                      <p style={{ color: '#3b82f6', margin: '0', fontWeight: 'bold' }}>{data.average}%</p>
-                    </div>
-                  </div>
+                )}
+              </div>
+              
+              {/* Rating stats - Your Rating and Average side by side */}
+              <div style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '12px',
+                flexShrink: 0,
+              }}>
+                {/* Your rating value */}
+                <span style={{ 
+                  color: '#a78bfa', 
+                  fontSize: '16px', 
+                  fontWeight: 'bold',
+                  minWidth: '32px',
+                  textAlign: 'right',
+                }}>
+                  {item.userRating || 0}
+                </span>
+                
+                {/* Average value */}
+                <span style={{ 
+                  color: '#3b82f6', 
+                  fontSize: '16px', 
+                  fontWeight: 'bold',
+                  minWidth: '32px',
+                  textAlign: 'right',
+                }}>
+                  {item.avgRating || 0}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+// Simple Scatter Plot with Names
+export const ScatterRatingsGraph = ({ scatterData, onOpenModal }) => {
+  const [hoveredUser, setHoveredUser] = useState(null);
+
+  const maxRatings = Math.max(...scatterData.map(d => d.ratingCount), 100);
+  const getX = (count) => 10 + (count / maxRatings) * 80;
+  const getY = (avg) => 88 - (avg * 0.76);
+
+  return (
+    <div 
+      style={{
+        minHeight: '240px',
+        backgroundColor: 'rgba(15, 23, 42, 0.5)',
+        backdropFilter: 'blur(10px)',
+        borderRadius: '12px',
+        padding: '20px',
+        border: '1px solid rgba(255, 255, 255, 0.05)',
+        boxShadow: '0 4px 16px rgba(0, 0, 0, 0.2)',
+        cursor: 'pointer',
+        position: 'relative',
+      }}
+      onClick={onOpenModal}
+    >
+      {/* Chart area */}
+      <div style={{
+        position: 'relative',
+        height: '220px',
+        marginLeft: '40px',
+        marginBottom: '30px',
+      }}>
+        {/* Y-axis line */}
+        <div style={{
+          position: 'absolute',
+          left: '-40px',
+          top: 0,
+          bottom: 0,
+          width: '1px',
+          background: 'rgba(255,255,255,0.08)',
+        }} />
+        
+        {/* X-axis line */}
+        <div style={{
+          position: 'absolute',
+          left: '-40px',
+          right: 0,
+          bottom: 0,
+          height: '1px',
+          background: 'rgba(255,255,255,0.08)',
+        }} />
+
+        {/* Y-axis labels */}
+        {[0, 50, 100].map(val => (
+          <div key={val} style={{
+            position: 'absolute',
+            left: '-35px',
+            top: `${100 - val}%`,
+            transform: 'translateY(-50%)',
+            fontSize: '11px',
+            color: '#64748b',
+          }}>
+            {val}
+          </div>
+        ))}
+
+        {/* X-axis labels */}
+        {[0, 50, 100].map((val) => (
+          <div key={val} style={{
+            position: 'absolute',
+            bottom: '-20px',
+            left: `${val}%`,
+            transform: 'translateX(-50%)',
+            fontSize: '11px',
+            color: '#64748b',
+          }}>
+            {Math.round(val * maxRatings / 100)}
+          </div>
+        ))}
+
+        {/* Horizontal grid line */}
+        <div style={{
+          position: 'absolute',
+          left: 0, 
+          right: 0,
+          top: '50%',
+          height: '1px',
+          background: 'rgba(255,255,255,0.04)',
+        }} />
+        
+        {/* Vertical grid line */}
+        <div style={{
+          position: 'absolute',
+          left: '50%',
+          top: 0, 
+          bottom: 0,
+          width: '1px',
+          background: 'rgba(255,255,255,0.04)',
+        }} />
+
+        {/* Data points with names */}
+        {scatterData.map((user, idx) => {
+          const x = getX(user.ratingCount);
+          const y = getY(user.average);
+          const isHovered = hoveredUser === idx;
+          
+          return (
+            <div
+              key={idx}
+              onMouseEnter={(e) => {
+                e.stopPropagation();
+                setHoveredUser(idx);
+              }}
+              onMouseLeave={() => setHoveredUser(null)}
+              style={{
+                position: 'absolute',
+                left: `${x}%`,
+                top: `${y}%`,
+                transform: 'translate(-50%, -50%)',
+                zIndex: isHovered ? 10 : 1,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '4px',
+              }}
+            >
+              {user.userAvatar ? (
+                <img 
+                  src={user.userAvatar}
+                  alt={user.username}
+                  style={{
+                    width: isHovered ? '34px' : '28px',
+                    height: isHovered ? '34px' : '28px',
+                    borderRadius: '50%',
+                    objectFit: 'cover',
+                    border: isHovered 
+                      ? '3px solid #a78bfa' 
+                      : '2px solid rgba(139, 92, 246, 0.4)',
+                    boxShadow: isHovered 
+                      ? '0 0 16px rgba(167, 139, 250, 0.5)' 
+                      : '0 2px 8px rgba(0,0,0,0.3)',
+                    transition: 'all 0.2s ease',
+                    cursor: 'pointer',
+                  }}
+                />
+              ) : (
+                <div style={{
+                  width: isHovered ? '34px' : '28px',
+                  height: isHovered ? '34px' : '28px',
+                  borderRadius: '50%',
+                  backgroundColor: '#1e293b',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '12px',
+                  color: '#94a3b8',
+                  border: isHovered 
+                    ? '3px solid #a78bfa' 
+                    : '2px solid rgba(139, 92, 246, 0.4)',
+                  boxShadow: isHovered 
+                    ? '0 0 16px rgba(167, 139, 250, 0.5)' 
+                    : '0 2px 8px rgba(0,0,0,0.3)',
+                  transition: 'all 0.2s ease',
+                  cursor: 'pointer',
+                }}>
+                  {user.username ? user.username.charAt(0).toUpperCase() : '?'}
                 </div>
-              );
-            }
-            return null;
-          }}
-        />
-        <Scatter 
-          name="Rating Activity" 
-          data={scatterData} 
-          fill="#3b82f6"
-          shape={(props) => {
-            const { cx, cy, payload } = props;
-            if (!payload || !payload.userAvatar) return null;
-            
-            return (
-              <g>
-                <circle
-                  cx={cx}
-                  cy={cy}
-                  r={12}
-                  fill="url(#normalGradient)"
-                  stroke="rgba(255, 255, 255, 0.3)"
-                  strokeWidth={2}
-                />
-                <image
-                  href={payload.userAvatar}
-                  x={cx - 10}
-                  y={cy - 10}
-                  width={20}
-                  height={20}
-                  clipPath="inset(0% round 50%)"
-                />
-              </g>
-            );
-          }}
-        />
-        <defs>
-          <radialGradient id="normalGradient" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
-            <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.9} />
-            <stop offset="100%" stopColor="#1d4ed8" stopOpacity={0.8} />
-          </radialGradient>
-        </defs>
-      </ScatterChart>
-    </ResponsiveContainer>
-  </div>
-);
+              )}
+              
+              {/* Username label */}
+              <span style={{
+                fontSize: '10px',
+                color: isHovered ? '#a78bfa' : '#64748b',
+                fontWeight: isHovered ? '600' : '400',
+                transition: 'all 0.2s',
+                maxWidth: '50px',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}>
+                {user.username}
+              </span>
+
+              {/* Tooltip on hover */}
+              {isHovered && (
+                <div style={{
+                  position: 'absolute',
+                  bottom: 'calc(100% + 4px)',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                  borderRadius: '8px',
+                  padding: '8px 12px',
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  zIndex: 20,
+                  whiteSpace: 'nowrap',
+                  fontSize: '12px',
+                  pointerEvents: 'none',
+                }}>
+                  <span style={{ color: '#a78bfa' }}>{user.ratingCount} ratings</span>
+                  <span style={{ color: '#475569', margin: '0 6px' }}>·</span>
+                  <span style={{ color: '#64748b' }}>{user.average}% avg</span>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* X-axis label */}
+      <div style={{
+        position: 'absolute',
+        bottom: '8px',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        fontSize: '12px',
+        color: '#64748b',
+      }}>
+        Number of Ratings
+      </div>
+      
+      {/* Y-axis label */}
+      <div style={{
+        position: 'absolute',
+        left: '8px',
+        top: '50%',
+        transform: 'translateY(-50%) rotate(-90deg)',
+        fontSize: '12px',
+        color: '#64748b',
+      }}>
+        Rating Value
+      </div>
+    </div>
+  );
+};
 
 export const GraphSection = ({ 
   graphRatings, 
@@ -333,32 +554,32 @@ export const GraphSection = ({
         <div style={{ 
           display: 'flex',
           alignItems: 'center',
-          gap: '12px',
+          gap: '16px',
           background: 'rgba(15, 23, 42, 0.7)',
-          padding: '8px 16px',
+          padding: '10px 18px',
           borderRadius: '24px',
           fontWeight: '500',
           fontSize: '14px',
           boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
           border: '1px solid rgba(255, 255, 255, 0.05)'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <div style={{ 
-              width: '12px', 
-              height: '12px', 
-              background: 'linear-gradient(45deg, #a78bfa, #8b5cf6)',
-              borderRadius: '3px' 
+              width: '16px', 
+              height: '8px', 
+              background: 'linear-gradient(90deg, #8b5cf6, #a78bfa)',
+              borderRadius: '2px' 
             }}></div>
-            <span>You</span>
+            <span style={{ color: '#e2e8f0' }}>Your Rating</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <div style={{ 
-              width: '12px', 
-              height: '12px', 
-              background: 'linear-gradient(45deg, #3b82f6, #1d4ed8)',
-              borderRadius: '3px' 
+              width: '3px', 
+              height: '16px', 
+              backgroundColor: '#3b82f6',
+              borderRadius: '1px' 
             }}></div>
-            <span>Average</span>
+            <span style={{ color: '#e2e8f0' }}>Average</span>
           </div>
         </div>
       </div>
@@ -378,7 +599,7 @@ export const GraphSection = ({
             steps={[{
               icon: <GitBranch size={18} color="#a9b6fc" />,
               title: "User Rating Distribution",
-              content: "This graph uses average rating scores on snippets to plot each user."
+              content: "This graph plots each user by their number of ratings (x-axis) and average rating value (y-axis)."
             }]}
           />
         </div>

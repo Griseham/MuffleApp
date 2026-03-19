@@ -3,7 +3,6 @@ import React, { useMemo, useContext } from "react";
 import styles from "../styles";
 import { generateFriends, TOTAL_WIDTH, TOTAL_HEIGHT, friendColors } from "../utils";
 import { StarfieldContext } from "../context/Context";
-import { getAvatarForUser } from '../../utils/avatarService';
 
 export default function UserLayer({ snapToFriend }) {
   const { isFullscreen } = useContext(StarfieldContext);
@@ -65,7 +64,7 @@ export default function UserLayer({ snapToFriend }) {
             ...styles.avatarWrapper
           }}>
             <img 
-              src={getAvatarForUser(avatarIds.you)}
+              src={`/assets/image${avatarIds.you}.png`}
               alt="Your avatar"
               style={styles.avatarImg}
             />
@@ -124,7 +123,7 @@ export default function UserLayer({ snapToFriend }) {
                 borderColor: fc
               }}>
                 <img 
-                  src={getAvatarForUser(avatarIds.friends[idx])}
+                  src={`/assets/image${avatarIds.friends[idx]}.png`}
                   alt={`Friend ${f.id + 1}'s avatar`}
                   style={styles.avatarImg}
                 />

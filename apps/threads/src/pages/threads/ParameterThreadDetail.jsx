@@ -1,8 +1,8 @@
 // src/pages/threads/ParameterThreadDetail.jsx
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { 
-  BarChart, Bar, ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, 
-  Tooltip, Cell, ResponsiveContainer, ZAxis 
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, 
+  Tooltip, ResponsiveContainer
 } from 'recharts'; 
 import { 
   ArrowLeft, Heart, MessageCircle, Share2, Bookmark, 
@@ -15,24 +15,13 @@ import GraphModal from "../modals/GraphModal";
 import TikTokModal from "../modals/TikTokModal";
 import ThreadCommentCard from './ThreadCommentCard';
 import ThreadCommentComposer from './ThreadCommentComposer';
+import ScatterRatingsGraph from '../visualizations/ScatterRatingsGraph';
 
 // Import utilities and styles
+import { authorToAvatar, getAvatarSrc } from "../utils/utils";
 import { FiArrowLeft } from "react-icons/fi";
 import ThreadDetailStyles from "./ThreadDetailStyles";
 import './../../styles/threadDetailStyles.css';
-
-
-import { getAvatarForUser } from '../../utils/avatarService';
-
-/** Consistent avatar per author string */
-function authorToAvatar(author) {
-  // fall back to a fixed key for “You” or if author is undefined/null
-  const key = !author || author === 'You' ? 'you' : author;
-  return getAvatarForUser(key);
-}
-
-
-
 
 // Parameter-specific color scheme
 const PARAMETER_COLORS = {
@@ -69,8 +58,8 @@ const parameterThreadMockData = {
       snippet: {
         name: 'Demons',
         artistName: 'Imagine Dragons',
-        artwork: getAvatarForUser('RockFan2024'),
-        previewUrl: '/public/HeartShapedBox.mp3',
+        artwork: '/assets/image123.png',
+        previewUrl: '/backend/public/HeartShapedBox.mp3',
         userRating: null,
         avgRating: null,
         totalRatings: null,
@@ -89,8 +78,8 @@ const parameterThreadMockData = {
       snippet: {
         name: 'Basket Case',
         artistName: 'Green Day',
-        artwork: getAvatarForUser('PunkRockLover'),
-        previewUrl: '/public/HeartShapedBox.mp3',
+        artwork: '/assets/image234.png',
+        previewUrl: '/backend/public/HeartShapedBox.mp3',
         userRating: null,
         avgRating: null,
         totalRatings: null,
@@ -109,8 +98,8 @@ const parameterThreadMockData = {
       snippet: {
         name: 'Counting Stars',
         artistName: 'OneRepublic',
-        artwork: getAvatarForUser('PopRockDaily'),
-        previewUrl: '/public/HeartShapedBox.mp3',
+        artwork: '/assets/image345.png',
+        previewUrl: '/backend/public/HeartShapedBox.mp3',
         userRating: null,
         avgRating: null,
         totalRatings: null,
@@ -129,8 +118,8 @@ const parameterThreadMockData = {
       snippet: {
         name: 'This Love',
         artistName: 'Maroon 5',
-        artwork: getAvatarForUser('MelodyMaster'),
-        previewUrl: '/public/HeartShapedBox.mp3',
+        artwork: '/assets/image456.png',
+        previewUrl: '/backend/public/HeartShapedBox.mp3',
         userRating: null,
         avgRating: null,
         totalRatings: null,
@@ -149,8 +138,8 @@ const parameterThreadMockData = {
       snippet: {
         name: 'Thunder',
         artistName: 'Imagine Dragons',
-        artwork: getAvatarForUser('DragonFan99'),
-        previewUrl: '/public/HeartShapedBox.mp3',
+        artwork: '/assets/image567.png',
+        previewUrl: '/backend/public/HeartShapedBox.mp3',
         userRating: null,
         avgRating: null,
         totalRatings: null,
@@ -169,8 +158,8 @@ const parameterThreadMockData = {
       snippet: {
         name: 'When I Come Around',
         artistName: 'Green Day',
-        artwork: getAvatarForUser('GuitarHero2000'),
-        previewUrl: '/public/HeartShapedBox.mp3',
+        artwork: '/assets/image678.png',
+        previewUrl: '/backend/public/HeartShapedBox.mp3',
         userRating: null,
         avgRating: null,
         totalRatings: null,
@@ -189,8 +178,8 @@ const parameterThreadMockData = {
       snippet: {
         name: 'Apologize',
         artistName: 'OneRepublic',
-        artwork: getAvatarForUser('IndieVibes'),
-        previewUrl: '/public/HeartShapedBox.mp3',
+        artwork: '/assets/image789.png',
+        previewUrl: '/backend/public/HeartShapedBox.mp3',
         userRating: null,
         avgRating: null,
         totalRatings: null,
@@ -209,8 +198,8 @@ const parameterThreadMockData = {
       snippet: {
         name: 'Sunday Morning',
         artistName: 'Maroon 5',
-        artwork: getAvatarForUser('VocalRange'),
-        previewUrl: '/public/HeartShapedBox.mp3',
+        artwork: '/assets/image890.png',
+        previewUrl: '/backend/public/HeartShapedBox.mp3',
         userRating: null,
         avgRating: null,
         totalRatings: null,
@@ -229,8 +218,8 @@ const parameterThreadMockData = {
       snippet: {
         name: 'Radioactive',
         artistName: 'Imagine Dragons',
-        artwork: getAvatarForUser('NightVisionMusic'),
-        previewUrl: '/public/HeartShapedBox.mp3',
+        artwork: '/assets/image901.png',
+        previewUrl: '/backend/public/HeartShapedBox.mp3',
         userRating: null,
         avgRating: null,
         totalRatings: null,
@@ -249,8 +238,8 @@ const parameterThreadMockData = {
       snippet: {
         name: 'Good Riddance (Time of Your Life)',
         artistName: 'Green Day',
-        artwork: getAvatarForUser('AlternativeRocks'),
-        previewUrl: '/public/HeartShapedBox.mp3',
+        artwork: '/assets/image012.png',
+        previewUrl: '/backend/public/HeartShapedBox.mp3',
         userRating: null,
         avgRating: null,
         totalRatings: null,
@@ -319,6 +308,7 @@ const parameterThreadMockData = {
     }
   ]
 };
+
 export default function ParameterThreadDetail({ postId, onBack, onSelectUser }) {
   // Transition state
   const [isVisible, setIsVisible] = useState(false);
@@ -369,7 +359,7 @@ export default function ParameterThreadDetail({ postId, onBack, onSelectUser }) 
       
       // For other parameter threads, try to load from API (future implementation)
       try {
-        const cacheResp = await fetch(`${import.meta.env.VITE_API_BASE_URL}/cached-posts/${postId}`);
+        const cacheResp = await fetch(`http://localhost:4000/api/cached-posts/${postId}`);
         
         if (cacheResp.ok) {
           const { data: cachedData } = await cacheResp.json();
@@ -383,9 +373,11 @@ export default function ParameterThreadDetail({ postId, onBack, onSelectUser }) 
           }
         }
         
+        console.log("Parameter thread not found in cache");
         setIsLoading(false);
         
       } catch (error) {
+        console.error("Error loading parameter thread:", error);
         setIsLoading(false);
       }
     }
@@ -448,13 +440,14 @@ export default function ParameterThreadDetail({ postId, onBack, onSelectUser }) 
       }
     });
     
-    // Convert to scatter data with colors
+    // Convert to scatter data with colors and avatars
     const scatterData = Array.from(userParameterMap.values())
       .filter(user => user.totalRatings > 0)
       .map(user => ({
         username: user.username,
+        userAvatar: authorToAvatar(user.username),
         ratingCount: user.totalRatings * 10 + Math.floor(Math.random() * 50), // Simulate more ratings
-        average: user.avgRating,
+        average: Math.round(user.avgRating),
         parameter: user.parameter,
         color: PARAMETER_COLORS[user.parameter] || '#64748b'
       }));
@@ -582,7 +575,7 @@ export default function ParameterThreadDetail({ postId, onBack, onSelectUser }) 
   }, []);
 
   const openScatterGraphModal = useCallback(() => {
-    setActiveGraphType('parameter-scatter');
+    setActiveGraphType('scatter');
     setIsGraphModalOpen(true);
   }, []);
 
@@ -676,7 +669,7 @@ export default function ParameterThreadDetail({ postId, onBack, onSelectUser }) 
             marginBottom: "16px",
           }}>
             <img
-              src={getAvatarForUser(post)}
+              src={getAvatarSrc(post)}
               alt="User avatar"
               style={{
                 width: "48px",
@@ -1048,112 +1041,15 @@ export default function ParameterThreadDetail({ postId, onBack, onSelectUser }) 
               </h2>
             </div>
             
-            <div style={{ 
-              height: '320px',
-              backgroundColor: 'rgba(15, 23, 42, 0.5)',
-              backdropFilter: 'blur(10px)',
-              borderRadius: '12px',
-              padding: '16px',
-              border: '1px solid rgba(34, 197, 94, 0.3)',
-              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.2)',
-              cursor: 'pointer',
-            }}
-            onClick={openScatterGraphModal}
-            title="Click to enlarge">
-              <ResponsiveContainer width="100%" height="100%">
-                <ScatterChart
-                  margin={{ top: 20, right: 20, bottom: 40, left: 20 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.05)" />
-                  <XAxis 
-                    type="number" 
-                    dataKey="ratingCount" 
-                    name="Ratings"
-                    domain={['auto', 'auto']}
-                    tick={{ fill: '#8899a6', fontSize: 12 }}
-                    stroke="rgba(255, 255, 255, 0.05)"
-                    label={{ 
-                      value: 'Number of Ratings', 
-                      position: 'insideBottom', 
-                      fill: '#8899a6',
-                      dy: 20
-                    }}
-                  />
-                  <YAxis 
-                    type="number" 
-                    dataKey="average" 
-                    name="Average" 
-                    domain={[0, 100]}
-                    tick={{ fill: '#8899a6', fontSize: 12 }}
-                    stroke="rgba(255, 255, 255, 0.05)"
-                    label={{ 
-                      value: 'Rating Value', 
-                      angle: -90, 
-                      position: 'insideLeft',
-                      fill: '#8899a6',
-                      dx: -10
-                    }}
-                  />
-                  <ZAxis range={[80, 80]} />
-                  <Tooltip 
-                    cursor={{ strokeDasharray: '3 3', stroke: 'rgba(34, 197, 94, 0.4)', strokeWidth: 2 }}
-                    content={(props) => {
-                      const { active, payload } = props;
-                      if (active && payload && payload.length) {
-                        const data = payload[0].payload;
-                        return (
-                          <div style={{
-                            backgroundColor: '#0f172a',
-                            padding: '12px',
-                            border: '1px solid rgba(34, 197, 94, 0.3)',
-                            borderRadius: '8px',
-                            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.3)'
-                          }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                              <div style={{ 
-                                width: '16px', 
-                                height: '16px', 
-                                borderRadius: '50%', 
-                                backgroundColor: data.color,
-                              }} />
-                              <p style={{ color: '#fff', margin: '0', fontWeight: 'bold' }}>
-                                {data.username}
-                              </p>
-                            </div>
-                            <div style={{ marginBottom: '4px', color: '#94a3b8', fontSize: '12px' }}>
-                              Artist: {data.parameter}
-                            </div>
-                            <div style={{ display: 'flex', marginTop: '8px', gap: '16px' }}>
-                              <div>
-                                <p style={{ color: '#64748b', margin: '0 0 4px 0', fontSize: '12px' }}>Ratings</p>
-                                <p style={{ color: '#22c55e', margin: '0', fontWeight: 'bold' }}>{data.ratingCount}</p>
-                              </div>
-                              <div>
-                                <p style={{ color: '#64748b', margin: '0 0 4px 0', fontSize: '12px' }}>Average</p>
-                                <p style={{ color: '#3b82f6', margin: '0', fontWeight: 'bold' }}>{data.average}%</p>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      }
-                      return null;
-                    }}
-                  />
-                  <Scatter 
-                    name="Parameter Users" 
-                    data={parameterScatterData} 
-                  >
-                    {parameterScatterData.map((entry, index) => (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={entry.color}
-                        stroke="rgba(255, 255, 255, 0.2)"
-                        strokeWidth={1}
-                      />
-                    ))}
-                  </Scatter>
-                </ScatterChart>
-              </ResponsiveContainer>
+            <div 
+              onClick={openScatterGraphModal}
+              style={{ cursor: 'pointer' }}
+              title="Click to enlarge"
+            >
+              <ScatterRatingsGraph 
+                scatter={parameterScatterData}
+                isEnlarged={false}
+              />
             </div>
             </div>
         </div>
@@ -1175,8 +1071,8 @@ export default function ParameterThreadDetail({ postId, onBack, onSelectUser }) 
         </div>
       )}
       
-      <ThreadCommentComposer 
-        onSubmit={handleSubmitComment} 
+      <ThreadCommentComposer
+        onSubmit={handleSubmitComment}
         onOpenTikTokModal={openTikTokView}
       />
       

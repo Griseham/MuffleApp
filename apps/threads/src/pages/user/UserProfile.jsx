@@ -546,7 +546,10 @@ export default function UserProfile({ user = profileData.userInfo, onBack }) {
       gap: '0.25rem',
       minWidth: '180px'
     },
-
+    statItem: {
+      fontSize: '0.8rem',
+      color: '#a9b6fc'
+    }
   };
 
   return (
@@ -872,7 +875,7 @@ export default function UserProfile({ user = profileData.userInfo, onBack }) {
       </div>
 
       {/* Add keyframes for animations */}
-      <style>{`
+      <style jsx>{`
   @keyframes fadeSlideDown {
     from {
       opacity: 0;

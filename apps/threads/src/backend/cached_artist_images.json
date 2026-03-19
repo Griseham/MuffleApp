@@ -1,0 +1,242 @@
+{
+  "sza": {
+    "requestName": "SZA",
+    "artistName": "SZA",
+    "artistId": "605800394",
+    "imageUrl": "https://is1-ssl.mzstatic.com/image/thumb/AMCArtistImages221/v4/6e/00/30/6e003069-1d1f-480c-aab8-806892e73877/ami-identity-294a220289779df8e389876bc46ac060-2024-12-20T20-08-51.286Z_cropped.png/300x300bb.jpg",
+    "source": "artists",
+    "updatedAt": "2026-02-22T22:05:27.976Z"
+  },
+  "frank ocean": {
+    "requestName": "Frank Ocean",
+    "artistName": "Frank Ocean",
+    "artistId": "442122051",
+    "imageUrl": "https://is1-ssl.mzstatic.com/image/thumb/Features126/v4/d8/90/47/d8904782-ec1f-d3fc-a4cb-3efb713c9ac8/mzl.vhdbrgee.jpg/300x300bb.jpg",
+    "source": "artists",
+    "updatedAt": "2026-02-22T22:05:28.270Z"
+  },
+  "tyler, the creator": {
+    "requestName": "Tyler, The Creator",
+    "artistName": "Tyler, The Creator",
+    "artistId": "420368335",
+    "imageUrl": "https://is1-ssl.mzstatic.com/image/thumb/AMCArtistImages221/v4/67/28/88/672888f9-ed18-c353-8873-eabd049ae370/ami-identity-5220889b0ae102bdc4b0b3549da4382c-2025-07-21T02-00-38.393Z_cropped.png/300x300bb.jpg",
+    "source": "artists",
+    "updatedAt": "2026-02-22T22:05:28.630Z"
+  },
+  "kendrick lamar": {
+    "requestName": "Kendrick Lamar",
+    "artistName": "Kendrick Lamar",
+    "artistId": "368183298",
+    "imageUrl": "https://is1-ssl.mzstatic.com/image/thumb/Features211/v4/3b/c5/74/3bc5742b-0f79-62ed-b2b0-1b91498ed680/mza_5135978652874976668.png/300x300bb.jpg",
+    "source": "artists",
+    "updatedAt": "2026-02-22T22:05:29.019Z"
+  },
+  "beyoncé": {
+    "requestName": "Beyoncé",
+    "artistName": "Beyoncé",
+    "artistId": "1419227",
+    "imageUrl": "https://is1-ssl.mzstatic.com/image/thumb/Features211/v4/0e/1e/3d/0e1e3d06-438f-3b58-4eb0-4775dafd4bb2/mzl.rayvuglk.jpg/300x300bb.jpg",
+    "source": "artists",
+    "updatedAt": "2026-02-22T22:05:29.420Z"
+  },
+  "drake": {
+    "requestName": "Drake",
+    "artistName": "Drake",
+    "artistId": "271256",
+    "imageUrl": "https://is1-ssl.mzstatic.com/image/thumb/AMCArtistImages112/v4/1b/71/65/1b716513-b0c1-9c6b-45aa-cbb9198248cc/01607cf1-1d52-43d2-84ce-d6fc1f4a3475_ami-identity-7665599cc626d803af7956b3691905e7-2022-11-30T21-07-19.526Z_cropped.png/300x300bb.jpg",
+    "source": "artists",
+    "updatedAt": "2026-02-22T22:05:29.819Z"
+  },
+  "childish gambino": {
+    "requestName": "Childish Gambino",
+    "artistName": "Childish Gambino",
+    "artistId": "466842536",
+    "imageUrl": "https://is1-ssl.mzstatic.com/image/thumb/AMCArtistImages211/v4/cc/55/ab/cc55ab9b-f104-dc4a-c88f-1d6b62dcd8bd/fe082955-958c-4e14-b718-abf044bf8b44_ami-identity-7a871f163393eccb4db28a0d105243c2-2024-07-01T22-19-15.066Z_cropped.png/300x300bb.jpg",
+    "source": "artists",
+    "updatedAt": "2026-02-22T22:05:30.169Z"
+  },
+  "h.e.r.": {
+    "requestName": "H.E.R.",
+    "artistName": "H.E.R.",
+    "artistId": "123049323",
+    "imageUrl": "https://is1-ssl.mzstatic.com/image/thumb/Features126/v4/d6/3d/2a/d63d2a28-7a81-d532-0f00-7d0f35a4eaa2/mza_4715395746223917563.png/300x300bb.jpg",
+    "source": "artists",
+    "updatedAt": "2026-02-22T22:05:30.577Z"
+  },
+  "daniel caesar": {
+    "requestName": "Daniel Caesar",
+    "artistName": "Daniel Caesar",
+    "artistId": "1019899019",
+    "imageUrl": "https://is1-ssl.mzstatic.com/image/thumb/AMCArtistImages221/v4/fc/e3/3e/fce33e81-2e3b-4f11-0d21-6d521c68edb8/ami-identity-cdd1dffd7a519f8b2bc6c0b48f239aa3-2025-07-24T21-50-35.923Z_cropped.png/300x300bb.jpg",
+    "source": "artists",
+    "updatedAt": "2026-02-22T22:05:30.926Z"
+  },
+  "jorja smith": {
+    "requestName": "Jorja Smith",
+    "artistName": "Jorja Smith",
+    "artistId": "1088331223",
+    "imageUrl": "https://is1-ssl.mzstatic.com/image/thumb/AMCArtistImages211/v4/88/f8/aa/88f8aa15-d864-920e-e724-0e64bab53416/ami-identity-a81fc2827629b04d800766a5837bc685-2026-01-16T13-28-55.850Z_cropped.png/300x300bb.jpg",
+    "source": "artists",
+    "updatedAt": "2026-02-22T22:05:31.212Z"
+  },
+  "steve lacy": {
+    "requestName": "Steve Lacy",
+    "artistName": "Steve Lacy",
+    "artistId": "1210275020",
+    "imageUrl": "https://is1-ssl.mzstatic.com/image/thumb/AMCArtistImages211/v4/6b/2a/45/6b2a454f-33ec-0b6b-de7e-c143ed1f75a5/ami-identity-e9df62d4a24fceab433d35f18ca299bd-2025-08-11T22-42-08.900Z_cropped.png/300x300bb.jpg",
+    "source": "artists",
+    "updatedAt": "2026-02-22T22:05:31.510Z"
+  },
+  "brent faiyaz": {
+    "requestName": "Brent Faiyaz",
+    "artistName": "Brent Faiyaz",
+    "artistId": "960127446",
+    "imageUrl": "https://is1-ssl.mzstatic.com/image/thumb/AMCArtistImages221/v4/8a/22/4e/8a224e8f-734b-9721-0474-64c7265aeb5c/file_cropped.png/300x300bb.jpg",
+    "source": "artists",
+    "updatedAt": "2026-02-22T22:05:31.798Z"
+  },
+  "summer walker": {
+    "requestName": "Summer Walker",
+    "artistName": "Summer Walker",
+    "artistId": "990402287",
+    "imageUrl": "https://is1-ssl.mzstatic.com/image/thumb/AMCArtistImages221/v4/be/44/fe/be44fe1f-4c2d-45f8-02c1-a2f90e873644/ami-identity-94e8879f2274b24e35315437dd24f2c9-2025-11-06T17-19-55.026Z_cropped.png/300x300bb.jpg",
+    "source": "artists",
+    "updatedAt": "2026-02-22T22:05:32.150Z"
+  },
+  "6lack": {
+    "requestName": "6LACK",
+    "artistName": "6LACK",
+    "artistId": "1016633280",
+    "imageUrl": "https://is1-ssl.mzstatic.com/image/thumb/AMCArtistImages126/v4/59/42/40/5942407c-baa9-44b6-5e02-f181418ce5f9/7e906ea9-7597-42ca-8c02-67ca159dc375_ami-identity-bbaf9066f4058e4dfcfc0be947cb75e1-2023-03-01T21-41-27.276Z_cropped.png/300x300bb.jpg",
+    "source": "artists",
+    "updatedAt": "2026-02-22T22:05:32.583Z"
+  },
+  "lucky daye": {
+    "requestName": "Lucky Daye",
+    "artistName": "Lucky Daye",
+    "artistId": "1110820355",
+    "imageUrl": "https://is1-ssl.mzstatic.com/image/thumb/AMCArtistImages221/v4/b9/d3/f9/b9d3f92b-dedf-27c4-ee95-b3e635def471/a7a52340-7230-417d-b402-966641ea51c5_ami-identity-2e2c6778776b89b49262561e346117dc-2024-04-16T21-06-32.023Z_cropped.png/300x300bb.jpg",
+    "source": "artists",
+    "updatedAt": "2026-02-22T22:05:33.600Z"
+  },
+  "ravyn lenae": {
+    "requestName": "Ravyn Lenae",
+    "artistName": "Ravyn Lenae",
+    "artistId": "1044417443",
+    "imageUrl": "https://is1-ssl.mzstatic.com/image/thumb/AMCArtistImages211/v4/5c/1b/b0/5c1bb04f-40ec-ec1d-b2c9-1ad47b91a6c8/ami-identity-187adc7c6edd72716d7cf046b3212a01-2025-10-27T16-20-33.215Z_cropped.png/300x300bb.jpg",
+    "source": "artists",
+    "updatedAt": "2026-02-22T22:05:34.015Z"
+  },
+  "ari lennox": {
+    "requestName": "Ari Lennox",
+    "artistName": "Ari Lennox",
+    "artistId": "448854570",
+    "imageUrl": "https://is1-ssl.mzstatic.com/image/thumb/AMCArtistImages211/v4/f2/41/6f/f2416f5a-9e27-cd09-3b7d-c5123665f0a8/ami-identity-6ec1d9163d7cc09775873d7eb943bc85-2026-01-20T23-06-53.896Z_cropped.png/300x300bb.jpg",
+    "source": "artists",
+    "updatedAt": "2026-02-22T22:05:34.423Z"
+  },
+  "partynextdoor": {
+    "requestName": "PARTYNEXTDOOR",
+    "artistName": "PARTYNEXTDOOR",
+    "artistId": "666648192",
+    "imageUrl": "https://is1-ssl.mzstatic.com/image/thumb/AMCArtistImages221/v4/20/6e/20/206e2024-7ec9-3b6b-ed13-7fe70e9d420f/0491a459-8b56-43c6-be83-123ee6bbb936_ami-identity-c203279f49fc375e3946b5e924c0ee87-2024-04-25T18-12-52.452Z_cropped.png/300x300bb.jpg",
+    "source": "artists",
+    "updatedAt": "2026-02-22T22:05:34.774Z"
+  },
+  "snoh aalegra": {
+    "requestName": "Snoh Aalegra",
+    "artistName": "Snoh Aalegra",
+    "artistId": "891968156",
+    "imageUrl": "https://is1-ssl.mzstatic.com/image/thumb/AMCArtistImages116/v4/04/5a/69/045a69d2-8c14-8504-8f79-6f0a50d92a00/d2dd6488-3afd-4463-8196-9b35913b812f_ami-identity-182a3be9cc0773bfd9953ee7e8d134ca-2023-07-19T14-40-26.138Z_cropped.png/300x300bb.jpg",
+    "source": "artists",
+    "updatedAt": "2026-02-22T22:05:35.140Z"
+  },
+  "charlotte day wilson": {
+    "requestName": "Charlotte Day Wilson",
+    "artistName": "Charlotte Day Wilson",
+    "artistId": "1053594538",
+    "imageUrl": "https://is1-ssl.mzstatic.com/image/thumb/AMCArtistImages211/v4/6d/56/3b/6d563b36-f7cc-9360-e751-adfc112d234d/ami-identity-0637820848b1c0ea629efed610c2c02f-2025-12-11T15-14-48.447Z_cropped.png/300x300bb.jpg",
+    "source": "artists",
+    "updatedAt": "2026-02-22T22:05:35.552Z"
+  },
+  "pink sweat$": {
+    "requestName": "Pink Sweat$",
+    "artistName": "Pink Sweat$",
+    "artistId": "1402222881",
+    "imageUrl": "https://is1-ssl.mzstatic.com/image/thumb/AMCArtistImages116/v4/89/eb/b2/89ebb268-8b4d-c202-7b6d-36592c3ab982/8d49a79c-8776-47be-9da7-693e39bfd1c1_file_cropped.png/300x300bb.jpg",
+    "source": "artists",
+    "updatedAt": "2026-02-22T22:05:36.064Z"
+  },
+  "umi": {
+    "requestName": "UMI",
+    "artistName": "UMI",
+    "artistId": "1252286426",
+    "imageUrl": "https://is1-ssl.mzstatic.com/image/thumb/AMCArtistImages221/v4/9e/75/3d/9e753df4-1d68-0372-f554-7bc84b108f60/ami-identity-50fd910f64d2c6014b028508a9f5ab24-2025-07-24T22-46-54.501Z_cropped.png/300x300bb.jpg",
+    "source": "artists",
+    "updatedAt": "2026-02-22T22:05:36.503Z"
+  },
+  "masego": {
+    "requestName": "Masego",
+    "artistName": "Masego",
+    "artistId": "659203770",
+    "imageUrl": "https://is1-ssl.mzstatic.com/image/thumb/AMCArtistImages112/v4/36/4a/df/364adf5b-4768-2f6f-c730-1a5fc914ce95/dbdeb01b-eacb-42b4-93ab-44e28a23c4f5_file_cropped.png/300x300bb.jpg",
+    "source": "artists",
+    "updatedAt": "2026-02-22T22:05:36.882Z"
+  },
+  "kirby": {
+    "requestName": "KIRBY",
+    "artistName": "KIRBY",
+    "artistId": "1102589771",
+    "imageUrl": "https://is1-ssl.mzstatic.com/image/thumb/AMCArtistImages122/v4/f5/51/ec/f551ecc7-6b80-9575-c5c1-6e3d5f4ac88e/2a8c8424-9ac9-495e-9690-d502f6cb7bdb_file_cropped.png/300x300bb.jpg",
+    "source": "artists",
+    "updatedAt": "2026-02-22T22:05:37.208Z"
+  },
+  "raveena": {
+    "requestName": "Raveena",
+    "artistName": "Raveena",
+    "artistId": "343826728",
+    "imageUrl": "https://is1-ssl.mzstatic.com/image/thumb/AMCArtistImages211/v4/3e/73/20/3e732005-882b-78c7-9c04-8d9b0162c478/61ce7490-9bcc-412b-8d6b-fb0aed7e8f66_ami-identity-56c2fa03b3e6336fb83ada46a3b43c67-2024-05-08T16-29-16.132Z_cropped.png/300x300bb.jpg",
+    "source": "artists",
+    "updatedAt": "2026-02-22T22:05:37.701Z"
+  },
+  "sudan archives": {
+    "requestName": "Sudan Archives",
+    "artistName": "Sudan Archives",
+    "artistId": "1246459969",
+    "imageUrl": "https://is1-ssl.mzstatic.com/image/thumb/AMCArtistImages221/v4/19/81/85/198185b0-3a05-4fcd-25b9-73099df2023c/ami-identity-e5293d320c4a6844f900f397f9e2af47-2025-06-27T18-14-56.728Z_cropped.png/300x300bb.jpg",
+    "source": "artists",
+    "updatedAt": "2026-02-22T22:05:38.164Z"
+  },
+  "fka twigs": {
+    "requestName": "FKA twigs",
+    "artistName": "FKA twigs",
+    "artistId": "679661890",
+    "imageUrl": "https://is1-ssl.mzstatic.com/image/thumb/AMCArtistImages211/v4/83/2a/e0/832ae0a6-c805-c77f-f323-fe7f4f83f154/ami-identity-263f44f93d85f2ecfe4fd41e2976277c-2026-02-03T23-11-00.565Z_cropped.png/300x300bb.jpg",
+    "source": "artists",
+    "updatedAt": "2026-02-22T22:05:38.622Z"
+  },
+  "james blake": {
+    "requestName": "James Blake",
+    "artistName": "James Blake",
+    "artistId": "59504818",
+    "imageUrl": "https://is1-ssl.mzstatic.com/image/thumb/AMCArtistImages211/v4/6a/31/26/6a3126e4-227d-7d23-3e37-bfd882e83ed7/ami-identity-81df333028c51efe121dab9df6d34cec-2026-01-22T18-15-10.846Z_cropped.png/300x300bb.jpg",
+    "source": "artists",
+    "updatedAt": "2026-02-22T22:05:39.029Z"
+  },
+  "moses sumney": {
+    "requestName": "Moses Sumney",
+    "artistName": "Moses Sumney",
+    "artistId": "843536848",
+    "imageUrl": "https://is1-ssl.mzstatic.com/image/thumb/AMCArtistImages211/v4/3f/bd/dd/3fbdddcf-7e8f-bfee-80f6-1f1b90d9bc9b/2c440931-583c-4ca8-aafd-c17a5383f7af_ami-identity-b6fa5d9120f4c8d82844c41fc905e70a-2024-06-05T20-45-32.649Z_cropped.png/300x300bb.jpg",
+    "source": "artists",
+    "updatedAt": "2026-02-22T22:05:39.407Z"
+  },
+  "caroline polachek": {
+    "requestName": "Caroline Polachek",
+    "artistName": "Caroline Polachek",
+    "artistId": "385592090",
+    "imageUrl": "https://is1-ssl.mzstatic.com/image/thumb/AMCArtistImages122/v4/64/b6/e3/64b6e3fc-639c-2ff0-b4b4-f050118b7132/c11619ca-609e-49bd-9fd2-8dc91db04e8d_ami-identity-f3f49d665e6fd8af68f9d2d428962620-2022-10-17T17-25-37.046Z_cropped.png/300x300bb.jpg",
+    "source": "artists",
+    "updatedAt": "2026-02-22T22:05:39.853Z"
+  }
+}

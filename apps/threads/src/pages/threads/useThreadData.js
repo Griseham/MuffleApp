@@ -1,13 +1,8 @@
-import { useState, useEffect } from "react";
-import { getAvatarForUser } from '../../utils/avatarService';
-import {extractSongQuery, removeLinks} from '../utils/utils';
-import { formatSnippetData } from './threadHelpers';
-
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL;
-
+import { useState, useEffect, useCallback, useRef } from "react";
+import { authorToAvatar } from "../utils/utils";
 
 export default function useThreadData(postId, postData = null) {
+  const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:4000";
   const [post, setPost] = useState(null);
   const [comments, setComments] = useState([]);
   const [snippetRecs, setSnippetRecs] = useState([]);
@@ -16,9 +11,10 @@ export default function useThreadData(postId, postData = null) {
   const [users, setUsers] = useState([]);
   const [usedCache, setUsedCache] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingComments, setIsLoadingComments] = useState(false);
-  const [isLoadingSnippets, setIsLoadingSnippets] = useState(false);
   const [error, setError] = useState(null);
+  const [commentsLoaded, setCommentsLoaded] = useState(false);
+  const [snippetsLoading, setSnippetsLoading] = useState(false);
+  const didFetchLiveRef = useRef(false);
 
   const ensureValidDate = (postData) => {
     const now = Date.now() / 1000;
@@ -36,1043 +32,440 @@ export default function useThreadData(postId, postData = null) {
     return [];
   };
 
-const fetchCachedPostData = async (postId) => {
-  try {
-    const resp = await fetch(`${import.meta.env.VITE_API_BASE_URL}/cached-posts/${postId}`);
-    if (!resp.ok) {
-      return false;
+  // Helper to format Apple Music artwork URLs
+  const formatArtworkUrl = (url, size = 300) => {
+    if (!url) return null;
+    return url
+      .replace('{w}', String(size))
+      .replace('{h}', String(size))
+      .replace('{f}', 'jpg');
+  };
+
+  const normalizeMediaUrl = (url) => {
+    if (!url || typeof url !== "string") return "";
+    if (url.startsWith("/cached_media/")) return `${API_BASE}${url}`;
+    return url;
+  };
+
+  // Helper function to process cached snippets
+  const processCachedSnippets = useCallback((snippets, commentsData) => {
+    if (!snippets || snippets.length === 0) return [];
+    
+    console.log("useThreadData: Processing snippets from cached data:", snippets.length);
+    return snippets.map((snippet, index) => {
+      const commentsArray = Array.isArray(commentsData)
+        ? commentsData
+        : (commentsData?.topLevel && Array.isArray(commentsData.topLevel) ? commentsData.topLevel : []);
+
+      const correspondingComment = commentsArray.find(
+        (c) => c?.id === snippet.commentId || c?.data?.id === snippet.commentId
+      );
+
+      const snippetAuthor =
+        correspondingComment?.author ||
+        correspondingComment?.data?.author ||
+        "Unknown";
+
+      const songName =
+        snippet.songName ||
+        snippet.name ||
+        snippet.snippetData?.attributes?.name ||
+        "Unknown Song";
+
+      const artistName =
+        snippet.artistName ||
+        snippet.snippetData?.attributes?.artistName ||
+        "Unknown Artist";
+
+      const rawArtwork =
+        snippet.artworkUrl ||
+        snippet.snippetData?.attributes?.artwork?.url ||
+        snippet.artistImage ||
+        snippet.artwork;
+
+      // DEBUG: Log raw artwork before processing
+      console.log(`processCachedSnippets: Snippet ${index} raw artwork debug:`, {
+        commentId: snippet.commentId,
+        'snippet.artworkUrl': snippet.artworkUrl,
+        'snippet.snippetData?.attributes?.artwork?.url': snippet.snippetData?.attributes?.artwork?.url,
+        'snippet.artistImage': snippet.artistImage,
+        'snippet.artwork': snippet.artwork,
+        'rawArtwork selected': rawArtwork
+      });
+
+      const artworkUrl = normalizeMediaUrl(
+        formatArtworkUrl(rawArtwork, 300) ||
+        rawArtwork ||
+        "/assets/default-artist.png"
+      );
+
+      // DEBUG: Log final artwork URL
+      console.log(`processCachedSnippets: Snippet ${index} final artworkUrl:`, artworkUrl);
+
+      const previewUrl = normalizeMediaUrl(
+        snippet.previewUrl ||
+        snippet.snippetData?.attributes?.previews?.[0]?.url ||
+        ""
+      );
+
+      return {
+        id: snippet.commentId || snippet.id,
+        commentId: snippet.commentId || snippet.id,
+        query: snippet.query,
+        name: songName,
+        songName,
+        artistName,
+        // CRITICAL: Include 'artwork' field for ThreadCommentCard
+        artwork: artworkUrl,
+        artworkUrl: artworkUrl,
+        previewUrl,
+        snippetData: snippet.snippetData || {
+          attributes: {
+            name: songName,
+            artistName,
+            previews: [{ url: previewUrl }],
+            artwork: { url: artworkUrl },
+            albumName: snippet.albumName || '',
+            releaseDate: snippet.releaseDate || '',
+            durationInMillis: snippet.duration || 0
+          }
+        },
+        author: snippet.author || snippetAuthor,
+        timestamp: Date.now(),
+        artistImage: artworkUrl,
+        snippetAuthorAvatar: authorToAvatar(snippet.author || snippetAuthor),
+        userRating: null,
+        avgRating: Math.floor(Math.random() * 50) + 50,
+        totalRatings: Math.floor(Math.random() * 200) + 50,
+        didRate: false
+      };
+    });
+  }, []);
+
+  // Fetch cached post data including comments
+  const fetchCachedPostData = useCallback(async (id) => {
+    try {
+      console.log(`useThreadData: Fetching cached post data for ID: ${id}`);
+      const resp = await fetch(`${API_BASE}/api/cached-posts/${id}`);
+      if (!resp.ok) {
+        console.log(`useThreadData: Cached post not found (${resp.status}): ${id}`);
+        return null;
+      }
+      
+      const data = await resp.json();
+      if (data.success && data.data) {
+        return data.data;
+      }
+      return null;
+    } catch (error) {
+      console.error("useThreadData: Error fetching cached post:", error);
+      return null;
+    }
+  }, [API_BASE]);
+
+  // Load post and comments
+  useEffect(() => {
+    let cancelled = false;
+    
+    async function loadPost() {
+      console.log("useThreadData: Loading post with ID:", postId);
+      console.log("useThreadData: PostData provided:", !!postData);
+      setIsLoading(true);
+      setError(null);
+      setCommentsLoaded(false);
+
+      // IMPORTANT: reset per-thread snippet loading state.
+      // Otherwise, if you open a "live" Reddit thread (snippetsLoading=true) and then open a cached thread,
+      // the cached thread can incorrectly keep showing the loading skeleton.
+      setSnippetsLoading(false);
+      setSnippetRecs([]);
+      setComments([]);
+      setUsedCache(false);
+      
+      // If postData is provided, use it for the post but still try to load comments from cache
+      if (postData) {
+        console.log("useThreadData: Using provided postData, will also fetch cached comments");
+        setPost(ensureValidDate(postData));
+        
+        // Try to load cached comments and snippets for this post
+        let cachedData = null;
+        if (postData?.hasCachedData !== false) {
+          cachedData = await fetchCachedPostData(postId);
+        } else {
+          console.log("useThreadData: postData.hasCachedData is false; skipping cached-posts fetch");
+        }
+        if (!cachedData) {
+          console.log("useThreadData: No cached data found for postId:", postId);
+        }
+        if (!cancelled && cachedData) {
+          console.log("useThreadData: Found cached data, loading comments and snippets");
+          
+          if (cachedData.comments && cachedData.comments.length > 0) {
+            setComments(cachedData.comments);
+            console.log(`useThreadData: Loaded ${cachedData.comments.length} cached comments`);
+          }
+          
+          if (cachedData.snippets && cachedData.snippets.length > 0) {
+            const processedSnippets = processCachedSnippets(cachedData.snippets, cachedData.comments);
+            setSnippetRecs(processedSnippets);
+            console.log(`useThreadData: Loaded ${processedSnippets.length} cached snippets`);
+          }
+          
+          setUsedCache(true);
+        } else {
+          console.log("useThreadData: No cached data found for postId:", postId);
+          setUsedCache(false);
+        }
+        
+        if (!cancelled) {
+          if (cachedData) {
+            setCommentsLoaded(true);
+            setIsLoading(false);
+            console.log("useThreadData: commentsLoaded set to true (cached)");
+          } else {
+            setCommentsLoaded(false);
+            setIsLoading(false);
+            console.log("useThreadData: No cache for provided postData; will fetch live comments/snippets");
+          }
+        }
+        return;
+      }
+      
+      // No postData provided - try to load everything from cache or API
+      try {
+        const cachedData = await fetchCachedPostData(postId);
+        if (!cancelled && cachedData) {
+          console.log("useThreadData: Successfully loaded cached post data");
+          setPost(ensureValidDate(cachedData));
+          setComments(cachedData.comments || []);
+          
+          if (cachedData.snippets?.length > 0) {
+            const processedSnippets = processCachedSnippets(cachedData.snippets, cachedData.comments);
+            setSnippetRecs(processedSnippets);
+          }
+          
+          setUsedCache(true);
+          setCommentsLoaded(true);
+          setIsLoading(false);
+          return;
+        }
+        
+        // Try other API sources...
+        console.log("useThreadData: No cached data found, trying other sources...");
+        
+        // Try /api/posts endpoint
+        try {
+          const resp = await fetch(`${API_BASE}/api/posts`);
+          if (resp.ok) {
+            const allPosts = await resp.json();
+            if (allPosts.success && Array.isArray(allPosts.data)) {
+              const foundPost = allPosts.data.find(p => p.id === postId);
+              
+              if (foundPost && !cancelled) {
+                setPost(ensureValidDate({
+                  ...foundPost,
+                  ups: foundPost.ups || (postId.charCodeAt(0) % 10) * 100 + 50,
+                  num_comments: foundPost.num_comments || Math.floor(Math.random() * 20) + 5,
+                }));
+                setUsedCache(false);
+                setCommentsLoaded(true);
+                setIsLoading(false);
+                return;
+              }
+            }
+          }
+        } catch (error) {
+          console.log("useThreadData: Error fetching from /api/posts:", error);
+        }
+        
+        // Try diverse-posts endpoint
+        try {
+          console.log("useThreadData: Trying diverse-posts API...");
+          const diverseResp = await fetch(`${API_BASE}/api/diverse-posts`);
+          
+          if (diverseResp.ok) {
+            const diverseData = await diverseResp.json();
+            if (diverseData.success && Array.isArray(diverseData.data)) {
+              const diversePost = diverseData.data.find(p => p.id === postId);
+              
+              if (diversePost && !cancelled) {
+                console.log("useThreadData: Found post in diverse-posts API");
+                setPost(ensureValidDate({
+                  ...diversePost,
+                  ups: diversePost.ups || (postId.charCodeAt(0) % 10) * 100 + 50,
+                  num_comments: diversePost.num_comments || Math.floor(Math.random() * 20) + 5,
+                }));
+                setUsedCache(false);
+                setCommentsLoaded(true);
+                setIsLoading(false);
+                return;
+              }
+            }
+          }
+        } catch (error) {
+          console.log("useThreadData: Error fetching from diverse-posts:", error);
+        }
+        
+        // Fallback - create minimal post
+        if (!cancelled) {
+          console.log("useThreadData: Using fallback post data");
+          setPost({
+            id: postId,
+            title: "Thread",
+            author: "Unknown",
+            createdUtc: Date.now() / 1000,
+            postType: "thread"
+          });
+          setCommentsLoaded(true);
+          setIsLoading(false);
+        }
+        
+      } catch (error) {
+        console.error("useThreadData: Error loading post:", error);
+        if (!cancelled) {
+          setError(error);
+          setCommentsLoaded(true);
+          setIsLoading(false);
+        }
+      }
     }
     
-    const data = await resp.json();
-    if (data.success && data.data) {
-      setPost(ensureValidDate(data.data));
-      setComments(data.data.comments || []);
-      
-      if (data.data.snippets?.length > 0) {
-        // Processing snippets from cached data
-        const snippetsWithAvatars = data.data.snippets.map(snippet => {
-          // Find the corresponding comment to get the author
-          const correspondingComment = data.data.comments?.find(c => c.id === snippet.commentId);
-          const snippetAuthor = correspondingComment?.author || "Unknown";
-          
-          return {
-            id: snippet.commentId,
-            commentId: snippet.commentId,
-            query: snippet.query,
-            name: snippet.songName,
-            songName: snippet.songName,
-            artistName: snippet.artistName,
-            artwork: snippet.artworkUrl || getAvatarForUser(snippetAuthor),
-            artworkUrl: snippet.artworkUrl || getAvatarForUser(snippetAuthor),
-            previewUrl: snippet.previewUrl || `/public/HeartShapedBox.mp3`,
-            snippetData: {
-              attributes: {
-                name: snippet.songName,
-                artistName: snippet.artistName,
-                previews: [{ url: snippet.previewUrl || `/public/HeartShapedBox.mp3` }],
-                artwork: { url: snippet.artworkUrl || getAvatarForUser(snippetAuthor) },
-                albumName: snippet.albumName || '',
-                releaseDate: snippet.releaseDate || '',
-                durationInMillis: snippet.duration || 0
-              }
-            },
-            author: snippetAuthor,
-            timestamp: Date.now(),
-            artistImage: snippet.artworkUrl || getAvatarForUser(snippetAuthor),
-            snippetAuthorAvatar: getAvatarForUser(snippetAuthor),
-            userRating: null,
-            avgRating: Math.floor(Math.random() * 50) + 50,
-            totalRatings: Math.floor(Math.random() * 200) + 50,
-            didRate: false
-          };
-        });
-        // Processed snippets
-        setSnippetRecs(
-          snippetsWithAvatars.map(s =>
-            formatSnippetData(s, null, data.data?.comments ?? [])
-          )
-        );
-              }
-      setUsedCache(true);
-      return true;
-    }
-    return false;
-  } catch (error) {
-    return false;
-  }
-};
+    loadPost();
+    
+    return () => {
+      cancelled = true;
+    };
+  }, [postId, postData, API_BASE, fetchCachedPostData, processCachedSnippets]);
 
-useEffect(() => {
-  async function loadPost() {
-    // 1. If we already got postData from props, use it and exit early:
-    if (postData) {
-      setPost(ensureValidDate(postData));
-      setComments(postData.comments || []);
-      if (postData.snippets?.length) {
-        setSnippetRecs(postData.snippets);
-      }
-      setUsedCache(true);
-      setIsLoading(false);
+  // Reset per-post live fetch guard
+  useEffect(() => {
+    didFetchLiveRef.current = false;
+  }, [postId]);
+
+  // For non-cached posts (e.g., posts added via the Reddit button), fetch live comments + snippets
+  useEffect(() => {
+    if (!postId || !post || usedCache) {
+      console.log("useThreadData: Live fetch skipped - conditions not met", { postId: !!postId, post: !!post, usedCache });
+      return;
+    }
+    if (didFetchLiveRef.current) {
+      console.log("useThreadData: Live fetch skipped - already fetched");
       return;
     }
 
-    // 2. Try your local fetchCachedPostData:
-    try {
-      const cached = await fetchCachedPostData(postId);
-      if (cached) {
-        setIsLoading(false);
-        return;
-      }
-    } catch (err) {
-    }
+    console.log("useThreadData: Starting live fetch for comments and snippets for post:", postId);
+    didFetchLiveRef.current = true;
+    let cancelled = false;
 
-    // 3. Try your /cached-posts endpoint:
-    try {
-      const resp = await fetch(`${import.meta.env.VITE_API_BASE_URL}/cached-posts/${postId}`);
-      if (resp.ok) {
-        const body = await resp.json();
-        if (body.success && body.data) {
-          setPost(ensureValidDate(body.data));
-          setComments(body.data.comments || []);
-          if (body.data.snippets?.length) {
-            const recs = body.data.snippets.map((snippet) => {
-              const author =
-                body.data.comments.find((c) => c.id === snippet.commentId)
-                  ?.author || "Unknown";
-              return {
-                id: snippet.commentId,
-                commentId: snippet.commentId,
-                query: snippet.query,
-                name: snippet.songName,
-                songName: snippet.songName,
-                artistName: snippet.artistName,
-                artwork: snippet.artworkUrl || getAvatarForUser(author),
-                artworkUrl: snippet.artworkUrl || getAvatarForUser(author),
-                previewUrl:
-                  snippet.previewUrl || "/public/HeartShapedBox.mp3",
-                snippetData: {
-                  attributes: {
-                    name: snippet.songName,
-                    artistName: snippet.artistName,
-                    previews: [
-                      { url: snippet.previewUrl || "/public/HeartShapedBox.mp3" },
-                    ],
-                    artwork: {
-                      url:
-                        snippet.artworkUrl ||
-                        getAvatarForUser(author),
-                    },
-                    albumName: snippet.albumName || "",
-                    releaseDate: snippet.releaseDate || "",
-                    durationInMillis: snippet.duration || 0,
-                  },
-                },
-                author,
-                timestamp:
-                  Date.now() / 1000 -
-                  Math.floor(Math.random() * 86400),
-                artistImage:
-                  snippet.artworkUrl || getAvatarForUser(author),
-                snippetAuthorAvatar: getAvatarForUser(author),
-                userRating: null,
-                avgRating: Math.floor(Math.random() * 50) + 50,
-                totalRatings: Math.floor(Math.random() * 200) + 50,
-                didRate: false,
-              };
-            });
-            setSnippetRecs(recs);
-          }
-          setUsedCache(true);
-          setIsLoading(false);
-          return;
-        }
-      }
-    } catch (err) {
-    }
+    // Start loading snippets
+    setSnippetsLoading(true);
 
-    // 4. Try listing all posts and picking one:
-    try {
-      const resp = await fetch(`${import.meta.env.VITE_API_BASE_URL}/posts`);
-      if (resp.ok) {
-        const all = await resp.json();
-        if (all.success && Array.isArray(all.data)) {
-          const found = all.data.find((p) => p.id === postId);
-          if (found) {
-            const updated = {
-              ...found,
-              ups:
-                found.ups ||
-                (postId.charCodeAt(0) % 10) * 100 + 50,
-              num_comments:
-                found.num_comments ||
-                comments.length ||
-                Math.floor(Math.random() * 20) + 5,
-            };
-            setPost(ensureValidDate(updated));
-            setUsedCache(false);
-            setIsLoading(false);
-            // fire-and-forget cache update
-   
-            return;
-          }
-        }
-      }
-    } catch (err) {
-    }
-
-    // 5. Try the diverse-posts endpoint:
-    try {
-      const resp = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/diverse-posts`
-      );
-      if (resp.ok) {
-        const body = await resp.json();
-        if (body.success && Array.isArray(body.data)) {
-          const found = body.data.find((p) => p.id === postId);
-          if (found) {
-            const updated = {
-              ...found,
-              ups:
-                found.ups ||
-                (postId.charCodeAt(0) % 10) * 100 + 50,
-              num_comments:
-                found.num_comments ||
-                comments.length ||
-                Math.floor(Math.random() * 20) + 5,
-            };
-            setPost(ensureValidDate(updated));
-            setUsedCache(false);
-            setIsLoading(false);
-         
-            return;
-          }
-        }
-      }
-    } catch (err) {
-    }
-
-    // 6. Finally, try fetching the single post endpoint:
-    try {
-      const resp = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/posts/${postId}`
-      );
-      if (resp.ok) {
-        const body = await resp.json();
-        if (body.success && body.data) {
-          const direct = body.data;
-          const updated = {
-            ...direct,
-            ups:
-              direct.ups ||
-              (postId.charCodeAt(0) % 10) * 100 + 50,
-            num_comments:
-              direct.num_comments ||
-              comments.length ||
-              Math.floor(Math.random() * 20) + 5,
-          };
-          setPost(ensureValidDate(updated));
-          setUsedCache(false);
-          setIsLoading(false);
-      
-          return;
-        }
-      }
-    } catch (err) {
-    }
-
-    // 7. If *all* else fails, show a placeholder:
-    const placeholder = {
-      id: postId,
-      title: "Post currently unavailable",
-      author: "Unknown",
-      selftext:
-        "This post could not be retrieved from the server. It may have been removed or is temporarily unavailable.",
-      createdUtc: Date.now() / 1000,
-      postType: "thread",
-      ups: Math.floor(Math.random() * 100) + 50,
-      num_comments: Math.floor(Math.random() * 20) + 5,
-    };
-    setPost(ensureValidDate(placeholder));
-    setUsedCache(false);
-    setError("Post could not be found");
-    setIsLoading(false);
-  }
-
-  if (postId) {
-    loadPost();
-  }
-}, [postId, postData]);
-
-
-useEffect(() => {
-  async function loadComments() {
-    if (!post) return;
-    if (usedCache && comments.length > 0) return;
-    
-    // If this is an API post (not cached), set loading state
-    if (postData && !postData.hasCachedData) {
-      setIsLoadingComments(true);
-    }
-    
-    try {
-      const cacheResp = await fetch(`${import.meta.env.VITE_API_BASE_URL}/cached-posts/${postId}`);
-      if (cacheResp.ok) {
-        const cacheData = await cacheResp.json();
-        if (cacheData.success && cacheData.data && cacheData.data.comments && cacheData.data.comments.length > 0) {
-          setComments(
-            cacheData.data.comments.map((c) => ({
-              ...c,
-              likeCount: Math.floor(Math.random() * 50),
-              commentCount: Math.floor(Math.random() * 10),
-            }))
-          );
-          setUsedCache(true);
-          setIsLoadingComments(false);
-          return;
-        }
-      }
-    } catch (err) {
-    }
-    
-    try {
-       const resp = await fetch(
-           `${import.meta.env.VITE_API_BASE_URL}/posts/${postId}/comments?subreddit=${post.subreddit || 'music'}`
-         );      
-      if (resp.ok) {
-        const data = await resp.json();
-        if (data.success && data.data && data.data.length > 0) {
-          const formattedComments = data.data.map((c) => {
-            const commentData = c.data || c;
-            return {
-              id: commentData.id || `api_comment_${Math.random().toString(36).substring(2, 9)}`,
-              author: commentData.author || "Anonymous",
-              body: commentData.body || commentData.text || "Great post!",
-              likeCount: Math.floor(Math.random() * 50),
-              commentCount: Math.floor(Math.random() * 10),
-              createdUtc: commentData.createdUtc || (Date.now() / 1000 - Math.floor(Math.random() * 86400)),
-              replies: commentData.replies || []
-            };
-          });
-          
-          setComments(formattedComments);
-          setIsLoadingComments(false);
-          
-          // For API posts, generate snippets from comments
-          if (postData && !postData.hasCachedData) {
-            await generateSnippetsFromComments(formattedComments);
-          }
-          
-          return;
-        }
-      }
-      
+    (async () => {
       try {
-        const diverseCommentsResp = await fetch(`${import.meta.env.VITE_API_BASE_URL}/diverse-posts/${postId}/comments`);
-        
-        if (diverseCommentsResp.ok) {
-          const diverseCommentsData = await diverseCommentsResp.json();
-          if (diverseCommentsData.success && diverseCommentsData.data && diverseCommentsData.data.length > 0) {
-            const formattedDiverseComments = diverseCommentsData.data.map((c) => ({
-              id: c.id || `diverse_comment_${Math.random().toString(36).substring(2, 9)}`,
-              author: c.author || "User",
-              body: c.body || c.text || "Interesting discussion!",
-              likeCount: Math.floor(Math.random() * 50),
-              commentCount: Math.floor(Math.random() * 10),
-              createdUtc: c.createdUtc || (Date.now() / 1000 - Math.floor(Math.random() * 86400)),
-              replies: c.replies || []
-            }));
-            
-            setComments(formattedDiverseComments);
-            setIsLoadingComments(false);
-            
-            // For API posts, generate snippets from comments
-            if (postData && !postData.hasCachedData) {
-              await generateSnippetsFromComments(formattedDiverseComments);
-            }
-            
-            return;
-          }
-        }
-      } catch (error) {
-      }
-      
-      setComments([]);
-      setIsLoadingComments(false);
-      
-    } catch (error) {
-      setComments([]);
-      setIsLoadingComments(false);
-    }
-  }
-  
-  loadComments();
-}, [post, postId, usedCache, comments.length, isLoading]);
+        const subredditParam =
+          post?.subreddit
+            ? `?subreddit=${encodeURIComponent(post.subreddit)}&postType=${encodeURIComponent(post.postType || "")}`
+            : "";
 
-  // Function to detect song patterns in comment text
-  const detectSongInComment = (commentText) => {
-    if (!commentText || typeof commentText !== 'string' || commentText.length < 3) return null;
-    
-    // Clean the comment text
-    const cleanText = commentText.trim()
-      .replace(/\n/g, ' ')  // Replace newlines with spaces
-      .replace(/\s+/g, ' ') // Normalize multiple spaces
-      .replace(/[^\w\s\-'"()–—]/g, ''); // Remove special chars except basic punctuation
-    
-    // Common song patterns:
-    const patterns = [
-      // "Song Name - Artist Name" or "Artist - Song Name"
-      /^(.+?)\s*[-–—]\s*(.+?)$/,
-      // "Song by Artist" or "Artist by Song"  
-      /^(.+?)\s+by\s+(.+?)$/i,
-      // "'Song Name' by Artist"
-      /^['"](.+?)['"]?\s+by\s+(.+?)$/i,
-      // "Song Name (Artist)" or "Artist (Song)"
-      /^(.+?)\s*\((.+?)\)$/,
-      // "Song Name -- Artist" (double dash)
-      /^(.+?)\s*--\s*(.+?)$/,
-      // Look for quoted strings that might be songs
-      /^['"](.+?)['"]?\s*[-–—]\s*(.+?)$/,
-    ];
-    
-    for (const pattern of patterns) {
-      const match = cleanText.match(pattern);
-      if (match) {
-        const [, part1, part2] = match;
-        
-        // Filter out very short parts (likely not real songs)
-        if (part1.trim().length < 2 || part2.trim().length < 2) continue;
-        
-        // Filter out common non-music patterns
-        const nonMusicWords = ['reddit', 'subreddit', 'post', 'comment', 'link', 'http', 'www', 'youtube', 'spotify'];
-        const text1Lower = part1.toLowerCase();
-        const text2Lower = part2.toLowerCase();
-        
-        if (nonMusicWords.some(word => text1Lower.includes(word) || text2Lower.includes(word))) {
-          continue;
+        // Fetch comments first
+        let liveComments = [];
+        try {
+          console.log("useThreadData: Fetching live comments...");
+          const cResp = await fetch(`${API_BASE}/api/posts/${postId}/comments${subredditParam}`);
+          const cJson = await cResp.json();
+          liveComments = cJson?.success && cJson?.data ? cJson.data : [];
+          console.log(`useThreadData: Received ${Array.isArray(liveComments) ? liveComments.length : 0} live comments`);
+          if (!cancelled) setComments(liveComments);
+        } catch (e) {
+          console.error("useThreadData: Error fetching live comments:", e);
         }
-        
-        // Try both combinations since we don't know which is song vs artist
-        return [
-          `${part1.trim()} ${part2.trim()}`,  // Combined search
-          `${part1.trim()} - ${part2.trim()}`,  // First combination with dash
-          `${part2.trim()} - ${part1.trim()}`   // Reversed combination
-        ];
-      }
-    }
-    
-    return null;
-  };
 
-  // Helper function to extract songs from very short comments
-  const extractShortCommentSong = (commentText) => {
-    if (!commentText || commentText.length > 100) return null;
-    
-    const text = commentText.trim().toLowerCase();
-    
-    // Common patterns in short music comments
-    const patterns = [
-      /^(.+?)\s*-\s*(.+?)$/,  // "Song - Artist" or "Artist - Song"
-      /^(.+?)\s+by\s+(.+?)$/i, // "Song by Artist"
-      /^['"](.+?)['"]$/,       // Quoted text (likely song name)
-    ];
-    
-    for (const pattern of patterns) {
-      const match = text.match(pattern);
-      if (match) {
-        return match[0]; // Return the whole match
-      }
-    }
-    
-    // If very short (likely just song/artist name), return as-is
-    if (text.length <= 30 && text.length >= 3) {
-      return text;
-    }
-    
-    return null;
-  };
-
-  // Function to generate snippets from comments using Apple Music API
-  const generateSnippetsFromComments = async (commentsToProcess) => {
-    if (!commentsToProcess || commentsToProcess.length === 0) return;
-  
-    setIsLoadingSnippets(true);
-    
-    const newSnippets = [];
-    const minSnippetsRequired = 6; // Increased from 3
-    const maxSnippets = 12; // Increased from 8
-    
-    // Sort comments by length (shorter first) and filter relevant ones
-    const sortedComments = commentsToProcess
-      .filter(c => c.body && c.author !== '[deleted]' && c.body.trim().length > 2)
-      .sort((a, b) => a.body.length - b.body.length) // Shorter comments first
-      .slice(0, 60); // Check more comments
-    
-  
-    for (const c of sortedComments) {
-      if (!c.body || c.author === '[deleted]') continue;
-  
-      const q = extractSongQuery(c.body);
-      if (!q) continue; // comment doesn’t look like a song
-  
-      const url = `${API_BASE}/apple-music-search?query=${encodeURIComponent(q)}`;
-      try {
-        const r = await fetch(url);
-        if (!r.ok) continue;
-  
-        const { success, data: song } = await r.json();
-        if (!success || !song?.attributes) continue;
-  
-        // minimal Apple Music fields
-        const attr = song.attributes;
-        const artwork = attr.artwork?.url
-          ? attr.artwork.url.replace('{w}', '300').replace('{h}', '300')
-          : '/threads/assets/placeholder-300.png';
-  
-        newSnippets.push({
-          id: c.id,
-          commentId: c.id,
-          name: attr.name,
-          artistName: attr.artistName,
-          artwork,
-          previewUrl: attr.previews?.[0]?.url,
-          snippetData: { attributes: attr },
-          author: c.author,
-          timestamp: c.createdUtc || Math.floor(Date.now() / 1000),
-          avgRating: Math.floor(Math.random() * 80) + 10,
-          totalRatings: Math.floor(Math.random() * 120) + 5,
-          didRate: false,
-        });
-  
-        if (newSnippets.length === maxSnippets) {
-          // reached maximum snippets
-          break;
-        }
-      } catch (err) {
-        // silent catch
-      }
-  
-      // optional delay if rate-limiting is a concern:
-      // await new Promise(res => setTimeout(res, 150));
-    }
-  
-    if (newSnippets.length >= minSnippetsRequired) {
-      setSnippetRecs(newSnippets);
-    } else {
-      // fallback to synthetic snippets if too few found
-      const fallback = [
-        {
-          id: `fallback_1_${postId}`,
-          commentId: `fallback_1_${postId}`,
-          query: "Bohemian Rhapsody - Queen",
-          snippetData: {
-            attributes: {
-              name: "Bohemian Rhapsody",
-              artistName: "Queen",
-              previews: [{ url: `/public/HeartShapedBox.mp3` }],
-              artwork: { url: getAvatarForUser("MusicLover123") }
-            }
-          },
-          author: "MusicLover123",
-          timestamp: Math.floor(Date.now() / 1000) - 86400,
-          name: "Bohemian Rhapsody",
-          artistName: "Queen",
-          artwork: getAvatarForUser("MusicLover123"),
-          previewUrl: `/public/HeartShapedBox.mp3`,
-          avgRating: 4,
-          totalRatings: 25,
-          didRate: false
-        }
-      ];
-  
-      setSnippetRecs(fallback);
-    }
-  };
-  
-
-  // Function to generate real Apple Music snippets using the API
-  const generateAppleMusicSnippets = async () => {
-    if (!post) return;
-    
-    // Generating real Apple Music snippets for Reddit post
-    
-    // Extract potential song/artist mentions from post title and content
-    const postText = `${post.title || ''} ${post.selftext || ''}`;
-    const popularSongs = [
-      // Recent hits that are likely to be found
-      "Anti-Hero - Taylor Swift",
-      "Flowers - Miley Cyrus", 
-      "As It Was - Harry Styles",
-      "Heat Waves - Glass Animals",
-      "Blinding Lights - The Weeknd",
-      "Good 4 U - Olivia Rodrigo",
-      "Stay - The Kid LAROI & Justin Bieber",
-      "Industry Baby - Lil Nas X",
-      "Peaches - Justin Bieber",
-      "Levitating - Dua Lipa",
-      "drivers license - Olivia Rodrigo",
-      "Bad Habits - Ed Sheeran",
-      "HUMBLE. - Kendrick Lamar",
-      "Bohemian Rhapsody - Queen",
-      "Don't Stop Believin' - Journey",
-      "Mr. Brightside - The Killers",
-      "Sweet Child O' Mine - Guns N' Roses",
-      "Hotel California - Eagles",
-      "Stairway to Heaven - Led Zeppelin",
-      "Imagine - John Lennon"
-    ];
-    
-    // Generate 3-5 snippets
-    const snippetCount = Math.floor(Math.random() * 3) + 3;
-    const realSnippets = [];
-    const usedQueries = new Set();
-    
-    try {
-      for (let i = 0; i < snippetCount; i++) {
-        // Get a random song that we haven't used yet
-        let query;
-        let attempts = 0;
-        do {
-          query = popularSongs[Math.floor(Math.random() * popularSongs.length)];
-          attempts++;
-        } while (usedQueries.has(query) && attempts < 10);
-        
-        if (usedQueries.has(query)) {
-          // If we've used all our popular songs, add a number to make it unique
-          query = `${query} ${i}`;
-        }
-        usedQueries.add(query);
-        
-        // Search Apple Music API
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/apple-music-search?query=${encodeURIComponent(query)}`);
-        
-        if (response.ok) {
-          const result = await response.json();
+        // Then fetch snippets (don't let the comments state update cancel this)
+        try {
+          console.log("useThreadData: Fetching live snippets...");
+          const sResp = await fetch(`${API_BASE}/api/posts/${postId}/snippets${subredditParam}`);
+          const sJson = await sResp.json();
+          console.log("useThreadData: Snippets API response:", sJson);
           
-          if (result.success && result.data) {
-            const song = result.data;
-            const commentId = `apple_music_${i}_${postId}`;
-            const author = `MusicFan${Math.floor(Math.random() * 900) + 100}`;
-            const artworkUrl = song.attributes.artwork?.url
-  ? song.attributes.artwork.url.replace('{w}', '300').replace('{h}', '300')
-  : '/threads/assets/placeholder-300.png';
-            
-            // Use real Apple Music data
-            const snippet = {
-              id: commentId,
-              commentId,
-              query: `${song.attributes.name} - ${song.attributes.artistName}`,
-              artwork: artworkUrl, 
-              snippetData: {
-                attributes: {
-                  name: song.attributes.name,
-                  artistName: song.attributes.artistName,
-                  previews: song.attributes.previews || [{ url: `/public/HeartShapedBox.mp3` }],
-                  artwork: song.attributes.artwork || { url: getAvatarForUser(author) }
-                }
-              },
-              author,
-              timestamp: Date.now() / 1000 - Math.floor(Math.random() * 86400 * 7),
-              artistName: song.attributes.artistName,
-              artistImage: song.attributes.artwork?.url || getAvatarForUser(author),
-              previewUrl: song.attributes.previews?.[0]?.url || `/public/HeartShapedBox.mp3`,
-              snippetAuthorAvatar: getAvatarForUser(author)
-            };
-            
-            realSnippets.push(snippet);
-            // Found real song
+          const raw = sJson?.success && Array.isArray(sJson.data) ? sJson.data : [];
+          console.log(`useThreadData: Received ${raw.length} raw snippets from API`);
+          
+          if (raw.length > 0) {
+            const liveSnippets = processCachedSnippets(raw, liveComments);
+            console.log(`useThreadData: Processed ${liveSnippets.length} snippets`);
+            if (!cancelled) {
+              setSnippetRecs(liveSnippets);
+              console.log("useThreadData: Set snippetRecs with", liveSnippets.length, "snippets");
+            } else {
+              console.log("useThreadData: Cancelled before setting snippets");
+            }
           } else {
-            // No Apple Music results for query
+            console.log("useThreadData: No snippets returned from API");
           }
-        } else {
-          // Apple Music API call failed for query
+        } catch (e) {
+          console.error("useThreadData: Error fetching live snippets:", e);
         }
-        
-        // Add small delay between requests to be respectful to the API
-        await new Promise(resolve => setTimeout(resolve, 100));
-      }
-      
-      // If we got some real results, use them
-      if (realSnippets.length > 0) {
-        const realArtists = realSnippets.map((snippet) => ({
-          name: snippet.artistName,
-          image: snippet.artistImage,
-          ratings: Math.floor(Math.random() * 100) + 1,
-          avgRating: Math.floor(Math.random() * 5) + 1,
-        }));
-        
-        const uniqueRealArtists = Array.from(
-          new Map(realArtists.map((a) => [a.name, a])).values()
-        );
-        
-        setSnippetRecs(
-          realSnippets.map(s =>
-            formatSnippetData(s, null, comments)
-          )
-        );
-                setArtistList(uniqueRealArtists);
-        // Successfully loaded real Apple Music snippets
-        return;
-      }
-    } catch (error) {
-      // Error fetching Apple Music snippets
-    }
-    
-    // Fallback to basic snippets if Apple Music fails
-    const fallbackSnippets = [
-      {
-        id: `fallback_1_${postId}`,
-        commentId: `fallback_1_${postId}`,
-        query: "Bohemian Rhapsody - Queen",
-        snippetData: {
-          attributes: {
-            name: "Bohemian Rhapsody",
-            artistName: "Queen",
-            previews: [{ url: `/public/HeartShapedBox.mp3` }],
-            artwork: { url: getAvatarForUser("MusicLover123") }
-          }
-        },
-        author: "MusicLover123",
-        timestamp: Date.now() / 1000 - 86400,
-        artistName: "Queen",
-        artistImage: getAvatarForUser("MusicLover123"),
-        previewUrl: `/public/HeartShapedBox.mp3`,
-        snippetAuthorAvatar: getAvatarForUser("MusicLover123")
-      }
-    ];
-    
-    const fallbackArtists = fallbackSnippets.map((snippet) => ({
-      name: snippet.artistName,
-      image: snippet.artistImage,
-      ratings: Math.floor(Math.random() * 100) + 1,
-      avgRating: Math.floor(Math.random() * 5) + 1,
-    }));
-    
-    setSnippetRecs(
-      fallbackSnippets.map(s =>
-        formatSnippetData(s, null, comments)
-      )
-    );
-        setArtistList(fallbackArtists);
-  };
-
-useEffect(() => {
-  async function loadSnippets() {
-    if (!post) return;
-    if (usedCache && snippetRecs.length > 0) return;
-    if (snippetRecs.length > 0) return; // Don't reload if we already have snippets
-    
-    
-    try {
-      const cacheResp = await fetch(`${import.meta.env.VITE_API_BASE_URL}/cached-posts/${postId}`);
-      if (cacheResp.ok) {
-        const cacheData = await cacheResp.json();
-        
-        // Process cached snippets (including for parameter threads)
-        if (cacheData.success && cacheData.data && cacheData.data.snippets && cacheData.data.snippets.length > 0) {
-          // Loading cached snippets for thread
-          const processedSnippets = cacheData.data.snippets.map(snippet => {
-            const snippetAuthor = cacheData.data.comments.find(c => c.id === snippet.commentId)?.author || "UnknownUser";
-            
-            return {
-              id: snippet.commentId,
-              commentId: snippet.commentId,
-              query: snippet.query,
-              name: snippet.songName,
-              songName: snippet.songName,
-              artistName: snippet.artistName,
-              artwork: snippet.artworkUrl || getAvatarForUser(snippetAuthor),
-              artworkUrl: snippet.artworkUrl || getAvatarForUser(snippetAuthor),
-              previewUrl: snippet.previewUrl || `/public/HeartShapedBox.mp3`,
-              snippetData: {
-                attributes: {
-                  name: snippet.songName,
-                  artistName: snippet.artistName,
-                  previews: [{ url: snippet.previewUrl || `/public/HeartShapedBox.mp3` }],
-                  artwork: { url: snippet.artworkUrl || getAvatarForUser(snippetAuthor) },
-                  albumName: snippet.albumName || '',
-                  releaseDate: snippet.releaseDate || '',
-                  durationInMillis: snippet.duration || 0
-                }
-              },
-              author: snippetAuthor,
-              timestamp: Date.now() / 1000 - Math.floor(Math.random() * 86400),
-              artistImage: snippet.artworkUrl || getAvatarForUser(snippetAuthor),
-              snippetAuthorAvatar: getAvatarForUser(snippetAuthor),
-              userRating: null,
-              avgRating: Math.floor(Math.random() * 50) + 50,
-              totalRatings: Math.floor(Math.random() * 200) + 50,
-              didRate: false
-            };
-          });
-          
-          const extractedArtists = processedSnippets.map((snippet) => ({
-            name: snippet.artistName,
-            image: snippet.artistImage,
-            ratings: Math.floor(Math.random() * 100) + 1,
-            avgRating: Math.floor(Math.random() * 5) + 1,
-          }));
-          
-          const uniqueArtists = Array.from(
-            new Map(extractedArtists.map((a) => [a.name, a])).values()
-          );
-          
-          setSnippetRecs(
-            processedSnippets.map(s =>
-              formatSnippetData(s, null, comments)
-            )
-          );
-                    setArtistList(uniqueArtists);
-          return;
+      } finally {
+        if (!cancelled) {
+          setCommentsLoaded(true);
+          setSnippetsLoading(false);
+          console.log("useThreadData: Live fetch complete, commentsLoaded set to true, snippetsLoading set to false");
         }
       }
-    } catch (err) {}
+    })();
+
+    return () => { 
+      console.log("useThreadData: Live fetch effect cleanup called");
+      cancelled = true; 
+    };
+  }, [postId, post, usedCache, API_BASE, processCachedSnippets]); // FIXED: Removed comments, snippetRecs, commentsLoaded from deps
+
+  // Load snippets when needed (for non-cached posts)
+  useEffect(() => {
+    if (!post || !postId || usedCache) return;
+    if (!commentsLoaded) return;
+    if (!didFetchLiveRef.current) return;
+    if (snippetRecs.length > 0) return;
     
-    try {
-      // Try to fetch snippets from API for non-cached posts
-      if (post?.postType !== 'parameter') {
-        const resp = await fetch(`${import.meta.env.VITE_API_BASE_URL}/posts/${postId}/snippets`);
-        
-        if (resp.ok) {
-        const data = await resp.json();
-        if (data.success && data.data && data.data.length > 0) {
-          const withAvatars = data.data.map((snip) => {
-            const snippetAuthor = snip.author || "UnknownUser";
-
-            // Normalize artwork and preview url fields so ThreadDetail can display them
-            const normalizedArtwork =
-              snip.artwork ||
-              snip.artworkUrl ||
-              snip.artistImage ||
-              getAvatarForUser(snippetAuthor);
-
-            const normalizedPreview =
-              snip.previewUrl ||
-              snip.preview_url ||
-              `/public/HeartShapedBox.mp3`;
-
-            return {
-              ...snip,
-              snippetAuthorAvatar: getAvatarForUser(snippetAuthor),
-              artwork: normalizedArtwork,
-              artistImage: snip.artistImage || snip.artworkUrl || normalizedArtwork,
-              previewUrl: normalizedPreview,
-            };
-          });
-
-          const extractedArtists = data.data.map((song) => ({
-            name: song.artistName,
-            image: song.artistImage || getAvatarForUser(song.author || "UnknownUser"),
-            ratings: Math.floor(Math.random() * 100) + 1,
-            avgRating: Math.floor(Math.random() * 5) + 1,
-          }));
-
-          const uniqueArtists = Array.from(
-            new Map(extractedArtists.map((a) => [a.name, a])).values()
-          );
-
-          setSnippetRecs(withAvatars);
-          setArtistList(uniqueArtists);
-          return;
-        }
-        }
-      }
-      
-      if (comments.length > 0) {
-        // Processing comments for snippets
-        
-        // For API posts, try to generate snippets from comment text using Apple Music API
-        if (postData && !postData.hasCachedData) {
-          // Using Apple Music API to generate snippets from comment text
-          await generateSnippetsFromComments(comments);
-          return;
-        }
-        
-        // Generating snippets from existing comments
-        const sortedComments = [...comments]
-          .sort((a, b) => (b.body?.length || 0) - (a.body?.length || 0))
-          .slice(0, Math.min(8, comments.length))
-          .sort(() => 0.5 - Math.random())
-          .slice(0, Math.min(4, Math.floor(comments.length / 2) + 1));
-        
-        const musicData = [
-          { artist: "Radiohead", songs: ["Karma Police", "Paranoid Android", "Creep", "No Surprises", "Fake Plastic Trees"] },
-          { artist: "Kendrick Lamar", songs: ["HUMBLE.", "DNA.", "Alright", "Money Trees", "King Kunta"] },
-          { artist: "Taylor Swift", songs: ["Cruel Summer", "Anti-Hero", "Love Story", "Blank Space", "All Too Well"] },
-          { artist: "The Weeknd", songs: ["Blinding Lights", "Starboy", "Save Your Tears", "Die For You", "The Hills"] },
-          { artist: "Billie Eilish", songs: ["bad guy", "Happier Than Ever", "ocean eyes", "everything i wanted", "when the party's over"] },
-          { artist: "Arctic Monkeys", songs: ["Do I Wanna Know?", "505", "R U Mine?", "Why'd You Only Call Me When You're High?", "Arabella"] },
-          { artist: "Tame Impala", songs: ["The Less I Know The Better", "Let It Happen", "Borderline", "Lost in Yesterday", "Feels Like We Only Go Backwards"] },
-          { artist: "Frank Ocean", songs: ["Nights", "Pyramids", "Pink + White", "Godspeed", "Self Control"] },
-          { artist: "Daft Punk", songs: ["Get Lucky", "Around The World", "One More Time", "Harder, Better, Faster, Stronger", "Instant Crush"] },
-          { artist: "Lana Del Rey", songs: ["Summertime Sadness", "Video Games", "Young and Beautiful", "Born To Die", "West Coast"] },
-          { artist: "Tyler, The Creator", songs: ["EARFQUAKE", "See You Again", "WUSYANAME", "NEW MAGIC WAND", "IGOR'S THEME"] },
-          { artist: "SZA", songs: ["Kill Bill", "Good Days", "Shirt", "Snooze", "Nobody Gets Me"] },
-          { artist: "The 1975", songs: ["Somebody Else", "The Sound", "Love It If We Made It", "robbers", "It's Not Living"] }
-        ];
-        
-        const fakeSnippets = sortedComments.map((comment, index) => {
-          let musicIndex = Math.floor(Math.random() * musicData.length);
-          
-          const commentWords = (comment.body || "").split(/\s+/).map(w => w.toLowerCase());
-          const titleWords = (post.title || "").split(/\s+/).map(w => w.toLowerCase());
-          const allWords = [...commentWords, ...titleWords];
-          
-          for (let i = 0; i < musicData.length; i++) {
-            const artistWords = musicData[i].artist.toLowerCase().split(/\s+/);
-            if (artistWords.some(word => allWords.includes(word))) {
-              musicIndex = i;
-              break;
-            }
-          }
-          
-          const musicEntry = musicData[musicIndex];
-          const songIndex = Math.floor(Math.random() * musicEntry.songs.length);
-          const song = musicEntry.songs[songIndex];
-          const artist = musicEntry.artist;
-          
-          return {
-            id: comment.id,
-            commentId: comment.id,
-            query: `${song} - ${artist}`,
-            snippetData: {
-              attributes: {
-                name: song,
-                artistName: artist,
-                previews: [{ url: `/public/HeartShapedBox.mp3` }],
-                artwork: { url: getAvatarForUser(comment.author) }
-              }
-            },
-            author: comment.author,
-            timestamp: comment.createdUtc || (Date.now() / 1000 - Math.floor(Math.random() * 86400)),
-            artistName: artist,
-            artistImage: getAvatarForUser(comment.author),
-            previewUrl: `/public/HeartShapedBox.mp3`,
-            snippetAuthorAvatar: getAvatarForUser(comment.author)
-          };
-        });
-        
-        const extractedArtists = fakeSnippets.map((snippet) => ({
-          name: snippet.artistName,
-          image: snippet.artistImage,
-          ratings: Math.floor(Math.random() * 100) + 1,
-          avgRating: Math.floor(Math.random() * 5) + 1,
-        }));
-        
-        const uniqueArtists = Array.from(
-          new Map(extractedArtists.map((a) => [a.name, a])).values()
-        );
-        
-        setSnippetRecs(fakeSnippets);
-        setArtistList(uniqueArtists);
-        return;
-      }
-      
-      // Use fallback snippets if no cached data or comments
-      // No cached snippets or comments, using fallback generation
-      // For API posts, try Apple Music generation; for others, use synthetic snippets
-      if (postData && !postData.hasCachedData) {
-        generateAppleMusicSnippets();
-      } else {
-        // Generate basic fallback snippets for cached posts without snippet data
-        const fallbackSnippets = [
-          {
-            id: `fallback_1_${postId}`,
-            commentId: `fallback_1_${postId}`,
-            query: "Bohemian Rhapsody - Queen",
-            snippetData: {
-              attributes: {
-                name: "Bohemian Rhapsody",
-                artistName: "Queen",
-                previews: [{ url: `/public/HeartShapedBox.mp3` }],
-                artwork: { url: getAvatarForUser("MusicLover123") }
-              }
-            },
-            author: "MusicLover123",
-            timestamp: Date.now() / 1000 - 86400,
-            artistName: "Queen",
-            artistImage: getAvatarForUser("MusicLover123"),
-            previewUrl: `/public/HeartShapedBox.mp3`,
-            snippetAuthorAvatar: getAvatarForUser("MusicLover123")
-          }
-        ];
-        
-        const fallbackArtists = fallbackSnippets.map((snippet) => ({
-          name: snippet.artistName,
-          image: snippet.artistImage,
-          ratings: Math.floor(Math.random() * 100) + 1,
-          avgRating: Math.floor(Math.random() * 5) + 1,
-        }));
-        
-        setSnippetRecs(
-          fallbackSnippets.map(s =>
-            formatSnippetData(s, null, comments)
-          )
-        );
-                setArtistList(fallbackArtists);
-      }
-      
-    } catch (error) {
+    const generateFallbackSnippets = async () => {
+      // Generate fallback snippets for API posts
       const fallbackSnippets = [
         {
           id: `fallback_1_${postId}`,
           commentId: `fallback_1_${postId}`,
           query: "Bohemian Rhapsody - Queen",
+          name: "Bohemian Rhapsody",
+          songName: "Bohemian Rhapsody",
+          artistName: "Queen",
+          artwork: `/assets/default-artist.png`,
+          artworkUrl: `/assets/default-artist.png`,
+          previewUrl: `/backend/public/HeartShapedBox.mp3`,
           snippetData: {
             attributes: {
               name: "Bohemian Rhapsody",
               artistName: "Queen",
-              previews: [{ url: `/public/HeartShapedBox.mp3` }],
-              artwork: { url: getAvatarForUser("MusicLover123") }
+              previews: [{ url: `/backend/public/HeartShapedBox.mp3` }],
+              artwork: { url: `/assets/default-artist.png` }
             }
           },
           author: "MusicLover123",
           timestamp: Date.now() / 1000 - 86400,
-          artistName: "Queen",
-          artistImage: getAvatarForUser("MusicLover123"),
-          previewUrl: `/public/HeartShapedBox.mp3`,
-          snippetAuthorAvatar: getAvatarForUser("MusicLover123")
-        },
-        {
-          id: `fallback_2_${postId}`,
-          commentId: `fallback_2_${postId}`,
-          query: "Blinding Lights - The Weeknd",
-          snippetData: {
-            attributes: {
-              name: "Blinding Lights",
-              artistName: "The Weeknd",
-              previews: [{ url: `/public/HeartShapedBox.mp3` }],
-              artwork: { url: getAvatarForUser("MusicFan456") }
-            }
-          },
-          author: "MusicFan456",
-          timestamp: Date.now() / 1000 - 43200,
-          artistName: "The Weeknd",
-          artistImage: getAvatarForUser("MusicFan456"),
-          previewUrl: `/public/HeartShapedBox.mp3`,
-          snippetAuthorAvatar: getAvatarForUser("MusicFan456")
+          artistImage: `/assets/default-artist.png`,
+          snippetAuthorAvatar: authorToAvatar("MusicLover123"),
+          userRating: null,
+          avgRating: Math.floor(Math.random() * 50) + 50,
+          totalRatings: Math.floor(Math.random() * 200) + 50,
+          didRate: false
         }
       ];
       
-      const fallbackArtists = fallbackSnippets.map((snippet) => ({
-        name: snippet.artistName,
-        image: snippet.artistImage,
-        ratings: Math.floor(Math.random() * 100) + 1,
-        avgRating: Math.floor(Math.random() * 5) + 1,
-      }));
-      
-      setSnippetRecs(
-        fallbackSnippets.map(s =>
-          formatSnippetData(s, null, comments)
-        )
-      );
-            setArtistList(fallbackArtists);
-    }
-  }
-  
-  loadSnippets();
-}, [post, postId, usedCache, snippetRecs.length, postData]);
+      setSnippetRecs(fallbackSnippets);
+    };
+    
+    generateFallbackSnippets();
+  }, [post, postId, usedCache, commentsLoaded, snippetRecs.length]);
 
-
+  // Update unique users when comments change
   useEffect(() => {
     if (comments.length > 0) {
       const usersMap = new Map();
@@ -1081,7 +474,7 @@ useEffect(() => {
           if (!usersMap.has(comment.author)) {
             usersMap.set(comment.author, {
               name: comment.author,
-              avatar: getAvatarForUser(comment.author),
+              avatar: authorToAvatar(comment.author),
             });
           }
         }
@@ -1090,85 +483,20 @@ useEffect(() => {
     }
   }, [comments]);
 
-  // Function to verify snippets have proper album art
-  const verifySnippetAlbumArt = (snippets) => {
-    if (!snippets || snippets.length === 0) return true;
-    
-    // Verifying album art for snippets
-    
-    let hasIssues = false;
-    snippets.forEach((snippet, index) => {
-      const artworkUrl =
-        snippet.artwork ||
-        snippet.snippetData?.attributes?.artwork?.url ||
-        snippet.artistImage;
-      
-      if (!artworkUrl) {
-        // Snippet is missing album art
-        hasIssues = true;
-      }
-    });
-    
-    return !hasIssues;
-  };
-
-  // Run verification when snippets change
+  // Generate dummy users
   useEffect(() => {
-    if (snippetRecs.length > 0) {
-      verifySnippetAlbumArt(snippetRecs);
-    }
-  }, [snippetRecs]);
-
-useEffect(() => {
-  const checkIfCached = async () => {
-    if (!post) return;
-    
-    try {
-      const checkCacheResp = await fetch(`${import.meta.env.VITE_API_BASE_URL}/cached-posts/${postId}`);
-      if (checkCacheResp.ok) {
-        setUsedCache(true);
-      }
-    } catch (err) {}
-  };
+    const generateUsers = () => {
+      const userCount = Math.floor(Math.random() * (19 - 7 + 1)) + 7;
+      const dummyUsers = Array.from({ length: userCount }, (_, index) => ({
+        id: index,
+        name: `User ${index + 1}`,
+        avatar: `https://i.pravatar.cc/50?img=${index + 1}`,
+      }));
+      setUsers(dummyUsers);
+    };
   
-  if (post) {
-    checkIfCached();
-  }
-}, [post, postId]);
-
-    useEffect(() => {
-      const generateUsers = () => {
-        const userCount = Math.floor(Math.random() * (19 - 7 + 1)) + 7;
-        const dummyUsers = Array.from({ length: userCount }, (_, index) => ({
-          id: index,
-          name: `User ${index + 1}`,
-          avatar: getAvatarForUser(`User ${index + 1}`),
-        }));
-        setUsers(dummyUsers);
-      };
-    
-      generateUsers();
-    }, []);
-  
-    useEffect(() => {
-      if (comments.length > 0) {
-        const usersMap = new Map();
-        comments.forEach(comment => {
-          if (comment.author && comment.author !== "[deleted]") {
-            if (!usersMap.has(comment.author)) {
-              usersMap.set(comment.author, {
-                name: comment.author,
-                avatar: getAvatarForUser(comment.author),  
-              });
-            } 
-          }
-        });
-        setUniqueUsers(Array.from(usersMap.values()));
-      }
-    }, [comments]);
-    
-
-
+    generateUsers();
+  }, []);
 
   return {
     post,
@@ -1180,9 +508,7 @@ useEffect(() => {
     setSnippetRecs,
     usedCache,
     fetchMoreComments,
-    isLoading,
-    isLoadingComments,
-    isLoadingSnippets,
-    error
+    commentsLoaded,
+    snippetsLoading,
   };
 }

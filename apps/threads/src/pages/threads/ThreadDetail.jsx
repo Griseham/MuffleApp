@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { 
   Heart, MessageCircle, Share2, Bookmark, Music, Users, BarChart3
 } from 'lucide-react';
@@ -9,7 +9,7 @@ import ThreadCommentCard from './ThreadCommentCard';
 import ThreadCommentComposer from './ThreadCommentComposer';
 import { GraphSection } from './GraphComponents';
 import useThreadData from "./useThreadData";
-import { getAvatarForUser } from '../../utils/avatarService';
+import { authorToAvatar, getAvatarSrc } from "../utils/utils";
 import { FiArrowLeft } from "react-icons/fi";
 import ThreadDetailStyles from "./ThreadDetailStyles";
 import './../../styles/threadDetailStyles.css';
@@ -21,17 +21,21 @@ import {
   processScatterData 
 } from './threadHelpers';
 
-
-/** Consistent avatar per author string */
-
-
-
 // Theme color function - news threads use same color as regular threads in detail view
 const getThemeColor = (postType) => {
   if (postType === 'groupchat') return '#FF69B4';
   if (postType === 'parameter') return '#00C4B4';
   return '#1d9bf0'; // default thread color (including news)
 };
+
+// Helper to format Apple Music artwork URLs
+function formatArtworkUrl(url, size = 300) {
+  if (!url) return null;
+  return url
+    .replace('{w}', String(size))
+    .replace('{h}', String(size))
+    .replace('{f}', 'jpg');
+}
 
 export default function ThreadDetail({ postId, postData, onBack, onSelectUser }) {
   const [isVisible, setIsVisible] = useState(false);
@@ -42,9 +46,115 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
     snippetRecs, 
     setSnippetRecs, 
     uniqueUsers, 
-    usedCache 
+    usedCache,
+    commentsLoaded,
+    snippetsLoading
   } = useThreadData(postId, postData);
-  
+ 
+  // If we navigated here from the Home TikTok modal, inject that snippet/comment
+  const injectedOnceRef = useRef(false);
+  const pendingAutoPlayIdRef = useRef(null);
+  // Track the injected snippet ID for graph updates
+  const injectedSnippetIdRef = useRef(null);
+
+  // Reset injection flag when postId changes
+  useEffect(() => {
+    injectedOnceRef.current = false;
+    pendingAutoPlayIdRef.current = null;
+    injectedSnippetIdRef.current = null;
+  }, [postId]);
+
+  // FIXED: Wait for commentsLoaded before injecting from TikTok modal
+  useEffect(() => {
+    // Don't inject until comments are loaded from cache
+    if (!commentsLoaded) {
+      console.log("ThreadDetail: Waiting for comments to load before injection...");
+      return;
+    }
+    
+    const injected = postData?.__prefillFromTikTok;
+    console.log("ThreadDetail: __prefillFromTikTok payload", injected);
+    console.log("ThreadDetail: commentsLoaded =", commentsLoaded, "injectedOnce =", injectedOnceRef.current);
+    
+    if (!injected || injectedOnceRef.current) return;
+
+    const { snippet, comment, autoPlay } = injected;
+    injectedOnceRef.current = true;
+
+    // Inject the comment
+    if (comment?.id) {
+      console.log("ThreadDetail: Injecting comment into comments array", comment);
+      setComments(prev => {
+        // Check if already exists
+        if (prev.some(c => c.id === comment.id)) {
+          console.log("ThreadDetail: Comment already exists, skipping");
+          return prev;
+        }
+        console.log("ThreadDetail: Adding injected comment to array. Previous length:", prev.length);
+        // Add at the beginning (after example comment will be added in stableCommentOrder)
+        const newComments = [{ ...comment, __injectedFromTikTok: true }, ...prev];
+        console.log("ThreadDetail: New comments length:", newComments.length);
+        return newComments;
+      });
+    }
+
+    // Inject the snippet
+    const snipId = snippet?.commentId || snippet?.id;
+    if (snipId) {
+      console.log("ThreadDetail: Injecting snippet with ID:", snipId);
+      injectedSnippetIdRef.current = snipId;
+      
+      // Format artwork URL if needed
+      const rawArtwork =
+        snippet.snippetData?.attributes?.artwork?.url ||
+        snippet.artworkUrl ||
+        snippet.artwork;
+      const artworkUrl = formatArtworkUrl(rawArtwork, 300) || rawArtwork;
+      
+      const formattedSnippet = {
+        ...snippet,
+        __injectedFromTikTok: true,
+        // Ensure artwork field is set
+        artwork: artworkUrl,
+        artworkUrl: artworkUrl,
+      };
+      
+      console.log("ThreadDetail: Formatted snippet with artwork:", formattedSnippet);
+      
+      setSnippetRecs(prev => {
+        if (prev.some(s => (s.commentId || s.id) === snipId)) {
+          console.log("ThreadDetail: Snippet already exists, skipping");
+          return prev;
+        }
+        console.log("ThreadDetail: Adding injected snippet. Previous length:", prev.length);
+        return [formattedSnippet, ...prev];
+      });
+      
+      if (autoPlay) {
+        pendingAutoPlayIdRef.current = snipId;
+      }
+    }
+  }, [postId, postData, setComments, setSnippetRecs, commentsLoaded]);
+
+  // Debug logging for comments
+  useEffect(() => {
+    console.log("ThreadDetail: comments count changed to", comments.length);
+    if (comments.length > 0) {
+      console.log("ThreadDetail: First comment:", comments[0]?.id, comments[0]?.author);
+      const injected = comments.find(c => c.__injectedFromTikTok);
+      if (injected) {
+        console.log("ThreadDetail: Found injected comment in comments array:", injected.id);
+      }
+    }
+  }, [comments]);
+
+  useEffect(() => {
+    console.log("ThreadDetail: snippetRecs count", snippetRecs.length);
+    const injectedSnippet = snippetRecs.find(s => s.__injectedFromTikTok);
+    if (injectedSnippet) {
+      console.log("ThreadDetail: Found injected snippet in snippetRecs:", injectedSnippet.id);
+    }
+  }, [snippetRecs.length]);
 
   // Check if this is a news thread
   const isNewsThread = post?.postType === 'news';
@@ -60,9 +170,9 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
   const [isGraphModalOpen, setIsGraphModalOpen] = useState(false);
   const [activeGraphType, setActiveGraphType] = useState('vertical');
   const [postStats] = useState(() => generateRandomStats());
-  const { exampleComment, exampleSnippet } = createExampleData();
+  const { exampleComment, exampleSnippet } = useMemo(() => createExampleData(), []);
   
-  // Stable comment order - only shuffle once when comments change
+  // FIXED: Use comments directly in stableCommentOrder, include comments in dependency array
   const [stableCommentOrder, setStableCommentOrder] = useState([]);
 
   const getSnippetId = useCallback((snippet) => {
@@ -73,9 +183,38 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
     audioRef, 
     activeSnippet, 
     playSnippet, 
-    handleUserRate, 
+    handleUserRate: baseHandleUserRate, 
     stopAudio 
   } = useAudioRating(snippetRecs, setSnippetRecs, getSnippetId);
+
+  // Wrap handleUserRate to trigger graph update after rating
+  const handleUserRate = useCallback((snippet, newRating) => {
+    console.log("ThreadDetail: handleUserRate called for snippet:", snippet?.id, "rating:", newRating);
+    
+    // Call the base handler
+    baseHandleUserRate(snippet, newRating);
+    
+    // Force update the snippet in snippetRecs to ensure graph picks up the change
+    setSnippetRecs(prev => {
+      return prev.map(s => {
+        if ((s.id || s.commentId) === (snippet?.id || snippet?.commentId)) {
+          const updated = {
+            ...s,
+            userRating: newRating,
+            didRate: true,
+            avgRating: Math.floor(
+              ((s.avgRating || 50) * (s.totalRatings || 100) + newRating) /
+                ((s.totalRatings || 100) + 1)
+            ),
+            totalRatings: (s.totalRatings || 100) + 1,
+          };
+          console.log("ThreadDetail: Updated snippet after rating:", updated);
+          return updated;
+        }
+        return s;
+      });
+    });
+  }, [baseHandleUserRate, setSnippetRecs]);
 
   useEffect(() => {
     // Scroll to top when entering thread detail
@@ -85,20 +224,56 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
     return () => clearTimeout(timer);
   }, []);
 
-  // Create stable comment order when comments are first loaded
+  // FIXED: Create stable comment order - include comments in dependency array
   useEffect(() => {
+    const sameOrderById = (a = [], b = []) => {
+      if (a.length !== b.length) return false;
+      for (let i = 0; i < a.length; i++) {
+        if ((a[i]?.id ?? "") !== (b[i]?.id ?? "")) return false;
+      }
+      return true;
+    };
+
+    const isParameterThread = post?.postType === "parameter";
+    let finalComments = [];
+
     if (comments.length > 0) {
-      // For news threads and parameter threads, don't add example comment
-      const isParameterThread = post?.postType === 'parameter';
-      const finalComments = (isNewsThread || isParameterThread) ? comments : [exampleComment, ...comments];
-      setStableCommentOrder(finalComments);
+      if (isNewsThread || isParameterThread) {
+        finalComments = [...comments];
+      } else {
+        const hasInjectedComment = comments.some((c) => c.__injectedFromTikTok);
+        if (hasInjectedComment) {
+          const injectedComments = comments.filter((c) => c.__injectedFromTikTok);
+          const otherComments = comments.filter((c) => !c.__injectedFromTikTok);
+          finalComments = [exampleComment, ...injectedComments, ...otherComments];
+        } else {
+          finalComments = [exampleComment, ...comments];
+        }
+      }
+    } else if (commentsLoaded && !isNewsThread && !isParameterThread) {
+      finalComments = [exampleComment];
+    } else {
+      finalComments = [];
     }
-  }, [comments.length, isNewsThread, post?.postType]); // Only run when comments length changes
+
+    setStableCommentOrder((prev) => {
+      if (sameOrderById(prev, finalComments)) return prev;
+      console.log("ThreadDetail: Setting stableCommentOrder size", finalComments.length);
+      return finalComments;
+    });
+  }, [comments, isNewsThread, post?.postType, commentsLoaded, exampleComment]);
 
   useEffect(() => {
     // Skip adding example snippet for news threads and parameter threads
     const isParameterThread = post?.postType === 'parameter';
-    if (!isNewsThread && !isParameterThread && snippetRecs.length > 0 && !snippetRecs.some(s => s.id === 'example_comment_001')) {
+    const hasInjected = snippetRecs.some(s => s?.__injectedFromTikTok);
+    if (
+      !isNewsThread &&
+      !isParameterThread &&
+      !hasInjected &&
+      snippetRecs.length > 0 &&
+      !snippetRecs.some(s => s.id === 'example_comment_001')
+    ) {
       const snippetsWithExample = [exampleSnippet, ...snippetRecs];
       setSnippetRecs(snippetsWithExample);
     }
@@ -123,12 +298,27 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
     setScatterData(newScatterData);
   }, [comments, getSnippetId]);
 
+  // FIXED: Process ratings data including injected snippets
   const processRatingsData = useCallback(() => {
     if (snippetRecs.length === 0) return;
     
+    // Include ALL snippets that have ratings (including injected ones)
     const ratedSnippets = snippetRecs.filter(
       snippet => snippet.userRating != null || snippet.avgRating != null
     );
+    
+    console.log("ThreadDetail: processRatingsData - found", ratedSnippets.length, "rated snippets");
+    
+    // Log injected snippet status
+    const injectedSnippet = ratedSnippets.find(s => s.__injectedFromTikTok);
+    if (injectedSnippet) {
+      console.log("ThreadDetail: Injected snippet in rated snippets:", {
+        id: injectedSnippet.id,
+        userRating: injectedSnippet.userRating,
+        avgRating: injectedSnippet.avgRating,
+        didRate: injectedSnippet.didRate
+      });
+    }
     
     if (ratedSnippets.length === 0) return;
     
@@ -136,17 +326,18 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
       .map(snippet => {
         const snippetId = snippet.id || snippet.commentId;
         const relatedComment = comments.find(c => c.id === snippetId);
-        const commentAuthor = relatedComment?.author || "Unknown";
+        const commentAuthor = relatedComment?.author || snippet.author || "Unknown";
         
         return {
           snippetId,
           userRating: snippet.userRating ?? 0,
           avgRating: snippet.avgRating ?? 0,
-          userAvatar: getAvatarForUser(commentAuthor)
+          userAvatar: authorToAvatar(commentAuthor)
         };
       })
       .slice(0, 6);
     
+    console.log("ThreadDetail: Setting graphRatings with", verticalData.length, "items");
     setGraphRatings(verticalData);
     updateScatterData(ratedSnippets);
   }, [snippetRecs, comments, updateScatterData]);
@@ -164,11 +355,34 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
     if (!expandedSnippetIds.includes(snippetId)) {
       setExpandedSnippetIds((prev) => [...prev, snippetId]);
     }
-
+    
     if (!snippetObj.previewUrl) return;
     
     playSnippet(snippetId, snippetObj.previewUrl);
   }, [expandedSnippetIds, playSnippet, getSnippetId]);
+
+  // Auto-play pending snippet from TikTok navigation
+  useEffect(() => {
+    const pendingId = pendingAutoPlayIdRef.current;
+    if (!pendingId) return;
+
+    const snip = snippetRecs.find(s => (s.id || s.commentId) === pendingId);
+    if (!snip?.previewUrl) return;
+
+    pendingAutoPlayIdRef.current = null;
+
+    try {
+      stopAudio?.();
+    } catch (e) {
+      // ignore
+    }
+
+    const t = setTimeout(() => {
+      playSnippetInComment(snip);
+    }, 250);
+
+    return () => clearTimeout(t);
+  }, [snippetRecs, playSnippetInComment, stopAudio]);
 
   const handleRatingPause = useCallback(() => {
     stopAudio();
@@ -204,6 +418,8 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
   }, [onBack]);
 
   const styles = ThreadDetailStyles;
+  const graphsCount = graphRatings?.length || 0;
+  const usersCount = uniqueUsers?.length || 0;
 
   const handleBackWithTransition = useCallback(() => {
     setIsVisible(false);
@@ -211,6 +427,11 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
       if (onBack) onBack();
     }, 300);
   }, [onBack]);
+
+  // Get all snippets for TikTokModal (including injected ones, excluding example)
+  const getTikTokSnippets = useCallback(() => {
+    return snippetRecs.filter(s => s.id !== 'example_comment_001');
+  }, [snippetRecs]);
 
   return (
     <div 
@@ -270,9 +491,9 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
           backgroundColor: "rgba(15, 23, 42, 0.8)",
           borderRadius: "16px",
           margin: "16px auto",
-          border: `2px solid ${themeColor}`,
+          border: "1px solid rgba(255, 255, 255, 0.06)",
           position: "relative",
-          boxShadow: `0 8px 32px ${themeColor}33`,
+          boxShadow: "0 8px 32px rgba(0, 0, 0, 0.25)",
           width: "calc(100% - 32px)",
           maxWidth: "100%",
           boxSizing: "border-box",
@@ -283,7 +504,7 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
             marginBottom: "16px",
           }}>
             <img
-              src={getAvatarForUser(post.author)}
+              src={getAvatarSrc(post)}
               alt="User avatar"
               style={{
                 width: "48px",
@@ -473,64 +694,158 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
           </div>
           
           {!isNewsThread && (
-            <div style={{
-              display: "flex",
-              borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
-              marginTop: "24px",
-              width: "100%",
-            }}>
-              <div 
-    onClick={() => handleTabClick("graphs")}
-    style={{
-      padding: "16px 0",
-      width: "50%",
-      textAlign: "center",
-      color: activeSection === "graphs" ? themeColor : "#64748b",
-      fontWeight: "600",
-      borderBottom: activeSection === "graphs" ? `3px solid ${themeColor}` : "3px solid transparent",
-      cursor: "pointer",
-      backgroundColor: activeSection === "graphs" ? `${themeColor}11` : "transparent",
-      transition: "all 0.2s ease",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: "8px"
-    }}
-  >
-    <h4 style={{ margin: 0, fontSize: "15px" }}>Graphs</h4>
-    <InfoIconModal
-      title="Graphs"
-      iconSize={14}
-      showButtonText={false}
-      steps={[
-        {
-          icon: <BarChart3 size={18} color="#a9b6fc" />,
-          title: "Use Graphs for Insights",
-          content: "Use these graphs to glean more info on each thread"
-        },
-        {
-          icon: <Users size={18} color="#a9b6fc" />,
-          title: "Engage to Add Data", 
-          content: "Engaging and rating snippets will add more users to each graph"
-        }
-      ]}
-    />
-  </div>
-              <div 
-                onClick={() => handleTabClick("users")}
+            <div
+              style={{
+                marginTop: "22px",
+                width: "100%",
+                display: "flex",
+                justifyContent: "center",
+              }}
+            >
+              <div
                 style={{
-                  padding: "16px 0",
-                  width: "50%",
-                  textAlign: "center",
-                  color: activeSection === "users" ? themeColor : "#64748b",
-                  fontWeight: "600",
-                  borderBottom: activeSection === "users" ? `3px solid ${themeColor}` : "3px solid transparent",
-                  cursor: "pointer",
-                  backgroundColor: activeSection === "users" ? `${themeColor}11` : "transparent",
-                  transition: "all 0.2s ease",
+                  width: "100%",
+                  display: "flex",
+                  gap: "8px",
+                  padding: "8px",
+                  borderRadius: "999px",
+                  background: "rgba(15, 23, 42, 0.55)",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  boxShadow: "0 10px 30px rgba(0,0,0,0.22)",
+                  backdropFilter: "blur(10px)",
                 }}
               >
-                <h4 style={{ margin: 0, fontSize: "15px" }}>Users</h4>
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => handleTabClick("graphs")}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      handleTabClick("graphs");
+                    }
+                  }}
+                  style={{
+                    flex: 1,
+                    border: "none",
+                    cursor: "pointer",
+                    background:
+                      activeSection === "graphs"
+                        ? `linear-gradient(180deg, ${themeColor}33, ${themeColor}14)`
+                        : "transparent",
+                    color: activeSection === "graphs" ? "#fff" : "#94a3b8",
+                    borderRadius: "999px",
+                    padding: "12px 14px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "10px",
+                    fontWeight: 700,
+                    letterSpacing: "0.2px",
+                    boxShadow:
+                      activeSection === "graphs"
+                        ? `0 0 0 1px ${themeColor}66, 0 10px 22px rgba(0,0,0,0.25)`
+                        : "none",
+                    transform: activeSection === "graphs" ? "translateY(-1px)" : "none",
+                    transition: "all 0.18s ease",
+                    outline: "none",
+                  }}
+                >
+                  <BarChart3 size={18} color={activeSection === "graphs" ? themeColor : "#64748b"} />
+                  <span style={{ fontSize: "15px" }}>Graphs</span>
+
+                  <span
+                    style={{
+                      minWidth: "28px",
+                      height: "22px",
+                      padding: "0 8px",
+                      borderRadius: "999px",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: "12px",
+                      fontWeight: 800,
+                      background: activeSection === "graphs" ? `${themeColor}33` : "rgba(255,255,255,0.06)",
+                      color: activeSection === "graphs" ? "#fff" : "#cbd5e1",
+                      border: activeSection === "graphs" ? `1px solid ${themeColor}66` : "1px solid rgba(255,255,255,0.06)",
+                    }}
+                  >
+                    {graphsCount}
+                  </span>
+
+                  <span style={{ display: "inline-flex", opacity: activeSection === "graphs" ? 1 : 0.75 }}>
+                    <InfoIconModal
+                      title="Graphs"
+                      iconSize={14}
+                      showButtonText={false}
+                      steps={[
+                        {
+                          icon: <BarChart3 size={18} color="#a9b6fc" />,
+                          title: "Use Graphs for Insights",
+                          content: "Use these graphs to glean more info on each thread",
+                        },
+                        {
+                          icon: <Users size={18} color="#a9b6fc" />,
+                          title: "Engage to Add Data",
+                          content: "Engaging and rating snippets will add more users to each graph",
+                        },
+                      ]}
+                    />
+                  </span>
+                </div>
+
+                {post?.postType === "groupchat" && (
+                  <button
+                    type="button"
+                    onClick={() => handleTabClick("users")}
+                    style={{
+                      flex: 1,
+                      border: "none",
+                      cursor: "pointer",
+                      background:
+                        activeSection === "users"
+                          ? `linear-gradient(180deg, ${themeColor}33, ${themeColor}14)`
+                          : "transparent",
+                      color: activeSection === "users" ? "#fff" : "#94a3b8",
+                      borderRadius: "999px",
+                      padding: "12px 14px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "10px",
+                      fontWeight: 700,
+                      letterSpacing: "0.2px",
+                      boxShadow:
+                        activeSection === "users"
+                          ? `0 0 0 1px ${themeColor}66, 0 10px 22px rgba(0,0,0,0.25)`
+                          : "none",
+                      transform: activeSection === "users" ? "translateY(-1px)" : "none",
+                      transition: "all 0.18s ease",
+                    }}
+                  >
+                    <Users size={18} color={activeSection === "users" ? themeColor : "#64748b"} />
+                    <span style={{ fontSize: "15px" }}>Users</span>
+
+                    <span
+                      style={{
+                        minWidth: "28px",
+                        height: "22px",
+                        padding: "0 8px",
+                        borderRadius: "999px",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: "12px",
+                        fontWeight: 800,
+                        background: activeSection === "users" ? `${themeColor}33` : "rgba(255,255,255,0.06)",
+                        color: activeSection === "users" ? "#fff" : "#cbd5e1",
+                        border: activeSection === "users" ? `1px solid ${themeColor}66` : "1px solid rgba(255,255,255,0.06)",
+                      }}
+                    >
+                      {usersCount}
+                    </span>
+                  </button>
+                )}
               </div>
             </div>
           )}
@@ -561,7 +876,7 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
                 />
               )}
               
-              {activeSection === "users" && (
+              {post?.postType === "groupchat" && activeSection === "users" && (
                 <div style={{
                   ...styles.usersContainer,
                   width: "calc(100% - 32px)",
@@ -605,10 +920,15 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
         </div>
       )}
       {!isNewsThread && (
-        <ThreadCommentComposer 
-          onSubmit={handleSubmitComment} 
-          onOpenTikTokModal={openTikTokView}
-        />
+        <div style={{
+          width: "calc(100% - 32px)",
+          margin: "8px auto 24px",
+        }}>
+          <ThreadCommentComposer
+            onSubmit={handleSubmitComment}
+            onOpenTikTokModal={openTikTokView}
+          />
+        </div>
       )}
       
       {post?.postType !== "groupchat" && (
@@ -618,7 +938,7 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
           margin: "0 auto",
         }}>
           <h3 style={styles.commentsHeader}>
-            Responses ({comments.length})
+            Responses ({stableCommentOrder.length || comments.length})
           </h3>
           
           <div style={{
@@ -630,42 +950,71 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
             {(stableCommentOrder.length > 0 ? stableCommentOrder : ((isNewsThread || post?.postType === 'parameter') ? comments : [exampleComment, ...comments])).map((c, index) => {
               let snippetObj = null;
               
-              // Debug logging for parameter threads
-              if (post?.postType === 'parameter') {
-   
+              // Debug logging for injected comments
+              if (c.__injectedFromTikTok) {
+                console.log(`ThreadDetail: Rendering injected comment ${c.id}:`, c);
               }
               
               // For news threads, don't process any snippets
               if (!isNewsThread) {
-                snippetObj = snippetRecs.find((s) => s.commentId === c.id);
-                
-                if (post?.postType === 'parameter' && snippetObj) {
-                }
-                
-                if (c.id === 'example_comment_001') {
-                  snippetObj = exampleSnippet;
-                } else if (c.snippet) {
+                // First check if this comment has a snippet attached directly (from injection)
+                if (c.snippet) {
+                  // Format artwork URL if needed
+                  const rawArtwork =
+                    c.snippet.snippetData?.attributes?.artwork?.url ||
+                    c.snippet.artworkUrl ||
+                    c.snippet.artwork;
+                  const artworkUrl = formatArtworkUrl(rawArtwork, 300) || rawArtwork;
+                  
                   snippetObj = {
-                    id: c.id,
-                    commentId: c.id,
-                    name: c.snippet.name,
+                    id: c.snippet.id || c.id,
+                    commentId: c.snippet.commentId || c.id,
+                    name: c.snippet.name || c.snippet.songName,
+                    songName: c.snippet.songName || c.snippet.name,
                     artistName: c.snippet.artistName,
-                    artwork: c.snippet.artwork,
+                    // CRITICAL: Use 'artwork' field for ThreadCommentCard
+                    artwork: artworkUrl,
+                    artworkUrl: artworkUrl,
                     previewUrl: c.snippet.previewUrl,
                     userRating: c.snippet.userRating,
                     avgRating: c.snippet.avgRating,
                     totalRatings: c.snippet.totalRatings,
                     didRate: c.snippet.didRate,
+                    snippetData: c.snippet.snippetData,
                   };
-                } else if (snippetObj) {
-                  snippetObj = formatSnippetData(snippetObj, c, comments);
-                  if (post?.postType === 'parameter') {
+                  console.log(`ThreadDetail: Found attached snippet for comment ${c.id}:`, snippetObj);
+                }
+                
+                // Then check snippetRecs for this comment (might have updated rating)
+                if (!snippetObj) {
+                  snippetObj = snippetRecs.find((s) => s.commentId === c.id);
+                } else {
+                  // Check if there's an updated version in snippetRecs (with new rating)
+                  const updatedSnippet = snippetRecs.find((s) => s.commentId === c.id || s.id === c.id);
+                  if (updatedSnippet) {
+                    // Merge the updated rating data
+                    snippetObj = {
+                      ...snippetObj,
+                      userRating: updatedSnippet.userRating ?? snippetObj.userRating,
+                      avgRating: updatedSnippet.avgRating ?? snippetObj.avgRating,
+                      totalRatings: updatedSnippet.totalRatings ?? snippetObj.totalRatings,
+                      didRate: updatedSnippet.didRate ?? snippetObj.didRate,
+                    };
                   }
                 }
+                
+                // Special handling for example comment
+                if (c.id === 'example_comment_001') {
+                  snippetObj = exampleSnippet;
+                } else if (snippetObj && !c.snippet) {
+                  snippetObj = formatSnippetData(snippetObj, c, comments);
+                }
               }
-              const isThisSnippetPlaying =
-              activeSnippet?.snippetId === getSnippetId(snippetObj) &&
-              activeSnippet?.isPlaying;
+              
+              const isThisSnippetPlaying = !isNewsThread &&
+                activeSnippet && 
+                activeSnippet.snippetId === getSnippetId(snippetObj) && 
+                activeSnippet.isPlaying;
               
               const commentKey = c.id || `comment-${c.author}-${c.createdUtc || Date.now()}`;
               
@@ -681,6 +1030,7 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
                   onRatingPause={isNewsThread ? null : handleRatingPause}
                   isFirstSnippet={!isNewsThread && index === 0 && snippetObj && c.id === 'example_comment_001'}
                   isNewsThread={isNewsThread}
+                  snippetsLoading={!isNewsThread && !usedCache && snippetsLoading}
                 />
               );
             })}
@@ -690,7 +1040,7 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
       
       {!isNewsThread && isTikTokOpen && (
         <TikTokModal
-          snippets={snippetRecs.filter(s => s.id !== 'example_comment_001')}
+          snippets={getTikTokSnippets()}
           comments={comments.filter(c => c.id !== 'example_comment_001')}
           onClose={closeTikTokView}
           audioRef={audioRef}

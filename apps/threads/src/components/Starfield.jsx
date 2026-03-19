@@ -6,7 +6,16 @@ import Container from "./starfield/Container";
  * Enhanced Starfield component with navigation, genre visualization and interactive elements
  * Uses DOM nodes for rendering stars with viewport culling to reduce DOM node count.
  */
-export default function Starfield({ onLoadFeed, onViewThread, activeFilters = [], posts = [], initialArtists = [],  }) {
+export default function Starfield({
+  onLoadFeed,
+  onViewThread,
+  activeFilters = [],
+  posts = [],
+  initialArtists = [],
+  jumpGenre = null,
+  onJumpComplete = () => {},
+  isActive = true
+}) {
   return (
     <Container
       onLoadFeed={onLoadFeed}
@@ -14,6 +23,9 @@ export default function Starfield({ onLoadFeed, onViewThread, activeFilters = []
       activeFilters={activeFilters}
       posts={posts}
       initialArtists={initialArtists}
+      jumpGenre={jumpGenre}
+      onJumpComplete={onJumpComplete}
+      isActive={isActive}
     />
   );
 }

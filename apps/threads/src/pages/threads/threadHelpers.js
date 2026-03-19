@@ -58,12 +58,8 @@ export const formatSnippetData = (snippet, relatedComment, comments) => {
   const commentAuthor = relatedComment?.author || comments.find(c => c.id === snippetId)?.author || "Unknown";
   
   if (snippet.snippetData) {
-    const artworkRaw = snippet.snippetData.attributes?.artwork?.url || snippet.artwork || snippet.artworkUrl;
-    const artworkUrl = artworkRaw
-      ? artworkRaw.replace('{w}', '300').replace('{h}', '300')
-      : snippet.artistImage || "/threads/assets/placeholder.jpg";
-
-        
+    const artworkUrl = snippet.snippetData.attributes?.artwork?.url || snippet.artistImage || "/assets/default-artist.png";
+    
     return {
       id: snippetId,
       commentId: snippetId,
@@ -81,6 +77,10 @@ export const formatSnippetData = (snippet, relatedComment, comments) => {
   return snippet;
 };
 
+/**
+ * Process scatter data for the scatter plot graph
+ * FIXED: Now uses avgRating for the 'average' field to match vertical graph
+ */
 export const processScatterData = (snippets, comments, getSnippetId) => {
   const ratedSnippets = snippets.filter(
     snippet => snippet.userRating != null || snippet.avgRating != null
@@ -89,15 +89,66 @@ export const processScatterData = (snippets, comments, getSnippetId) => {
   return ratedSnippets.map((snippet) => {
     const snippetId = getSnippetId(snippet);
     const relatedComment = comments.find(c => c.id === snippetId);
-    const commentAuthor = relatedComment?.author || "Unknown";
+    const commentAuthor = relatedComment?.author || snippet.author || "Unknown";
     
     const randomRatingCount = getRandomRatingCount(snippetId);
     
     return {
       snippetId,
-      userAvatar: `/threads/assets/image${(Math.abs(generateHash(commentAuthor)) % 100) + 1}.png`,
+      username: commentAuthor,
+      userAvatar: `/assets/image${(Math.abs(generateHash(commentAuthor)) % 1000) + 1}.png`,
       ratingCount: snippet.totalRatings || randomRatingCount,
-      average: snippet.userRating ?? 50
+      // FIXED: Use avgRating to match the vertical graph's average marker
+      average: snippet.avgRating ?? 50,
+      // Also include userRating for reference if needed
+      userRating: snippet.userRating ?? null,
+    };
+  });
+};
+
+/**
+ * Process scatter data for parameter threads with color coding
+ */
+export const processParameterScatterData = (snippets, comments, parameters, getSnippetId) => {
+  // Define colors for each parameter (up to 8 parameters supported)
+  const parameterColors = [
+    '#FF6B35', // Orange
+    '#4ECDC4', // Teal
+    '#45B7D1', // Sky Blue
+    '#96CEB4', // Sage Green
+    '#DDA0DD', // Plum
+    '#F7DC6F', // Yellow
+    '#BB8FCE', // Purple
+    '#85C1E9', // Light Blue
+  ];
+  
+  // Create a color map for parameters
+  const colorMap = {};
+  parameters.forEach((param, index) => {
+    colorMap[param] = parameterColors[index % parameterColors.length];
+  });
+  
+  const ratedSnippets = snippets.filter(
+    snippet => snippet.userRating != null || snippet.avgRating != null
+  );
+  
+  return ratedSnippets.map((snippet) => {
+    const snippetId = getSnippetId(snippet);
+    const relatedComment = comments.find(c => c.id === snippetId);
+    const commentAuthor = relatedComment?.author || snippet.author || "Unknown";
+    const parameter = relatedComment?.parameter || snippet.parameter || null;
+    
+    const randomRatingCount = getRandomRatingCount(snippetId);
+    
+    return {
+      snippetId,
+      username: commentAuthor,
+      userAvatar: `/assets/image${(Math.abs(generateHash(commentAuthor)) % 1000) + 1}.png`,
+      ratingCount: snippet.totalRatings || randomRatingCount,
+      average: snippet.avgRating ?? 50,
+      userRating: snippet.userRating ?? null,
+      parameter: parameter,
+      color: parameter ? colorMap[parameter] : '#8b5cf6',
     };
   });
 };

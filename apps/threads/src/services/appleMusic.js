@@ -1,5 +1,11 @@
 // Apple Music API service for parameter threads
-const APPLE_MUSIC_API_BASE = `${import.meta.env.VITE_API_BASE_URL}/apple-music-search`;
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:4000";
+const APPLE_MUSIC_API_BASE = `${API_BASE}/api/apple-music-search`;
+const APPLE_MUSIC_ARTIST_IMAGES_API_BASE = `${API_BASE}/api/apple-music-artist-images`;
+const APPLE_MUSIC_ALBUM_ARTWORKS_API_BASE = `${API_BASE}/api/apple-music-album-artworks`;
+const artistImagesRequestCache = new Map();
+const albumArtworksRequestCache = new Map();
+const TRACK_KEY_SEPARATOR = "|||";
 
 /**
  * Search for a song using Apple Music API via our backend
@@ -12,7 +18,10 @@ export async function searchAppleMusic(query) {
     const result = await response.json();
     
     if (result.success && result.data) {
-      const song = result.data;
+      const song = Array.isArray(result.data) ? result.data[0] : result.data;
+      if (!song) {
+        return null;
+      }
       return {
         songName: song.attributes.name,
         artistName: song.attributes.artistName,
@@ -26,6 +35,7 @@ export async function searchAppleMusic(query) {
     
     return null;
   } catch (error) {
+    console.error('Error searching Apple Music:', error);
     return null;
   }
 }
@@ -98,7 +108,7 @@ export function extractSongQuery(commentText) {
  */
 export async function cacheMediaAssets(artworkUrl, previewUrl, songId) {
   try {
-    const cacheResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}/cache-media`, {
+    const cacheResponse = await fetch(`${API_BASE}/api/cache-media`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -125,6 +135,7 @@ export async function cacheMediaAssets(artworkUrl, previewUrl, songId) {
       previewPath: previewUrl
     };
   } catch (error) {
+    console.error('Error caching media assets:', error);
     // Return original URLs as fallback
     return {
       artworkPath: artworkUrl,
@@ -133,9 +144,165 @@ export async function cacheMediaAssets(artworkUrl, previewUrl, songId) {
   }
 }
 
+function createArtistNamesCacheKey(artistNames) {
+  return artistNames
+    .map((name) => name.toLowerCase())
+    .sort()
+    .join("|");
+}
+
+function createTrackLookupKey(songName, artistName) {
+  return `${String(songName || "").trim()}${TRACK_KEY_SEPARATOR}${String(artistName || "").trim()}`;
+}
+
+function createTracksCacheKey(tracks) {
+  return tracks
+    .map((track) => createTrackLookupKey(track.songName, track.artistName).toLowerCase())
+    .sort()
+    .join("|");
+}
+
+/**
+ * Fetch artist image URLs for a fixed list of artists.
+ * Results are memoized per unique artist-list key to avoid duplicate API calls.
+ * @param {string[]} artistNames - Artist names
+ * @param {{ refresh?: boolean }} options
+ * @returns {Promise<Record<string, string|null>>}
+ */
+export async function getAppleMusicArtistImages(artistNames, options = {}) {
+  const names = Array.isArray(artistNames)
+    ? [...new Set(artistNames.map((name) => String(name || "").trim()).filter(Boolean))]
+    : [];
+
+  if (names.length === 0) {
+    return {};
+  }
+
+  const refresh = Boolean(options.refresh);
+  const key = createArtistNamesCacheKey(names);
+
+  if (!refresh && artistImagesRequestCache.has(key)) {
+    return artistImagesRequestCache.get(key);
+  }
+
+  const requestPromise = (async () => {
+    const fallback = Object.fromEntries(names.map((name) => [name, null]));
+    try {
+      const response = await fetch(APPLE_MUSIC_ARTIST_IMAGES_API_BASE, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          artists: names,
+          refresh,
+        }),
+      });
+
+      const result = await response.json();
+      if (response.ok && result.success && result.data && typeof result.data === "object") {
+        return result.data;
+      }
+      return fallback;
+    } catch (error) {
+      console.error("Error fetching Apple Music artist images:", error);
+      return fallback;
+    }
+  })();
+
+  if (!refresh) {
+    artistImagesRequestCache.set(key, requestPromise);
+  }
+
+  const data = await requestPromise;
+  if (!refresh) {
+    artistImagesRequestCache.set(key, Promise.resolve(data));
+  }
+  return data;
+}
+
+/**
+ * Fetch album artwork URLs for a fixed list of tracks.
+ * @param {Array<{songName: string, artistName: string}>} tracks
+ * @param {{ refresh?: boolean }} options
+ * @returns {Promise<Record<string, {songName: string, artistName: string, artworkUrl: string|null, albumName?: string, previewUrl?: string|null, source?: string}>>}
+ */
+export async function getAppleMusicAlbumArtworks(tracks, options = {}) {
+  const normalizedTracks = Array.isArray(tracks)
+    ? [...new Map(
+        tracks
+          .map((track) => ({
+            songName: String(track?.songName || "").trim(),
+            artistName: String(track?.artistName || "").trim(),
+          }))
+          .filter((track) => track.songName && track.artistName)
+          .map((track) => [createTrackLookupKey(track.songName, track.artistName).toLowerCase(), track])
+      ).values()]
+    : [];
+
+  if (normalizedTracks.length === 0) {
+    return {};
+  }
+
+  const refresh = Boolean(options.refresh);
+  const cacheKey = createTracksCacheKey(normalizedTracks);
+  if (!refresh && albumArtworksRequestCache.has(cacheKey)) {
+    return albumArtworksRequestCache.get(cacheKey);
+  }
+
+  const requestPromise = (async () => {
+    const fallback = Object.fromEntries(
+      normalizedTracks.map((track) => [
+        createTrackLookupKey(track.songName, track.artistName),
+        {
+          songName: track.songName,
+          artistName: track.artistName,
+          artworkUrl: null,
+          albumName: "",
+          previewUrl: null,
+          source: "fallback",
+        },
+      ])
+    );
+
+    try {
+      const response = await fetch(APPLE_MUSIC_ALBUM_ARTWORKS_API_BASE, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          tracks: normalizedTracks,
+          refresh,
+        }),
+      });
+      const result = await response.json();
+      if (response.ok && result.success && result.data && typeof result.data === "object") {
+        return result.data;
+      }
+      return fallback;
+    } catch (error) {
+      console.error("Error fetching Apple Music album artworks:", error);
+      return fallback;
+    }
+  })();
+
+  if (!refresh) {
+    albumArtworksRequestCache.set(cacheKey, requestPromise);
+  }
+
+  const data = await requestPromise;
+  if (!refresh) {
+    albumArtworksRequestCache.set(cacheKey, Promise.resolve(data));
+  }
+  return data;
+}
+
 export default {
   searchAppleMusic,
   batchSearchAppleMusic,
   extractSongQuery,
-  cacheMediaAssets
+  cacheMediaAssets,
+  getAppleMusicArtistImages,
+  getAppleMusicAlbumArtworks
 };

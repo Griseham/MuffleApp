@@ -8,7 +8,7 @@ const GraphModal = ({
   isOpen, 
   onClose, 
   graphType, 
-  graphData, 
+  graphData,
   scatterData
 }) => {
   const modalRef = useRef(null);

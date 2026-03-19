@@ -1,307 +1,448 @@
-import React from 'react';
-import { BadgeCheck } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback } from "react";
+import ReactDOM from "react-dom";
+import { getAvatarForUser } from "../utils/avatarService";
 
-// Main UserHoverCard component with clean design
-const UserHoverCard = ({ user, onUserClick, avatarSrc }) => {
-  // Default user data if not provided
-  const defaultUser = {
-    username: 'musiclover',
-    displayName: 'Music Lover',
-    verified: false,
-    createdAt: 'Jan 2023',
-    following: 217,
-    followers: 118,
-    discoveryPercent: 5,
-    genres: [
-      { name: 'Rock', percent: 35, color: '#f56c42' },
-      { name: 'Pop', percent: 25, color: '#1db954' },
-      { name: 'Hip-Hop', percent: 15, color: '#3b82f6' }
-    ]
-  };
+const UserHoverCard = ({ user, userData, className = "" }) => {
+  const [genresExpanded, setGenresExpanded] = useState(false);
 
-  const userData = user || defaultUser;
+  const defaultGenres = [
+    { name: "Rock", percent: 35, color: "#f56c42" },
+    { name: "Pop", percent: 25, color: "#1db954" },
+    { name: "Hip-Hop", percent: 15, color: "#3b82f6" },
+    { name: "Other", percent: 25, color: "#9ca3af" },
+  ];
 
-  // Render a horizontal progress bar for genres
-  const HorizontalBar = ({ genre, maxWidth = 160 }) => {
-    return (
-      <div style={{ marginBottom: '10px' }}>
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'space-between',
-          marginBottom: '4px',
-          fontSize: '12px',
-        }}>
-          <span style={{ color: 'white' }}>{genre.name}</span>
-          <span style={{ color: '#9CA3AF' }}>{genre.percent}%</span>
-        </div>
-        <div style={{ 
-          height: '4px', 
-          backgroundColor: 'rgba(255, 255, 255, 0.1)',
-          borderRadius: '2px',
-          overflow: 'hidden'
-        }}>
-          <div 
-            style={{
-              height: '100%',
-              width: `${genre.percent}%`,
-              backgroundColor: genre.color,
-              borderRadius: '2px',
-            }}
-          />
-        </div>
-      </div>
-    );
-  };
+  const displayName = userData?.displayName || user?.name || "User";
+  const verified = userData?.verified || false;
+  const createdAt = userData?.createdAt || "Jan 2023";
+  const following = userData?.following || 250;
+  const followers = userData?.followers || 120;
+  const discoveryPercent = userData?.discoveryPercent || 8;
+  const avatar = user?.avatar || userData?.avatar || getAvatarForUser(1);
+  const genres =
+    Array.isArray(userData?.genres) && userData.genres.length > 0
+      ? userData.genres
+      : defaultGenres;
 
   return (
-    <div 
-      className="fixed z-50 w-72 bg-black border border-gray-700 rounded-xl shadow-xl" 
-      onClick={(e) => {
-        e.stopPropagation(); // Prevent clicks inside the card from bubbling
-      }}
-    >
-      {/* User info */}
-      <div className="p-4">
-        {/* User header with avatar and follow button */}
-        <div className="flex items-center gap-3">
-          {/* User avatar */}
-          <div className="w-12 h-12 rounded-full bg-gray-800 overflow-hidden">
-            <img 
-              src={userData.avatar || avatarSrc || "/threads/assets/user.png"} 
-              alt={`${userData.displayName}'s avatar`} 
-              className="w-full h-full object-cover"
+    <div className={`uhcCard ${className}`}>
+      <div className="uhcInner">
+        <div className="uhcHeader">
+          <div className="uhcAvatarWrap">
+            <img
+              src={avatar}
+              alt={displayName}
+              className="uhcAvatar"
+              onError={(e) => {
+                e.currentTarget.src = "/assets/default-avatar.png";
+              }}
             />
           </div>
-          
-          {/* Follow button */}
-          <button 
-            className="ml-auto bg-white hover:bg-gray-200 text-black font-semibold rounded-full px-4 py-1.5 text-sm"
-            onClick={(e) => e.stopPropagation()} // Stop propagation for this button
+
+          <div className="uhcIdentity">
+            <div className="uhcNameRow">
+              <h3 className="uhcName">{displayName}</h3>
+              {verified && (
+                <svg
+                  className="uhcVerified"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-label="Verified"
+                >
+                  <path d="M20 6L9 17l-5-5" />
+                </svg>
+              )}
+            </div>
+            <div className="uhcMeta">Joined {createdAt}</div>
+          </div>
+        </div>
+
+        <div className="uhcSection">
+          <button
+            type="button"
+            className="uhcDiscoveryButton"
+            onClick={() => setGenresExpanded((v) => !v)}
           >
+            <span className="uhcDiscoveryText">
+              Discovered {discoveryPercent}% of music
+            </span>
+            <svg
+              className={`uhcCaret ${genresExpanded ? "isOpen" : ""}`}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </button>
+
+          {genresExpanded && (
+            <div className="uhcGenresPanel">
+              {genres.map((genre, index) => (
+                <div key={`${genre.name}-${index}`} className="uhcGenreRow">
+                  <div className="uhcGenreTop">
+                    <span>{genre.name}</span>
+                    <span className="uhcGenrePercent">{genre.percent}%</span>
+                  </div>
+                  <div className="uhcGenreTrack">
+                    <div
+                      className="uhcGenreFill"
+                      style={{
+                        width: `${genre.percent}%`,
+                        backgroundColor: genre.color || "#9ca3af",
+                      }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="uhcFooter">
+          <div className="uhcCountBlock">
+            <span className="uhcCountValue">{following}</span>
+            <span className="uhcCountLabel">Following</span>
+          </div>
+          <div className="uhcCountBlock">
+            <span className="uhcCountValue">{followers}</span>
+            <span className="uhcCountLabel">Followers</span>
+          </div>
+          <button className="uhcFollowButton" type="button">
             Follow
           </button>
         </div>
-
-        {/* Username and verification */}
-        <div className="mt-3">
-          <div className="flex items-center">
-            <h3 className="text-white font-bold text-lg">{userData.displayName}</h3>
-            {userData.verified && (
-              <BadgeCheck size={18} className="text-blue-500 ml-1" />
-            )}
-          </div>
-          <p className="text-gray-400 text-sm">@{userData.username}</p>
-        </div>
-
-        {/* Account creation */}
-        <div className="mt-2 text-gray-400 text-sm">
-          Joined {userData.createdAt}
-        </div>
-
-        {/* Genre visualization - HORIZONTAL BARS */}
-        <div className="mt-4">
-          {userData.genres.map((genre, index) => (
-            <HorizontalBar key={index} genre={genre} />
-          ))}
-        </div>
-
-        {/* Discovery percentage */}
-        <div className="mt-4 bg-gray-900 rounded-lg p-3">
-          <div className="text-white text-sm font-semibold">
-            Discovered {userData.discoveryPercent}% of music
-          </div>
-        </div>
-        
-        {/* Following/Followers */}
-        <div className="flex gap-4 mt-4 text-sm border-t border-gray-800 pt-4">
-          <div>
-            <span className="font-bold text-white">{userData.following}</span>
-            <span className="text-gray-400"> Following</span>
-          </div>
-          <div>
-            <span className="font-bold text-white">{userData.followers}</span>
-            <span className="text-gray-400"> Followers</span>
-          </div>
-        </div>
       </div>
+
+      <style>{`
+        .uhcCard {
+          width: 300px;
+          background: rgba(18, 22, 28, 0.96);
+          border-radius: 14px;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          box-shadow: 0 16px 36px rgba(0, 0, 0, 0.45);
+          backdrop-filter: blur(8px);
+          color: #ffffff;
+          overflow: hidden;
+          transform: translateY(4px) scale(0.98);
+          animation: uhcEnter 160ms ease-out forwards;
+        }
+
+        .uhcInner {
+          padding: 14px;
+        }
+
+        .uhcHeader {
+          display: flex;
+          align-items: center;
+          margin-bottom: 12px;
+        }
+
+        .uhcAvatarWrap {
+          width: 48px;
+          height: 48px;
+          border-radius: 50%;
+          overflow: hidden;
+          background: #121821;
+          border: 2px solid rgba(255, 255, 255, 0.08);
+          flex-shrink: 0;
+        }
+
+        .uhcAvatar {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          display: block;
+        }
+
+        .uhcIdentity {
+          margin-left: 10px;
+          min-width: 0;
+        }
+
+        .uhcNameRow {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+
+        .uhcName {
+          margin: 0;
+          font-size: 15px;
+          font-weight: 700;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .uhcVerified {
+          width: 14px;
+          height: 14px;
+          color: #3b82f6;
+          flex-shrink: 0;
+        }
+
+        .uhcMeta {
+          margin-top: 2px;
+          font-size: 12px;
+          color: #9ca3af;
+        }
+
+        .uhcSection {
+          margin-bottom: 12px;
+        }
+
+        .uhcDiscoveryButton {
+          width: 100%;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          border-radius: 10px;
+          background: rgba(17, 24, 39, 0.8);
+          color: #ffffff;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+          padding: 9px 10px;
+          cursor: pointer;
+          transition: background 140ms ease, border-color 140ms ease;
+        }
+
+        .uhcDiscoveryButton:hover {
+          background: rgba(31, 41, 55, 0.92);
+          border-color: rgba(255, 255, 255, 0.14);
+        }
+
+        .uhcDiscoveryText {
+          font-size: 13px;
+          font-weight: 600;
+          text-align: left;
+        }
+
+        .uhcCaret {
+          width: 16px;
+          height: 16px;
+          color: #ffffff;
+          flex-shrink: 0;
+          transition: transform 140ms ease;
+        }
+
+        .uhcCaret.isOpen {
+          transform: rotate(180deg);
+        }
+
+        .uhcGenresPanel {
+          margin-top: 8px;
+          border-radius: 10px;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          background: rgba(17, 24, 39, 0.42);
+          padding: 10px;
+          animation: uhcFadeIn 160ms ease-out;
+        }
+
+        .uhcGenreRow {
+          margin-bottom: 9px;
+        }
+
+        .uhcGenreRow:last-child {
+          margin-bottom: 0;
+        }
+
+        .uhcGenreTop {
+          display: flex;
+          justify-content: space-between;
+          margin-bottom: 4px;
+          font-size: 12px;
+        }
+
+        .uhcGenrePercent {
+          color: #9ca3af;
+        }
+
+        .uhcGenreTrack {
+          height: 4px;
+          background: rgba(255, 255, 255, 0.12);
+          border-radius: 999px;
+          overflow: hidden;
+        }
+
+        .uhcGenreFill {
+          height: 100%;
+          border-radius: 999px;
+        }
+
+        .uhcFooter {
+          border-top: 1px solid rgba(255, 255, 255, 0.09);
+          padding-top: 12px;
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+
+        .uhcCountBlock {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+        }
+
+        .uhcCountValue {
+          font-size: 14px;
+          font-weight: 700;
+          line-height: 1;
+          color: #ffffff;
+        }
+
+        .uhcCountLabel {
+          font-size: 11px;
+          color: #9ca3af;
+          line-height: 1;
+        }
+
+        .uhcFollowButton {
+          margin-left: auto;
+          border-radius: 999px;
+          border: none;
+          background: #ffffff;
+          color: #0f172a;
+          font-size: 12px;
+          font-weight: 700;
+          cursor: pointer;
+          padding: 7px 14px;
+          transition: background 140ms ease;
+        }
+
+        .uhcFollowButton:hover {
+          background: #e5e7eb;
+        }
+
+        @keyframes uhcEnter {
+          to {
+            transform: translateY(0) scale(1);
+          }
+        }
+
+        @keyframes uhcFadeIn {
+          from {
+            opacity: 0;
+            transform: translateY(6px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+      `}</style>
     </div>
   );
 };
 
-// This is the wrapper that makes any avatar clickable and shows the hover card
-const UserAvatarWithHoverCard = ({ user, avatarSrc, size = 48, onUserClick }) => {
-  const [showHoverCard, setShowHoverCard] = React.useState(false);
-  const [hoverTimeout, setHoverTimeout] = React.useState(null);
-  const [hoverPosition, setHoverPosition] = React.useState({ top: 0, left: 0 });
-  const avatarRef = React.useRef(null);
-  
-  // Generate random genres if not provided
-  const generateRandomGenres = () => {
-    const genreOptions = [
-      { name: 'Rock', color: '#f56c42' },
-      { name: 'Pop', color: '#1db954' },
-      { name: 'Hip-Hop', color: '#3b82f6' },
-      { name: 'Electronic', color: '#FF9500' },
-      { name: 'R&B', color: '#8338EC' },
-      { name: 'Jazz', color: '#06D6A0' },
-      { name: 'Metal', color: '#FF47DA' },
-      { name: 'Classical', color: '#3A86FF' },
-      { name: 'K-Pop', color: '#FF758F' },
-      { name: 'Lo-Fi', color: '#FF6B35' }
-    ];
-    
-    // Shuffle and pick 3 random genres
-    const shuffled = [...genreOptions].sort(() => 0.5 - Math.random());
-    const selected = shuffled.slice(0, 3);
-    
-    // Assign random percentages (20-45%)
-    return selected.map(genre => ({
-      ...genre,
-      percent: Math.floor(Math.random() * (45 - 20 + 1)) + 20
-    }));
-  };
-  
-  // Enhance user object with required fields
-  const enhancedUser = React.useMemo(() => ({
-    ...user,
-    displayName: user.displayName || user.author || user.username || 'User',
-    username: user.username || user.author || 'user',
-    verified: Math.random() > 0.7, // 30% chance of being verified
-    createdAt: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'][Math.floor(Math.random() * 6)] + ' ' + (2021 + Math.floor(Math.random() * 4)),
-    following: user.following || Math.floor(Math.random() * 500) + 50,
-    followers: user.followers || Math.floor(Math.random() * 300) + 20,
-    discoveryPercent: user.discoveryPercent || Math.floor(Math.random() * 15) + 1,
-    genres: user.genres || generateRandomGenres()
-  }), [user]);
-  
-  const calculatePosition = React.useCallback(() => {
-    if (!avatarRef.current) return { top: 0, left: 0 };
-    
-    const rect = avatarRef.current.getBoundingClientRect();
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
-    
-    let top = rect.bottom + window.scrollY + 10; // 10px below the avatar
+export const ClickableUserAvatar = ({
+  user,
+  userData,
+  avatarSrc,
+  size = 40,
+  onUserClick,
+  className = "",
+}) => {
+  const [visible, setVisible] = useState(false);
+  const [cardPos, setCardPos] = useState({ top: 0, left: 0 });
+  const btnRef = useRef(null);
+  const hideTimer = useRef(null);
+
+  const displayName = user?.displayName || user?.name || "User";
+  const resolvedAvatar = avatarSrc || user?.avatar || getAvatarForUser(user);
+
+  const showCard = useCallback(() => {
+    if (!btnRef.current) return;
+
+    const rect = btnRef.current.getBoundingClientRect();
+    const cardWidth = 300;
+    let top = rect.bottom + window.scrollY + 8;
     let left = rect.left + window.scrollX;
-    
-    // Check if card would go off the right edge
-    if (left + 288 > viewportWidth) { // 288px = card width (272px) + some margin
-      left = Math.max(0, viewportWidth - 288);
-    }
-    
-    // Check if card would go off the bottom edge
-    // Approximate card height is 350px for the new design
-    if (top + 350 > viewportHeight + window.scrollY) {
-      // Position above the avatar if there's not enough space below
-      top = rect.top + window.scrollY - 350 - 10; // 10px above the avatar
-      
-      // If still off screen (not enough space above either), position at the top
-      if (top < window.scrollY) {
-        top = window.scrollY + 10;
-      }
-    }
-    
-    return { top, left };
+
+    left = Math.max(16, Math.min(left, window.innerWidth - cardWidth - 16));
+    top = Math.max(8, top);
+
+    setCardPos({ top, left });
+    clearTimeout(hideTimer.current);
+    setVisible(true);
   }, []);
-  
-  const handleMouseEnter = React.useCallback((e) => {
-    // Stop propagation to prevent postcard from capturing this event
+
+  const scheduleHide = useCallback(() => {
+    hideTimer.current = setTimeout(() => setVisible(false), 150);
+  }, []);
+
+  const cancelHide = useCallback(() => {
+    clearTimeout(hideTimer.current);
+  }, []);
+
+  useEffect(() => () => clearTimeout(hideTimer.current), []);
+
+  const handleClick = (e) => {
     e.stopPropagation();
-    
-    // Cancel any existing timeout
-    if (hoverTimeout) {
-      clearTimeout(hoverTimeout);
-    }
-    
-    const timeout = setTimeout(() => {
-      setHoverPosition(calculatePosition());
-      setShowHoverCard(true);
-    }, 300); // Delay before showing the hover card
-    setHoverTimeout(timeout);
-  }, [calculatePosition, hoverTimeout]);
-  
-  const handleMouseLeave = React.useCallback((e) => {
-    // Stop propagation to prevent postcard from capturing this event
-    e.stopPropagation();
-    
-    if (hoverTimeout) {
-      clearTimeout(hoverTimeout);
-    }
-    
-    // Add a small delay before hiding to allow movement to the card
-    const timeout = setTimeout(() => {
-      setShowHoverCard(false);
-    }, 100);
-    setHoverTimeout(timeout);
-  }, [hoverTimeout]);
-  
-  const navigateToProfile = React.useCallback((e) => {
-    // Stop propagation to prevent postcard from capturing this event
-    e.stopPropagation();
-    
-    // Navigate to user profile
-    if (onUserClick) {
-      onUserClick(enhancedUser);
-    } else {
-      // Navigate to user profile
-    }
-  }, [enhancedUser, onUserClick]);
-  
-  React.useEffect(() => {
-    // Clean up timeout on unmount
-    return () => {
-      if (hoverTimeout) {
-        clearTimeout(hoverTimeout);
-      }
-    };
-  }, [hoverTimeout]);
-  
+    if (onUserClick) onUserClick(user);
+  };
+
   return (
-    <div 
-      className="relative" 
-      onClick={(e) => e.stopPropagation()} // Stop propagation at the wrapper level too
-    >
-      <div 
-        ref={avatarRef}
-        className="cursor-pointer rounded-full overflow-hidden"
-        style={{ width: `${size}px`, height: `${size}px` }}
-        onClick={navigateToProfile}
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
+    <>
+      <div
+        ref={btnRef}
+        className={className}
+        style={{ position: "relative", display: "inline-block" }}
+        onMouseEnter={showCard}
+        onMouseLeave={scheduleHide}
       >
-        <img 
-          src={avatarSrc || "/threads/assets/user.png"} 
-          alt={`${enhancedUser.displayName}'s avatar`}
-          className="w-full h-full object-cover" 
-        />
-      </div>
-      
-      {showHoverCard && (
-        <div 
-          className="fixed z-50"
+        <button
+          type="button"
+          onClick={handleClick}
+          aria-label={displayName}
           style={{
-            top: `${hoverPosition.top}px`,
-            left: `${hoverPosition.left}px`
+            width: size,
+            height: size,
+            borderRadius: "999px",
+            overflow: "hidden",
+            background: "#121821",
+            border: "1px solid rgba(255,255,255,0.12)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 0,
+            cursor: "pointer",
           }}
-          onMouseEnter={(e) => {
-            e.stopPropagation(); // Stop propagation
-            if (hoverTimeout) {
-              clearTimeout(hoverTimeout);
-            }
-            setShowHoverCard(true);
-          }}
-          onMouseLeave={handleMouseLeave}
         >
-          <UserHoverCard 
-            user={enhancedUser} 
-            onUserClick={onUserClick}
-            avatarSrc={avatarSrc}
+          <img
+            src={resolvedAvatar}
+            alt={displayName}
+            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            onError={(e) => {
+              e.currentTarget.src = "/assets/default-avatar.png";
+            }}
           />
-        </div>
-      )}
-    </div>
+        </button>
+      </div>
+
+      {visible &&
+        ReactDOM.createPortal(
+          <div
+            style={{
+              position: "absolute",
+              top: cardPos.top,
+              left: cardPos.left,
+              zIndex: 99999,
+            }}
+            onMouseEnter={cancelHide}
+            onMouseLeave={scheduleHide}
+          >
+            <UserHoverCard user={user} userData={userData} />
+          </div>,
+          document.body
+        )}
+    </>
   );
 };
 
-export { UserAvatarWithHoverCard as ClickableUserAvatar };
 export default UserHoverCard;

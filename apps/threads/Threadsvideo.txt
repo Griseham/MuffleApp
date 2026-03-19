@@ -1,0 +1,130 @@
+Threads is a twitter like component of Mufl where users can share music more socially. 
+
+There are four different types of threads. 
+
+
+In normal threads, users ask the community for song recommendations and other users reply with 30 second song snippets from Apple Music or with uploaded media.
+
+Comments with attached snippets will show how many users rated it, interactions and the average rating. 
+
+The app records how long you've listened before rating and plots data using these two graphs.
+
+The first compares your ratings to the average while the second plots the users based on how well their recommendation were received. 
+
+Rating more songs in a thread will reveal more users and add more data to the graphs, designed to encourage user engagement. 
+
+
+You can also switch to a TikTok like view, where you scroll through recommendations within this thread.
+
+You can do the same back on the home page but now you're traversing multiple threads throughout the app. Clicking on the title will take you to that thread. 
+
+News threads will highlight anticipated albums or your followed Artists recent activity
+
+Groupchats are essentially live threads, users can still share song recommendations based on a prompt  but the chat will have a lifetime 
+
+Parameter threads allow a user to compare four or more different artists, bands, genres and more. Users will share song snippets under one of the tags. 
+
+
+
+Attached to the thread is a volume, and it's based on how well the recommendations are being rated in the thread, 
+
+Then there are volume and genre points a user may gain from engaging with the thread
+
+Having higher volume and genre points highlights the posts you start and your threads give other users more points.
+
+All of this is on the for you feed, and you can also visit the trending feed and recents feed. 
+
+
+However, we want to give users the freedom to visit all possible music feeds. 
+
+
+
+
+
+Here, you can travel to any coordinate and load the feed in that location. We start at the for you point, where if you click the load feed button there, it will show you posts that the algorithm already picked out for you.
+
+The further you travel from the for you point, the less familiar the music will be to you. 
+
+The genre wheel In the middle will tell you the amount of artist you've discovered there,  most popular genres in that location, and how many users are currently active in each of those genre spheres throughout the app.  
+
+You can also travel to your friend's for you feed and visit their taste. 
+
+Each colored star is clickable and will reveal a post/thread In those coordinates. 
+
+
+
+
+As this is still a prototype , all the loaded threads are taken from music recommendation subreddits to simulate a real experience. 
+
+After clicking load feed in a location a window to the right shows up describing the music in that feed location. 
+
+After landing on a feed users are likely to be most interested in the best songs recommended in this location so this modal showcases 50 users who have been recommending songs in this feed. Each star is a song recommended by the user that did well in one of the threads. We can then click on the user and cycle through their best recommendations. Under each will have the title of the thread it was posted in, so you can visit as well. 
+
+Users with low volume and little followers can even show up on the top 50, gaining them more followers and volume as long as they share good recommendations. 
+
+The ranking is based on amount of stars and likes received by users using this modal, different from the likes the song may have received in the thread itself. 
+
+
+
+
+
+In music sharing subreddits, starting a post to ask for song recommendations will give you answers from any and all users in the community, despite your music taste being completely different. On mufl, users are filtered by their own for you page, so users who see and interact with your posts are more likely to share your taste.
+
+
+
+As of now we are still using random numbers and metrics for the volume and genre points. 
+
+
+Each thread is also expandable, showing the top artists, the artist you follow that show up in this thread and artists the algorithm may think you like
+
+When entering a thread, most users will listen to the top 3 songs and leave but what if your next favorite song is at the bottom of the thread with 3 likes?
+
+We want to diversify the user's attention when joining a thread. Most users will listen to the top 3 songs and leave, others will check out what songs were recommended from the artists they follow and recognize, and some users will be interested in the recommended artists. 
+
+So on the default expand the thread will show the top 3 songs but selecting artists in the pool will make you a short playlist. Clicking on of the recommendations will reveal the ratings and comments under that snippet. 
+
+
+
+//////
+
+
+
+
+
+The threads are asking questions like sunset songs or songs about meeting the devil, what makes you think that these questions have anything to do with the genres. Meaning, why does this post appear in this section of this starfield with these genres if the question have almost nothig to do with the music genres?
+
+Well on reddit, people are already asking questions like that in subreddits, but over there the whole subreddit replies, meaning people of all different tastes.
+
+On mufl, those users are already separated based o what they see on their for you page, so if a user posts a type of questions, even though it has nothing to do with music, we already know that the user who posted and the users who will be replying will be part of the same for you page, meaning they share similar taste meaning their recommendations might be more effective. 
+
+
+
+In threads there should be a section for conversations of albums and songs that just came out . 
+
+That's why I have currently trending artists and albums 
+
+the expand tuner butto should not be there when we are in the playing screen, only in the room screen.and using the tuner should not change the numbers on the top right of the top component, only the ones in the tuner. 
+
+
+
+
+Usig a slider to filter the comments on a recommendation and additional genre points as filters will spread out the viewer attention more and spread more likes thouruoght the thread , enriching the top likes system. 
+
+Also the genre points thing gives the user  a longer Reason to stay
+
+Does a thread have to be read from top to bottom?
+
+For the artist line on top of the thread detail , the artists are arranges by who the algorithm thik you might like next. So your followed artists will show up first and then following are artists the algo recommends
+
+And then you can jump around the thread by clicking the diff artists. And maybe the artist line can also show more info on the artists like how may times they were recommended today.
+
+////////////////////
+
+Edits
+
+
+I should be able to collapse the users on the right panel with an arrow to the right of the top picks title 
+
+Userhovercards should work In the thread detail
+
+

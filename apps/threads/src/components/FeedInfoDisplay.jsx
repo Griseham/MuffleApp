@@ -1,445 +1,400 @@
 import React, { useState } from 'react';
 import { TrendingUp, Music, Headphones, Disc, Search } from 'lucide-react';
 import InfoIconModal from './InfoIconModal';
+
 /**
- * FeedInfoDisplay component - Takes full width of its container
- * Match the exact design shown in the screenshot
+ * FeedInfoDisplay component - Design 3: Minimal with Combined Genre Bar
  */
-const FeedInfoDisplay = ({ genres = [], artists = [], coordinates = { x: 2, y: 1 }, onLoadGenreFeed }) => {
+const FeedInfoDisplay = ({
+  genres = [],
+  artists = [],
+  coordinates = { x: 2, y: 1 },
+  onLoadGenreFeed,
+  isCollapsed = false
+}) => {
+  const [hoveredItem, setHoveredItem] = useState(null);
   const [hoveredGenre, setHoveredGenre] = useState(null);
-  const [selectedGenre, setSelectedGenre] = useState(null);
 
   // Handle genre click
   const handleGenreClick = (genre) => {
     if (typeof onLoadGenreFeed === 'function') {
-      // Set the selected genre so we can track the state
-      setSelectedGenre(genre.name);
-      
-      // Call the parent's onLoadGenreFeed function to update the wheel
       onLoadGenreFeed(genre.name);
     }
   };
 
   // Default genres if none provided
   const defaultGenres = [
-    { name: "Pop", percentage: 38, color: "#FF9F1C" },
-    { name: "R&B", percentage: 23, color: "#8338EC" },
-    { name: "Lo-Fi", percentage: 13, color: "#FF6B35" },
-    { name: "Indie Rock", percentage: 5, color: "#E17A9F" }
+    { name: "Hip-Hop", percentage: 46, color: "#ff4d4f", discovered: "3/100", users: "2.4M" },
+    { name: "Rock", percentage: 26, color: "#f442c2", discovered: "3/100", users: "1.8M" },
+    { name: "Afrobeat", percentage: 16, color: "#7cb305", discovered: "2/80", users: "890K" },
+    { name: "Pop", percentage: 12, color: "#ff66cc", discovered: "5/120", users: "3.1M" }
   ];
 
-  // Use provided genres or fallback to defaults
+  // Default artists if none provided
+  const defaultArtists = [
+    { name: "Artist", genre: "Hip-Hop", promoted: 325 },
+    { name: "Artist", genre: "Hip-Hop", promoted: 325 },
+    { name: "Artist", genre: "Hip-Hop", promoted: 325 },
+    { name: "Artist", genre: "Rock", promoted: 310 },
+  ];
+
   const safeGenres = genres.length > 0 ? genres : defaultGenres;
+  const safeArtists = artists.length > 0 ? artists : defaultArtists;
+  const totalPercentage = safeGenres.reduce((acc, g) => acc + g.percentage, 0);
 
-  // Generate placeholder artists if needed
-  const safeArtists = artists.length > 0 ? artists : [
-    { id: 1, name: "Artist", genre: "Pop" },
-    { id: 2, name: "Artist", genre: "Pop" },
-    { id: 3, name: "Artist", genre: "R&B" }
-  ];
-
-  // Get artist discover metrics for YOUR STATS
+  // Get artist discover metrics
   const getArtistDiscovers = (genreName) => {
-    const discoverMap = {
-      "Pop": "3/100",
-      "R&B": "8/156",
-      "Lo-Fi": "3/100",
-      "Indie Rock": "5/112"
-    };
-    return discoverMap[genreName] || "3/100";
+    const genre = safeGenres.find(g => g.name === genreName);
+    return genre?.discovered || "3/100";
   };
 
-  // Fixed promotion values for top artists (matching screenshot)
-  const getTopPromotion = (index) => {
-    const values = [400, 375, 350];
-    return values[index] || 325;
-  };
-
-  // Fixed discovery values for discovered artists (matching screenshot)
-  const getDiscoveryValue = (index) => {
-    const values = [42, 37, 32];
-    return values[index] || 30;
-  };
-
-  // Grey avatar placeholder SVG
-  const AvatarPlaceholder = () => (
-    <svg width="24" height="24" viewBox="0 0 24 24">
-      <circle cx="12" cy="12" r="12" fill="#444" />
-    </svg>
-  );
-
-  // Discovery icon for YOUR STATS - using circles like in screenshot
-  const DiscoveryIcon = () => (
-    <svg width="16" height="16" viewBox="0 0 16 16">
-      <circle cx="8" cy="8" r="8" fill="#5E43EC" opacity="0.2" />
-      <circle cx="8" cy="8" r="4" fill="#5E43EC" />
-    </svg>
+  // Avatar placeholder
+  const Avatar = ({ size = 28 }) => (
+    <div style={{
+      width: size,
+      height: size,
+      borderRadius: '50%',
+      background: 'linear-gradient(135deg, #2a2a40 0%, #1a1a2e 100%)',
+      flexShrink: 0
+    }} />
   );
 
   return (
     <div style={{
       width: '100%',
-      backgroundColor: '#0c0d16',
-      borderRadius: '8px',
+      background: '#08080f',
+      borderRadius: 16,
       overflow: 'hidden',
-      color: 'white',
-      fontFamily: 'sans-serif',
-      boxShadow: '0 4px 20px rgba(0, 0, 0, 0.2)',
-      border: '1px solid rgba(255, 255, 255, 0.06)'
+      fontFamily: "'Inter', -apple-system, sans-serif",
+      color: '#fff',
+      border: '1px solid rgba(255,255,255,0.06)'
     }}>
-      {/* YOUR STATS SECTION */}
-      <div>
-        {/* YOUR STATS Header */}
-<div style={{
-  backgroundColor: '#131429',
-  padding: '12px 20px',
-  fontWeight: 'bold',
-  fontSize: '16px',
-  textTransform: 'uppercase',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between'
-}}>
-  <span>YOUR STATS</span>
-  <InfoIconModal
-    title="Feed Info Display"
-    iconSize={16}
-    showButtonText={false}
-    steps={[
-      {
-        icon: <TrendingUp size={18} color="#a9b6fc" />,
-        title: "Your Stats",
-        content: "As you use the app and discover new songs, you will gain genre completion points"
-      },
-      {
-        icon: <Music size={18} color="#a9b6fc" />,
-        title: "Earning Points",
-        content: "Recommending songs in those genres will also give points"
-      },
-      {
-        icon: <Headphones size={18} color="#a9b6fc" />,
-        title: "Following Users",
-        content: "Users with high genre completion likely give great song recommendations within that genre and might be worth following"
-      },
-      {
-        icon: <Disc size={18} color="#a9b6fc" />,
-        title: "Discovered Artists",
-        content: "Shows how many artists you've discovered in this part of the starfield"
-      },
-      {
-        icon: <Search size={18} color="#a9b6fc" />,
-        title: "Feed Stats",
-        content: "Shows the genre distribution in this part of the starfield"
-      },
-      {
-        icon: <Music size={18} color="#a9b6fc" />,
-        title: "Genre Navigation",
-        content: "Click on a genre to load the feed with posts of that specific genre. (Doesn't Currently Work)"
-      },
-      {
-        icon: <TrendingUp size={18} color="#a9b6fc" />,
-        title: "Top Artists",
-        content: "Shows the most promoted artists in this part of the starfield and how many times one of their songs was recommended today"
-      }
-    ]}
-  />
-</div>
-        {/* YOUR STATS Content - 2 columns */}
-        <div style={{
-          display: 'flex',
-          width: '100%'
-        }}>
-          {/* GENRES column */}
-          <div style={{
-            width: '50%',
-            borderRight: '1px solid rgba(255, 255, 255, 0.1)'
-          }}>
-            <div style={{
-              backgroundColor: '#14142d',
-              padding: '10px 20px',
-              borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-              fontSize: '13px',
-              fontWeight: 'bold',
-              textTransform: 'uppercase',
-              opacity: 0.7
-            }}>
-              GENRES
-            </div>
-            
-            <div style={{
-              height: '180px',
-              overflowY: 'auto'
-            }}>
-              {safeGenres.map((genre, index) => (
-                <div key={`genre-${index}`} style={{
-                  padding: '10px 20px',
-                  borderBottom: '1px solid rgba(255, 255, 255, 0.05)'
-                }}>
-                  <div style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    marginBottom: '8px'
-                  }}>
-                    <span style={{ fontSize: '14px' }}>
-                      {genre.name}
-                    </span>
-                    <span style={{ color: genre.color, fontSize: '14px' }}>{genre.percentage}%</span>
-                  </div>
-                  <div style={{
-                    height: '4px',
-                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                    borderRadius: '2px',
-                    overflow: 'hidden',
-                    marginBottom: '5px'
-                  }}>
-                    <div style={{
-                      width: `${genre.percentage}%`,
-                      height: '100%',
-                      backgroundColor: genre.color,
-                      borderRadius: '2px'
-                    }} />
-                  </div>
-                  <div style={{
-                    fontSize: '13px',
-                    color: '#a1a7c4'
-                  }}>
-                    {getArtistDiscovers(genre.name)} Artists discovered
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-          
-          {/* DISCOVERED ARTISTS column */}
-          <div style={{ width: '50%' }}>
-            <div style={{
-              backgroundColor: '#14142d',
-              padding: '10px 20px',
-              borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-              fontSize: '13px',
-              fontWeight: 'bold',
-              textTransform: 'uppercase',
-              opacity: 0.7
-            }}>
-              DISCOVERED ARTISTS
-            </div>
-            
-            <div style={{
-              height: '180px',
-              overflowY: 'auto'
-            }}>
-              {safeArtists.slice(0, 6).map((artist, index) => (
-                <div key={`discovered-${index}`} style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '12px 20px',
-                  borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
-                  cursor: 'pointer'
-                }}>
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center'
-                  }}>
-                    <AvatarPlaceholder />
-                    <div style={{ marginLeft: '12px' }}>
-                      <div style={{ fontSize: '14px' }}>Artist</div>
-                      <div style={{ fontSize: '12px', color: '#a1a7c4' }}>{artist.genre}</div>
-                    </div>
-                  </div>
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    color: '#5E43EC'
-                  }}>
-                    <DiscoveryIcon />
-                    <span style={{ fontSize: '14px', fontWeight: 500 }}>
-                      {getDiscoveryValue(index)}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      {/* FEED STATS SECTION */}
+      {/* Coordinates Header */}
       <div style={{
-        borderTop: '1px solid rgba(255, 255, 255, 0.1)'
+        padding: '20px 24px 16px',
+        textAlign: 'center',
+        borderBottom: '1px solid rgba(255,255,255,0.04)',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center'
       }}>
-        {/* FEED STATS Header */}
-        <div style={{
-          backgroundColor: '#131b29',
-          padding: '12px 20px',
-          fontWeight: 'bold',
-          fontSize: '16px',
-          textTransform: 'uppercase',
-          display: 'flex',
-          alignItems: 'center'
-        }}>
-          FEED STATS
+        <div style={{ flex: 1 }}>
           <div style={{
-            width: '6px',
-            height: '6px',
-            borderRadius: '50%',
-            backgroundColor: '#3a86ff',
-            marginLeft: '10px'
-          }} />
-        </div>
-        
-        {/* FEED STATS Content - 2 columns */}
-        <div style={{
-          display: 'flex',
-          width: '100%'
-        }}>
-          {/* GENRES column */}
-          <div style={{
-            width: '50%',
-            borderRight: '1px solid rgba(255, 255, 255, 0.1)'
+            fontSize: 10,
+            color: '#5a5a7a',
+            textTransform: 'uppercase',
+            letterSpacing: 3,
+            marginBottom: 6
           }}>
+            Location
+          </div>
+          <div style={{
+            fontSize: 32,
+            fontWeight: 200,
+            fontFamily: 'monospace',
+            letterSpacing: 6,
+            color: '#fff'
+          }}>
+            {coordinates.x} • {coordinates.y}
+          </div>
+        </div>
+        <InfoIconModal
+          title="Feed Info Display"
+          iconSize={16}
+          showButtonText={false}
+          steps={[
+            {
+              icon: <TrendingUp size={18} color="#a9b6fc" />,
+              title: "Your Stats",
+              content: "As you use the app and discover new songs, you will gain genre completion points"
+            },
+            {
+              icon: <Music size={18} color="#a9b6fc" />,
+              title: "Earning Points",
+              content: "Recommending songs in those genres will also give points"
+            },
+            {
+              icon: <Headphones size={18} color="#a9b6fc" />,
+              title: "Following Users",
+              content: "Users with high genre completion likely give great song recommendations within that genre and might be worth following"
+            },
+            {
+              icon: <Disc size={18} color="#a9b6fc" />,
+              title: "Discovered Artists",
+              content: "Shows how many artists you've discovered in this part of the starfield"
+            },
+            {
+              icon: <Search size={18} color="#a9b6fc" />,
+              title: "Feed Stats",
+              content: "Shows the genre distribution in this part of the starfield"
+            },
+            {
+              icon: <Music size={18} color="#a9b6fc" />,
+              title: "Genre Navigation",
+              content: "Click on a genre to load the feed with posts of that specific genre"
+            },
+            {
+              icon: <TrendingUp size={18} color="#a9b6fc" />,
+              title: "Top Artists",
+              content: "Shows the most promoted artists in this part of the starfield and how many times one of their songs was recommended today"
+            }
+          ]}
+        />
+      </div>
+
+      {!isCollapsed && (
+        <>
+          {/* Combined Genre Bar */}
+          <div style={{ padding: '16px 24px' }}>
             <div style={{
-              backgroundColor: '#14142d',
-              padding: '10px 20px',
-              borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-              fontSize: '13px',
-              fontWeight: 'bold',
-              textTransform: 'uppercase',
-              opacity: 0.7
+              display: 'flex',
+              height: 10,
+              borderRadius: 5,
+              overflow: 'hidden',
+              background: 'rgba(255,255,255,0.03)'
             }}>
-              GENRES
+              {safeGenres.map((genre, i) => (
+                <div
+                  key={i}
+                  style={{
+                    width: `${(genre.percentage / totalPercentage) * 100}%`,
+                    height: '100%',
+                    background: genre.color,
+                    transition: 'transform 0.2s, filter 0.2s',
+                    transform: hoveredItem === `genre-${i}` ? 'scaleY(1.4)' : 'scaleY(1)',
+                    filter: hoveredItem === `genre-${i}` ? 'brightness(1.2)' : 'brightness(1)',
+                    cursor: 'pointer'
+                  }}
+                  onMouseEnter={() => setHoveredItem(`genre-${i}`)}
+                  onMouseLeave={() => setHoveredItem(null)}
+                />
+              ))}
             </div>
             
+            {/* Genre Pills */}
             <div style={{
-              height: '180px',
-              overflowY: 'auto'
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 8,
+              marginTop: 14,
+              justifyContent: 'center'
             }}>
-              {safeGenres.map((genre, index) => (
-                <div key={`feed-genre-${index}`} style={{
-                  padding: '10px 20px',
-                  borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
-                  cursor: 'pointer',
-                  position: 'relative'
-                }}
-                onMouseEnter={() => setHoveredGenre(genre.name)}
-                onMouseLeave={() => setHoveredGenre(null)}
-                onClick={() => handleGenreClick(genre)}
-                >
-                  <div style={{
+              {safeGenres.map((genre, i) => (
+                <div
+                  key={i}
+                  style={{
                     display: 'flex',
-                    justifyContent: 'space-between',
-                    marginBottom: '8px'
-                  }}>
-                    <span style={{ 
-                      fontSize: '14px',
-                      color: hoveredGenre === genre.name ? genre.color : 'white',
-                      transition: 'color 0.2s ease'
-                    }}>
-                      {hoveredGenre === genre.name ? `Go to ${genre.name}` : genre.name}
-                    </span>
-                    <span style={{ fontSize: '14px' }}>12.5K</span>
-                  </div>
-                  <div style={{
-                    height: '4px',
-                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                    borderRadius: '2px',
-                    overflow: 'hidden'
-                  }}>
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '5px 12px',
+                    background: hoveredItem === `genre-${i}` 
+                      ? `${genre.color}20` 
+                      : 'rgba(255,255,255,0.03)',
+                    borderRadius: 16,
+                    fontSize: 12,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    border: `1px solid ${hoveredItem === `genre-${i}` ? `${genre.color}40` : 'transparent'}`
+                  }}
+                  onMouseEnter={() => setHoveredItem(`genre-${i}`)}
+                  onMouseLeave={() => setHoveredItem(null)}
+                >
+                  <span style={{
+                    width: 7,
+                    height: 7,
+                    borderRadius: '50%',
+                    background: genre.color
+                  }} />
+                  <span style={{ fontWeight: 500 }}>{genre.name}</span>
+                  <span style={{ color: '#5a5a7a' }}>{genre.percentage}%</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Your Stats & Discovered Artists Grid */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: 1,
+            background: 'rgba(255,255,255,0.04)'
+          }}>
+            {/* Your Stats */}
+            <div style={{ background: '#08080f', padding: 16 }}>
+              <div style={{
+                fontSize: 10,
+                color: '#5a5a7a',
+                textTransform: 'uppercase',
+                letterSpacing: 2,
+                marginBottom: 14,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6
+              }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" strokeWidth="2">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                  <circle cx="12" cy="7" r="4" />
+                </svg>
+                Your Stats
+              </div>
+              
+              {safeGenres.slice(0, 3).map((genre, i) => (
+                <div key={i} style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '9px 0',
+                  borderBottom: i < 2 ? '1px solid rgba(255,255,255,0.03)' : 'none'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <div style={{
-                      width: hoveredGenre === genre.name ? '100%' : `${genre.percentage}%`,
-                      height: '100%',
-                      backgroundColor: genre.color,
-                      borderRadius: '2px',
-                      transition: 'width 0.3s ease'
+                      width: 4,
+                      height: 18,
+                      borderRadius: 2,
+                      background: genre.color
                     }} />
+                    <span style={{ fontSize: 13 }}>{genre.name}</span>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: '#a78bfa' }}>
+                      {getArtistDiscovers(genre.name)}
+                    </div>
+                    <div style={{ fontSize: 9, color: '#5a5a7a' }}>discovered</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Discovered Artists */}
+            <div style={{ background: '#08080f', padding: 16 }}>
+              <div style={{
+                fontSize: 10,
+                color: '#5a5a7a',
+                textTransform: 'uppercase',
+                letterSpacing: 2,
+                marginBottom: 12
+              }}>
+                Discovered Artists
+              </div>
+              {safeArtists.slice(0, 3).map((artist, i) => (
+                <div key={i} style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  padding: '7px 0',
+                  borderBottom: i < 2 ? '1px solid rgba(255,255,255,0.03)' : 'none'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <Avatar size={28} />
+                    <div>
+                      <div style={{ fontSize: 12, fontWeight: 500 }}>{artist.name}</div>
+                      <div style={{ fontSize: 10, color: '#5a5a7a' }}>{artist.genre}</div>
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
           </div>
-          
-          {/* TOP ARTISTS column */}
-          <div style={{ width: '50%' }}>
-            <div style={{
-              backgroundColor: '#14142d',
-              padding: '10px 20px',
-              borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-              fontSize: '13px',
-              fontWeight: 'bold',
-              textTransform: 'uppercase',
-              opacity: 0.7
-            }}>
-              TOP ARTISTS
+
+          {/* App-Wide Users & Top Promoted Grid */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: 1,
+            background: 'rgba(255,255,255,0.04)'
+          }}>
+            {/* App-Wide Users */}
+            <div style={{ background: '#08080f', padding: 16 }}>
+              <div style={{
+                fontSize: 10,
+                color: '#5a5a7a',
+                textTransform: 'uppercase',
+                letterSpacing: 2,
+                marginBottom: 14,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6
+              }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                  <circle cx="9" cy="7" r="4" />
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+                </svg>
+                App-Wide Users
+              </div>
+              
+              {safeGenres.slice(0, 3).map((genre, i) => (
+                <div 
+                  key={i} 
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '9px 0',
+                    borderBottom: i < 2 ? '1px solid rgba(255,255,255,0.03)' : 'none',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={() => setHoveredGenre(genre.name)}
+                  onMouseLeave={() => setHoveredGenre(null)}
+                  onClick={() => handleGenreClick(genre)}
+                >
+                  <span style={{ 
+                    fontSize: 13,
+                    color: hoveredGenre === genre.name ? genre.color : '#fff',
+                    transition: 'color 0.2s ease'
+                  }}>
+                    {hoveredGenre === genre.name ? `Go to ${genre.name}` : genre.name}
+                  </span>
+                  <div style={{
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: '#60a5fa'
+                  }}>
+                    {genre.users}
+                  </div>
+                </div>
+              ))}
             </div>
-            
-            <div style={{
-              height: '180px',
-              overflowY: 'auto'
-            }}>
-              {safeArtists.slice(0, 6).map((artist, index) => (
-                <div key={`top-${index}`} style={{
+
+            {/* Top Promoted Today */}
+            <div style={{ background: '#08080f', padding: 16 }}>
+              <div style={{
+                fontSize: 10,
+                color: '#5a5a7a',
+                textTransform: 'uppercase',
+                letterSpacing: 2,
+                marginBottom: 12
+              }}>
+                Top Promoted Today
+              </div>
+              {safeArtists.slice(0, 3).map((artist, i) => (
+                <div key={i} style={{
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  padding: '12px 20px',
-                  borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
-                  cursor: 'pointer'
+                  padding: '7px 0',
+                  borderBottom: i < 2 ? '1px solid rgba(255,255,255,0.03)' : 'none'
                 }}>
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center'
-                  }}>
-                    <AvatarPlaceholder />
-                    <div style={{ marginLeft: '12px' }}>
-                      <div style={{ fontSize: '14px' }}>Artist</div>
-                      <div style={{ fontSize: '12px', color: '#a1a7c4' }}>{artist.genre}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <Avatar size={28} />
+                    <div>
+                      <div style={{ fontSize: 12, fontWeight: 500 }}>{artist.name}</div>
+                      <div style={{ fontSize: 10, color: '#5a5a7a' }}>{artist.genre}</div>
                     </div>
                   </div>
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    color: '#4e9bff'
+                  <span style={{
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: '#60a5fa'
                   }}>
-                    <span style={{ 
-                      fontSize: '14px', 
-                      fontWeight: 500, 
-                      display: 'flex',
-                      alignItems: 'center'
-                    }}>
-                      <span style={{ 
-                        marginRight: '4px', 
-                        fontSize: '14px', 
-                        color: '#4e9bff',
-                        opacity: 0.8 
-                      }}>≃</span> {getTopPromotion(index)}
-                    </span>
-                  </div>
+                    ≈ {artist.promoted}
+                  </span>
                 </div>
               ))}
             </div>
           </div>
-        </div>
-      </div>
-      
-      {/* Scrollbar styling */}
-      <style>{`
-        /* For webkit browsers */
-        ::-webkit-scrollbar {
-          width: 6px;
-          height: 6px;
-        }
-        ::-webkit-scrollbar-track {
-          background: rgba(0, 0, 0, 0.1);
-        }
-        ::-webkit-scrollbar-thumb {
-          background: rgba(255, 255, 255, 0.2);
-          border-radius: 4px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-          background: rgba(255, 255, 255, 0.3);
-        }
-      `}</style>
+        </>
+      )}
     </div>
   );
 };

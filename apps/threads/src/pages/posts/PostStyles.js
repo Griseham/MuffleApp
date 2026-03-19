@@ -70,4 +70,3 @@ const PostStyles = {
   };
   
   export default PostStyles;
-  

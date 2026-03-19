@@ -22,8 +22,16 @@ import { Info } from "lucide-react";
 import InfoIconModal from "../InfoIconModal";
 
 
-export default function Container({ onLoadFeed, onViewThread, activeFilters = [], posts = [], initialArtists = [],  jumpGenre = null,
-  onJumpComplete = () => {}, }) {
+export default function Container({
+  onLoadFeed,
+  onViewThread,
+  activeFilters = [],
+  posts = [],
+  initialArtists = [],
+  jumpGenre = null,
+  onJumpComplete = () => {},
+  isActive = true
+}) {
   // Use global modal context to sync with app-wide modal state
   const globalModalContext = useContext(GlobalModalContext);
   // Create refs for container elements
@@ -43,10 +51,13 @@ export default function Container({ onLoadFeed, onViewThread, activeFilters = []
   // Scroll position state
   const [scrollPos, setScrollPos] = useState({ left: 0, top: 0 });
   const [isScrolling, setIsScrolling] = useState(false);
+  const scrollingRafRef = useRef(null);
+  const scrollingTimeoutRef = useRef(null);
   
   // Feed related states
   const [feedButtonDisabled, setFeedButtonDisabled] = useState(false);
   const [feedLoaded, setFeedLoaded] = useState(false);
+  const visibleWheelGenresRef = useRef([]);
 
   // Track constellation indices for each artist
   const [artistConstellations, setArtistConstellations] = useState({});
@@ -127,14 +138,17 @@ export default function Container({ onLoadFeed, onViewThread, activeFilters = []
   // Handle artist management
   const handleAddArtist = useCallback((artist) => {
     if (!artist || !artist.id) {
+      console.error("Invalid artist object:", artist);
       return;
     }
     
     setArtists(prevArtists => {
       if (prevArtists.some(a => a.id === artist.id)) {
+        console.log("Artist already exists:", artist.name);
         return prevArtists;
       }
       
+      console.log("Adding artist:", artist.name);
       // Add constellation index when adding a new artist
       return [...prevArtists, { 
         ...artist, 
@@ -166,6 +180,7 @@ export default function Container({ onLoadFeed, onViewThread, activeFilters = []
       ? constellationIndex 
       : (artistConstellations[artist.id] || 0);
     
+    console.log(`Selecting artist ${artist.name} with constellation index: ${nextIndex}`);
     
     // Update constellation index for this artist
     setArtistConstellations(prev => ({
@@ -215,6 +230,7 @@ export default function Container({ onLoadFeed, onViewThread, activeFilters = []
     // Calculate next index (cycle through 0, 1, 2)
     const nextIndex = (currentIndex + 1) % 3;
     
+    console.log(`Cycling constellation for ${artist.name} from ${currentIndex} to ${nextIndex}`);
     
     // Select the artist with the new index
     handleSelectArtist(artist, nextIndex);
@@ -222,6 +238,7 @@ export default function Container({ onLoadFeed, onViewThread, activeFilters = []
   
   // Measure container on mount and resize
   useEffect(() => {
+    if (!isActive) return undefined;
     const handleResize = () => {
       setContainerDimensions({ width: window.innerWidth, height: 800 });
     };
@@ -232,10 +249,11 @@ export default function Container({ onLoadFeed, onViewThread, activeFilters = []
     // Add resize listener
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  }, [isActive]);
 
   // Set initial scroll position to center on the For You circle
   useEffect(() => {
+    if (!isActive) return;
     if (containerRef.current && containerDimensions.width > 0) {
       // For You circle is at the center of the starfield
       const forYouCenterX = TOTAL_WIDTH / 2;
@@ -256,10 +274,11 @@ export default function Container({ onLoadFeed, onViewThread, activeFilters = []
       // Update scroll state
       setScrollPos({ left: initialScrollLeft, top: initialScrollTop });
     }
-  }, [containerDimensions.width, isFullscreen]); // Re-run when dimensions change
+  }, [containerDimensions.width, isFullscreen, isActive]); // Re-run when dimensions change
   
   // Fullscreen logic
   useEffect(() => {
+    if (!isActive) return undefined;
     function handleFullscreenChange() {
       if (document.fullscreenElement === wrapperRef.current) {
         setIsFullscreen(true);
@@ -293,7 +312,7 @@ export default function Container({ onLoadFeed, onViewThread, activeFilters = []
     }
     document.addEventListener("fullscreenchange", handleFullscreenChange);
     return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
-  }, [lastFullscreenPosition]);
+  }, [lastFullscreenPosition, isActive]);
   
   // Toggle fullscreen
   const toggleFullscreen = useCallback(() => {
@@ -346,6 +365,7 @@ export default function Container({ onLoadFeed, onViewThread, activeFilters = []
   
   // Throttle scroll handler using the configured interval for performance
   const handleScroll = useMemo(() => {
+    if (!isActive) return null;
     const throttled = throttle(handleScrollRaw, performanceConfig.scrolling.throttleInterval);
     
     return () => {
@@ -354,22 +374,32 @@ export default function Container({ onLoadFeed, onViewThread, activeFilters = []
       // Use requestAnimationFrame for the isScrolling state update
       // This ensures it's synced to the browser's render cycle
       if (window.requestAnimationFrame) {
-        window.requestAnimationFrame(() => {
+        if (scrollingRafRef.current) {
+          cancelAnimationFrame(scrollingRafRef.current);
+        }
+        scrollingRafRef.current = window.requestAnimationFrame(() => {
+          if (scrollingTimeoutRef.current) {
+            clearTimeout(scrollingTimeoutRef.current);
+          }
           // Add a timeout to mark scrolling as done after the configured timeout
-          const scrollTimeout = setTimeout(() => {
+          scrollingTimeoutRef.current = setTimeout(() => {
             setIsScrolling(false);
           }, performanceConfig.scrolling.scrollingTimeout);
-          
-          return () => clearTimeout(scrollTimeout);
         });
       }
     };
-  }, [handleScrollRaw]);
+  }, [handleScrollRaw, isActive]);
 
   const [forcedGenres, setForcedGenres] = useState(null);
 
+  const handleVisibleGenresChange = useCallback((genres = []) => {
+    visibleWheelGenresRef.current = Array.isArray(genres)
+      ? genres.map((genre) => ({ ...genre }))
+      : [];
+  }, []);
+
 useEffect(() => {
-  if (!jumpGenre || !containerRef.current) return;
+  if (!isActive || !jumpGenre || !containerRef.current) return;
 
   // 1. pick a random viewport origin
   const cw = isFullscreen
@@ -388,7 +418,32 @@ useEffect(() => {
 
   // 3. clear the flag in Home
   onJumpComplete();
-}, [jumpGenre]);
+}, [jumpGenre, isActive]);
+
+  useEffect(() => {
+    if (!isActive) {
+      if (scrollingRafRef.current) {
+        cancelAnimationFrame(scrollingRafRef.current);
+        scrollingRafRef.current = null;
+      }
+      if (scrollingTimeoutRef.current) {
+        clearTimeout(scrollingTimeoutRef.current);
+        scrollingTimeoutRef.current = null;
+      }
+      setIsScrolling(false);
+    }
+
+    return () => {
+      if (scrollingRafRef.current) {
+        cancelAnimationFrame(scrollingRafRef.current);
+        scrollingRafRef.current = null;
+      }
+      if (scrollingTimeoutRef.current) {
+        clearTimeout(scrollingTimeoutRef.current);
+        scrollingTimeoutRef.current = null;
+      }
+    };
+  }, [isActive]);
 
   
   // "Load Feed" handler
@@ -404,7 +459,8 @@ useEffect(() => {
     // Call parent callback with coordinates
     onLoadFeed?.({ 
       x: displayedX, 
-      y: displayedY
+      y: displayedY,
+      genres: visibleWheelGenresRef.current.map((genre) => ({ ...genre }))
     });
     
     // Set feed as loaded
@@ -421,7 +477,9 @@ useEffect(() => {
     
     // Call parent's handler
     if (onViewThread && post) {
-
+      console.log("Starfield navigating to post:", post);
+      console.log("Post ID:", post.id, "Post Type:", post.postType);
+      
       // Ensure the post has all necessary properties
       const enhancedPost = {
         ...post,
@@ -455,6 +513,7 @@ useEffect(() => {
   
   // Create context value for child components
   const contextValue = {
+    isActive,
     isFullscreen,
     containerDimensions,
     scrollPos,
@@ -619,9 +678,12 @@ useEffect(() => {
           <div
             ref={containerRef}
             style={isFullscreen ? styles.starfieldFS : styles.starfieldNormal}
-            onScroll={handleScroll}
+            onScroll={handleScroll || undefined}
           >
-<GenreWheel forcedGenres={forcedGenres} />
+<GenreWheel
+  forcedGenres={forcedGenres}
+  onVisibleGenresChange={handleVisibleGenresChange}
+/>
 
             {/* Decorative dust background */}
             <Background />

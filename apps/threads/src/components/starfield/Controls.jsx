@@ -5,8 +5,6 @@ import EnhancedArtistFilterBar from "../EnhancedArtistFilterBar";
 import { friendColors } from "../utils";
 import { Info } from "lucide-react";
 import InfoIconModal from "../InfoIconModal";
-import { getAvatarForUser } from '../../utils/avatarService';
-
 
 export default function Controls({
   isFullscreen,
@@ -48,7 +46,7 @@ export default function Controls({
     // Calculate next index (cycle through 0, 1, 2)
     const nextIndex = (currentIndex + 1) % 3;
     
-    // Cycling constellation
+    console.log(`Cycling constellation for ${artist.name} from ${currentIndex} to ${nextIndex}`);
     
     // Update the state
     setArtistConstellations(prev => ({
@@ -247,7 +245,7 @@ export default function Controls({
             border: `2px solid ${friendColors[fid % friendColors.length]}`,
           }}>
             <img
-              src={getAvatarForUser(friendAvatars[fid])}
+              src={`/assets/image${friendAvatars[fid]}.png`}
               alt={`Friend ${fid + 1}`}
               style={styles.avatarImg}
             />
@@ -299,7 +297,7 @@ export default function Controls({
         border: `2px solid ${friendColors[fid % friendColors.length]}`,
       }}>
         <img
-          src={getAvatarForUser(friendAvatars[fid])}
+          src={`/assets/image${friendAvatars[fid]}.png`}
           alt={`Friend ${fid + 1}`}
           style={styles.avatarImg}
         />

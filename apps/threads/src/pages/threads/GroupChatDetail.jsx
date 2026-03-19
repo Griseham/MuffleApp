@@ -1,21 +1,61 @@
 // src/pages/GroupChatDetail.jsx
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
-import { Music, Search, Plus, Users, Send, MessageCircle, Heart, Share2, Bookmark } from "lucide-react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { Music, Search, Plus, Users, Send, MessageCircle, Heart, Share2, Bookmark, Volume2, Play, X } from "lucide-react";
 import styles from "./GroupChatDetailStyles";
 import { validateAndSanitizeInput, checkRateLimit, sanitizeComment, sanitizeSearchQuery } from "../../utils/security";
-import { getAvatarForUser } from '../../utils/avatarService';
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL;
-
-
 
 // Helper function to generate avatar URLs
 function authorToAvatar(author) {
-  // fall back to a fixed key for “You” or if author is undefined/null
-  const key = !author || author === 'You' ? 'you' : author;
-  return getAvatarForUser(key);
+  if (!author || typeof author !== "string") {
+    return "/assets/default-avatar.png";
+  }
+
+  const mod = hashStringToNumber(author) % 1000;
+  return `/assets/image${mod + 1}.png`;
 }
+
+function hashStringToNumber(value) {
+  if (!value) return 0;
+  let hash = 0;
+  for (let i = 0; i < value.length; i++) {
+    hash = value.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return Math.abs(hash);
+}
+
+const PLACEHOLDER_NAMES = [
+  "Echo",
+  "Nova",
+  "Atlas",
+  "Sage",
+  "Lyric",
+  "Drift",
+  "Rift",
+  "Pulse",
+  "Raven",
+  "Indigo",
+  "Juno",
+  "Zen",
+  "Vega",
+  "Sol",
+  "Moss",
+  "Piper",
+  "Slate",
+  "Cove",
+  "Rune",
+  "Quill",
+  "Ash",
+  "Vale",
+  "Mira",
+  "Halo",
+  "Haze",
+  "Fable",
+  "Lumen",
+  "Orion",
+  "Onyx",
+  "Blaze",
+];
 
 // Helper function to format timestamps
 function formatTimestamp(timestamp) {
@@ -25,7 +65,51 @@ function formatTimestamp(timestamp) {
   return `${hours}:${minutes < 10 ? '0' + minutes : minutes}`;
 }
 
+// Clean message body: strip markdown links, images, and decode HTML entities
+function cleanMessageBody(text) {
+  if (!text) return '';
+  return text
+    // Remove markdown images: ![alt](url)
+    .replace(/!\[.*?\]\(.*?\)/g, '')
+    // Convert markdown links [text](url) → just text
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    // Decode common HTML entities
+    .replace(/&quot;/g, '"')
+    .replace(/&#x27;/g, "'")
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&#39;/g, "'")
+    // Remove bold markdown **text** → text
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    // Remove italic markdown _text_ → text
+    .replace(/\b_([^_]+)_\b/g, '$1')
+    // Strip any remaining markdown blockquotes
+    .replace(/^> /gm, '')
+    .trim();
+}
+
+// Generate random volume for the room
+function generateRoomVolume() {
+  return Math.floor(Math.random() * 5000) + 500;
+}
+
+// Generate genre stats
+function generateGenreStats() {
+  const genres = ['Electronic', 'Pop', 'Rock', 'Hip-Hop', 'Trap', 'R&B', 'Indie', 'Metal'];
+  const shuffled = genres.sort(() => 0.5 - Math.random());
+  const selected = shuffled.slice(0, 3);
+  
+  return selected.map((genre, i) => ({
+    name: genre,
+    change: `+${(Math.random() * 2 + 0.1).toFixed(1)}%`,
+    color: ['#00d4aa', '#ff6b9d', '#a855f7', '#f59e0b', '#3b82f6'][i % 5]
+  }));
+}
+
 export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
+  const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:4000";
+
   // Core state
   const [messages, setMessages] = useState([]);
   const [allMessages, setAllMessages] = useState([]);
@@ -38,13 +122,21 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
   const [isSongSearchVisible, setIsSongSearchVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchedSnippet, setSearchedSnippet] = useState(null);
+  const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [attachedSnippet, setAttachedSnippet] = useState(null);
   const [isTyping, setIsTyping] = useState(false);
   const [randomTypingUser, setRandomTypingUser] = useState(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [uniqueUsers, setUniqueUsers] = useState([]);
+  const [onlineUsers, setOnlineUsers] = useState([]);
+  const [onlineCount, setOnlineCount] = useState(() => 23 + Math.floor(Math.random() * 21));
   const [isVisible, setIsVisible] = useState(false);
+  
+  // Room stats
+  const [roomVolume] = useState(() => post?.roomVolume ?? generateRoomVolume());
+  const [genreStats] = useState(() => post?.genreStats ?? generateGenreStats());
+  const [volumeChange] = useState(() => post?.volumeChange ?? (Math.floor(Math.random() * 30) + 5));
 
   // Audio playback state
   const audioRef = useRef(null);
@@ -61,6 +153,21 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
     const timer = setTimeout(() => setIsVisible(true), 50);
     return () => clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    setOnlineCount(23 + Math.floor(Math.random() * 21));
+
+    const interval = setInterval(() => {
+      setOnlineCount((prev) => {
+        const roll = Math.random();
+        const delta = roll < 0.55 ? 0 : roll < 0.9 ? 1 : 2;
+        const next = prev + delta;
+        return Math.min(next, 120);
+      });
+    }, 4500);
+
+    return () => clearInterval(interval);
+  }, [post?.id]);
 
   // Auto-scroll function
   const scrollToBottom = useCallback(() => {
@@ -79,49 +186,104 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
     async function loadMessages() {
       try {
         setLoading(true);
-        
-        // Fetch comments
-         const commentsResponse = await fetch(
-             `${API_BASE}/posts/${post.id}/comments?subreddit=${post.subreddit || 'music'}`
-           );       
-          const commentsData = await commentsResponse.json();
-        
-        // Fetch snippets
-        let snippetsData = [];
-        try {
-          const snippetsResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}/posts/${post.id}/snippets`);
-          const snippetsJson = await snippetsResponse.json();
-          if (snippetsJson.success) {
-            snippetsData = snippetsJson.data || [];
+
+        const formatArtwork = (url) => {
+          if (!url || typeof url !== "string") return "/assets/default-artist.png";
+          return url
+            .replace("{w}", "100")
+            .replace("{h}", "100")
+            .replace("{f}", "jpg");
+        };
+
+        const toSnippetShape = (snippet) => {
+          if (!snippet) return null;
+
+          const attrs = snippet.snippetData?.attributes;
+          const snippetId = snippet.commentId || snippet.id;
+          const name = snippet.songName || snippet.name || attrs?.name;
+          const artistName = snippet.artistName || attrs?.artistName;
+          const artworkRaw =
+            snippet.artworkUrl ||
+            snippet.artwork ||
+            snippet.artistImage ||
+            attrs?.artwork?.url;
+          const previewUrl = snippet.previewUrl || attrs?.previews?.[0]?.url || null;
+
+          if (!snippetId || !name || !artistName) return null;
+
+          return {
+            id: snippetId,
+            name,
+            artistName,
+            artwork: formatArtwork(artworkRaw),
+            previewUrl
+          };
+        };
+
+        const shouldUseCachedPost = Boolean(post?.hasCachedData || post?.source === "cached");
+        let cachedPostData = null;
+
+        if (shouldUseCachedPost) {
+          try {
+            const cachedResp = await fetch(`${API_BASE}/api/cached-posts/${post.id}`);
+            const cachedJson = await cachedResp.json();
+            if (cachedJson?.success && cachedJson?.data) {
+              cachedPostData = cachedJson.data;
+            }
+          } catch (e) {
+            console.warn("Failed to load cached post for groupchat:", e?.message || e);
           }
-        } catch (e) {
-          // No snippets found
+        }
+
+        let commentsData = { data: [] };
+        let snippetsData = [];
+
+        if (cachedPostData) {
+          commentsData = { data: cachedPostData.comments || [] };
+          snippetsData = cachedPostData.snippets || [];
+        } else {
+          // Fetch live comments
+          const commentsResponse = await fetch(`${API_BASE}/api/posts/${post.id}/comments`);
+          commentsData = await commentsResponse.json();
+
+          // Fetch live snippets
+          try {
+            const snippetsResponse = await fetch(`${API_BASE}/api/posts/${post.id}/snippets`);
+            const snippetsJson = await snippetsResponse.json();
+            if (snippetsJson.success) {
+              snippetsData = snippetsJson.data || [];
+            }
+          } catch (e) {
+            console.log("No snippets found:", e.message);
+          }
         }
 
         // Create snippets map
         const snippetsMap = {};
-        snippetsData.forEach(s => {
-          if (s.snippetData?.attributes) {
-            snippetsMap[s.commentId] = {
-              id: s.commentId,
-              name: s.snippetData.attributes.name,
-              artistName: s.snippetData.attributes.artistName,
-              artwork: s.snippetData.attributes.artwork?.url
-                ?.replace("{w}", "100")
-                ?.replace("{h}", "100") || "/threads/assets/default-artist.png",
-              previewUrl: s.snippetData.attributes.previews?.[0]?.url
-            };
-          }
+        snippetsData.forEach((s) => {
+          const normalized = toSnippetShape(s);
+          if (!normalized) return;
+          snippetsMap[normalized.id] = normalized;
         });
 
         // Process messages with better reply distribution
-        const processedMessages = [];
         const topLevelComments = [];
         const repliesByParent = {};
         
         // Handle different API response formats
         const comments = commentsData.data?.topLevel || commentsData.data || post.comments || [];
-        const replies = commentsData.data?.replies || [];
+        let replies = commentsData.data?.replies || [];
+
+        // Cached post shape stores replies nested inside each top-level comment.
+        if ((!Array.isArray(replies) || replies.length === 0) && Array.isArray(comments)) {
+          replies = comments.flatMap((comment) =>
+            (Array.isArray(comment.replies) ? comment.replies : []).map((reply) => ({
+              ...reply,
+              parentId: comment.id,
+              parentAuthor: comment.author
+            }))
+          );
+        }
         
         // First, collect all top-level comments
         comments.forEach(comment => {
@@ -161,62 +323,51 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
           }
         });
 
-        // Create a natural conversation flow - mix comments and replies
+        // Create a natural conversation flow
         const allReplies = [];
         Object.keys(repliesByParent).forEach(parentId => {
-          const replies = repliesByParent[parentId];
-          // Only take 1 reply per comment to avoid clustering
-          if (replies.length > 0) {
-            allReplies.push(replies[0]); // Take the first (usually best) reply
+          const parentReplies = repliesByParent[parentId];
+          if (parentReplies.length > 0) {
+            allReplies.push(parentReplies[0]);
           }
         });
 
-        // Combine all messages and shuffle for natural conversation
-        const allMessages = [...topLevelComments, ...allReplies];
+        const allMsgs = [...topLevelComments, ...allReplies];
+        allMsgs.sort((a, b) => a.timestamp - b.timestamp);
         
-        // Sort by timestamp first
-        allMessages.sort((a, b) => a.timestamp - b.timestamp);
-        
-        // Create a more natural conversation flow
+        // Create conversation flow
         const conversationFlow = [];
         let commentCount = 0;
-        let replyCount = 0;
         
-        for (let i = 0; i < allMessages.length; i++) {
-          const message = allMessages[i];
+        for (let i = 0; i < allMsgs.length; i++) {
+          const message = allMsgs[i];
           
           if (!message.isReply) {
-            // Regular comment
             conversationFlow.push(message);
             commentCount++;
             
-            // After every 2-3 comments, try to add a reply if available
             if (commentCount % (Math.random() > 0.5 ? 2 : 3) === 0) {
-              const availableReply = allMessages.find((m, idx) => 
+              const availableReply = allMsgs.find((m, idx) => 
                 idx > i && m.isReply && !conversationFlow.includes(m)
               );
               if (availableReply) {
                 conversationFlow.push(availableReply);
-                replyCount++;
               }
             }
           }
         }
         
-        // Add any remaining messages that weren't included
-        allMessages.forEach(msg => {
+        allMsgs.forEach(msg => {
           if (!conversationFlow.includes(msg)) {
             conversationFlow.push(msg);
           }
         });
         
-        // Final shuffle to make it feel more natural while keeping some order
+        // Final shuffle
         const shuffledMessages = [];
         for (let i = 0; i < conversationFlow.length; i += 4) {
           const chunk = conversationFlow.slice(i, i + 4);
-          // Randomly reorder small chunks
           if (chunk.length > 2) {
-            // Shuffle while keeping first message in place to maintain some flow
             const first = chunk[0];
             const rest = chunk.slice(1);
             for (let j = rest.length - 1; j > 0; j--) {
@@ -229,8 +380,6 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
           }
         }
         
-        // Loaded messages for group chat
-        
         if (shuffledMessages.length === 0) {
           setMessages([]);
           setAllMessages([]);
@@ -238,15 +387,19 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
           return;
         }
 
-        setAllMessages(shuffledMessages);
+        const snippetFirstMessages = [
+          ...shuffledMessages.filter((msg) => Boolean(msg.snippet)),
+          ...shuffledMessages.filter((msg) => !msg.snippet),
+        ];
+
+        setAllMessages(snippetFirstMessages);
         setMessageIndex(0);
         setMessages([]);
         
-        // Start message streaming
-        startMessageSequence(shuffledMessages);
+        startMessageSequence(snippetFirstMessages);
         
       } catch (error) {
-        // Error loading messages
+        console.error("Error loading messages:", error);
         setMessages([]);
         setAllMessages([]);
       } finally {
@@ -269,19 +422,16 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
   const startMessageSequence = useCallback((allMsgs) => {
     if (!allMsgs || allMsgs.length === 0) return;
     
-    // Clear any existing interval
     if (messageIntervalRef.current) {
       clearInterval(messageIntervalRef.current);
     }
 
-    // Show first 2 messages immediately
     const initialCount = Math.min(2, allMsgs.length);
     setMessages(allMsgs.slice(0, initialCount));
     setMessageIndex(initialCount);
     
     setTimeout(() => scrollToBottom(), 100);
 
-    // If there are more messages, start streaming them
     if (allMsgs.length > initialCount) {
       let currentIndex = initialCount;
       
@@ -289,25 +439,22 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
         if (currentIndex < allMsgs.length) {
           const nextMessage = allMsgs[currentIndex];
           
-          // Show typing indicator
           setRandomTypingUser(nextMessage.author);
           setIsTyping(true);
           
-          // Add message after "typing"
           typingTimeoutRef.current = setTimeout(() => {
             setIsTyping(false);
             setMessages(prev => [...prev, nextMessage]);
             setMessageIndex(currentIndex + 1);
             currentIndex++;
             scrollToBottom();
-          }, 1000 + Math.random() * 1000); // 1-2 seconds
+          }, 1000 + Math.random() * 1000);
           
         } else {
-          // All messages sent
           clearInterval(messageIntervalRef.current);
           messageIntervalRef.current = null;
         }
-      }, 3000); // New message every 3 seconds
+      }, 3000);
     }
   }, [scrollToBottom]);
 
@@ -323,15 +470,62 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
     const userArray = Array.from(userSet).map(name => ({
       name,
       avatar: authorToAvatar(name),
-      isActive: Math.random() > 0.3
+      isActive: (hashStringToNumber(name) % 10) < 8
     }));
     
     setUniqueUsers(userArray);
-    
-    if (onUserListUpdate) {
-      onUserListUpdate(userArray);
+  }, [messages]);
+
+  const placeholderSeed = useMemo(
+    () => hashStringToNumber(String(post?.id ?? "room")),
+    [post?.id]
+  );
+
+  const buildOnlineUsers = useCallback((targetCount, knownUsers, seed) => {
+    const users = [];
+    const seen = new Set();
+
+    knownUsers.forEach((user) => {
+      if (!seen.has(user.name)) {
+        users.push(user);
+        seen.add(user.name);
+      }
+    });
+
+    const base = seed % PLACEHOLDER_NAMES.length;
+    let i = 0;
+    while (users.length < targetCount) {
+      const nameBase = PLACEHOLDER_NAMES[(base + i) % PLACEHOLDER_NAMES.length];
+      const suffix = Math.floor((base + i) / PLACEHOLDER_NAMES.length) + 1;
+      const name = `${nameBase}_${suffix}`;
+
+      if (!seen.has(name)) {
+        users.push({
+          name,
+          avatar: authorToAvatar(name),
+          isActive: ((seed + i * 7) % 10) < 9,
+        });
+        seen.add(name);
+      }
+
+      i += 1;
+      if (i > targetCount * 3) {
+        break;
+      }
     }
-  }, [messages, onUserListUpdate]);
+
+    return users.slice(0, targetCount);
+  }, []);
+
+  useEffect(() => {
+    setOnlineUsers(buildOnlineUsers(onlineCount, uniqueUsers, placeholderSeed));
+  }, [onlineCount, uniqueUsers, placeholderSeed, buildOnlineUsers]);
+
+  useEffect(() => {
+    if (onUserListUpdate) {
+      onUserListUpdate(onlineUsers);
+    }
+  }, [onlineUsers, onUserListUpdate]);
 
   // Handle scroll position
   useEffect(() => {
@@ -354,21 +548,19 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
   const handleSubmitComment = useCallback(() => {
     if (!newComment.trim() && !attachedSnippet) return;
     
-    // Rate limiting check
-    const userId = "user_local"; // In real app, use actual user ID
-    if (!checkRateLimit(`comment_${userId}`, 5, 60000)) { // 5 comments per minute
+    const userId = "user_local";
+    if (!checkRateLimit(`comment_${userId}`, 5, 60000)) {
       alert("You're sending messages too quickly. Please wait a moment.");
       return;
     }
     
-    // Validate and sanitize comment
     const validation = validateAndSanitizeInput(newComment, {
       type: 'comment',
       maxLength: 500,
       minLength: 1
     });
     
-    if (!validation.isValid) {
+    if (!validation.isValid && newComment.trim()) {
       alert(`Invalid message: ${validation.error}`);
       return;
     }
@@ -376,7 +568,7 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
     const newMessage = {
       id: `user_${Date.now()}`,
       author: "You",
-      body: validation.sanitized,
+      body: validation.sanitized || '',
       snippet: attachedSnippet,
       timestamp: Date.now() / 1000,
       isReply: false
@@ -411,6 +603,7 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
     audioRef.current.pause();
     audioRef.current.src = snippet.previewUrl;
     audioRef.current.play().catch(err => {
+      console.error("Error playing audio:", err);
       setIsSnippetAudioPlaying(false);
     });
     
@@ -424,14 +617,12 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
   const handleSongSearch = useCallback(async () => {
     if (!searchQuery.trim()) return;
     
-    // Rate limiting for search requests
-    const userId = "user_local"; // In real app, use actual user ID
-    if (!checkRateLimit(`search_${userId}`, 10, 60000)) { // 10 searches per minute
+    const userId = "user_local";
+    if (!checkRateLimit(`search_${userId}`, 10, 60000)) {
       alert("You're searching too frequently. Please wait a moment.");
       return;
     }
     
-    // Validate and sanitize search query
     const validation = validateAndSanitizeInput(searchQuery, {
       type: 'search',
       maxLength: 100,
@@ -451,13 +642,16 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
     
     setIsSearching(true);
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/apple-music-search?query=${encodeURIComponent(sanitizedQuery)}`);
+      const response = await fetch(`${API_BASE}/api/apple-music-search?query=${encodeURIComponent(sanitizedQuery)}`);
       const data = await response.json();
       
       if (data.success && data.data) {
-        setSearchedSnippet(data.data);
+        const items = Array.isArray(data.data) ? data.data : [data.data];
+        setSearchedSnippet(items[0] || null);
+        setSearchResults(items.slice(0, 5));
       }
     } catch (error) {
+      console.error("Error searching for song:", error);
       alert("Search failed. Please try again.");
     } finally {
       setIsSearching(false);
@@ -466,13 +660,26 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
 
   // Handle attaching snippet
   const handleAttachSnippet = useCallback((snippet) => {
+    const attrs = snippet.attributes || snippet;
     setAttachedSnippet({
-      id: snippet.id,
-      name: snippet.attributes.name,
-      artistName: snippet.attributes.artistName,
-      artwork: snippet.attributes.artwork?.url?.replace("{w}", "100")?.replace("{h}", "100") || "/threads/assets/default-artist.png",
-      previewUrl: snippet.attributes.previews?.[0]?.url || null
+      id: snippet.id || `snippet_${Date.now()}`,
+      name: attrs.name,
+      artistName: attrs.artistName,
+      artwork: attrs.artwork?.url?.replace("{w}", "100")?.replace("{h}", "100") || "/assets/default-artist.png",
+      previewUrl: attrs.previews?.[0]?.url || null
     });
+    setIsSongSearchVisible(false);
+  }, []);
+
+  // Toggle panels
+  const toggleMusicPanel = useCallback(() => {
+    setIsSongSearchVisible(prev => !prev);
+    setActiveSection(null);
+  }, []);
+
+  const toggleUsersPanel = useCallback(() => {
+    setActiveSection(prev => prev === 'users' ? null : 'users');
+    setIsSongSearchVisible(false);
   }, []);
 
   // Render messages
@@ -505,19 +712,14 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
             
             {msg.isReply && msg.parentAuthor && (
               <div style={styles.replyContainer}>
-                <img 
-                  src={authorToAvatar(msg.parentAuthor)} 
-                  style={styles.replyingToAvatar} 
-                  alt={msg.parentAuthor} 
-                />
                 <span style={styles.replyingTo}>
-                  Replying to {msg.parentAuthor}
+                  ↳ Reply to {msg.parentAuthor}
                 </span>
               </div>
             )}
             
             <div style={isUserMessage ? styles.sentChatBubble : styles.chatBubble}>
-              <p style={styles.messageBody}>{sanitizeComment(msg.body || '')}</p>
+              <p style={styles.messageBody}>{cleanMessageBody(sanitizeComment(msg.body || ''))}</p>
               
               {msg.snippet && (
                 <div style={styles.snippetContainer}>
@@ -555,32 +757,9 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
 
   if (loading) {
     return (
-      <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'center',
-        alignItems: 'center',
-        minHeight: '100vh',
-        backgroundColor: '#0c111b',
-        color: '#fff'
-      }}>
-        {/* Loading spinner */}
-        <div style={{
-          width: '60px',
-          height: '60px',
-          border: '4px solid rgba(255, 255, 255, 0.1)',
-          borderTop: '4px solid #ff69b4',
-          borderRadius: '50%',
-          animation: 'spin 1s linear infinite',
-          marginBottom: '20px'
-        }}></div>
-        <div style={{
-          fontSize: '18px',
-          fontWeight: '500',
-          color: '#d393e3'
-        }}>
-          Loading group chat...
-        </div>
+      <div style={styles.loadingContainer}>
+        <div style={styles.loadingSpinner}></div>
+        <div style={styles.loadingText}>Loading group chat...</div>
         <style>
           {`
             @keyframes spin {
@@ -595,358 +774,285 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
 
   return (
     <div style={{
-      display: 'flex',
-      flexDirection: 'column',
-      width: '100%',
-      maxWidth: '768px',
-      margin: '0 auto',
-      backgroundColor: '#0c111b',
-      color: '#fff',
-      minHeight: '100vh',
-      position: 'relative',
+      ...styles.pageContainer,
       opacity: isVisible ? 1 : 0,
       transform: `scale(${isVisible ? '1' : '0.98'})`,
-      transition: 'opacity 0.3s ease, transform 0.3s ease'
     }}>
-      {/* Header */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        padding: '16px',
-        borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-        position: 'sticky',
-        top: 0,
-        zIndex: 10,
-        backgroundColor: 'rgba(12, 17, 27, 0.95)',
-        backdropFilter: 'blur(10px)'
-      }}>
-        <button 
-          onClick={onBack} 
-          style={{
-            background: 'rgba(30, 39, 50, 0.8)',
-            border: 'none',
-            color: 'white',
-            cursor: 'pointer',
-            padding: '10px',
-            borderRadius: '50%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginRight: '20px'
-          }}
-        >
-          ←
-        </button>
-        <h2 style={{ 
-          margin: 0, 
-          fontSize: '20px', 
-          fontWeight: '700',
-          background: 'linear-gradient(45deg, #ff69b4, #b83280)',
-          backgroundClip: 'text',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent'
-        }}>
-          Group Chat
-        </h2>
+      <style>
+        {`
+          @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+          }
+          @keyframes pulse {
+            0%, 100% { opacity: 0.4; }
+            50% { opacity: 1; }
+          }
+          .float-card { animation: float 4s ease-in-out infinite; }
+          .glow-pink { box-shadow: 0 0 30px rgba(255, 105, 180, 0.2); }
+          .btn-glow:hover { box-shadow: 0 0 20px rgba(255, 105, 180, 0.4); transform: translateY(-2px); }
+          .typing-dot { animation: pulse 1.4s infinite; }
+          .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+          .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}
+      </style>
+      
+      <audio ref={audioRef} style={{ display: "none" }} />
+
+      {/* Header with Volume Badge */}
+      <div style={styles.header}>
+        <div style={styles.headerLeft}>
+          <button onClick={onBack} style={styles.backButton}>←</button>
+          <div>
+            <h1 style={styles.headerTitle}>
+              Group <span style={{ color: '#ff69b4' }}>Chat</span>
+            </h1>
+            <p style={styles.headerSubtitle}>{onlineCount} participants</p>
+          </div>
+        </div>
+        
+        {/* Volume Badge */}
+        <div style={styles.volumeBadge}>
+          <Volume2 size={18} color="#ff69b4" />
+          <span style={styles.volumeNumber}>{roomVolume.toLocaleString()}</span>
+        </div>
       </div>
 
-      {/* Post Card */}
-      {post && (
-        <div style={{
-          padding: "24px",
-          backgroundColor: "rgba(30, 14, 36, 0.8)",
-          borderRadius: "16px",
-          margin: "16px",
-          border: "1px solid rgba(255, 150, 220, 0.15)"
-        }}>
-          <div style={{ display: "flex", alignItems: "flex-start", gap: "12px", marginBottom: "16px" }}>
+      {/* Post Card + Stats Row */}
+      <div style={styles.postStatsRow}>
+        {/* Post Card */}
+        <div style={styles.postCard}>
+          <div style={styles.postHeader}>
             <img
               src={authorToAvatar(post.author)}
               alt={post.author}
-              style={{
-                width: "48px",
-                height: "48px",
-                borderRadius: "50%",
-                objectFit: "cover",
-                border: "2px solid rgba(255, 150, 220, 0.3)"
-              }}
+              style={styles.postAvatar}
             />
             <div>
-              <div style={{ fontWeight: "700", fontSize: "16px", color: "#fff" }}>
-                {post.author}
-              </div>
-              <div style={{ fontSize: "14px", color: "#d393e3" }}>
+              <div style={styles.postAuthor}>{post.author}</div>
+              <div style={styles.postDate}>
                 {new Date(post.createdUtc * 1000).toLocaleString()}
               </div>
             </div>
           </div>
-          
-          <p style={{ margin: 0, fontSize: "1.2rem", fontWeight: 600, color: "#fff" }}>
-            {post.title}
-          </p>
-          
+          <p style={styles.postTitle}>{post.title}</p>
           {post.selftext && (
-            <p style={{ margin: "0.75rem 0", fontSize: "0.95rem", color: "#e2c7ee" }}>
-              {post.selftext}
-            </p>
+            <p style={styles.postText}>{post.selftext}</p>
           )}
-          
           {post.imageUrl && (
-            <img
-              src={post.imageUrl}
-              alt="Post visual"
-              style={{
-                width: "100%", 
-                maxHeight: "400px",
-                objectFit: "cover",
-                borderRadius: "12px",
-                marginTop: "8px",
-                aspectRatio: "16/9"
-              }}
-            />
+            <img src={post.imageUrl} alt="Post" style={styles.postImage} />
           )}
         </div>
-      )}
+
+        {/* Volume & Genre Stats Card */}
+        <div style={styles.statsCard} className="float-card">
+          {/* Volume Section */}
+          <div style={styles.volumeSection}>
+            <div style={styles.volumeHeader}>
+              <Volume2 size={16} color="#ff69b4" />
+              <span style={styles.volumeLabel}>Vol</span>
+              <span style={styles.volumeChange}>+{volumeChange}</span>
+            </div>
+          </div>
+
+          {/* Genre Stats */}
+          <div style={styles.genreSection}>
+            {genreStats.map((genre, i) => (
+              <div key={i} style={styles.genreRow}>
+                <span style={{
+                  ...styles.genreTag,
+                  backgroundColor: genre.color,
+                }}>
+                  {genre.name}
+                </span>
+                <span style={styles.genreChange}>{genre.change}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
 
       {/* Chat Container */}
-      <div style={styles.container}>
-        <audio ref={audioRef} style={{ display: "none" }} />
-        
-        {/* Tools */}
-        <div style={styles.toolsContainer}>
-          <button 
-            style={styles.toolButton}
-            onClick={() => setIsSongSearchVisible(!isSongSearchVisible)}
-          >
-            <Music size={20} />
-          </button>
-          <button 
-            style={styles.toolButton}
-            onClick={() => setActiveSection(activeSection === "users" ? null : "users")}
-          >
-            <Users size={20} />
-          </button>
-        </div>
-
-        {/* Chat Area */}
-        <div style={styles.chatAreaContainer}>
-          <div ref={chatRef} style={styles.chatArea}>
-            {/* Join message at the top */}
-            <div style={{
-              textAlign: 'center',
-              padding: '20px',
-              color: '#8899a6',
-              fontSize: '14px',
-              fontStyle: 'italic',
-              borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-              marginBottom: '20px'
-            }}>
-              You joined the group chat
-            </div>
-            
-            {renderMessages()}
-            
-            {/* Typing indicator at the bottom */}
-            {isTyping && (
-              <div style={{
-                ...styles.typingIndicator,
-                marginTop: '10px',
-                marginBottom: '0px'
-              }}>
-                <img 
-                  src={authorToAvatar(randomTypingUser)} 
-                  alt={randomTypingUser}
-                  style={{ width: "24px", height: "24px", borderRadius: "50%", marginRight: "8px" }}
-                />
-                {randomTypingUser} is typing...
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Song Search */}
-        {isSongSearchVisible && (
-          <div style={{
-            backgroundColor: "rgba(30, 15, 40, 0.8)",
-            borderRadius: "12px",
-            padding: "12px",
-            marginBottom: "12px",
-            border: "1px solid rgba(255, 150, 220, 0.2)"
-          }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => {
-                  const input = e.target.value;
-                  // Real-time validation and sanitization
-                  if (input.length <= 100) {
-                    const sanitized = sanitizeSearchQuery(input);
-                    setSearchQuery(sanitized);
-                  }
-                }}
-                placeholder="Search for a song..."
-                maxLength={100}
-                style={{
-                  flex: 1,
-                  backgroundColor: "rgba(30, 15, 40, 0.6)",
-                  border: "1px solid rgba(255, 150, 220, 0.2)",
-                  color: "#FFF",
-                  padding: "10px 12px",
-                  borderRadius: "8px"
-                }}
-                onKeyDown={(e) => e.key === 'Enter' && handleSongSearch()}
-              />
-              <button
-                onClick={handleSongSearch}
-                disabled={isSearching}
-                style={{
-                  backgroundColor: "#d53f8c",
-                  color: "#FFF",
-                  border: "none",
-                  padding: "10px 16px",
-                  borderRadius: "8px",
-                  cursor: isSearching ? "not-allowed" : "pointer"
-                }}
-              >
-                {isSearching ? "Searching..." : "Search"}
-              </button>
-            </div>
-
-            {searchedSnippet && (
-              <div style={{
-                display: "flex",
-                alignItems: "center",
-                padding: "12px",
-                backgroundColor: "rgba(40, 20, 60, 0.8)",
-                borderRadius: "8px",
-                marginTop: "12px",
-                gap: "12px"
-              }}>
-                <img
-                  src={searchedSnippet.attributes.artwork?.url?.replace("{w}", "100")?.replace("{h}", "100") || "/threads/assets/default-artist.png"}
-                  alt={searchedSnippet.attributes.name}
-                  style={{ width: "50px", height: "50px", borderRadius: "8px" }}
-                />
-                <div style={{ flex: 1 }}>
-                  <div style={{ color: "#fff", fontWeight: "bold" }}>
-                    {searchedSnippet.attributes.name}
-                  </div>
-                  <div style={{ color: "#d393e3" }}>
-                    {searchedSnippet.attributes.artistName}
-                  </div>
-                </div>
-                <button
-                  onClick={() => handleAttachSnippet(searchedSnippet)}
-                  style={{
-                    width: "36px",
-                    height: "36px",
-                    borderRadius: "50%",
-                    backgroundColor: "#9c27b0",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    border: "none",
-                    cursor: "pointer"
-                  }}
-                >
-                  <Plus size={18} color="#fff" />
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Input Area */}
-        <div style={styles.inputContainer}>
-          {attachedSnippet && (
-            <div style={styles.attachmentPreview}>
-              <img src={attachedSnippet.artwork} alt={attachedSnippet.name} style={styles.snippetArtwork} />
-              <div style={styles.snippetInfo}>
-                <div style={styles.snippetTitle}>{attachedSnippet.name}</div>
-                <div style={styles.snippetArtist}>{attachedSnippet.artistName}</div>
-              </div>
-              <button onClick={() => setAttachedSnippet(null)} style={styles.removeButton}>
-                Remove
-              </button>
-            </div>
-          )}
-          
-          <div style={styles.messageRow}>
-            <textarea
-              placeholder="Type a message..."
-              style={styles.inputBox}
-              value={newComment}
-              onChange={(e) => {
-                const input = e.target.value;
-                // Real-time length validation
-                if (input.length <= 500) {
-                  setNewComment(input);
-                }
+      <div style={styles.chatContainer}>
+        {/* Chat Header with Tool Buttons */}
+        <div style={styles.chatHeader}>
+          <span style={styles.chatHeaderText}>Live Chat</span>
+          <div style={styles.toolButtons}>
+            <button 
+              onClick={toggleMusicPanel}
+              style={{
+                ...styles.toolButton,
+                background: isSongSearchVisible ? 'rgba(255,105,180,0.2)' : 'transparent',
               }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSubmitComment();
-                }
-              }}
-              maxLength={500}
-              rows={2}
-            />
-            <button
-              onClick={handleSubmitComment}
-              style={styles.sendButton}
-              disabled={!newComment.trim() && !attachedSnippet}
+              className="btn-glow"
             >
-              <Send size={18} />
+              <Music size={14} />
+              <span>Add Song</span>
+            </button>
+            <button 
+              onClick={toggleUsersPanel}
+              style={{
+                ...styles.toolButton,
+                background: activeSection === 'users' ? 'rgba(255,105,180,0.2)' : 'transparent',
+              }}
+              className="btn-glow"
+            >
+              <Users size={14} />
+              <span>{onlineCount} Online</span>
             </button>
           </div>
         </div>
 
-        {/* Users Section */}
-        {activeSection === "users" && (
-          <div style={styles.usersContainer}>
-            {uniqueUsers.length > 0 ? (
-              uniqueUsers.map((user) => (
-                <div key={user.name} style={styles.userMinimal}>
-                  <div style={{ position: "relative" }}>
+        {/* Users Panel */}
+        {activeSection === 'users' && (
+          <div style={styles.usersPanel}>
+            <div style={styles.usersPanelScroll}>
+              {onlineUsers.map((user, i) => (
+                <div key={i} style={styles.userCard}>
+                  <div style={styles.userAvatarWrapper}>
                     <img src={user.avatar} alt={user.name} style={styles.userAvatar} />
-                    {user.isActive && <div style={styles.onlineIndicator}></div>}
+                    <div style={{
+                      ...styles.userOnlineIndicator,
+                      background: user.isActive ? '#00ff88' : '#555',
+                    }} />
                   </div>
-                  <p style={styles.userName}>{user.name}</p>
+                  <span style={styles.userNameSmall}>{user.name.split('_')[0]}</span>
                 </div>
-              ))
-            ) : (
-              <p style={styles.noUsersText}>No users found</p>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Music Search Panel */}
+        {isSongSearchVisible && (
+          <div style={styles.musicPanel}>
+            <div style={styles.searchInputWrapper}>
+              <input
+                value={searchQuery}
+                onChange={(e) => {
+                  const input = e.target.value;
+                  if (input.length <= 100) {
+                    setSearchQuery(input);
+                  }
+                }}
+                placeholder="Search Apple Music..."
+                style={styles.searchInput}
+                onKeyDown={(e) => e.key === 'Enter' && handleSongSearch()}
+              />
+              <button 
+                onClick={handleSongSearch}
+                disabled={isSearching}
+                style={styles.searchButton}
+              >
+                {isSearching ? '...' : <Search size={16} />}
+              </button>
+            </div>
+            
+            {searchResults.length > 0 && (
+              <div style={styles.searchResults}>
+                {searchResults.map((song, i) => {
+                  const attrs = song.attributes || song;
+                  return (
+                    <div key={i} style={styles.searchResultItem}>
+                      <div style={styles.searchResultArtwork}>
+                        <Play size={16} color="#fff" />
+                      </div>
+                      <div style={styles.searchResultInfo}>
+                        <div style={styles.searchResultName}>{attrs.name}</div>
+                        <div style={styles.searchResultArtist}>{attrs.artistName}</div>
+                      </div>
+                      <button 
+                        onClick={() => handleAttachSnippet(song)}
+                        style={styles.addButton}
+                      >
+                        Add
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
             )}
           </div>
         )}
 
-        {/* Scroll Button */}
-        {showScrollButton && (
-          <button
-            onClick={scrollToBottom}
-            style={{
-              position: "absolute",
-              bottom: "100px",
-              right: "20px",
-              width: "40px",
-              height: "40px",
-              borderRadius: "50%",
-              backgroundColor: "#d53f8c",
-              color: "#fff",
-              border: "none",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              cursor: "pointer",
-              zIndex: 10
-            }}
-          >
-            ↓
-          </button>
+        {/* Messages Area */}
+        <div ref={chatRef} style={styles.messagesArea}>
+          <div style={styles.joinMessage}>— You joined the chat —</div>
+          
+          {renderMessages()}
+          
+          {/* Typing indicator */}
+          {isTyping && (
+            <div style={styles.typingIndicator}>
+              <div style={styles.typingAvatar}>
+                <img 
+                  src={authorToAvatar(randomTypingUser)} 
+                  alt={randomTypingUser}
+                  style={{ width: '100%', height: '100%', borderRadius: '50%' }}
+                />
+              </div>
+              <span>{randomTypingUser} is typing</span>
+              <div style={styles.typingDots}>
+                <span className="typing-dot" style={styles.typingDot} />
+                <span className="typing-dot" style={styles.typingDot} />
+                <span className="typing-dot" style={styles.typingDot} />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Attached Snippet Preview */}
+        {attachedSnippet && (
+          <div style={styles.attachedPreview}>
+            <img src={attachedSnippet.artwork} alt={attachedSnippet.name} style={styles.attachedArtwork} />
+            <div style={styles.attachedInfo}>
+              <div style={styles.attachedName}>{attachedSnippet.name}</div>
+              <div style={styles.attachedArtist}>{attachedSnippet.artistName}</div>
+            </div>
+            <button onClick={() => setAttachedSnippet(null)} style={styles.removeAttachment}>
+              <X size={14} />
+            </button>
+          </div>
         )}
+
+        {/* Input Area */}
+        <div style={styles.inputArea}>
+          <input
+            value={newComment}
+            onChange={(e) => {
+              if (e.target.value.length <= 500) {
+                setNewComment(e.target.value);
+              }
+            }}
+            placeholder="Type a message..."
+            style={styles.messageInput}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSubmitComment();
+              }
+            }}
+          />
+          <button
+            onClick={handleSubmitComment}
+            disabled={!newComment.trim() && !attachedSnippet}
+            style={styles.sendButton}
+          >
+            <Send size={16} />
+          </button>
+        </div>
       </div>
+
+      {/* Scroll to bottom button */}
+      {showScrollButton && (
+        <button onClick={scrollToBottom} style={styles.scrollButton}>
+          ↓
+        </button>
+      )}
     </div>
   );
 }

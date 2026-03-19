@@ -1,0 +1,77 @@
+PAGES FOLDER STRUCTURE (src/pages)
+
+Overview
+- This folder groups page-level UI, page-specific components, and page-scoped helpers.
+- Subfolders are organized by feature (comments, posts, threads, user, visualizations).
+- Style modules and small utilities live alongside their feature for easy discovery.
+
+Root files
+- Home.jsx: top-level home page view for the app.
+- InfoIconModal.jsx: info/help modal used at the page level.
+- InfoIconModal2.jsx: alternate/secondary info modal variant.
+
+comments/
+- CommentItem.jsx: single comment renderer.
+- CommentList.jsx: list/stream of comments.
+- CommentStyles.js: shared styles for comment display.
+- ComposerStyles.js: styles specific to the composer UI.
+- SnippetStyles.js: styles for short/preview comment snippets.
+
+modals/
+- GraphModal.jsx: modal wrapper for graph/visualization views.
+- HomeTikTokModal.jsx: modal focused on home page TikTok content.
+- TikTokModal.jsx: general TikTok modal component.
+
+posts/
+- Icons/Icons.jsx: shared inline SVG icons for post UI.
+- PostCard.jsx: primary post card component. Includes expand artist pills with Apple Music artist images and seeded playlist cards with Apple Music album artwork.
+- PostControls.jsx: post action controls (e.g., buttons, metadata).
+- PostStyles.js: styles used by post components.
+- UserHoverCard.jsx: hover card for user info within post context.
+- postCardUtils.js: helpers for post card rendering/logic.
+
+threads/
+- GroupChatDetail.jsx: group chat thread detail view.
+- GroupChatDetailStyles.js: styles for group chat detail.
+- GraphComponents.jsx: graph/visual components used in thread pages.
+- ParameterThreadDetail.jsx: thread detail view that supports parameters/filters.
+- ThreadCommentCard.jsx: renderer for thread comment cards.
+- ThreadCommentComposer.jsx: composer for thread comments.
+- ThreadDetail.jsx: primary thread detail page.
+- ThreadDetailStyles.js: styles for thread detail.
+- threadCommentCardStyles.js: styles for thread comment cards.
+- threadHelpers.js: helper functions for thread logic.
+- useAudioRating.js: hook/util for audio rating data.
+- useThreadData.js: hook/util for fetching/deriving thread data.
+
+user/
+- EnhancedArtistCircle.jsx: enhanced artist visualization component.
+- EnhancedDiscoverySection.jsx: discovery UI for users.
+- ProfileData.json: static profile data (seed/mock content).
+- UserProfile.jsx: user profile page/view.
+- artistData.js: artist-related data/helpers.
+
+utils/
+- avatarService.js: avatar URL helper for user cards.
+- LayoutStyles.js: shared layout styles for page-level components.
+- utils.js: small shared utilities used across pages.
+
+visualizations/
+- ArcProgress.jsx: arc-style progress visualization.
+- MultiArcCircle.jsx: multi-arc circle visualization.
+- ScatterRatingsGraph.jsx: scatter plot for ratings.
+- VerticalRatingsGraph.jsx: vertical bar/line ratings graph.
+
+Recent Cross-Folder Updates (Artist + Album Media)
+- src/services/appleMusic.js:
+  - Added getAppleMusicArtistImages(artistNames) for expand-artist avatar images.
+  - Added getAppleMusicAlbumArtworks(tracks) for seeded playlist/default song album art.
+  - Added lightweight in-memory request memoization for repeated lookups.
+- src/backend/server.js:
+  - Added POST /api/apple-music-artist-images to resolve/cache artist image URLs.
+  - Added POST /api/apple-music-album-artworks to resolve/cache track album artwork.
+  - Both routes reuse Apple Music search and avoid repeated API hits via JSON file caches.
+- src/backend/cached_artist_images.json:
+  - Persistent cache keyed by normalized artist name.
+- src/backend/cached_album_artworks.json:
+  - Persistent cache keyed by normalized track + artist.

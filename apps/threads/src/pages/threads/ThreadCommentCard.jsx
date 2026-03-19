@@ -14,17 +14,16 @@ import {
 import InfoIconModal from '../InfoIconModal';
 
 
-import { getAvatarForUser } from '../../utils/avatarService';
-
-/** Consistent avatar per author string */
 function authorToAvatar(author) {
-  // fall back to a fixed key for “You” or if author is undefined/null
-  const key = !author || author === 'You' ? 'you' : author;
-  return getAvatarForUser(key);
+  if (!author || author === 'You') {
+    return '/assets/user.png';
+  }
+  let hash = 0;
+  for (let i = 0; i < author.length; i++) {
+    hash = author.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return `/assets/image${(Math.abs(hash) % 1000) + 1}.png`;
 }
-
-
-
 
 function getRandomTimestamp() {
   const randomHours = Math.floor(Math.random() * 24);
@@ -50,7 +49,8 @@ const ThreadCommentCard = ({
   onRate,
   onRatingPause,
   isFirstSnippet, // Add this prop
-  isNewsThread = false // Add news thread prop
+  isNewsThread = false, // Add news thread prop
+  snippetsLoading = false // NEW: Loading state for snippets
 }) => {
   // Random timestamp for the comment
   const [randomTime] = useState(() => getRandomTimestamp());
@@ -66,7 +66,59 @@ const ThreadCommentCard = ({
   const [isHovering, setIsHovering] = useState(false);
   const [hoverRating, setHoverRating] = useState(0);
 
+  // Local progress timer
+  const [localElapsedSeconds, setLocalElapsedSeconds] = useState(0);
+  const timeIntervalRef = useRef(null);
 
+  // Use stable primitive keys so effects don't retrigger on every render
+  const snippetIdStr = snippet?.id?.toString() ?? "";
+  const activeSnippetIdStr = activeSnippet?.snippetId?.toString() ?? "";
+  const activeElapsedSeconds = activeSnippet?.elapsedSeconds ?? 0;
+
+  // Helper to ensure artwork URL is properly formatted (replace {w}, {h} templates)
+  const getFormattedArtworkUrl = (snippet) => {
+    if (!snippet) return "/assets/default-artist.png";
+    
+    // Try multiple sources for artwork URL
+    const rawUrl = 
+      snippet.artworkUrl || 
+      snippet.artwork || 
+      snippet.snippetData?.attributes?.artwork?.url ||
+      snippet.artistImage ||
+      "/assets/default-artist.png";
+    
+    if (!rawUrl || rawUrl === "/assets/default-artist.png") {
+      return "/assets/default-artist.png";
+    }
+    
+    // Replace Apple Music template placeholders
+    let formattedUrl = rawUrl
+      .replace('{w}', '300')
+      .replace('{h}', '300')
+      .replace('{f}', 'jpg');
+    
+    // If it's a cached media path, prepend the API base
+    if (formattedUrl.startsWith('/cached_media/')) {
+      const API_BASE = import.meta.env?.VITE_API_BASE_URL || "http://localhost:4000";
+      formattedUrl = `${API_BASE}${formattedUrl}`;
+    }
+    
+    return formattedUrl;
+  };
+
+  // Get the properly formatted artwork URL
+  const formattedArtwork = snippet ? getFormattedArtworkUrl(snippet) : null;
+
+  // DEBUG: Log snippet artwork when component renders with a snippet
+  if (snippet) {
+    console.log(`ThreadCommentCard: Rendering snippet for comment ${comment?.id}:`, {
+      snippetId: snippet.id,
+      songName: snippet.name || snippet.songName,
+      rawArtwork: snippet.artwork,
+      rawArtworkUrl: snippet.artworkUrl,
+      formattedArtwork: formattedArtwork,
+    });
+  }
 
   if (!comment) {
     return null;
@@ -115,22 +167,62 @@ const ThreadCommentCard = ({
     isHovering && !snippet?.didRate ? hoverRating : localUserRating
   );
 
-  // Initialize local rating from snippet
+  // Initialize/sync local rating from snippet (primitive deps only)
   useEffect(() => {
-    if (snippet) {
-      setLocalUserRating(snippet.userRating || 0);
-    }
-  }, [snippet]);
+    const next = snippet?.userRating || 0;
+    setLocalUserRating((prev) => (prev === next ? prev : next));
+  }, [snippet?.id, snippet?.userRating]);
 
   // Get the current progress percentage for the progress bar
-// Get the current progress percentage for the progress bar
-// Derive progress straight from the global player
-const uniqueId = (snippet?.id ?? snippet?.commentId)?.toString();
-const activeId = activeSnippet?.snippetId?.toString();
-const isCurrent = uniqueId && activeId && uniqueId === activeId && isPlaying;
+  const getProgressPercent = () => {
+    if (!snippet) return 0;
+    
+    const snippetId = snippet.id?.toString();
+    const activeId = activeSnippet?.snippetId?.toString();
+    
+    if (snippetId && activeId && snippetId === activeId && isPlaying) {
+      return (localElapsedSeconds / 30) * 100;
+    }
+    return 0;
+  };
 
-const elapsed = isCurrent ? activeSnippet?.elapsedSeconds ?? 0 : 0;
-const getProgressPercent = () => (isCurrent ? (elapsed / 30) * 100 : 0);
+  // Sync with the parent component's active snippet state (primitive deps only)
+  useEffect(() => {
+    if (!snippetIdStr) return;
+    const isActive = snippetIdStr === activeSnippetIdStr;
+    const next = isActive ? (activeElapsedSeconds || 0) : 0;
+    setLocalElapsedSeconds((prev) => (prev === next ? prev : next));
+  }, [snippetIdStr, activeSnippetIdStr, activeElapsedSeconds]);
+
+  // Handle the timer interval for the currently playing snippet
+  useEffect(() => {
+    if (timeIntervalRef.current) {
+      clearInterval(timeIntervalRef.current);
+      timeIntervalRef.current = null;
+    }
+
+    const isActive = snippetIdStr && snippetIdStr === activeSnippetIdStr;
+
+    if (isActive && isPlaying) {
+      timeIntervalRef.current = setInterval(() => {
+        setLocalElapsedSeconds((prev) => {
+          const next = Math.min(prev + 1, 30);
+          if (next >= 30 && timeIntervalRef.current) {
+            clearInterval(timeIntervalRef.current);
+            timeIntervalRef.current = null;
+          }
+          return next;
+        });
+      }, 1000);
+    }
+
+    return () => {
+      if (timeIntervalRef.current) {
+        clearInterval(timeIntervalRef.current);
+        timeIntervalRef.current = null;
+      }
+    };
+  }, [snippetIdStr, activeSnippetIdStr, isPlaying]);
   
   // Handle rating click
   function handleRatingClick(e) {
@@ -148,8 +240,8 @@ const getProgressPercent = () => (isCurrent ? (elapsed / 30) * 100 : 0);
       onRate(snippet, newRating);
     }
     // Mark when we rated
-// Mark when we rated
-setRatedTimestamp(elapsed || 0);
+    setRatedTimestamp(localElapsedSeconds || 0);
+
     // If we want the snippet to stop playing once rated:
     if (onRatingPause) {
       onRatingPause(snippet);
@@ -175,15 +267,27 @@ setRatedTimestamp(elapsed || 0);
   const displayedAvgRating = Math.round(snippet?.avgRating || 0);
 
   // Play/pause button
-// Play/pause button
-function handlePlayPause(e) {
-  e.preventDefault();
-  e.stopPropagation();
-  if (onPlayPause && snippet) {
-    onPlayPause(snippet);
+  function handlePlayPause(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (onPlayPause && snippet) {
+      // If starting a new snippet, reset local progress
+      const isDifferentSnippet =
+        activeSnippet &&
+        activeSnippet.snippetId?.toString() !== snippet.id?.toString();
+      if (!isPlaying || isDifferentSnippet) {
+        setLocalElapsedSeconds(0);
+      }
+      onPlayPause(snippet);
+    }
   }
-}
 
+  // Is this snippet playing?
+  const isThisSnippetPlaying =
+    activeSnippet &&
+    snippet &&
+    activeSnippet.snippetId?.toString() === snippet.id?.toString() &&
+    isPlaying;
 
   // Modern Side Album Art Design
   return (
@@ -235,9 +339,6 @@ function handlePlayPause(e) {
             border: "2px solid rgba(255, 255, 255, 0.1)",
             flexShrink: 0,
           }}
-          onError={(e) =>
-            (e.currentTarget.src = "/threads/assets/placeholder-200.jpg")
-          }
         />
         
         <div style={{
@@ -274,6 +375,159 @@ function handlePlayPause(e) {
             {comment.body || ''}
           </div>
 
+          {/* Loading skeleton for snippet - show when loading and no snippet yet */}
+          {!isNewsThread && snippetsLoading && !snippet && (
+            <div style={{
+              display: "flex",
+              backgroundColor: "rgba(15, 23, 42, 0.5)",
+              borderRadius: "12px",
+              overflow: "hidden",
+              border: "1px solid rgba(255, 255, 255, 0.08)",
+              marginBottom: "16px",
+              boxShadow: "0 4px 16px rgba(0, 0, 0, 0.2)",
+              animation: "pulse 1.5s ease-in-out infinite",
+            }}>
+              {/* Skeleton album art */}
+              <div style={{
+                width: "140px",
+                height: "140px",
+                backgroundColor: "rgba(59, 130, 246, 0.1)",
+                position: "relative",
+                flexShrink: 0,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}>
+                <div style={{
+                  width: "54px",
+                  height: "54px",
+                  borderRadius: "50%",
+                  backgroundColor: "rgba(59, 130, 246, 0.2)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}>
+                  <Music size={24} color="rgba(59, 130, 246, 0.5)" />
+                </div>
+              </div>
+              
+              {/* Skeleton content */}
+              <div style={{
+                flex: 1,
+                padding: "16px",
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "space-between",
+              }}>
+                {/* Skeleton title */}
+                <div>
+                  <div style={{
+                    height: "20px",
+                    width: "60%",
+                    backgroundColor: "rgba(255, 255, 255, 0.1)",
+                    borderRadius: "4px",
+                    marginBottom: "8px",
+                  }} />
+                  <div style={{
+                    height: "16px",
+                    width: "40%",
+                    backgroundColor: "rgba(255, 255, 255, 0.05)",
+                    borderRadius: "4px",
+                    marginBottom: "12px",
+                  }} />
+                </div>
+                
+                {/* Skeleton progress bar */}
+                <div style={{
+                  marginBottom: "12px",
+                }}>
+                  <div style={{
+                    width: "100%",
+                    height: "4px",
+                    backgroundColor: "rgba(255, 255, 255, 0.05)",
+                    borderRadius: "2px",
+                  }} />
+                  <div style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    marginTop: "6px",
+                  }}>
+                    <div style={{
+                      height: "12px",
+                      width: "20px",
+                      backgroundColor: "rgba(255, 255, 255, 0.05)",
+                      borderRadius: "2px",
+                    }} />
+                    <div style={{
+                      height: "12px",
+                      width: "20px",
+                      backgroundColor: "rgba(255, 255, 255, 0.05)",
+                      borderRadius: "2px",
+                    }} />
+                  </div>
+                </div>
+                
+                {/* Skeleton rating info */}
+                <div style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}>
+                  <div style={{
+                    height: "28px",
+                    width: "80px",
+                    backgroundColor: "rgba(255, 255, 255, 0.05)",
+                    borderRadius: "20px",
+                  }} />
+                  <div style={{
+                    display: "flex",
+                    gap: "16px",
+                  }}>
+                    <div style={{
+                      height: "40px",
+                      width: "50px",
+                      backgroundColor: "rgba(255, 255, 255, 0.05)",
+                      borderRadius: "4px",
+                    }} />
+                    <div style={{
+                      height: "40px",
+                      width: "50px",
+                      backgroundColor: "rgba(255, 255, 255, 0.05)",
+                      borderRadius: "4px",
+                    }} />
+                  </div>
+                </div>
+              </div>
+              
+              {/* Skeleton rating bar */}
+              <div style={{
+                width: "50px",
+                borderLeft: "1px solid rgba(255, 255, 255, 0.08)",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                backgroundColor: "rgba(15, 23, 42, 0.4)",
+                padding: "8px 0",
+              }}>
+                <div style={{
+                  width: "16px",
+                  height: "80px",
+                  backgroundColor: "rgba(59, 130, 246, 0.1)",
+                  borderRadius: "8px",
+                }} />
+              </div>
+              
+              {/* Add pulse animation via style tag */}
+              <style>{`
+                @keyframes pulse {
+                  0%, 100% { opacity: 1; }
+                  50% { opacity: 0.6; }
+                }
+              `}</style>
+            </div>
+          )}
+
           {/* Song snippet section - with larger side album art */}
           {!isNewsThread && snippet && (
             <div style={{
@@ -293,40 +547,37 @@ function handlePlayPause(e) {
                 position: "relative",
                 flexShrink: 0
               }}>
-                {/* Album artwork (falls back smartly) */}
-{(() => {
-  const artwork =
-    snippet?.artwork ??
-    snippet?.artworkUrl ??
-    snippet?.snippetData?.attributes?.artwork?.url ??
-    snippet?.artistImage ??
-    "/threads/assets/placeholder.jpg";
-
-  // Replace placeholder dimensions with actual size
-  const artworkUrl = artwork.includes("{w}") && artwork.includes("{h}")
-    ? artwork.replace("{w}", "300").replace("{h}", "300")
-    : artwork;
-
-  return (
-    <img
-      src={artworkUrl}
-      alt="Album artwork"
-      style={{
-        width: "100%",
-        height: "100%",
-        objectFit: "cover",
-        backgroundColor: "rgba(15,23,42,0.8)",
-        border: "1px solid rgba(255,255,255,0.1)"
-      }}
-      onError={(e) => {
-        // prevent infinite loop if placeholder also errors
-        e.currentTarget.onerror = null;
-        e.currentTarget.src = "/threads/assets/placeholder.jpg";
-      }}
-    />
-  );
-})()}
-
+                {/* Display actual album artwork if available */}
+                {formattedArtwork && formattedArtwork !== "/assets/default-artist.png" ? (
+                  <img 
+                    src={formattedArtwork}
+                    alt="Album artwork"
+                    onError={(e) => {
+                      console.log("ThreadCommentCard: Image failed to load:", formattedArtwork);
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.src = "/assets/default-artist.png";
+                    }}
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                      backgroundColor: "rgba(15, 23, 42, 0.8)",
+                      border: "1px solid rgba(255, 255, 255, 0.1)",
+                    }}
+                  />
+                ) : (
+                  <div style={{
+                    width: "100%",
+                    height: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    backgroundColor: "rgba(15, 23, 42, 0.8)",
+                    border: "1px solid rgba(255, 255, 255, 0.1)",
+                  }}>
+                    <Music size={40} color="#3b82f6" />
+                  </div>
+                )}
                 
                 <button
                   type="button"
@@ -349,11 +600,11 @@ function handlePlayPause(e) {
                     transition: "transform 0.2s",
                   }}
                 >
-                  {isPlaying ? (
-  <Pause size={28} color="#ffffff" />
-) : (
-  <Play size={28} color="#ffffff" />
-)}
+                  {isThisSnippetPlaying ? (
+                    <Pause size={28} color="#ffffff" />
+                  ) : (
+                    <Play size={28} color="#ffffff" />
+                  )}
                 </button>
               </div>
               
@@ -379,7 +630,7 @@ function handlePlayPause(e) {
                       fontWeight: "600",
                       color: "#ffffff",
                     }}>
-                      {snippet.name || snippet.songName || 'Unknown track'}
+                      {snippet.name || 'Unknown track'}
                     </div>
                   </div>
                   <div style={{
@@ -422,9 +673,10 @@ function handlePlayPause(e) {
                     color: "#94a3b8",
                     marginTop: "6px",
                   }}>
-<span>{isCurrent ? `${elapsed}s` : '0s'}</span>
-<span>30s</span>
-</div>                </div>
+                    <span>{isThisSnippetPlaying ? `${localElapsedSeconds}s` : '0s'}</span>
+                    <span>30s</span>
+                  </div>
+                </div>
                 
                 {/* Rating info */}
                 {/* Rating info */}
@@ -438,23 +690,45 @@ function handlePlayPause(e) {
   <div style={{
     display: "flex",
     alignItems: "center",
-    gap: "6px",
+    gap: "10px",
     backgroundColor: "rgba(15, 23, 42, 0.4)",
     padding: "6px 10px",
     borderRadius: "20px",
   }}>
-    <Users size={14} color="#3b82f6" />
-    <span style={{ fontSize: "13px", color: "#e2e8f0" }}>
-      {snippet.totalRatings || (() => {
-        // Generate consistent random user count for this snippet
-        let hash = 0;
-        const seedString = snippet.id || snippet.commentId || 'default';
-        for (let i = 0; i < seedString.length; i++) {
-          hash = seedString.charCodeAt(i) + ((hash << 5) - hash);
-        }
-        return 10 + Math.floor((Math.abs(hash) % 31)); // 10-40 users
-      })()} users
-    </span>
+    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+      <Users size={14} color="#3b82f6" />
+      <span style={{ fontSize: "13px", color: "#e2e8f0" }}>
+        {snippet.totalRatings || (() => {
+          // Generate consistent random user count for this snippet
+          let hash = 0;
+          const seedString = snippet.id || snippet.commentId || 'default';
+          for (let i = 0; i < seedString.length; i++) {
+            hash = seedString.charCodeAt(i) + ((hash << 5) - hash);
+          }
+          return 10 + Math.floor((Math.abs(hash) % 31)); // 10-40 users
+        })()} users
+      </span>
+    </div>
+    <div style={{
+      width: "1px",
+      height: "14px",
+      backgroundColor: "rgba(226, 232, 240, 0.2)",
+    }} />
+    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+      <BarChart3 size={16} color="#94a3b8" />
+      <span style={{ fontSize: "13px", color: "#e2e8f0" }}>
+        {(() => {
+          // Generate consistent random view count for this snippet (20-500)
+          let hash = 0;
+          const seedString = `${snippet.id || snippet.commentId || 'default'}_views`;
+          for (let i = 0; i < seedString.length; i++) {
+            hash = seedString.charCodeAt(i) + ((hash << 5) - hash);
+          }
+          return 20 + Math.floor((Math.abs(hash) % 481));
+        })()}
+      </span>
+      <span style={{ fontSize: "12px", color: "#94a3b8" }}>interactions</span>
+    </div>
   </div>
 
   {/* 2) Avg and Your Rating grouped on the right */}

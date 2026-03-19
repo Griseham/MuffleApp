@@ -2,11 +2,9 @@
 .env
 .env.local
 .env.development.local
-.env.development
 .env.test.local
 .env.production.local
-.env.production
-
+*.p8
 
 # Build files
 
@@ -43,6 +41,7 @@ Thumbs.db
 *.tmp
 *.temp
 *.zip
+*.local
 
 # Large assets (keep only essential ones)
 **/assets/image*.png
@@ -51,6 +50,8 @@ Thumbs.db
 *.zip
 node_modules/
 .DS_Store
+dist
+dist-ssr
 !apps/threads/public/threads/assets/image*.png
 !apps/threads/public/threads/assets/user.png
 !apps/threads/public/threads/assets/default-avatar.png

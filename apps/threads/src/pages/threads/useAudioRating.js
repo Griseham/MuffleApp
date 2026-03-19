@@ -63,74 +63,57 @@ export const useAudioRating = (snippetRecs, setSnippetRecs, getSnippetId) => {
     }));
   }, [setSnippetRecs, getSnippetId]);
 
-// Play a snippet
-const playSnippet = useCallback(async (snippetId, previewUrl) => {
-  if (activeSnippet.snippetId === snippetId && activeSnippet.isPlaying) {
+  // Play a snippet
+  const playSnippet = useCallback(async (snippetId, previewUrl) => {
+    if (activeSnippet.snippetId === snippetId && activeSnippet.isPlaying) {
+      stopAudio();
+      return;
+    }
+
     stopAudio();
-    return;
-  }
+    
+    if (!audioRef.current || !previewUrl) {
+      return;
+    }
+    
+    audioRef.current.src = previewUrl;
+    audioRef.current.load();
 
-  stopAudio();
-  
-  if (!audioRef.current || !previewUrl) {
-    return;
-  }
-  
-  audioRef.current.src = previewUrl;
-  audioRef.current.load();
-  audioRef.current.currentTime = 0;
-
-  const existingSnippet = snippetRecs.find(s => 
-    getSnippetId(s) === snippetId
-  );
-  
-  // mark the snippet as "live"
-  setActiveSnippet({
-    snippetId,
-    isPlaying: true,
-    elapsedSeconds: 0,
-    userRating: existingSnippet?.userRating ?? null,
-    didRate: existingSnippet?.didRate ?? false,
-  });
-
-  try {
-    await audioRef.current.play();
-  } catch (err) {
-    stopAudio();
-    return;
-  }
-
-  // keep elapsedSeconds fresh while the track runs
-  const timeUpdateHandler = () => {
-    setActiveSnippet(s => ({
-      ...s,
-      elapsedSeconds: Math.floor(audioRef.current.currentTime),
-      isPlaying: !audioRef.current.paused
-    }));
-  };
-
-  const endedHandler = () => {
-    setActiveSnippet(s => ({ ...s, isPlaying: false, elapsedSeconds: 30 }));
-    stopAudio();
-  };
-
-  audioRef.current.addEventListener('timeupdate', timeUpdateHandler);
-  audioRef.current.addEventListener('ended', endedHandler);
-
-  intervalRef.current = setInterval(() => {
-    setActiveSnippet((prev) => {
-      if (prev.elapsedSeconds >= 30) {
-        stopAudio();
-        return { ...prev, isPlaying: false };
-      } 
-      
-      return { 
-        ...prev, 
-        elapsedSeconds: prev.elapsedSeconds + 1 
-      };
+    const existingSnippet = snippetRecs.find(s => 
+      getSnippetId(s) === snippetId
+    );
+    
+    setActiveSnippet({
+      snippetId,
+      isPlaying: true,
+      elapsedSeconds: 0,
+      userRating: existingSnippet?.userRating ?? null,
+      didRate: existingSnippet?.didRate ?? false,
     });
-  }, 1000);
-}, [activeSnippet, snippetRecs, stopAudio, getSnippetId]);
+
+    try {
+      await audioRef.current.play();
+    } catch (err) {
+      console.error('Error playing audio:', err);
+      stopAudio();
+      return;
+    }
+
+    intervalRef.current = setInterval(() => {
+      setActiveSnippet((prev) => {
+        if (prev.elapsedSeconds >= 30) {
+          stopAudio();
+          return { ...prev, isPlaying: false };
+        } 
+        
+        return { 
+          ...prev, 
+          elapsedSeconds: prev.elapsedSeconds + 1 
+        };
+      });
+    }, 1000);
+  }, [activeSnippet, snippetRecs, stopAudio, getSnippetId]);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {

@@ -2,29 +2,16 @@
 import React, { useState } from "react";
 
 /**
- * Enhanced Vertical Ratings Graph Component with improved bar style
+ * Bullet Chart Style Ratings Graph Component
  * 
  * props:
  *   ratings => array of { snippetId, userRating, avgRating, userAvatar }
  *   placeholders => integer (max bars)
+ *   isEnlarged => boolean (for modal view)
  */
 export default function VerticalRatingsGraph({ ratings = [], placeholders = 6, isEnlarged = false }) {
-  // Set a fixed size to ensure visibility - larger when in modal
-  const maxHeight = isEnlarged ? 200 : 100; // Height for the bars
+  const [hoveredIndex, setHoveredIndex] = useState(null);
   const containerWidth = '100%';
-  
-  // For enlarged view, add hover state tracking
-  const [hoveredBarIndex, setHoveredBarIndex] = useState(null);
-  
-  // Clamp rating to 0..100 range
-  function clamp(val) {
-    return Math.max(0, Math.min(100, val || 0));
-  }
-  
-  // Scale rating to pixel height
-  function scale(val) {
-    return (clamp(val) / 100) * maxHeight;
-  }
 
   // Build array with the correct number of placeholders
   const barData = [];
@@ -40,362 +27,355 @@ export default function VerticalRatingsGraph({ ratings = [], placeholders = 6, i
     <div style={{
       display: "flex",
       flexDirection: "column",
-      alignItems: "center",
-      gap: "0.5rem",
       width: containerWidth,
       overflow: "visible",
     }}>
-      {/* Color legend */}
+      {/* Header with legend */}
       <div style={{ 
         display: "flex", 
-        gap: "1.5rem", 
-        marginBottom: "0.25rem",
-        justifyContent: "center",
+        justifyContent: "space-between",
+        alignItems: "center",
+        marginBottom: isEnlarged ? "16px" : "10px",
         width: "100%",
       }}>
         <div style={{ 
           display: "flex", 
-          alignItems: "center", 
-          gap: "0.5rem",
+          gap: isEnlarged ? "20px" : "12px",
         }}>
           <div style={{ 
-            width: 12, 
-            height: 12, 
-            backgroundColor: "#8be0ff",
-            borderRadius: "2px",
-          }} />
-          <span style={{ fontSize: "12px", color: "#e7e9ea" }}>You</span>
-        </div>
-        <div style={{ 
-          display: "flex", 
-          alignItems: "center", 
-          gap: "0.5rem" 
-        }}>
+            display: "flex", 
+            alignItems: "center", 
+            gap: "6px",
+          }}>
+            <div style={{ 
+              width: isEnlarged ? 16 : 12, 
+              height: isEnlarged ? 8 : 6, 
+              backgroundColor: "#8be0ff",
+              borderRadius: "2px",
+            }} />
+            <span style={{ fontSize: isEnlarged ? "13px" : "11px", color: "#e7e9ea" }}>Your Rating</span>
+          </div>
           <div style={{ 
-            width: 12, 
-            height: 12, 
-            backgroundColor: "#1d9bf0",
-            borderRadius: "2px",
-          }} />
-          <span style={{ fontSize: "12px", color: "#e7e9ea" }}>Average</span>
+            display: "flex", 
+            alignItems: "center", 
+            gap: "6px" 
+          }}>
+            <div style={{ 
+              width: isEnlarged ? 3 : 2, 
+              height: isEnlarged ? 16 : 12, 
+              backgroundColor: "#1d9bf0",
+              borderRadius: "1px",
+            }} />
+            <span style={{ fontSize: isEnlarged ? "13px" : "11px", color: "#e7e9ea" }}>Average</span>
+          </div>
         </div>
       </div>
 
-      {/* The bars row */}
-      <div style={{
-        display: "flex",
-        gap: "12px",
-        alignItems: "flex-end",
-        height: `${maxHeight + 35}px`, // Height + space for avatar
-        width: "100%",
-        justifyContent: "center",
-        overflow: "visible",
+      {/* Bullet chart rows */}
+      <div style={{ 
+        display: "flex", 
+        flexDirection: "column", 
+        gap: isEnlarged ? "12px" : "8px",
       }}>
         {barData.map((item, idx) => {
           if (!item) {
-            // Placeholder - empty grey bar
+            // Placeholder row
             return (
-              <div key={`placeholder-${idx}`} style={{ 
-                textAlign: "center",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "flex-end",
-                height: "100%",
-              }}>
-                <div style={{
-                  width: "24px",
-                  height: `${maxHeight}px`,
-                  backgroundColor: "rgba(255,255,255,0.1)",
-                  borderRadius: "6px",
-                  position: "relative",
-                  overflow: "hidden",
-                }}>
-                  {/* Add subtle gradient overlay */}
-                  <div style={{
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    background: "linear-gradient(135deg, rgba(255,255,255,0.05), transparent)",
-                  }}/>
-                </div>
+              <div 
+                key={`placeholder-${idx}`} 
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: isEnlarged ? "12px" : "8px",
+                  padding: isEnlarged ? "8px" : "4px",
+                  borderRadius: "8px",
+                  backgroundColor: "rgba(255,255,255,0.02)",
+                }}
+              >
+                {/* Placeholder avatar */}
                 <div style={{ 
-                  marginTop: "6px", 
-                  width: "28px", 
-                  height: "28px",
+                  width: isEnlarged ? 36 : 28, 
+                  height: isEnlarged ? 36 : 28,
                   borderRadius: "50%", 
                   backgroundColor: "rgba(255,255,255,0.08)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
+                  flexShrink: 0,
                 }}>
-                  <div style={{
-                    fontSize: "12px",
-                    color: "#71767b",
+                  <span style={{ fontSize: isEnlarged ? "14px" : "11px", color: "#71767b" }}>?</span>
+                </div>
+                
+                {/* Placeholder bar */}
+                <div style={{ flex: 1 }}>
+                  <div style={{ 
+                    position: "relative", 
+                    height: isEnlarged ? "24px" : "18px", 
+                    backgroundColor: "rgba(255,255,255,0.05)",
+                    borderRadius: "4px",
+                    overflow: "hidden",
                   }}>
-                    ?
+                    <div style={{
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      background: "linear-gradient(135deg, rgba(255,255,255,0.03), transparent)",
+                    }}/>
                   </div>
+                </div>
+                
+                {/* Placeholder values */}
+                <div style={{ 
+                  display: "flex", 
+                  alignItems: "center",
+                  gap: "6px",
+                  minWidth: isEnlarged ? "70px" : "50px",
+                }}>
+                  <span style={{ color: "#71767b", fontSize: isEnlarged ? "12px" : "10px" }}>--</span>
                 </div>
               </div>
             );
           }
 
-          // Real data bars
-          const userH = scale(item.userRating || 0);
-          const avgH = scale(item.avgRating || 0);
+          // Real data row
+          const isHovered = hoveredIndex === idx;
           
           return (
             <div 
-              key={item.snippetId || idx} 
-              style={{ 
-                textAlign: "center",
+              key={item.snippetId || idx}
+              style={{
                 display: "flex",
-                flexDirection: "column",
                 alignItems: "center",
-                justifyContent: "flex-end",
-                height: "100%",
-                position: "relative",
-              }}
-              onMouseEnter={() => isEnlarged && setHoveredBarIndex(idx)}
-              onMouseLeave={() => isEnlarged && setHoveredBarIndex(null)}
-            >
-              {/* Detailed tooltip for enlarged view on hover */}
-              {isEnlarged && hoveredBarIndex === idx && (
-                <div style={{
-                  position: "absolute",
-                  bottom: `${maxHeight + 40}px`,
-                  left: "50%",
-                  transform: "translateX(-50%)",
-                  backgroundColor: "rgba(0, 0, 0, 0.85)",
-                  color: "#fff",
-                  borderRadius: "6px",
-                  padding: "8px 12px",
-                  boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
-                  border: "1px solid rgba(255,255,255,0.1)",
-                  zIndex: 10,
-                  width: "150px",
-                  pointerEvents: "none",
-                  fontSize: "12px",
-                  textAlign: "left",
-                }}>
-                  <div style={{ 
-                    marginBottom: "6px", 
-                    fontWeight: "bold",
-                    fontSize: "14px",
-                    borderBottom: "1px solid rgba(255,255,255,0.1)",
-                    paddingBottom: "4px",
-                  }}>
-                    Rating Details
-                  </div>
-                  <div style={{ 
-                    display: "flex", 
-                    justifyContent: "space-between",
-                    marginBottom: "4px",
-                  }}>
-                    <span>Your rating:</span>
-                    <span style={{ color: "#8be0ff", fontWeight: "bold" }}>{item.userRating || 0}</span>
-                  </div>
-                  <div style={{ 
-                    display: "flex", 
-                    justifyContent: "space-between",
-                    marginBottom: "4px",
-                  }}>
-                    <span>Avg rating:</span>
-                    <span style={{ color: "#1d9bf0", fontWeight: "bold" }}>{item.avgRating || 0}</span>
-                  </div>
-                  <div style={{ 
-                    display: "flex", 
-                    justifyContent: "space-between",
-                  }}>
-                    <span>Difference:</span>
-                    <span style={{ 
-                      color: (item.userRating || 0) > (item.avgRating || 0) ? "#4ade80" : "#f87171",
-                      fontWeight: "bold" 
-                    }}>
-                      {((item.userRating || 0) - (item.avgRating || 0)).toFixed(1)}
-                    </span>
-                  </div>
-                </div>
-              )}
-              
-              {/* New sleeker bar design with glass effect */}
-              <div style={{
-                position: "relative",
-                width: isEnlarged ? "32px" : "24px",
-                height: `${maxHeight}px`,
-                backgroundColor: "rgba(15, 23, 42, 0.6)",
-                borderRadius: "6px",
-                overflow: "hidden",
-                boxShadow: hoveredBarIndex === idx && isEnlarged
-                  ? "0 0 12px rgba(139, 224, 255, 0.5)"
-                  : "0 2px 6px rgba(0,0,0,0.2)",
-                border: hoveredBarIndex === idx && isEnlarged
-                  ? "1px solid rgba(139, 224, 255, 0.3)"
-                  : "1px solid rgba(255,255,255,0.08)",
+                gap: isEnlarged ? "12px" : "8px",
+                padding: isEnlarged ? "10px" : "6px",
+                borderRadius: "8px",
+                backgroundColor: isHovered ? "rgba(139, 224, 255, 0.08)" : "rgba(255,255,255,0.02)",
                 transition: "all 0.2s ease",
-                transform: hoveredBarIndex === idx && isEnlarged
-                  ? "translateY(-2px) scale(1.05)"
-                  : "translateY(0) scale(1)",
-              }}>
-                {/* User rating value - positioned above bar */}
-                {userH > 0 && (
-  <div style={{
-    position: "absolute",
-    top: 2,
-    left: 0,
-    width: "12px", // Match width of left bar
-    textAlign: "center",
-    fontSize: "7px",
-    color: "#8be0ff", // Match bar color
-    fontWeight: "bold",
-    textShadow: "0 1px 2px rgba(0,0,0,0.5)",
-    zIndex: 3,
-  }}>
-    {Math.round(item.userRating || 0)}
-  </div>
-)}
-
-{avgH > 0 && (
-  <div style={{
-    position: "absolute",
-    top: 2,
-    right: 0,
-    width: "12px", // Match width of right bar
-    textAlign: "center",
-    fontSize: "7px",
-    color: "#1d9bf0", // Match bar color
-    fontWeight: "bold",
-    textShadow: "0 1px 2px rgba(0,0,0,0.5)",
-    zIndex: 3,
-  }}>
-    {Math.round(item.avgRating || 0)}
-  </div>
-)}
-   
-              
-                {/* User rating bar - left side with glass effect */}
-                <div style={{
-                  position: "absolute",
-                  bottom: 0, 
-                  left: 0,
-                  width: "12px",
-                  height: `${userH}px`,
-                  background: "linear-gradient(to right, #8be0ff, #67d1ff)",
-                  borderTopLeftRadius: userH === maxHeight ? "6px" : "0",
-                  transition: "height 0.5s cubic-bezier(0.16, 1, 0.3, 1)",
-                  boxShadow: "inset 0 2px 4px rgba(255,255,255,0.3)",
-                  overflow: "hidden",
-                }}>
-                  {/* Shine effect */}
-                  <div style={{
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    height: "40%",
-                    background: "linear-gradient(rgba(255,255,255,0.3), rgba(255,255,255,0))",
-                  }}/>
-                </div>
-                
-                {/* Average rating bar - right side with glass effect */}
-                <div style={{
-                  position: "absolute",
-                  bottom: 0, 
-                  right: 0,
-                  width: "12px",
-                  height: `${avgH}px`,
-                  background: "linear-gradient(to right, #1a88da, #1d9bf0)",
-                  borderTopRightRadius: avgH === maxHeight ? "6px" : "0",
-                  transition: "height 0.5s cubic-bezier(0.16, 1, 0.3, 1)",
-                  boxShadow: "inset 0 2px 4px rgba(255,255,255,0.2)",
-                  overflow: "hidden",
-                }}>
-               {/* Shine effect */}
-                  <div style={{
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    height: "40%",
-                    background: "linear-gradient(rgba(255,255,255,0.2), rgba(255,255,255,0))",
-                  }}/>
-                </div>
-                
-                {/* Tick marks for scale reference */}
-                <div style={{
-                  position: "absolute",
-                  left: 0,
-                  right: 0,
-                  top: "25%",
-                  height: 1,
-                  backgroundColor: "rgba(255,255,255,0.1)",
-                }}/>
-                <div style={{
-                  position: "absolute", 
-                  left: 0,
-                  right: 0,
-                  top: "50%",
-                  height: 1,
-                  backgroundColor: "rgba(255,255,255,0.1)",
-                }}/>
-                <div style={{
-                  position: "absolute",
-                  left: 0, 
-                  right: 0,
-                  top: "75%", 
-                  height: 1,
-                  backgroundColor: "rgba(255,255,255,0.1)",
-                }}/>
-              </div>
-              
-              {/* User avatar below the bar - enhanced for enlarged view */}
-              <div style={{ 
-                marginTop: "8px",
-                transition: "transform 0.2s ease",
-                transform: hoveredBarIndex === idx && isEnlarged ? "scale(1.2)" : "scale(1)",
-              }}>
+                cursor: "pointer",
+                border: isHovered ? "1px solid rgba(139, 224, 255, 0.2)" : "1px solid transparent",
+              }}
+              onMouseEnter={() => setHoveredIndex(idx)}
+              onMouseLeave={() => setHoveredIndex(null)}
+            >
+              {/* User avatar */}
+              <div style={{ position: "relative", flexShrink: 0 }}>
                 {item.userAvatar ? (
-                  <img
-                    src={item.userAvatar}
-                    alt="User"
+                  <img 
+                    src={item.userAvatar} 
+                    alt="avatar"
                     style={{ 
-                      width: isEnlarged ? "36px" : "28px", 
-                      height: isEnlarged ? "36px" : "28px", 
+                      width: isEnlarged ? 36 : 28, 
+                      height: isEnlarged ? 36 : 28, 
                       borderRadius: "50%", 
                       objectFit: "cover",
-                      boxShadow: hoveredBarIndex === idx && isEnlarged
-                        ? "0 0 12px rgba(139, 224, 255, 0.5)"
-                        : "0 2px 4px rgba(0,0,0,0.2)",
-                      border: isEnlarged 
-                        ? "2px solid rgba(255,255,255,0.2)" 
-                        : "1px solid rgba(255,255,255,0.1)",
+                      border: "2px solid rgba(139, 224, 255, 0.5)",
+                      boxShadow: isHovered ? "0 0 10px rgba(139, 224, 255, 0.4)" : "0 2px 4px rgba(0,0,0,0.2)",
                       transition: "all 0.2s ease",
                     }}
                   />
                 ) : (
                   <div style={{ 
-                    width: isEnlarged ? "36px" : "28px", 
-                    height: isEnlarged ? "36px" : "28px", 
+                    width: isEnlarged ? 36 : 28, 
+                    height: isEnlarged ? 36 : 28, 
                     borderRadius: "50%", 
                     backgroundColor: "#333",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    fontSize: isEnlarged ? "14px" : "12px",
+                    fontSize: isEnlarged ? "14px" : "11px",
                     color: "#fff",
-                    boxShadow: hoveredBarIndex === idx && isEnlarged
-                      ? "0 0 12px rgba(139, 224, 255, 0.5)"
-                      : "0 2px 4px rgba(0,0,0,0.2)",
-                    border: isEnlarged 
-                      ? "2px solid rgba(255,255,255,0.2)" 
-                      : "1px solid rgba(255,255,255,0.1)",
-                    transition: "all 0.2s ease",
+                    border: "2px solid rgba(139, 224, 255, 0.5)",
                   }}>
                     ?
                   </div>
                 )}
+              </div>
+              
+              {/* Bullet bar container */}
+              <div style={{ flex: 1, position: "relative" }}>
+                <div style={{ 
+                  position: "relative", 
+                  height: isEnlarged ? "24px" : "18px", 
+                  backgroundColor: "rgba(255,255,255,0.05)",
+                  borderRadius: "4px",
+                  overflow: "visible",
+                }}>
+                  {/* Background gradient zones - subtle performance indicators */}
+                  <div style={{
+                    position: "absolute",
+                    left: 0,
+                    top: 0,
+                    bottom: 0,
+                    width: "40%",
+                    backgroundColor: "rgba(248, 113, 113, 0.08)",
+                    borderRadius: "4px 0 0 4px",
+                  }} />
+                  <div style={{
+                    position: "absolute",
+                    left: "40%",
+                    top: 0,
+                    bottom: 0,
+                    width: "30%",
+                    backgroundColor: "rgba(251, 191, 36, 0.08)",
+                  }} />
+                  <div style={{
+                    position: "absolute",
+                    left: "70%",
+                    top: 0,
+                    bottom: 0,
+                    width: "30%",
+                    backgroundColor: "rgba(74, 222, 128, 0.08)",
+                    borderRadius: "0 4px 4px 0",
+                  }} />
+                  
+                  {/* Your rating bar */}
+                  <div style={{
+                    position: "absolute",
+                    top: isEnlarged ? "6px" : "5px",
+                    left: 0,
+                    height: isEnlarged ? "12px" : "8px",
+                    width: `${item.userRating || 0}%`,
+                    background: "linear-gradient(90deg, #8be0ff, #67d1ff)",
+                    borderRadius: "2px",
+                    transition: "width 0.5s cubic-bezier(0.16, 1, 0.3, 1)",
+                    boxShadow: isHovered 
+                      ? "0 0 12px rgba(139, 224, 255, 0.6)" 
+                      : "0 0 6px rgba(139, 224, 255, 0.3)",
+                  }}>
+                    {/* Shine effect */}
+                    <div style={{
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      height: "50%",
+                      background: "linear-gradient(rgba(255,255,255,0.4), rgba(255,255,255,0))",
+                      borderRadius: "2px 2px 0 0",
+                    }}/>
+                  </div>
+                  
+                  {/* Average marker line */}
+                  <div style={{
+                    position: "absolute",
+                    left: `${item.avgRating || 0}%`,
+                    top: isEnlarged ? "2px" : "2px",
+                    bottom: isEnlarged ? "2px" : "2px",
+                    width: isEnlarged ? "3px" : "2px",
+                    backgroundColor: "#1d9bf0",
+                    transform: "translateX(-50%)",
+                    boxShadow: isHovered 
+                      ? "0 0 8px rgba(29, 155, 240, 0.8)" 
+                      : "0 0 4px rgba(29, 155, 240, 0.5)",
+                    borderRadius: "1px",
+                    zIndex: 2,
+                  }} />
+                  
+                  {/* Scale markers (subtle) */}
+                  {isEnlarged && [25, 50, 75].map((mark) => (
+                    <div 
+                      key={mark}
+                      style={{
+                        position: "absolute",
+                        left: `${mark}%`,
+                        top: 0,
+                        bottom: 0,
+                        width: "1px",
+                        backgroundColor: "rgba(255,255,255,0.1)",
+                      }}
+                    />
+                  ))}
+                </div>
+                
+                {/* Tooltip on hover */}
+                {isHovered && isEnlarged && (
+                  <div style={{
+                    position: "absolute",
+                    bottom: "calc(100% + 8px)",
+                    left: "50%",
+                    transform: "translateX(-50%)",
+                    backgroundColor: "rgba(0, 0, 0, 0.9)",
+                    color: "#fff",
+                    borderRadius: "8px",
+                    padding: "10px 14px",
+                    boxShadow: "0 4px 16px rgba(0,0,0,0.4)",
+                    border: "1px solid rgba(255,255,255,0.15)",
+                    zIndex: 20,
+                    minWidth: "160px",
+                    pointerEvents: "none",
+                    fontSize: "12px",
+                  }}>
+                    <div style={{ 
+                      marginBottom: "8px", 
+                      fontWeight: "bold",
+                      fontSize: "13px",
+                      borderBottom: "1px solid rgba(255,255,255,0.1)",
+                      paddingBottom: "6px",
+                      color: "#8be0ff",
+                    }}>
+                      Rating Details
+                    </div>
+                    <div style={{ 
+                      display: "flex", 
+                      justifyContent: "space-between",
+                      marginBottom: "4px",
+                    }}>
+                      <span style={{ color: "#aaa" }}>Your rating:</span>
+                      <span style={{ color: "#8be0ff", fontWeight: "bold" }}>{item.userRating || 0}</span>
+                    </div>
+                    <div style={{ 
+                      display: "flex", 
+                      justifyContent: "space-between",
+                    }}>
+                      <span style={{ color: "#aaa" }}>Avg rating:</span>
+                      <span style={{ color: "#1d9bf0", fontWeight: "bold" }}>{item.avgRating || 0}</span>
+                    </div>
+                    {/* Tooltip arrow */}
+                    <div style={{
+                      position: "absolute",
+                      bottom: "-6px",
+                      left: "50%",
+                      transform: "translateX(-50%)",
+                      width: 0,
+                      height: 0,
+                      borderLeft: "6px solid transparent",
+                      borderRight: "6px solid transparent",
+                      borderTop: "6px solid rgba(0, 0, 0, 0.9)",
+                    }} />
+                  </div>
+                )}
+              </div>
+              
+              {/* Values display - Your Rating and Average side by side */}
+              <div style={{ 
+                display: "flex", 
+                alignItems: "center",
+                gap: isEnlarged ? "12px" : "8px",
+                minWidth: isEnlarged ? "70px" : "55px",
+                justifyContent: "flex-end",
+              }}>
+                {/* Your rating value */}
+                <span style={{ 
+                  color: "#8be0ff", 
+                  fontSize: isEnlarged ? "15px" : "12px", 
+                  fontWeight: "bold",
+                  minWidth: isEnlarged ? "28px" : "22px",
+                  textAlign: "right",
+                }}>
+                  {item.userRating || 0}
+                </span>
+                
+                {/* Average value */}
+                <span style={{ 
+                  color: "#1d9bf0", 
+                  fontSize: isEnlarged ? "15px" : "12px", 
+                  fontWeight: "bold",
+                  minWidth: isEnlarged ? "28px" : "22px",
+                  textAlign: "right",
+                }}>
+                  {item.avgRating || 0}
+                </span>
               </div>
             </div>
           );
