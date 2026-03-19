@@ -169,12 +169,6 @@ export default function GenreWheel({ forcedGenres = null, onVisibleGenresChange 
   
   // Handle genre selection
   const handleGenreSelect = (genre) => {
-    
-    // Set the selected genre and mark as showing single genre
-    setSelectedGenre(genre);
-    setShowingSingleGenre(true);
-    setHasResetAfterSingleGenre(false);
-    
     // Create a single-genre wheel
     const singleGenreWheel = [{
       genre: genre.genre,
@@ -203,7 +197,6 @@ export default function GenreWheel({ forcedGenres = null, onVisibleGenresChange 
   return (
     <div
       style={{
-        position: "absolute",
         position: "sticky",
         left: "50%",
         top: "50%",

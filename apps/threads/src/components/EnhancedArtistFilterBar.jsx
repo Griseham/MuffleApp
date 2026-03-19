@@ -5,6 +5,7 @@ import InfoIconModal from "./InfoIconModal";
 import { Search } from 'lucide-react';
 import { TOTAL_WIDTH, TOTAL_HEIGHT } from './utils';
 import { validateAndSanitizeInput, sanitizeSearchQuery, checkRateLimit } from '../utils/security';
+import { buildApiUrl } from '../utils/api';
 
 /**
  * Enhanced Artist Filter Bar component for the Starfield interface
@@ -57,7 +58,7 @@ const searchForArtists = useCallback(async (searchQuery) => {
   
   try {
     // Step 1: Get the Spotify token from your server
-    const tokenResponse = await fetch('http://localhost:4000/api/spotify-token');
+    const tokenResponse = await fetch(buildApiUrl('/spotify-token'));
     
     if (!tokenResponse.ok) {
       setError("Could not connect to Spotify API");

@@ -73,6 +73,11 @@ function serveRootAssetsPlugin() {
 export default defineConfig({
   plugins: [react(), serveRootAssetsPlugin()],
   publicDir: false,
+  server: {
+    watch: {
+      ignored: ['**/public/**', '**/tests/**']
+    }
+  },
   optimizeDeps: {
     include: ['lucide-react']
   }

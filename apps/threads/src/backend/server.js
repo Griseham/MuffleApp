@@ -1680,6 +1680,11 @@ app.get("/api/posts/:postId/comments", async (req, res) => {
     return res.json({ success: true, data: [], unresolved: true });
   }
 
+  if (post.postType === "news" || post.postType === "parameter") {
+    console.log(`Skipping comments for ${post.postType} thread: ${postId}`);
+    return res.json({ success: true, data: [], skipped: true, reason: post.postType });
+  }
+
   // Check if we have a fresh cache entry
   const cacheEntry = commentsCache[postId];
   const now = Date.now();

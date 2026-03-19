@@ -1,11 +1,36 @@
+import { buildApiUrl } from "../utils/api";
+import cachedAlbumArtworks from "../backend/cached_album_artworks.json";
+import cachedArtistImages from "../backend/cached_artist_images.json";
+
 // Apple Music API service for parameter threads
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:4000";
-const APPLE_MUSIC_API_BASE = `${API_BASE}/api/apple-music-search`;
-const APPLE_MUSIC_ARTIST_IMAGES_API_BASE = `${API_BASE}/api/apple-music-artist-images`;
-const APPLE_MUSIC_ALBUM_ARTWORKS_API_BASE = `${API_BASE}/api/apple-music-album-artworks`;
+const APPLE_MUSIC_API_BASE = buildApiUrl("/apple-music-search");
+const APPLE_MUSIC_ARTIST_IMAGES_API_BASE = buildApiUrl("/apple-music-artist-images");
+const APPLE_MUSIC_ALBUM_ARTWORKS_API_BASE = buildApiUrl("/apple-music-album-artworks");
+const LEGACY_APPLE_MUSIC_ARTIST_IMAGES_API_BASE = buildApiUrl("/apple-music/artist-images");
 const artistImagesRequestCache = new Map();
 const albumArtworksRequestCache = new Map();
 const TRACK_KEY_SEPARATOR = "|||";
+let artistImagesEndpointAvailable = true;
+let albumArtworksEndpointAvailable = true;
+const artistImageDiskCache = cachedArtistImages && typeof cachedArtistImages === "object" ? cachedArtistImages : {};
+const albumArtworkDiskCache = cachedAlbumArtworks && typeof cachedAlbumArtworks === "object" ? cachedAlbumArtworks : {};
+
+async function tryParseJson(response) {
+  const contentType = response.headers.get("content-type") || "";
+  if (!contentType.toLowerCase().includes("application/json")) {
+    return null;
+  }
+
+  try {
+    return await response.json();
+  } catch {
+    return null;
+  }
+}
+
+function logUnavailableEndpoint(message) {
+  console.warn(message);
+}
 
 /**
  * Search for a song using Apple Music API via our backend
@@ -108,7 +133,7 @@ export function extractSongQuery(commentText) {
  */
 export async function cacheMediaAssets(artworkUrl, previewUrl, songId) {
   try {
-    const cacheResponse = await fetch(`${API_BASE}/api/cache-media`, {
+    const cacheResponse = await fetch(buildApiUrl("/cache-media"), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -151,8 +176,23 @@ function createArtistNamesCacheKey(artistNames) {
     .join("|");
 }
 
+function normalizeArtistCacheKey(name) {
+  return String(name || "").trim().toLowerCase();
+}
+
+function normalizeTextForMatch(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
 function createTrackLookupKey(songName, artistName) {
   return `${String(songName || "").trim()}${TRACK_KEY_SEPARATOR}${String(artistName || "").trim()}`;
+}
+
+function createNormalizedTrackLookupKey(songName, artistName) {
+  return `${normalizeTextForMatch(songName)}${TRACK_KEY_SEPARATOR}${normalizeTextForMatch(artistName)}`;
 }
 
 function createTracksCacheKey(tracks) {
@@ -160,6 +200,35 @@ function createTracksCacheKey(tracks) {
     .map((track) => createTrackLookupKey(track.songName, track.artistName).toLowerCase())
     .sort()
     .join("|");
+}
+
+function getArtistImagesFromDiskCache(artistNames) {
+  return Object.fromEntries(
+    artistNames.map((name) => {
+      const cacheEntry = artistImageDiskCache[normalizeArtistCacheKey(name)];
+      return [name, cacheEntry?.imageUrl || null];
+    })
+  );
+}
+
+function getAlbumArtworksFromDiskCache(tracks) {
+  return Object.fromEntries(
+    tracks.map((track) => {
+      const requestKey = createTrackLookupKey(track.songName, track.artistName);
+      const cacheEntry = albumArtworkDiskCache[
+        createNormalizedTrackLookupKey(track.songName, track.artistName)
+      ];
+
+      return [requestKey, {
+        songName: track.songName,
+        artistName: track.artistName,
+        artworkUrl: cacheEntry?.artworkUrl || null,
+        albumName: cacheEntry?.albumName || "",
+        previewUrl: cacheEntry?.previewUrl || null,
+        source: cacheEntry?.source || "disk-cache",
+      }];
+    })
+  );
 }
 
 /**
@@ -180,15 +249,22 @@ export async function getAppleMusicArtistImages(artistNames, options = {}) {
 
   const refresh = Boolean(options.refresh);
   const key = createArtistNamesCacheKey(names);
+  const fallback = getArtistImagesFromDiskCache(names);
 
   if (!refresh && artistImagesRequestCache.has(key)) {
-    return artistImagesRequestCache.get(key);
+    const cachedData = await artistImagesRequestCache.get(key);
+    return Object.fromEntries(
+      names.map((name) => [name, cachedData?.[name] ?? fallback[name] ?? null])
+    );
   }
 
   const requestPromise = (async () => {
-    const fallback = Object.fromEntries(names.map((name) => [name, null]));
+    if (!artistImagesEndpointAvailable) {
+      return fallback;
+    }
+
     try {
-      const response = await fetch(APPLE_MUSIC_ARTIST_IMAGES_API_BASE, {
+      let response = await fetch(APPLE_MUSIC_ARTIST_IMAGES_API_BASE, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -198,11 +274,43 @@ export async function getAppleMusicArtistImages(artistNames, options = {}) {
           refresh,
         }),
       });
+      let result = await tryParseJson(response);
 
-      const result = await response.json();
-      if (response.ok && result.success && result.data && typeof result.data === "object") {
-        return result.data;
+      if (response.status === 404) {
+        response = await fetch(LEGACY_APPLE_MUSIC_ARTIST_IMAGES_API_BASE, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            artistNames: names,
+          }),
+        });
+        result = await tryParseJson(response);
+
+        if (response.ok && Array.isArray(result?.artists)) {
+          return Object.fromEntries(
+            names.map((name) => {
+              const match = result.artists.find(
+                (artist) => String(artist?.name || "").trim().toLowerCase() === name.toLowerCase()
+              );
+              return [name, match?.image || null];
+            })
+          );
+        }
       }
+
+      if (response.ok && result.success && result.data && typeof result.data === "object") {
+        return Object.fromEntries(
+          names.map((name) => [name, result.data[name] ?? fallback[name] ?? null])
+        );
+      }
+
+      if (response.status === 404) {
+        artistImagesEndpointAvailable = false;
+        logUnavailableEndpoint("Apple Music artist-image endpoint is unavailable; using fallback values.");
+      }
+
       return fallback;
     } catch (error) {
       console.error("Error fetching Apple Music artist images:", error);
@@ -246,24 +354,22 @@ export async function getAppleMusicAlbumArtworks(tracks, options = {}) {
 
   const refresh = Boolean(options.refresh);
   const cacheKey = createTracksCacheKey(normalizedTracks);
+  const fallback = getAlbumArtworksFromDiskCache(normalizedTracks);
+
   if (!refresh && albumArtworksRequestCache.has(cacheKey)) {
-    return albumArtworksRequestCache.get(cacheKey);
+    const cachedData = await albumArtworksRequestCache.get(cacheKey);
+    return Object.fromEntries(
+      normalizedTracks.map((track) => {
+        const requestKey = createTrackLookupKey(track.songName, track.artistName);
+        return [requestKey, cachedData?.[requestKey] || fallback[requestKey]];
+      })
+    );
   }
 
   const requestPromise = (async () => {
-    const fallback = Object.fromEntries(
-      normalizedTracks.map((track) => [
-        createTrackLookupKey(track.songName, track.artistName),
-        {
-          songName: track.songName,
-          artistName: track.artistName,
-          artworkUrl: null,
-          albumName: "",
-          previewUrl: null,
-          source: "fallback",
-        },
-      ])
-    );
+    if (!albumArtworksEndpointAvailable) {
+      return fallback;
+    }
 
     try {
       const response = await fetch(APPLE_MUSIC_ALBUM_ARTWORKS_API_BASE, {
@@ -276,10 +382,22 @@ export async function getAppleMusicAlbumArtworks(tracks, options = {}) {
           refresh,
         }),
       });
-      const result = await response.json();
+      const result = await tryParseJson(response);
+
       if (response.ok && result.success && result.data && typeof result.data === "object") {
-        return result.data;
+        return Object.fromEntries(
+          normalizedTracks.map((track) => {
+            const requestKey = createTrackLookupKey(track.songName, track.artistName);
+            return [requestKey, result.data[requestKey] || fallback[requestKey]];
+          })
+        );
       }
+
+      if (response.status === 404) {
+        albumArtworksEndpointAvailable = false;
+        logUnavailableEndpoint("Apple Music album-artwork endpoint is unavailable; using fallback values.");
+      }
+
       return fallback;
     } catch (error) {
       console.error("Error fetching Apple Music album artworks:", error);

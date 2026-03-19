@@ -16,6 +16,7 @@ import TikTokModal from "../modals/TikTokModal";
 import ThreadCommentCard from './ThreadCommentCard';
 import ThreadCommentComposer from './ThreadCommentComposer';
 import ScatterRatingsGraph from '../visualizations/ScatterRatingsGraph';
+import { buildApiUrl } from '../../utils/api';
 
 // Import utilities and styles
 import { authorToAvatar, getAvatarSrc } from "../utils/utils";
@@ -43,7 +44,7 @@ const parameterThreadMockData = {
     ups: 156,
     num_comments: 20,
     parameters: ['Imagine Dragons', 'Green Day', 'OneRepublic', 'Maroon 5'],
-    imageUrl: '/assets/parameter-placeholder.png'
+    imageUrl: '/assets/Parameter1.png'
   },
   
   comments: [
@@ -359,7 +360,7 @@ export default function ParameterThreadDetail({ postId, onBack, onSelectUser }) 
       
       // For other parameter threads, try to load from API (future implementation)
       try {
-        const cacheResp = await fetch(`http://localhost:4000/api/cached-posts/${postId}`);
+        const cacheResp = await fetch(buildApiUrl(`/cached-posts/${postId}`));
         
         if (cacheResp.ok) {
           const { data: cachedData } = await cacheResp.json();

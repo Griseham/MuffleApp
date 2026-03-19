@@ -12,6 +12,7 @@ import {
   BarChart3
 } from 'lucide-react';
 import InfoIconModal from '../InfoIconModal';
+import { toApiOriginUrl } from '../../utils/api';
 
 
 function authorToAvatar(author) {
@@ -99,8 +100,7 @@ const ThreadCommentCard = ({
     
     // If it's a cached media path, prepend the API base
     if (formattedUrl.startsWith('/cached_media/')) {
-      const API_BASE = import.meta.env?.VITE_API_BASE_URL || "http://localhost:4000";
-      formattedUrl = `${API_BASE}${formattedUrl}`;
+      formattedUrl = toApiOriginUrl(formattedUrl);
     }
     
     return formattedUrl;

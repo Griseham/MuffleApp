@@ -180,6 +180,9 @@ const EXPAND_ALL_TRACKS = (() => {
   return list;
 })();
 
+const EMPTY_ARRAY = [];
+const EMPTY_OBJECT = {};
+
 // Artist pool — multi-select, Design B pill rows
 const EXPAND_ARTIST_SECS = [
   { key: 'top', label: 'TOP',          artists: EXPAND_TOP_ARTISTS,      accent: '#1d9bf0', badgeType: 'none'  },
@@ -234,8 +237,9 @@ function _ArtistPool({ onToggle, selected, artistImages, sections = EXPAND_ARTIS
                   flexShrink: 0, display: 'flex', alignItems: 'center', gap: 7,
                   background: isSel ? `hsl(${h},38%,18%)` : 'rgba(15,24,35,0.75)',
                   border: `1px solid ${isSel ? `hsl(${h},52%,44%)` : `${sec.accent}30`}`,
-                  borderRadius: 20, padding: '6px 11px 6px 6px', cursor: 'pointer', transition: 'all .15s',
+                  borderRadius: 20, padding: '6px 11px 6px 6px', cursor: 'pointer', transition: 'all .25s cubic-bezier(.4,0,.2,1)',
                   boxShadow: isSel ? `0 0 0 1px ${sec.accent}55, 0 0 12px ${sec.accent}20` : 'none',
+                  transform: isSel ? 'scale(1.04)' : 'scale(1)',
                 }}
                   onMouseEnter={e => { if (!isSel) e.currentTarget.style.borderColor = `${sec.accent}70`; }}
                   onMouseLeave={e => { if (!isSel) e.currentTarget.style.borderColor = `${sec.accent}30`; }}
@@ -245,6 +249,8 @@ function _ArtistPool({ onToggle, selected, artistImages, sections = EXPAND_ARTIS
                       <img
                         src={artistImage}
                         alt={name}
+                        loading="lazy"
+                        decoding="async"
                         style={{ width: 30, height: 30, borderRadius: '50%', objectFit: 'cover', border: `1.5px solid hsl(${h},48%,40%)`, display: 'block' }}
                       />
                     ) : (
@@ -354,6 +360,8 @@ function _SongCard({ data, songName, artistName, albumArtUrl, onExpand, onUserCl
             <img
               src={albumArtUrl}
               alt={`${displaySong} album art`}
+              loading="lazy"
+              decoding="async"
               style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
             />
           ) : (
@@ -527,6 +535,99 @@ function _SubCommentView({ song, onClose, onUserClick }) {
   );
 }
 
+// ─── Animated song list drawer ───────────────────────────────────────────────
+// Inject keyframe animations once
+const _expandAnimStyleId = '_expand-anim-styles';
+if (typeof document !== 'undefined' && !document.getElementById(_expandAnimStyleId)) {
+  const s = document.createElement('style');
+  s.id = _expandAnimStyleId;
+  s.textContent = `
+    @keyframes _expandChipIn { from { opacity:0; transform:scale(.85) translateY(4px); } to { opacity:1; transform:scale(1) translateY(0); } }
+  `;
+  document.head.appendChild(s);
+}
+
+// Smoothly transitions height when song list content changes (default ↔ playlist)
+function _AnimatedSongList({ children, transitionKey }) {
+  const contentRef = React.useRef(null);
+  const [height, setHeight] = React.useState('auto');
+  const [isTransitioning, setIsTransitioning] = React.useState(false);
+  const prevKeyRef = React.useRef(transitionKey);
+  const rafRef = React.useRef(null);
+
+  React.useEffect(() => {
+    if (prevKeyRef.current !== transitionKey) {
+      prevKeyRef.current = transitionKey;
+      if (contentRef.current) {
+        // Lock current height before content swap
+        const currentH = contentRef.current.scrollHeight;
+        setHeight(currentH + 'px');
+        setIsTransitioning(true);
+
+        // After a frame, measure new content and animate to it
+        rafRef.current = requestAnimationFrame(() => {
+          rafRef.current = requestAnimationFrame(() => {
+            if (contentRef.current) {
+              const newH = contentRef.current.scrollHeight;
+              setHeight(newH + 'px');
+            }
+          });
+        });
+      }
+    }
+    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
+  }, [transitionKey]);
+
+  const handleTransitionEnd = React.useCallback((e) => {
+    if (e.propertyName === 'height') {
+      setIsTransitioning(false);
+      setHeight('auto');
+    }
+  }, []);
+
+  return (
+    <div
+      style={{
+        height,
+        overflow: isTransitioning ? 'hidden' : 'visible',
+        transition: isTransitioning ? 'height .4s cubic-bezier(.4,0,.2,1)' : 'none',
+      }}
+      onTransitionEnd={handleTransitionEnd}
+    >
+      <div ref={contentRef}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+// Wrapper for individual song cards to stagger their entry
+function _AnimatedSongEntry({ children, index, transitionKey }) {
+  const [visible, setVisible] = React.useState(false);
+  const prevKeyRef = React.useRef(transitionKey);
+  const timeoutRef = React.useRef(null);
+
+  React.useEffect(() => {
+    // Reset and re-trigger animation when transitionKey changes
+    if (prevKeyRef.current !== transitionKey) {
+      prevKeyRef.current = transitionKey;
+      setVisible(false);
+    }
+    timeoutRef.current = setTimeout(() => setVisible(true), 60 + index * 70);
+    return () => { if (timeoutRef.current) clearTimeout(timeoutRef.current); };
+  }, [transitionKey, index]);
+
+  return (
+    <div style={{
+      opacity: visible ? 1 : 0,
+      transform: visible ? 'translateY(0)' : 'translateY(12px)',
+      transition: 'opacity .3s cubic-bezier(.4,0,.2,1), transform .3s cubic-bezier(.4,0,.2,1)',
+    }}>
+      {children}
+    </div>
+  );
+}
+
 // ─── PostCard ─────────────────────────────────────────────────────────────────
 const PostCard = ({ post, onClick, onUserClick, POST_TYPE_INDICATORS, isCached }) => {
   const [genres] = useState(() => getPostGenres(post.id));
@@ -556,13 +657,20 @@ const PostCard = ({ post, onClick, onUserClick, POST_TYPE_INDICATORS, isCached }
   const expandArtistSections = isExamplePost ? EXAMPLE_EXPAND_ARTIST_SECS : EXPAND_ARTIST_SECS;
   const expandSongPool = isExamplePost ? EXAMPLE_ARTIST_SONG_POOL : ARTIST_SONG_POOL;
   const expandSongResponses = isExamplePost ? EXAMPLE_SONG_RESPONSES : EXPAND_SONG_RESPONSES;
+  const shouldLoadExpandAssets = post.postType === 'thread' && !isExamplePost && expandOpen;
 
   const expandAllArtists = useMemo(
-    () => [...new Set(expandArtistSections.flatMap((sec) => sec.artists || []))],
-    [expandArtistSections]
+    () => (post.postType === 'thread'
+      ? [...new Set(expandArtistSections.flatMap((sec) => sec.artists || []))]
+      : EMPTY_ARRAY),
+    [expandArtistSections, post.postType]
   );
 
   const expandAllTracks = useMemo(() => {
+    if (post.postType !== 'thread') {
+      return EMPTY_ARRAY;
+    }
+
     const seen = new Set();
     const list = [];
 
@@ -586,11 +694,11 @@ const PostCard = ({ post, onClick, onUserClick, POST_TYPE_INDICATORS, isCached }
     });
 
     return list;
-  }, [expandSongPool, expandSongResponses]);
+  }, [expandSongPool, expandSongResponses, post.postType]);
 
   useEffect(() => {
     let mounted = true;
-    if (post.postType !== 'thread' || isExamplePost) {
+    if (!shouldLoadExpandAssets || expandAllArtists.length === 0 || Object.keys(expandArtistImages).length > 0) {
       return undefined;
     }
 
@@ -607,11 +715,11 @@ const PostCard = ({ post, onClick, onUserClick, POST_TYPE_INDICATORS, isCached }
     return () => {
       mounted = false;
     };
-  }, [post.postType, isExamplePost, expandAllArtists]);
+  }, [shouldLoadExpandAssets, expandAllArtists, expandArtistImages]);
 
   useEffect(() => {
     let mounted = true;
-    if (post.postType !== 'thread' || isExamplePost) {
+    if (!shouldLoadExpandAssets || expandAllTracks.length === 0 || Object.keys(expandAlbumArtworks).length > 0) {
       return undefined;
     }
 
@@ -628,7 +736,7 @@ const PostCard = ({ post, onClick, onUserClick, POST_TYPE_INDICATORS, isCached }
     return () => {
       mounted = false;
     };
-  }, [post.postType, isExamplePost, expandAllTracks]);
+  }, [shouldLoadExpandAssets, expandAllTracks, expandAlbumArtworks]);
 
   const getThemeColor = (postType) => {
     if (postType === 'news') return '#FF9500';
@@ -709,7 +817,9 @@ const PostCard = ({ post, onClick, onUserClick, POST_TYPE_INDICATORS, isCached }
         width: '100%',
         position: 'relative',
         boxShadow: `0 -4px 12px ${getRgbaFromHex(themeColor, 0.2)}`,
-        opacity: post.id === 'example_post_001' ? 0.92 : 1
+        opacity: post.id === 'example_post_001' ? 0.92 : 1,
+        contentVisibility: 'auto',
+        containIntrinsicSize: hasImage ? '720px' : '540px'
       }}
     >
       {post.id === 'example_post_001' && (
@@ -994,6 +1104,8 @@ const PostCard = ({ post, onClick, onUserClick, POST_TYPE_INDICATORS, isCached }
                 <img 
                   src={post.imageUrl} 
                   alt="News" 
+                  loading="lazy"
+                  decoding="async"
                   style={{
                     width: '100%',
                     height: 'auto',
@@ -1107,6 +1219,8 @@ const PostCard = ({ post, onClick, onUserClick, POST_TYPE_INDICATORS, isCached }
                   <img 
                     src={post.imageUrl} 
                     alt="Post" 
+                    loading="lazy"
+                    decoding="async"
                     style={{
                       width: '100%',
                       height: 'auto',
@@ -1472,17 +1586,17 @@ const PostCard = ({ post, onClick, onUserClick, POST_TYPE_INDICATORS, isCached }
                   setExpandedResponse(null);
                 }}
                 selected={selectedArtists}
-                artistImages={expandArtistImages}
+                artistImages={expandArtistImages || EMPTY_OBJECT}
                 sections={expandArtistSections}
               />
 
               {/* Selected artist chips row */}
               {selectedArtists.size > 0 && (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
-                  {[...selectedArtists].map(name => {
+                  {[...selectedArtists].map((name, i) => {
                     const h = _ahue(name);
                     return (
-                      <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px 4px 8px', borderRadius: 20, background: `hsl(${h},38%,16%)`, border: `1px solid hsl(${h},52%,40%)`, fontSize: 12, color: `hsl(${h},75%,80%)`, fontWeight: 600 }}>
+                      <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px 4px 8px', borderRadius: 20, background: `hsl(${h},38%,16%)`, border: `1px solid hsl(${h},52%,40%)`, fontSize: 12, color: `hsl(${h},75%,80%)`, fontWeight: 600, animation: `_expandChipIn .25s cubic-bezier(.4,0,.2,1) ${i * 0.04}s both` }}>
                         <span>{name.split(',')[0]}</span>
                         <button onClick={() => setSelectedArtists(prev => { const n = new Set(prev); n.delete(name); return n; })}
                           style={{ background: 'none', border: 'none', color: `hsl(${h},60%,60%)`, cursor: 'pointer', fontSize: 15, lineHeight: 1, padding: 0, marginTop: -1 }}>×</button>
@@ -1490,77 +1604,91 @@ const PostCard = ({ post, onClick, onUserClick, POST_TYPE_INDICATORS, isCached }
                     );
                   })}
                   <button onClick={() => { setSelectedArtists(new Set()); setExpandedResponse(null); }}
-                    style={{ padding: '4px 10px', borderRadius: 20, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', fontSize: 11, color: '#475569', cursor: 'pointer' }}>
+                    style={{ padding: '4px 10px', borderRadius: 20, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', fontSize: 11, color: '#475569', cursor: 'pointer', transition: 'all .2s' }}>
                     clear all
                   </button>
                 </div>
               )}
 
-              {/* Playlist section */}
-              {selectedArtists.size > 0 ? (() => {
-                // Build playlist: for each selected artist, get their seeded 1–2 songs
-                const playlist = [];
-                [...selectedArtists].forEach(artistName => {
-                  const songs = _songsForArtistFromPool(artistName, expandSongPool);
-                  songs.forEach((s, si) => {
-                    // Pick a response card template (cycle through active responses set)
-                    const template = expandSongResponses[(_hsh(artistName) + si) % expandSongResponses.length];
-                    playlist.push({ key: `${artistName}-${si}`, artistName, songName: s.song, trackKey: _trackKey(s.song, artistName), albumColor: s.albumColor, accent: s.accent, avgRating: s.avgRating, totalRatings: s.totalRatings, template });
+              {/* Playlist section — animated drawer */}
+              {(() => {
+                // Build a stable transition key that changes when song list content changes
+                const songListKey = selectedArtists.size > 0
+                  ? 'playlist-' + [...selectedArtists].sort().join(',')
+                  : 'default';
+
+                if (selectedArtists.size > 0) {
+                  const playlist = [];
+                  [...selectedArtists].forEach(artistName => {
+                    const songs = _songsForArtistFromPool(artistName, expandSongPool);
+                    songs.forEach((s, si) => {
+                      const template = expandSongResponses[(_hsh(artistName) + si) % expandSongResponses.length];
+                      playlist.push({ key: `${artistName}-${si}`, artistName, songName: s.song, trackKey: _trackKey(s.song, artistName), albumColor: s.albumColor, accent: s.accent, avgRating: s.avgRating, totalRatings: s.totalRatings, template });
+                    });
                   });
-                });
-                return (
-                  <div>
-                    <div style={{ fontSize: 10, color: '#475569', letterSpacing: 2, marginBottom: 10 }}>
-                      PLAYLIST · {playlist.length} SONG{playlist.length !== 1 ? 'S' : ''}
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                      {playlist.map((item, idx) => (
-                        <div key={item.key}>
-                          <_SongCard
-                            data={{ ...item.template, albumColor: item.albumColor, accent: item.accent, avgRating: item.avgRating, totalRatings: item.totalRatings }}
-                            songName={item.songName}
-                            artistName={item.artistName}
-                            albumArtUrl={expandAlbumArtworks[item.trackKey]?.artworkUrl || null}
-                            onExpand={() => setExpandedResponse(p => p === item.key ? null : item.key)}
-                            onUserClick={handleUserClick}
-                            expanded={expandedResponse === item.key}
-                          />
-                          {expandedResponse === item.key && (
-                            <_SubCommentView
-                              song={{ song: item.songName, artist: item.artistName }}
-                              onUserClick={handleUserClick}
-                              onClose={() => setExpandedResponse(null)}
-                            />
-                          )}
+                  return (
+                    <_AnimatedSongList transitionKey={songListKey}>
+                      <div>
+                        <div style={{ fontSize: 10, color: '#475569', letterSpacing: 2, marginBottom: 10 }}>
+                          PLAYLIST · {playlist.length} SONG{playlist.length !== 1 ? 'S' : ''}
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })() : (
-                // Default: top responses when no artist selected
-                <div>
-                  <div style={{ fontSize: 10, color: '#475569', letterSpacing: 2, marginBottom: 10 }}>
-                    TOP RESPONSES WITH SONGS
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {expandSongResponses.map(r => (
-                      <div key={r.id}>
-                        <_SongCard
-                          data={r}
-                          albumArtUrl={expandAlbumArtworks[_trackKey(r.song, r.artist)]?.artworkUrl || null}
-                          onExpand={() => setExpandedResponse(p => p === r.id ? null : r.id)}
-                          onUserClick={handleUserClick}
-                          expanded={expandedResponse === r.id}
-                        />
-                        {expandedResponse === r.id && (
-                          <_SubCommentView song={r} onUserClick={handleUserClick} onClose={() => setExpandedResponse(null)} />
-                        )}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          {playlist.map((item, idx) => (
+                            <_AnimatedSongEntry key={item.key} index={idx} transitionKey={songListKey}>
+                              <div>
+                                <_SongCard
+                                  data={{ ...item.template, albumColor: item.albumColor, accent: item.accent, avgRating: item.avgRating, totalRatings: item.totalRatings }}
+                                  songName={item.songName}
+                                  artistName={item.artistName}
+                                  albumArtUrl={expandAlbumArtworks[item.trackKey]?.artworkUrl || null}
+                                  onExpand={() => setExpandedResponse(p => p === item.key ? null : item.key)}
+                                  onUserClick={handleUserClick}
+                                  expanded={expandedResponse === item.key}
+                                />
+                                {expandedResponse === item.key && (
+                                  <_SubCommentView
+                                    song={{ song: item.songName, artist: item.artistName }}
+                                    onUserClick={handleUserClick}
+                                    onClose={() => setExpandedResponse(null)}
+                                  />
+                                )}
+                              </div>
+                            </_AnimatedSongEntry>
+                          ))}
+                        </div>
                       </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+                    </_AnimatedSongList>
+                  );
+                }
+
+                return (
+                  <_AnimatedSongList transitionKey={songListKey}>
+                    <div>
+                      <div style={{ fontSize: 10, color: '#475569', letterSpacing: 2, marginBottom: 10 }}>
+                        TOP RESPONSES WITH SONGS
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {expandSongResponses.map((r, idx) => (
+                          <_AnimatedSongEntry key={r.id} index={idx} transitionKey={songListKey}>
+                            <div>
+                              <_SongCard
+                                data={r}
+                                albumArtUrl={expandAlbumArtworks[_trackKey(r.song, r.artist)]?.artworkUrl || null}
+                                onExpand={() => setExpandedResponse(p => p === r.id ? null : r.id)}
+                                onUserClick={handleUserClick}
+                                expanded={expandedResponse === r.id}
+                              />
+                              {expandedResponse === r.id && (
+                                <_SubCommentView song={r} onUserClick={handleUserClick} onClose={() => setExpandedResponse(null)} />
+                              )}
+                            </div>
+                          </_AnimatedSongEntry>
+                        ))}
+                      </div>
+                    </div>
+                  </_AnimatedSongList>
+                );
+              })()}
             </div>
           )}
         </>

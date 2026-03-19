@@ -4,6 +4,28 @@ import { createPortal } from "react-dom";
 import { FiArrowLeft, FiHeart, FiMessageCircle, FiBookmark, FiShare, FiPlay, FiPause } from "react-icons/fi";
 import { getAvatarSrc } from '../posts/postCardUtils';
 import { Music, Users, ChevronUp, ChevronDown } from 'lucide-react';
+import { toApiOriginUrl } from "../../utils/api";
+
+function normalizeMediaUrl(url = "") {
+  if (typeof url !== "string") return "";
+  const trimmed = url.trim();
+  if (!trimmed) return "";
+  if (trimmed.startsWith("/cached_media/")) {
+    return toApiOriginUrl(trimmed);
+  }
+  return trimmed;
+}
+
+function formatArtworkUrl(url, size = 400) {
+  const normalizedUrl = normalizeMediaUrl(url);
+  if (!normalizedUrl) return "";
+
+  return normalizedUrl
+    .replace("{w}x{h}", `${size}x${size}`)
+    .replace("{w}", String(size))
+    .replace("{h}", String(size))
+    .replace("{f}", "jpg");
+}
 
 export default function TikTokModal({ 
   snippets = [], 
@@ -275,10 +297,11 @@ export default function TikTokModal({
     const currentSnippet = snippets[currentIndex];
     if (!currentSnippet || !audioRef.current) return;
 
-    const previewUrl =
+    const previewUrl = normalizeMediaUrl(
       currentSnippet.snippetData?.attributes?.previews?.[0]?.url ||
       currentSnippet.previewUrl ||
-      "";
+      ""
+    );
 
     if (!previewUrl) {
       console.warn("No previewUrl for this snippet. Skipping play.", currentSnippet);
@@ -345,6 +368,13 @@ export default function TikTokModal({
   
   // Get current snippet
   const currentSnippet = snippets[currentIndex] || null;
+  const currentArtworkUrl = formatArtworkUrl(
+    currentSnippet?.snippetData?.attributes?.artwork?.url ||
+    currentSnippet?.artworkUrl ||
+    currentSnippet?.artwork ||
+    "",
+    400
+  );
   const canNavigateToThread =
     typeof onNavigateToThread === "function" &&
     !!currentSnippet?.postId &&
@@ -669,9 +699,9 @@ export default function TikTokModal({
                 <div style={styles.albumArtGradient} />
                 
                 {/* Album Artwork */}
-                {currentSnippet?.snippetData?.attributes?.artwork?.url ? (
+                {currentArtworkUrl ? (
                   <img 
-                    src={currentSnippet.snippetData.attributes.artwork.url.replace("{w}x{h}", "400x400")}
+                    src={currentArtworkUrl}
                     alt="Album artwork"
                     style={styles.albumArtImage}
                   />

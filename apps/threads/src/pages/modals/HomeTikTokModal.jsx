@@ -13,7 +13,6 @@ function formatArtworkUrl(url, size = 300) {
 }
 
 export default function HomeTikTokModal({ onClose, cachedPosts = [], onNavigateToThread }) {
-  const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:4000";
   const [snippets, setSnippets] = useState([]);
   const [isLoadingSnippets, setIsLoadingSnippets] = useState(true);
   const audioRef = useRef(null);
@@ -73,57 +72,25 @@ export default function HomeTikTokModal({ onClose, cachedPosts = [], onNavigateT
       };
     };
 
-    const extractSearchTermFromTitle = title => {
-      const t = String(title || "").replace(/[^\w\s']/g, " ");
-      const words = t
-        .split(/\s+/)
-        .map(w => w.trim())
-        .filter(w => w.length >= 4);
+    const findCommentById = (comments, targetId) => {
+      if (!targetId) return null;
 
-      if (words.length === 0) return null;
-
-      const preferred = words.filter(
-        w =>
-          !["when", "what", "this", "that", "with", "from", "comes", "mind", "song", "music"].includes(
-            w.toLowerCase()
-          )
-      );
-      const pool = preferred.length ? preferred : words;
-
-      return pool[Math.floor(Math.random() * pool.length)];
-    };
-
-    const normalizeAppleSong = song => {
-      if (!song) return null;
-      const previewUrl = song.attributes?.previews?.[0]?.url || "";
-      const artworkUrl = song.attributes?.artwork?.url || "";
-      if (!previewUrl || !artworkUrl) return null;
-
-      return {
-        id: song.id,
-        attributes: {
-          name: song.attributes?.name || "Unknown Track",
-          artistName: song.attributes?.artistName || "Unknown Artist",
-          artwork: { url: artworkUrl },
-          previews: [{ url: previewUrl }],
-        },
+      let found = null;
+      const walk = list => {
+        (list || []).forEach(comment => {
+          if (found || !comment) return;
+          if (comment.id === targetId) {
+            found = comment;
+            return;
+          }
+          if (Array.isArray(comment.replies) && comment.replies.length) {
+            walk(comment.replies);
+          }
+        });
       };
-    };
 
-    const fetchRandomAppleSong = async query => {
-      const resp = await fetch(
-        `${API_BASE}/api/apple-music-search?query=${encodeURIComponent(query)}`
-      );
-      const data = await resp.json();
-
-      if (!data?.success || !data?.data) return null;
-
-      const items = Array.isArray(data.data) ? data.data : [data.data];
-      const playable = items.map(normalizeAppleSong).filter(Boolean);
-
-      if (playable.length === 0) return null;
-
-      return playable[Math.floor(Math.random() * playable.length)];
+      walk(Array.isArray(comments) ? comments : []);
+      return found;
     };
 
     const loadAllSnippets = async () => {
@@ -133,72 +100,57 @@ export default function HomeTikTokModal({ onClose, cachedPosts = [], onNavigateT
         const eligiblePosts = posts.filter(post => {
           const postType = String(post?.postType || "").toLowerCase();
           const postId = String(post?.id || "").toLowerCase();
+          const snippets = Array.isArray(post?.snippets) ? post.snippets : [];
           return (
             postType !== "parameter" &&
             postType !== "news" &&
             postType !== "groupchat" &&
-            !postId.includes("parameter")
+            !postId.includes("parameter") &&
+            snippets.length > 0
           );
         });
-        const chosenPosts = shuffle(eligiblePosts).slice(0, 10);
-
-        const seedQueries = [
-          "Drake",
-          "Kendrick Lamar",
-          "Travis Scott",
-          "SZA",
-          "The Weeknd",
-          "Taylor Swift",
-          "Bad Bunny",
-          "Future",
-          "Playboi Carti",
-          "Ariana Grande",
-          "Billie Eilish",
-          "Morgan Wallen",
-          "Doja Cat",
-          "Olivia Rodrigo",
-          "Eminem",
-          "Top Hits",
-          "Viral",
-          "Rap",
-          "R&B",
-          "Pop",
-        ];
+        const chosenPosts = shuffle(eligiblePosts).slice(0, 5);
 
         const cards = [];
         for (let i = 0; i < chosenPosts.length; i++) {
           const post = chosenPosts[i];
           if (!post?.id) continue;
+          const snippets = shuffle(Array.isArray(post?.snippets) ? post.snippets : []);
+          const chosenSnippet = snippets.find(
+            snippet =>
+              (snippet?.previewUrl || snippet?.snippetData?.attributes?.previews?.[0]?.url) &&
+              (snippet?.artworkUrl ||
+                snippet?.artwork ||
+                snippet?.snippetData?.attributes?.artwork?.url)
+          );
+          if (!chosenSnippet) continue;
 
-          const pickedComment = pickRandomComment(post);
-
-          const titleTerm = extractSearchTermFromTitle(post?.title);
-          const tries = [
-            titleTerm,
-            seedQueries[Math.floor(Math.random() * seedQueries.length)],
-            seedQueries[Math.floor(Math.random() * seedQueries.length)],
-          ].filter(Boolean);
-
-          let appleSong = null;
-          for (const q of tries) {
-            try {
-              appleSong = await fetchRandomAppleSong(q);
-              if (appleSong) break;
-            } catch (e) {
-              // ignore and try next query
-            }
-          }
-
-          if (!appleSong) continue;
+          const matchedComment = findCommentById(post?.comments, chosenSnippet.commentId);
+          const pickedComment = matchedComment || pickRandomComment(post);
 
           const snippetId = `home_am_${post.id}_${pickedComment.id}_${i}`;
           const seed = hashToUint(snippetId);
           const avgRating = (seed % 85) + 15;
           const totalRatings = (seed % 500) + 50;
 
-          const previewUrl = appleSong.attributes.previews?.[0]?.url || "";
-          // Format the artwork URL properly
-          const rawArtworkUrl = appleSong.attributes.artwork?.url || "";
+          const previewUrl =
+            chosenSnippet.previewUrl ||
+            chosenSnippet.snippetData?.attributes?.previews?.[0]?.url ||
+            "";
+          const songName =
+            chosenSnippet.songName ||
+            chosenSnippet.name ||
+            chosenSnippet.snippetData?.attributes?.name ||
+            "";
+          const artistName =
+            chosenSnippet.artistName ||
+            chosenSnippet.snippetData?.attributes?.artistName ||
+            "";
+          const rawArtworkUrl =
+            chosenSnippet.artworkUrl ||
+            chosenSnippet.artwork ||
+            chosenSnippet.snippetData?.attributes?.artwork?.url ||
+            "";
           const artworkUrl = formatArtworkUrl(rawArtworkUrl, 300);
 
           cards.push({
@@ -207,18 +159,29 @@ export default function HomeTikTokModal({ onClose, cachedPosts = [], onNavigateT
             postId: post.id,
             postType: post?.postType || "thread",
             threadTitle: post.title || "Thread",
+            sourcePost: post,
             genre: post?.subreddit ? `#${post.subreddit}` : "#thread",
             author: pickedComment.author || "Unknown",
-            text: pickedComment.body || "",
+            text: pickedComment.body ||
+              ((typeof post?.selftext === "string" && post.selftext.trim())
+                ? post.selftext.trim()
+                : (post?.title || "")),
             snippetAuthorAvatar: getAvatarSrc({ author: pickedComment.author }),
             previewUrl,
             artworkUrl,
             // IMPORTANT: Include 'artwork' field for ThreadCommentCard
             artwork: artworkUrl,
-            songName: appleSong.attributes?.name || "",
-            artistName: appleSong.attributes?.artistName || "",
-            name: appleSong.attributes?.name || "",
-            snippetData: appleSong,
+            songName,
+            artistName,
+            name: songName,
+            snippetData: chosenSnippet.snippetData || {
+              attributes: {
+                name: songName || "Unknown Track",
+                artistName: artistName || "Unknown Artist",
+                artwork: { url: artworkUrl || "" },
+                previews: previewUrl ? [{ url: previewUrl }] : [],
+              },
+            },
             userRating: 0,
             avgRating,
             totalRatings,
@@ -237,7 +200,7 @@ export default function HomeTikTokModal({ onClose, cachedPosts = [], onNavigateT
               threadTitle: "For You",
               genre: "#music",
               author: "System",
-              text: "No Apple Music previews were found. Check your Apple token / backend endpoint.",
+              text: "No cached post snippets were found for the Home TikTok modal.",
               snippetAuthorAvatar: getAvatarSrc({ author: "System" }),
               previewUrl: "",
               artworkUrl: "",
@@ -262,10 +225,10 @@ export default function HomeTikTokModal({ onClose, cachedPosts = [], onNavigateT
           return;
         }
 
-        setSnippets(cards.slice(0, 10));
+        setSnippets(cards.slice(0, 5));
         setIsLoadingSnippets(false);
       } catch (err) {
-        console.error("Error loading Apple snippets:", err);
+        console.error("Error loading cached post snippets:", err);
         if (!cancelled) {
           setSnippets([
             {
@@ -275,7 +238,7 @@ export default function HomeTikTokModal({ onClose, cachedPosts = [], onNavigateT
               threadTitle: "For You",
               genre: "#music",
               author: "System",
-              text: "Snippets failed to load from Apple Music.",
+              text: "Snippets failed to load from cached posts.",
               snippetAuthorAvatar: getAvatarSrc({ author: "System" }),
               previewUrl: "",
               artworkUrl: "",
@@ -307,7 +270,7 @@ export default function HomeTikTokModal({ onClose, cachedPosts = [], onNavigateT
       cancelled = true;
       if (audioRef.current) audioRef.current.pause();
     };
-  }, [cachedPosts, API_BASE]);
+  }, [cachedPosts]);
 
   const handleUserRate = (snippetObj, newRating) => {
     if (!snippetObj) return;
@@ -328,17 +291,6 @@ export default function HomeTikTokModal({ onClose, cachedPosts = [], onNavigateT
           : s
       )
     );
-  };
-
-  // Helper to generate a fake username from snippet ID
-  const makeDigits = input => {
-    const s = String(input ?? "");
-    let h = 2166136261;
-    for (let i = 0; i < s.length; i++) {
-      h ^= s.charCodeAt(i);
-      h = (h + (h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24)) >>> 0;
-    }
-    return (h % 9000) + 1000;
   };
 
   return (
@@ -364,96 +316,14 @@ export default function HomeTikTokModal({ onClose, cachedPosts = [], onNavigateT
             return;
           }
           
-          const post = cachedPosts.find(p => p.id === postId);
+          const post = snippet?.sourcePost || cachedPosts.find(p => p.id === postId);
           if (!post) {
             console.log("HomeTikTokModal: Post not found for ID:", postId);
             return;
           }
 
           console.log("HomeTikTokModal: Found post:", post.title);
-
-          // Format the artwork URL properly
-          const rawArtworkUrl = snippet?.artworkUrl || snippet?.artwork || snippet?.snippetData?.attributes?.artwork?.url || "";
-          const formattedArtworkUrl = formatArtworkUrl(rawArtworkUrl, 300);
-          
-          // Create a unique ID for this injected comment/snippet
-          const uniqueId = `injected_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-
-          // Create the injected snippet with all required fields
-          // IMPORTANT: didRate should be false so user can rate in ThreadDetail
-          // But preserve the rating if they already rated in HomeTikTokModal
-          const injectedSnippet = snippet
-            ? { 
-                ...snippet, 
-                __injectedFromTikTok: true,
-                // Use unique ID to avoid conflicts
-                id: uniqueId,
-                commentId: uniqueId,
-                // Ensure all required fields are present with correct names
-                name: snippet.songName || snippet.name || snippet.snippetData?.attributes?.name || "Unknown Song",
-                songName: snippet.songName || snippet.name || snippet.snippetData?.attributes?.name || "Unknown Song",
-                artistName: snippet.artistName || snippet.snippetData?.attributes?.artistName || "Unknown Artist",
-                // CRITICAL: Use 'artwork' field (not just artworkUrl) for ThreadCommentCard
-                artwork: formattedArtworkUrl,
-                artworkUrl: formattedArtworkUrl,
-                previewUrl: snippet.previewUrl || snippet.snippetData?.attributes?.previews?.[0]?.url || "",
-                // Preserve rating state from HomeTikTokModal if user rated there
-                userRating: snippet.userRating || null,
-                avgRating: snippet.avgRating || 50,
-                totalRatings: snippet.totalRatings || 100,
-                // IMPORTANT: Set didRate based on whether user rated in HomeTikTokModal
-                didRate: snippet.didRate || false,
-                snippetData: snippet.snippetData,
-              }
-            : null;
-
-          // Create the injected comment with the snippet attached
-          const fakeUsername = `user${makeDigits(uniqueId)}`;
-          
-          const injectedComment = snippet
-            ? {
-                id: uniqueId,
-                author: fakeUsername,
-                body: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
-                ups: Math.floor(Math.random() * 200) + 5,
-                createdUtc: Date.now() / 1000,
-                __injectedFromTikTok: true,
-                // IMPORTANT: Attach the snippet data directly to the comment
-                // This allows ThreadCommentCard to find the snippet
-                snippet: {
-                  id: uniqueId,
-                  commentId: uniqueId,
-                  name: injectedSnippet?.songName || injectedSnippet?.name,
-                  songName: injectedSnippet?.songName || injectedSnippet?.name,
-                  artistName: injectedSnippet?.artistName,
-                  // Use 'artwork' field for ThreadCommentCard
-                  artwork: formattedArtworkUrl,
-                  artworkUrl: formattedArtworkUrl,
-                  previewUrl: injectedSnippet?.previewUrl,
-                  userRating: injectedSnippet?.userRating,
-                  avgRating: injectedSnippet?.avgRating,
-                  totalRatings: injectedSnippet?.totalRatings,
-                  didRate: injectedSnippet?.didRate,
-                  snippetData: injectedSnippet?.snippetData,
-                }
-              }
-            : null;
-
-          console.log("HomeTikTokModal: Created injected comment:", injectedComment);
-          console.log("HomeTikTokModal: Created injected snippet:", injectedSnippet);
-          console.log("HomeTikTokModal: Artwork URL:", formattedArtworkUrl);
-
-          // Navigate to thread with the prefill data
-          onNavigateToThread({
-            ...post,
-            __prefillFromTikTok: injectedSnippet
-              ? {
-                  snippet: injectedSnippet,
-                  comment: injectedComment,
-                  autoPlay: true,
-                }
-              : null,
-          });
+          onNavigateToThread(post);
         }}
       />
     </>

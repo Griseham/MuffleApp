@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Play, Music, Pause, X, Search, Disc, Upload } from 'lucide-react';
 import { validateAndSanitizeInput, sanitizeSearchQuery, checkRateLimit } from '../../utils/security';
+import { buildApiUrl } from '../../utils/api';
 
 const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
-  const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:4000";
   // State declarations
   const [comment, setComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -117,7 +117,7 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
     
     setIsSearching(true);
     try {
-      const resp = await fetch(`${API_BASE}/api/apple-music-search?query=${encodeURIComponent(sanitizedQuery)}`);
+      const resp = await fetch(`${buildApiUrl("/apple-music-search")}?query=${encodeURIComponent(sanitizedQuery)}`);
       const data = await resp.json();
       
       if (data.success && data.data) {

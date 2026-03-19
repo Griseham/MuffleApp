@@ -12,6 +12,100 @@ const cors = require('cors');
 
 
 const unifiedRouter = express.Router();
+const SHARED_CACHED_MEDIA_DIR = path.resolve(__dirname, 'cached_media');
+const THREADS_SRC_BACKEND_DIR = path.resolve(__dirname, '..', 'apps', 'threads', 'src', 'backend');
+const MEDIA_DOWNLOAD_TIMEOUT_MS = 10_000;
+const CONTENT_TYPE_EXTENSIONS = {
+  'audio/mp4': '.m4a',
+  'audio/mpeg': '.mp3',
+  'audio/x-m4a': '.m4a',
+  'image/gif': '.gif',
+  'image/jpeg': '.jpg',
+  'image/png': '.png',
+  'image/webp': '.webp',
+  'video/mp4': '.mp4',
+};
+
+const ensureDirectory = (dirPath) => {
+  if (!fs.existsSync(dirPath)) {
+    fs.mkdirSync(dirPath, { recursive: true });
+  }
+};
+
+const sanitizeCacheKeySegment = (value, fallback = 'media') => {
+  const cleaned = String(value || '')
+    .trim()
+    .replace(/[^a-z0-9_-]+/gi, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 80);
+
+  return cleaned || fallback;
+};
+
+const inferCachedFileExtension = (sourceUrl, contentType, fallbackExtension) => {
+  try {
+    const parsedUrl = new URL(sourceUrl);
+    const urlExtension = path.extname(parsedUrl.pathname).toLowerCase();
+    if (urlExtension) {
+      return urlExtension;
+    }
+  } catch (error) {
+    // Ignore malformed URLs and fall back to response metadata.
+  }
+
+  const normalizedContentType = String(contentType || '').split(';')[0].trim().toLowerCase();
+  return CONTENT_TYPE_EXTENSIONS[normalizedContentType] || fallbackExtension;
+};
+
+const downloadRemoteAsset = async (sourceUrl) => {
+  const response = await axios.get(sourceUrl, {
+    responseType: 'arraybuffer',
+    timeout: MEDIA_DOWNLOAD_TIMEOUT_MS,
+  });
+
+  return {
+    buffer: Buffer.from(response.data),
+    contentType: response.headers['content-type'] || '',
+  };
+};
+
+ensureDirectory(SHARED_CACHED_MEDIA_DIR);
+unifiedRouter.use('/cached_media', express.static(SHARED_CACHED_MEDIA_DIR));
+
+const readJsonFile = (filePath, fallbackValue = {}) => {
+  try {
+    if (!fs.existsSync(filePath)) {
+      return fallbackValue;
+    }
+
+    return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  } catch (error) {
+    console.warn(`Failed to read JSON file at ${filePath}:`, error.message);
+    return fallbackValue;
+  }
+};
+
+const fetchWithRetry = async (url, options = {}, maxAttempts = 3) => {
+  let lastError = null;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      return await axios.get(url, {
+        timeout: 7000,
+        headers: { 'User-Agent': 'MuflThreads/1.0 (+https://mufl.app)' },
+        ...options,
+      });
+    } catch (error) {
+      lastError = error;
+      if (attempt >= maxAttempts) {
+        break;
+      }
+      await new Promise((resolve) => setTimeout(resolve, attempt * 500));
+    }
+  }
+
+  throw lastError || new Error(`Request failed for ${url}`);
+};
 
 //======================//
 // Mock Data for Development/Demo
@@ -323,6 +417,123 @@ const fetchAppleImagesFor = async (artistNames = []) => {
   return results;
 };
 
+const TRACK_KEY_SEPARATOR = '|||';
+
+const normalizeLookupValue = (value = '') =>
+  String(value || '').trim().toLowerCase();
+
+const normalizeTrackLookupValue = (value = '') =>
+  String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+
+const createTrackLookupKey = (songName = '', artistName = '') =>
+  `${String(songName || '').trim()}${TRACK_KEY_SEPARATOR}${String(artistName || '').trim()}`;
+
+const createNormalizedTrackLookupKey = (songName = '', artistName = '') =>
+  `${normalizeTrackLookupValue(songName)}${TRACK_KEY_SEPARATOR}${normalizeTrackLookupValue(artistName)}`;
+
+const buildPlaceholderArtworkUrl = (...parts) => {
+  const label = parts
+    .map((part) => String(part || '').trim())
+    .filter(Boolean)
+    .join(' - ');
+
+  return `https://via.placeholder.com/300x300/1a1a1a/ffffff?text=${encodeURIComponent(label || 'Artwork')}`;
+};
+
+const ALBUM_ARTWORK_CACHE_PATHS = [
+  path.resolve(__dirname, 'cached_album_artworks.json'),
+  path.resolve(THREADS_SRC_BACKEND_DIR, 'cached_album_artworks.json'),
+];
+
+let albumArtworkDiskCache = null;
+
+const loadAlbumArtworkDiskCache = () => {
+  if (albumArtworkDiskCache) {
+    return albumArtworkDiskCache;
+  }
+
+  for (const cachePath of ALBUM_ARTWORK_CACHE_PATHS) {
+    const cacheData = readJsonFile(cachePath, null);
+    if (cacheData && typeof cacheData === 'object' && !Array.isArray(cacheData)) {
+      albumArtworkDiskCache = cacheData;
+      return albumArtworkDiskCache;
+    }
+  }
+
+  albumArtworkDiskCache = {};
+  return albumArtworkDiskCache;
+};
+
+const getAlbumArtworkFromDiskCache = (songName = '', artistName = '') => {
+  const diskCache = loadAlbumArtworkDiskCache();
+  return diskCache[createNormalizedTrackLookupKey(songName, artistName)] || null;
+};
+
+const buildArtistImageMap = async (artistNames = []) => {
+  const requestedArtists = [...new Set(
+    artistNames
+      .map((name) => String(name || '').trim())
+      .filter(Boolean)
+  )];
+
+  const data = Object.fromEntries(requestedArtists.map((name) => [name, null]));
+  if (!requestedArtists.length) {
+    return data;
+  }
+
+  try {
+    if (!process.env.APPLE_DEVELOPER_TOKEN) {
+      return data;
+    }
+
+    const artists = await fetchAppleImagesFor(requestedArtists);
+    const resolvedByName = new Map(
+      artists.map((artist) => [normalizeLookupValue(artist.name), artist.image || null])
+    );
+
+    requestedArtists.forEach((name) => {
+      const normalizedName = normalizeLookupValue(name);
+      if (resolvedByName.has(normalizedName)) {
+        data[name] = resolvedByName.get(normalizedName);
+      }
+    });
+  } catch (error) {
+    console.warn('Compat artist-image lookup failed:', error.message);
+  }
+
+  return data;
+};
+
+const buildAlbumArtworkMap = async (tracks = []) => {
+  const normalizedTracks = tracks
+    .map((track) => ({
+      songName: String(track?.songName || '').trim(),
+      artistName: String(track?.artistName || '').trim(),
+    }))
+    .filter((track) => track.songName && track.artistName);
+
+  const data = {};
+  normalizedTracks.forEach((track) => {
+    const key = createTrackLookupKey(track.songName, track.artistName);
+    const cachedEntry = getAlbumArtworkFromDiskCache(track.songName, track.artistName);
+
+    data[key] = {
+      songName: track.songName,
+      artistName: track.artistName,
+      artworkUrl: cachedEntry?.artworkUrl || null,
+      albumName: cachedEntry?.albumName || '',
+      previewUrl: cachedEntry?.previewUrl || null,
+      source: cachedEntry?.source || (cachedEntry?.artworkUrl ? 'disk-cache' : 'compat-fallback'),
+    };
+  });
+
+  return data;
+};
+
 /* ------------------------------------------------
  *  POST /api/apple-music/artist-images
  *  Body: { artistNames: [ 'Drake', 'Billie Eilish', … ] }
@@ -339,6 +550,116 @@ unifiedRouter.post('/apple-music/artist-images', async (req, res) => {
   } catch (err) {
     console.error('Apple-images error:', err.message);
     res.status(502).json({ error: 'Apple Music API unavailable' });
+  }
+});
+
+/* ------------------------------------------------
+ *  Threads frontend compatibility routes
+ *  Body: { artists: string[] } and { tracks: [{ songName, artistName }] }
+ *  ------------------------------------------------ */
+unifiedRouter.post('/apple-music-artist-images', async (req, res) => {
+  const incomingArtists = Array.isArray(req.body?.artists) ? req.body.artists : [];
+  const cleanedArtists = [...new Set(
+    incomingArtists
+      .map((name) => String(name || '').trim())
+      .filter(Boolean)
+  )].slice(0, 80);
+
+  if (!cleanedArtists.length) {
+    return res.status(400).json({
+      success: false,
+      error: 'Missing artists array in request body.',
+    });
+  }
+
+  const data = await buildArtistImageMap(cleanedArtists);
+  return res.json({
+    success: true,
+    data,
+    meta: {
+      requested: cleanedArtists.length,
+      resolved: Object.values(data).filter(Boolean).length,
+      source: 'unified-backend-compat',
+    },
+  });
+});
+
+unifiedRouter.post('/apple-music-album-artworks', async (req, res) => {
+  const incomingTracks = Array.isArray(req.body?.tracks) ? req.body.tracks : [];
+  const cleanedTracks = incomingTracks
+    .map((track) => ({
+      songName: String(track?.songName || '').trim(),
+      artistName: String(track?.artistName || '').trim(),
+    }))
+    .filter((track) => track.songName && track.artistName)
+    .slice(0, 120);
+
+  if (!cleanedTracks.length) {
+    return res.status(400).json({
+      success: false,
+      error: 'Missing tracks array in request body.',
+    });
+  }
+
+  const data = await buildAlbumArtworkMap(cleanedTracks);
+  return res.json({
+    success: true,
+    data,
+    meta: {
+      requested: cleanedTracks.length,
+      resolved: Object.values(data).filter((entry) => entry?.artworkUrl).length,
+      source: 'unified-backend-compat',
+    },
+  });
+});
+
+unifiedRouter.post('/cache-media', async (req, res) => {
+  try {
+    const { artworkUrl, previewUrl, songId } = req.body || {};
+
+    if (!songId) {
+      return res.status(400).json({ success: false, error: 'Missing songId' });
+    }
+
+    ensureDirectory(SHARED_CACHED_MEDIA_DIR);
+
+    const safeSongId = sanitizeCacheKeySegment(songId, 'song');
+    const results = {
+      artworkPath: artworkUrl || null,
+      previewPath: previewUrl || null,
+    };
+
+    if (artworkUrl) {
+      try {
+        const { buffer, contentType } = await downloadRemoteAsset(artworkUrl);
+        const extension = inferCachedFileExtension(artworkUrl, contentType, '.jpg');
+        const filename = `${safeSongId}_artwork${extension}`;
+        fs.writeFileSync(path.join(SHARED_CACHED_MEDIA_DIR, filename), buffer);
+        results.artworkPath = `/cached_media/${filename}`;
+      } catch (error) {
+        console.warn(`Failed to cache artwork for ${safeSongId}:`, error.message);
+      }
+    }
+
+    if (previewUrl) {
+      try {
+        const { buffer, contentType } = await downloadRemoteAsset(previewUrl);
+        const extension = inferCachedFileExtension(previewUrl, contentType, '.m4a');
+        const filename = `${safeSongId}_preview${extension}`;
+        fs.writeFileSync(path.join(SHARED_CACHED_MEDIA_DIR, filename), buffer);
+        results.previewPath = `/cached_media/${filename}`;
+      } catch (error) {
+        console.warn(`Failed to cache preview for ${safeSongId}:`, error.message);
+      }
+    }
+
+    return res.json({
+      success: true,
+      ...results,
+    });
+  } catch (error) {
+    console.error('Error caching media assets:', error);
+    return res.status(500).json({ success: false, error: 'Failed to cache media assets' });
   }
 });
 
@@ -946,84 +1267,221 @@ unifiedRouter.get('/apple-music-search', async (req, res) => {
   }
 });
 
-// Mock routes for threads app data (since we don't have a real database)
+const THREADS_CACHE_DIR = path.resolve(__dirname, '..', 'apps', 'threads', 'src', 'cached_posts');
+const DIVERSE_THREADS_SUBREDDITS = ['music', 'musicsuggestions', 'listentothis', 'hiphopheads', 'popheads'];
+
+const loadCachedThreadPost = (postId) => {
+  const fileName = fs.readdirSync(THREADS_CACHE_DIR)
+    .find((file) => file.startsWith(postId) && file.endsWith('.json'));
+
+  if (!fileName) {
+    return null;
+  }
+
+  const fullPath = path.join(THREADS_CACHE_DIR, fileName);
+  const data = JSON.parse(fs.readFileSync(fullPath, 'utf8'));
+
+  if (!Array.isArray(data.comments) || data.comments.length === 0) {
+    const fallbackAuthor = data.author || 'RedditUser';
+    data.comments = [
+      {
+        id: `auto_${Date.now()}`,
+        author: fallbackAuthor,
+        body: "No cached comments were found for this thread, so here's a placeholder.",
+        createdUtc: Math.floor(Date.now() / 1000),
+        ups: 1,
+        replies: []
+      }
+    ];
+  }
+
+  const now = Date.now() / 1000;
+  const oneYearAgo = now - 365 * 24 * 60 * 60;
+  if (!data.createdUtc || data.createdUtc <= 0 || data.createdUtc > now) {
+    data.createdUtc = oneYearAgo + Math.random() * (now - oneYearAgo);
+  }
+
+  return data;
+};
+
+const shuffleInPlace = (items = []) => {
+  for (let i = items.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [items[i], items[j]] = [items[j], items[i]];
+  }
+  return items;
+};
+
+const summarizeCachedThreadPost = (post = {}) => ({
+  id: post.id,
+  title: post.title,
+  author: post.author,
+  subreddit: post.subreddit || 'music',
+  selftext: post.selftext || '',
+  imageUrl: post.imageUrl || null,
+  postType: post.postType || 'thread',
+  createdUtc: post.createdUtc || Math.floor(Date.now() / 1000),
+  hasCachedData: true,
+  num_comments: post.comments?.length || post.num_comments || 0,
+  commentCount: post.comments?.length || 0,
+  snippetCount: post.snippets?.length || 0,
+});
+
+const readThreadsCachedPosts = () => {
+  try {
+    const files = fs.existsSync(THREADS_CACHE_DIR)
+      ? fs.readdirSync(THREADS_CACHE_DIR).filter((file) => file.endsWith('.json'))
+      : [];
+
+    return files
+      .map((file) => {
+        try {
+          const filePath = path.join(THREADS_CACHE_DIR, file);
+          return summarizeCachedThreadPost(
+            JSON.parse(fs.readFileSync(filePath, 'utf8'))
+          );
+        } catch (error) {
+          return null;
+        }
+      })
+      .filter(Boolean);
+  } catch (error) {
+    console.warn('Failed to read cached thread posts:', error.message);
+    return [];
+  }
+};
+
+const fetchRedditPostsForSubreddit = async (subreddit, limit = 8) => {
+  const redditUrl = `https://www.reddit.com/r/${subreddit}/hot.json?limit=${limit}`;
+  const { data } = await axios.get(redditUrl, {
+    timeout: 7000,
+    headers: { 'User-Agent': 'MuflThreads/1.0 (+https://mufl.app)' }
+  });
+
+  return (data?.data?.children || []).map(({ data: p }) => {
+    let imageUrl = null;
+    if (/\.(jpe?g|png|gif|webp)$/i.test(p.url_overridden_by_dest || '')) {
+      imageUrl = p.url_overridden_by_dest;
+    } else if (p.preview?.images?.[0]?.source?.url) {
+      imageUrl = p.preview.images[0].source.url.replace(/&amp;/g, '&');
+    } else if (p.thumbnail && p.thumbnail.startsWith('http')) {
+      imageUrl = p.thumbnail;
+    }
+
+    let postType = 'thread';
+    if (subreddit === 'music') postType = 'news';
+    if ((p.num_comments ?? 0) >= 250 || (p.ups ?? 0) >= 1500) postType = 'groupchat';
+
+    return {
+      id: p.id,
+      subreddit,
+      author: p.author,
+      title: p.title,
+      selftext: p.selftext || '',
+      createdUtc: p.created_utc,
+      ups: p.ups,
+      num_comments: p.num_comments,
+      postType,
+      imageUrl,
+      hasCachedData: false,
+      snippets: [],
+    };
+  });
+};
+
+const buildDiverseThreadsFeed = async ({ shuffle = false } = {}) => {
+  const cachedPosts = readThreadsCachedPosts().filter((post) => post.postType !== 'parameter');
+  const redditResults = await Promise.allSettled(
+    DIVERSE_THREADS_SUBREDDITS.map((subreddit) => fetchRedditPostsForSubreddit(subreddit, 8))
+  );
+
+  const redditPosts = redditResults
+    .filter((result) => result.status === 'fulfilled')
+    .flatMap((result) => result.value)
+    .filter((post) => post.postType !== 'parameter');
+
+  const dedupedPosts = [];
+  const seenIds = new Set();
+  [...cachedPosts, ...redditPosts].forEach((post) => {
+    if (!post?.id || seenIds.has(post.id)) return;
+    seenIds.add(post.id);
+    dedupedPosts.push(post);
+  });
+
+  const orderedPosts = shuffle
+    ? shuffleInPlace([...dedupedPosts])
+    : [...dedupedPosts].sort((a, b) => (b.createdUtc || 0) - (a.createdUtc || 0));
+
+  return orderedPosts.slice(0, 40);
+};
+
+unifiedRouter.get('/diverse-posts', async (req, res) => {
+  try {
+    const data = await buildDiverseThreadsFeed();
+    return res.json({
+      success: true,
+      data,
+      message: 'Fetched diverse post mix',
+    });
+  } catch (error) {
+    console.error('Error building diverse posts:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to build diverse posts',
+    });
+  }
+});
+
+unifiedRouter.get('/refresh', async (req, res) => {
+  try {
+    const data = await buildDiverseThreadsFeed({ shuffle: true });
+    return res.json({
+      success: true,
+      data,
+      message: 'Successfully refreshed with new diverse posts',
+    });
+  } catch (error) {
+    console.error('Error refreshing diverse posts:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to refresh posts',
+    });
+  }
+});
+
 unifiedRouter.get('/cached-posts/:postId', async (req, res) => {
   const { postId } = req.params;
-  
-  // Generate a single post with snippets for the specific postId
-  const mockSongs = [
-    { name: 'Midnight Studies', artist: 'Lo-Fi Dreams', album: 'Focus Flow' },
-    { name: 'Electric Sunset', artist: 'Neon Waves', album: 'City Lights' },
-    { name: 'Heavy Bassline', artist: 'Underground Kings', album: 'Street Symphony' },
-    { name: 'Acoustic Morning', artist: 'Coffee House', album: 'Sunday Sessions' },
-    { name: 'Digital Rain', artist: 'Synthwave Valley', album: 'Retro Future' }
-  ];
-  
-  const authors = ['MusicFan42', 'BeatCollector', 'SoundExplorer', 'VibesOnly'];
-  const postTypes = ['thread', 'groupchat', 'parameter'];
-  
-  // Create deterministic randomness based on postId
-  const seed = postId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  const random = (max = 1) => ((seed * 9301 + 49297) % 233280) / 233280 * max;
-  
-  const postType = postTypes[Math.floor(random() * postTypes.length)];
-  const hasSnippets = postType === 'thread' || postType === 'groupchat';
-  
-  const snippets = hasSnippets ? Array.from({ length: Math.floor(random() * 3) + 1 }, (_, i) => {
-    const song = mockSongs[Math.floor(random() * mockSongs.length)];
-    return {
-      commentId: `comment_${postId}_${i}`,
-      query: `${song.artist} ${song.name}`,
-      songName: song.name,
-      artistName: song.artist,
-      albumName: song.album,
-      artworkUrl: `https://via.placeholder.com/300x300/1a1a1a/ffffff?text=${encodeURIComponent(song.album)}`,
-      previewUrl: null,
-      duration: Math.floor(random() * 180000) + 120000,
-      releaseDate: `${2015 + Math.floor(random() * 9)}-${String(Math.floor(random() * 12) + 1).padStart(2, '0')}-01`
-    };
-  }) : [];
-  
-  const comments = snippets.map(snippet => ({
-    id: snippet.commentId,
-    author: authors[Math.floor(random() * authors.length)],
-    body: `Check out this track: ${snippet.songName} by ${snippet.artistName}`,
-    createdUtc: Date.now() / 1000,
-    ups: Math.floor(random() * 50) + 1
-  }));
-  
-  res.json({
-    success: true,
-    data: {
-      id: postId,
-      title: `Cached Post ${postId}`,
-      author: authors[Math.floor(random() * authors.length)],
-      postType: postType,
-      createdUtc: Date.now() / 1000,
-      ups: Math.floor(random() * 100) + 1,
-      num_comments: comments.length,
-      snippets: snippets,
-      comments: comments,
-      cached: true
+
+  try {
+    const data = loadCachedThreadPost(postId);
+    if (!data) {
+      return res.status(404).json({ success: false, error: 'Post not found' });
     }
-  });
+
+    return res.json({ success: true, data });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: 'Server error' });
+  }
 });
 
 
 
 unifiedRouter.get('/posts/:postId/snippets', async (req, res) => {
   const { postId } = req.params;
-  
-  // Return mock snippets
-  res.json([
-    {
-      id: `snippet-1-${postId}`,
-      title: 'Mock Song 1',
-      artist: 'Mock Artist 1',
-      preview_url: null,
-      timestamp: new Date().toISOString()
-    }
-  ]);
+
+  try {
+    const cachedPost = loadCachedThreadPost(postId);
+    const snippets = Array.isArray(cachedPost?.snippets) ? cachedPost.snippets : [];
+    return res.json({
+      success: true,
+      data: snippets,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to load snippets',
+    });
+  }
 });
 
 unifiedRouter.get('/posts', async (req, res) => {
@@ -1062,54 +1520,15 @@ unifiedRouter.get('/cached-posts', (req, res) => {
   }
 });
 
-// GET /cached-posts/:id  → return one cached post file with its comments/snippets
-unifiedRouter.get('/cached-posts/:id', async (req, res) => {
-  try {
-    const postId   = req.params.id;                          // e.g. 1hqs8yj
-    const cacheDir = path.resolve(__dirname, '..',
-                                   'apps', 'threads', 'src', 'cached_posts');
-
-    // File name is "<postId>.json" or "<postId>_something.json"
-    const fileName = fs.readdirSync(cacheDir)
-      .find(f => f.startsWith(postId) && f.endsWith('.json'));
-
-    if (!fileName) {
-      return res.status(404).json({ success: false, error: 'Post not found' });
-    }
-
-    const fullPath = path.join(cacheDir, fileName);
-    const data     = JSON.parse(fs.readFileSync(fullPath, 'utf8'));
-
-       if (!Array.isArray(data.comments) || data.comments.length === 0) {
-           const fallbackAuthor = data.author || 'RedditUser';
-           data.comments = [
-             {
-               id: `auto_${Date.now()}`,
-               author: fallbackAuthor,
-               body: "No cached comments were found for this thread, so here's a placeholder.",
-             createdUtc: Math.floor(Date.now() / 1000),
-               ups: 1,
-               replies: []
-             }
-           ];
-         }
-
-    // Make sure createdUtc is sane (matches useThreadData helper)
-    const now         = Date.now() / 1000;
-    const oneYearAgo  = now - 365 * 24 * 60 * 60;
-    if (!data.createdUtc || data.createdUtc <= 0 || data.createdUtc > now) {
-      data.createdUtc = oneYearAgo + Math.random() * (now - oneYearAgo);
-    }
-
-    res.json({ success: true, data });
-  } catch (err) {
-    res.status(500).json({ success: false, error: 'Server error' });
-  }
-});
-
 unifiedRouter.get('/posts/:id/comments', async (req, res) => {
   const { id } = req.params;
-  const sub = (req.query.subreddit || 'music').toLowerCase();
+  const cachedPost = loadCachedThreadPost(id);
+  const sub = (
+    req.query.subreddit ||
+    req.headers['x-thread-subreddit'] ||
+    cachedPost?.subreddit ||
+    'music'
+  ).toLowerCase();
   const url = `https://www.reddit.com/r/${sub}/comments/${id}.json?limit=100`;
 
   try {
@@ -1145,62 +1564,13 @@ unifiedRouter.get('/posts/:id/comments', async (req, res) => {
       subreddit: sub
     });
     
-    return res.status(502).json({ 
-      success: false, 
-      error: 'Reddit API unavailable',
-      details: process.env.NODE_ENV === 'development' ? err.message : undefined
-    });
-  }
-});
-
-// GET /posts/:id/comments?subreddit=<sub>
-// ---------------------------------------
-// Proxies to Reddit and returns a flat array of comments
-// GET /posts/:id/comments?subreddit=<sub>
-unifiedRouter.get('/posts/:id/comments', async (req, res) => {
-
-  const subreddit =
-  (req.query.subreddit || req.headers['x-thread-subreddit'] || 'music').toLowerCase();
-
-  const { id } = req.params;
-  const sub    = (req.query.subreddit || 'music').toLowerCase();
-  const url    = `https://www.reddit.com/r/${sub}/comments/${id}.json?limit=100`;
-
-  try {
-     const { data } = await axios.get(
-         url,
-         {
-           timeout : 7000,
-           headers : { 'User-Agent': 'MuflThreads/1.0 (+https://mufl.app)' }
-         }
-       );
-    // second listing ([1]) holds the comment tree
-    const children = data?.[1]?.data?.children || [];
-
-    const flatten = (items) =>
-      items.flatMap(c => {
-        const d = c.data || {};
-        const node = {
-          id:         d.id,
-          author:     d.author,
-          body:       d.body || '',
-          createdUtc: d.created_utc,
-          ups:        d.ups,
-          replies:    []
-        };
-        if (d.replies?.data?.children?.length) {
-          node.replies = flatten(d.replies.data.children);
-        }
-        return node;
-      });
-
-    return res.json({ success: true, data: flatten(children) });
-  } catch (err) {
-    return res
-      .status(502)
-      .json({ success: false, error: 'Reddit API unavailable' });
-  }
-});
+	    return res.status(502).json({ 
+	      success: false, 
+	      error: 'Reddit API unavailable',
+	      details: process.env.NODE_ENV === 'development' ? err.message : undefined
+	    });
+	  }
+	});
 
 
 

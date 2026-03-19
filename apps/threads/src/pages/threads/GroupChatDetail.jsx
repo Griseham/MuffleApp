@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { Music, Search, Plus, Users, Send, MessageCircle, Heart, Share2, Bookmark, Volume2, Play, X } from "lucide-react";
 import styles from "./GroupChatDetailStyles";
 import { validateAndSanitizeInput, checkRateLimit, sanitizeComment, sanitizeSearchQuery } from "../../utils/security";
+import { buildApiUrl, toApiOriginUrl } from "../../utils/api";
 
 // Helper function to generate avatar URLs
 function authorToAvatar(author) {
@@ -22,6 +23,22 @@ function hashStringToNumber(value) {
     hash = value.charCodeAt(i) + ((hash << 5) - hash);
   }
   return Math.abs(hash);
+}
+
+function normalizeMediaUrl(url) {
+  if (!url || typeof url !== "string") return "";
+  if (url.startsWith("/cached_media/")) return toApiOriginUrl(url);
+  return url;
+}
+
+function formatArtworkUrl(url, size = 100) {
+  if (!url || typeof url !== "string") return "";
+  return normalizeMediaUrl(
+    url
+      .replace("{w}", String(size))
+      .replace("{h}", String(size))
+      .replace("{f}", "jpg")
+  );
 }
 
 const PLACEHOLDER_NAMES = [
@@ -108,8 +125,6 @@ function generateGenreStats() {
 }
 
 export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
-  const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:4000";
-
   // Core state
   const [messages, setMessages] = useState([]);
   const [allMessages, setAllMessages] = useState([]);
@@ -189,10 +204,7 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
 
         const formatArtwork = (url) => {
           if (!url || typeof url !== "string") return "/assets/default-artist.png";
-          return url
-            .replace("{w}", "100")
-            .replace("{h}", "100")
-            .replace("{f}", "jpg");
+          return formatArtworkUrl(url, 100);
         };
 
         const toSnippetShape = (snippet) => {
@@ -207,7 +219,11 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
             snippet.artwork ||
             snippet.artistImage ||
             attrs?.artwork?.url;
-          const previewUrl = snippet.previewUrl || attrs?.previews?.[0]?.url || null;
+          const previewUrl = normalizeMediaUrl(
+            snippet.previewUrl ||
+            attrs?.previews?.[0]?.url ||
+            null
+          );
 
           if (!snippetId || !name || !artistName) return null;
 
@@ -220,19 +236,18 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
           };
         };
 
-        const shouldUseCachedPost = Boolean(post?.hasCachedData || post?.source === "cached");
         let cachedPostData = null;
 
-        if (shouldUseCachedPost) {
-          try {
-            const cachedResp = await fetch(`${API_BASE}/api/cached-posts/${post.id}`);
+        try {
+          const cachedResp = await fetch(buildApiUrl(`/cached-posts/${post.id}`));
+          if (cachedResp.ok) {
             const cachedJson = await cachedResp.json();
             if (cachedJson?.success && cachedJson?.data) {
               cachedPostData = cachedJson.data;
             }
-          } catch (e) {
-            console.warn("Failed to load cached post for groupchat:", e?.message || e);
           }
+        } catch (e) {
+          console.warn("Failed to load cached post for groupchat:", e?.message || e);
         }
 
         let commentsData = { data: [] };
@@ -242,13 +257,26 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
           commentsData = { data: cachedPostData.comments || [] };
           snippetsData = cachedPostData.snippets || [];
         } else {
+          const subreddit =
+            cachedPostData?.subreddit ||
+            post?.subreddit ||
+            "";
+          const postType =
+            cachedPostData?.postType ||
+            post?.postType ||
+            "groupchat";
+          const searchParams = new URLSearchParams();
+          if (subreddit) searchParams.set("subreddit", subreddit);
+          if (postType) searchParams.set("postType", postType);
+          const querySuffix = searchParams.toString() ? `?${searchParams.toString()}` : "";
+
           // Fetch live comments
-          const commentsResponse = await fetch(`${API_BASE}/api/posts/${post.id}/comments`);
+          const commentsResponse = await fetch(buildApiUrl(`/posts/${post.id}/comments${querySuffix}`));
           commentsData = await commentsResponse.json();
 
           // Fetch live snippets
           try {
-            const snippetsResponse = await fetch(`${API_BASE}/api/posts/${post.id}/snippets`);
+            const snippetsResponse = await fetch(buildApiUrl(`/posts/${post.id}/snippets${querySuffix}`));
             const snippetsJson = await snippetsResponse.json();
             if (snippetsJson.success) {
               snippetsData = snippetsJson.data || [];
@@ -601,7 +629,7 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
     }
     
     audioRef.current.pause();
-    audioRef.current.src = snippet.previewUrl;
+    audioRef.current.src = normalizeMediaUrl(snippet.previewUrl);
     audioRef.current.play().catch(err => {
       console.error("Error playing audio:", err);
       setIsSnippetAudioPlaying(false);
@@ -642,7 +670,7 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
     
     setIsSearching(true);
     try {
-      const response = await fetch(`${API_BASE}/api/apple-music-search?query=${encodeURIComponent(sanitizedQuery)}`);
+      const response = await fetch(`${buildApiUrl("/apple-music-search")}?query=${encodeURIComponent(sanitizedQuery)}`);
       const data = await response.json();
       
       if (data.success && data.data) {
@@ -665,8 +693,8 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
       id: snippet.id || `snippet_${Date.now()}`,
       name: attrs.name,
       artistName: attrs.artistName,
-      artwork: attrs.artwork?.url?.replace("{w}", "100")?.replace("{h}", "100") || "/assets/default-artist.png",
-      previewUrl: attrs.previews?.[0]?.url || null
+      artwork: formatArtworkUrl(attrs.artwork?.url) || "/assets/default-artist.png",
+      previewUrl: normalizeMediaUrl(attrs.previews?.[0]?.url || null)
     });
     setIsSongSearchVisible(false);
   }, []);

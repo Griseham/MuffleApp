@@ -78,11 +78,10 @@ cp .env.example .env
 # Edit .env with your actual API keys
 ```
 
-For Threads app:
+For the shared backend used by Threads:
 ```bash
-cd apps/threads/src/backend
-cp .env.example .env
-# Edit .env with your actual API keys
+cd /path/to/UpdatedWebsite2
+# Edit the root .env with your actual API keys
 ```
 
 3. Install dependencies:

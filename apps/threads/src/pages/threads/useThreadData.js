@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { authorToAvatar } from "../utils/utils";
+import { buildApiUrl, toApiOriginUrl } from "../../utils/api";
 
 export default function useThreadData(postId, postData = null) {
-  const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:4000";
   const [post, setPost] = useState(null);
   const [comments, setComments] = useState([]);
   const [snippetRecs, setSnippetRecs] = useState([]);
@@ -43,7 +43,7 @@ export default function useThreadData(postId, postData = null) {
 
   const normalizeMediaUrl = (url) => {
     if (!url || typeof url !== "string") return "";
-    if (url.startsWith("/cached_media/")) return `${API_BASE}${url}`;
+    if (url.startsWith("/cached_media/")) return toApiOriginUrl(url);
     return url;
   };
 
@@ -146,7 +146,7 @@ export default function useThreadData(postId, postData = null) {
   const fetchCachedPostData = useCallback(async (id) => {
     try {
       console.log(`useThreadData: Fetching cached post data for ID: ${id}`);
-      const resp = await fetch(`${API_BASE}/api/cached-posts/${id}`);
+      const resp = await fetch(buildApiUrl(`/cached-posts/${id}`));
       if (!resp.ok) {
         console.log(`useThreadData: Cached post not found (${resp.status}): ${id}`);
         return null;
@@ -161,7 +161,7 @@ export default function useThreadData(postId, postData = null) {
       console.error("useThreadData: Error fetching cached post:", error);
       return null;
     }
-  }, [API_BASE]);
+  }, []);
 
   // Load post and comments
   useEffect(() => {
@@ -222,6 +222,10 @@ export default function useThreadData(postId, postData = null) {
             setCommentsLoaded(true);
             setIsLoading(false);
             console.log("useThreadData: commentsLoaded set to true (cached)");
+          } else if (postData?.postType === "news" || postData?.postType === "parameter") {
+            setCommentsLoaded(true);
+            setIsLoading(false);
+            console.log(`useThreadData: Skipping live fetch for ${postData.postType} thread without cache`);
           } else {
             setCommentsLoaded(false);
             setIsLoading(false);
@@ -255,7 +259,7 @@ export default function useThreadData(postId, postData = null) {
         
         // Try /api/posts endpoint
         try {
-          const resp = await fetch(`${API_BASE}/api/posts`);
+          const resp = await fetch(buildApiUrl("/posts"));
           if (resp.ok) {
             const allPosts = await resp.json();
             if (allPosts.success && Array.isArray(allPosts.data)) {
@@ -281,7 +285,7 @@ export default function useThreadData(postId, postData = null) {
         // Try diverse-posts endpoint
         try {
           console.log("useThreadData: Trying diverse-posts API...");
-          const diverseResp = await fetch(`${API_BASE}/api/diverse-posts`);
+          const diverseResp = await fetch(buildApiUrl("/diverse-posts"));
           
           if (diverseResp.ok) {
             const diverseData = await diverseResp.json();
@@ -335,7 +339,7 @@ export default function useThreadData(postId, postData = null) {
     return () => {
       cancelled = true;
     };
-  }, [postId, postData, API_BASE, fetchCachedPostData, processCachedSnippets]);
+  }, [postId, postData, fetchCachedPostData, processCachedSnippets]);
 
   // Reset per-post live fetch guard
   useEffect(() => {
@@ -344,8 +348,16 @@ export default function useThreadData(postId, postData = null) {
 
   // For non-cached posts (e.g., posts added via the Reddit button), fetch live comments + snippets
   useEffect(() => {
+    const shouldSkipLiveFetch = post?.postType === "news" || post?.postType === "parameter";
+
     if (!postId || !post || usedCache) {
       console.log("useThreadData: Live fetch skipped - conditions not met", { postId: !!postId, post: !!post, usedCache });
+      return;
+    }
+    if (shouldSkipLiveFetch) {
+      console.log(`useThreadData: Live fetch skipped for ${post.postType} thread`, { postId });
+      setCommentsLoaded(true);
+      setSnippetsLoading(false);
       return;
     }
     if (didFetchLiveRef.current) {
@@ -371,7 +383,7 @@ export default function useThreadData(postId, postData = null) {
         let liveComments = [];
         try {
           console.log("useThreadData: Fetching live comments...");
-          const cResp = await fetch(`${API_BASE}/api/posts/${postId}/comments${subredditParam}`);
+          const cResp = await fetch(buildApiUrl(`/posts/${postId}/comments${subredditParam}`));
           const cJson = await cResp.json();
           liveComments = cJson?.success && cJson?.data ? cJson.data : [];
           console.log(`useThreadData: Received ${Array.isArray(liveComments) ? liveComments.length : 0} live comments`);
@@ -383,7 +395,7 @@ export default function useThreadData(postId, postData = null) {
         // Then fetch snippets (don't let the comments state update cancel this)
         try {
           console.log("useThreadData: Fetching live snippets...");
-          const sResp = await fetch(`${API_BASE}/api/posts/${postId}/snippets${subredditParam}`);
+          const sResp = await fetch(buildApiUrl(`/posts/${postId}/snippets${subredditParam}`));
           const sJson = await sResp.json();
           console.log("useThreadData: Snippets API response:", sJson);
           
@@ -418,11 +430,12 @@ export default function useThreadData(postId, postData = null) {
       console.log("useThreadData: Live fetch effect cleanup called");
       cancelled = true; 
     };
-  }, [postId, post, usedCache, API_BASE, processCachedSnippets]); // FIXED: Removed comments, snippetRecs, commentsLoaded from deps
+  }, [postId, post, usedCache, processCachedSnippets]); // FIXED: Removed comments, snippetRecs, commentsLoaded from deps
 
   // Load snippets when needed (for non-cached posts)
   useEffect(() => {
     if (!post || !postId || usedCache) return;
+    if (post.postType === "news" || post.postType === "parameter") return;
     if (!commentsLoaded) return;
     if (!didFetchLiveRef.current) return;
     if (snippetRecs.length > 0) return;
