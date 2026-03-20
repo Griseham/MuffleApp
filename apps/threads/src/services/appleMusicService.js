@@ -1,5 +1,4 @@
 const axios = require('axios');
-const APPLE_STOREfront = 'us';
 
 // RECOMMENDED: read env vars once (use non-REACT_APP names; fall back for compatibility)
 const APPLE_API_BASE_URL =
@@ -8,12 +7,7 @@ const APPLE_DEVELOPER_TOKEN =
   process.env.APPLE_DEVELOPER_TOKEN || process.env.REACT_APP_APPLE_DEVELOPER_TOKEN;
 
 console.log('ENV in appleMusicService: baseUrl=', APPLE_API_BASE_URL ? 'set' : 'missing');
-
-console.log(
-  'ENV in appleMusicService: token prefix =',
-  APPLE_DEVELOPER_TOKEN ? APPLE_DEVELOPER_TOKEN + '  !!!!!' : 'missing'
-);
-
+console.log('ENV in appleMusicService: developer token=', APPLE_DEVELOPER_TOKEN ? 'set' : 'missing');
 
 if (!APPLE_API_BASE_URL || !APPLE_DEVELOPER_TOKEN) {
   console.warn('Missing Apple Music environment variables in appleMusicService.js');
