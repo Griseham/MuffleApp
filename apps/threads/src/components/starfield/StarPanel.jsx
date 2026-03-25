@@ -6,14 +6,12 @@ import { StarfieldContext } from "../context/Context";
 import { Info, Heart, MessageCircle, Volume2 } from 'lucide-react';
 
 export default function StarPanel({ star, onClose, onViewThread }) {
-  const { isFullscreen, containerDimensions } = useContext(StarfieldContext);
-  const [hasBeenClicked, setHasBeenClicked] = useState(false);
+  const { isFullscreen } = useContext(StarfieldContext);
   const [isPanelMounted, setIsPanelMounted] = useState(false);
   const panelRef = useRef(null);
   
   // Set up dimensions
   const panelWidth = isFullscreen ? 400 : 320;
-  const panelHeight = 350; // Approximate panel height
   
   // Use star's original coordinates in the starfield
   const starX = star.x;
@@ -82,7 +80,6 @@ export default function StarPanel({ star, onClose, onViewThread }) {
         zIndex: 1000
       }}>
         <button
-          onClick={() => setHasBeenClicked(true)}
           className="star-info-icon-button"
           aria-label="Information"
           style={{
@@ -339,7 +336,7 @@ export default function StarPanel({ star, onClose, onViewThread }) {
       )}
       
       {/* Styles for animations */}
-      <style jsx>{`
+      <style>{`
         @keyframes fadeInScale {
           from { opacity: 0; transform: scale(0.9); }
           to { opacity: 1; transform: scale(1); }

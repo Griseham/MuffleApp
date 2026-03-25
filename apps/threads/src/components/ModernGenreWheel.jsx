@@ -1,7 +1,5 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Info, X, Music, Compass, Stars } from 'lucide-react';
-import ReactDOM from 'react-dom';
 
 const ModernGenreWheel = ({ 
   genres = [],
@@ -13,21 +11,18 @@ const ModernGenreWheel = ({
   // Animation refs and state
   const wheelRef = useRef(null);
   const animRef = useRef(null);
-  const [rotationAngle, setRotationAngle] = useState(0);
+  const rotationAngle = 0;
   const [hoveredGenre, setHoveredGenre] = useState(null);
   const [selectedGenre, setSelectedGenre] = useState(null);
-  const [prevGenres, setPrevGenres] = useState(genres);
-  const [transitionProgress, setTransitionProgress] = useState(1);
   const [wheelOpacity, setWheelOpacity] = useState(1);
-  const [pulseState, setPulseState] = useState(0);
   
   // Calculate wheel dimensions
-  const wheelSize = isFullscreen ? 460 : 400;
+  const wheelSize = isFullscreen ? 460 : 380;
   const centerX = wheelSize / 2;
   const centerY = wheelSize / 2;
   const outerRadius = (wheelSize / 2) - 15;
   const innerRadius = outerRadius * 0.68; // Wider arcs for better visibility
-  const [randomTotalArtists] = useState(Math.floor(Math.random() * 300) + 200); // Random number between 200-500
+  const [randomTotalArtists] = useState(() => Math.floor(Math.random() * 300) + 200); // Random number between 200-500
   const [scrollTrigger, setScrollTrigger] = useState(0);
 
   
@@ -50,9 +45,6 @@ const ModernGenreWheel = ({
       return () => {
         // When scrolling stops, check if genres changed
         if (JSON.stringify(storedGenres) !== JSON.stringify(genres)) {
-          // Start the transition animation
-          setTransitionProgress(0);
-
           // Simple fade-in animation
           const startTime = performance.now();
           const duration = 500; // Quick animation
@@ -64,16 +56,11 @@ const ModernGenreWheel = ({
             // Update opacity
             setWheelOpacity(0.7 + (0.3 * progress));
 
-            // Track progress
-            setTransitionProgress(progress);
-
             if (progress < 1) {
               animRef.current = requestAnimationFrame(animateFade);
             } else {
               // Animation complete
               setWheelOpacity(1);
-              setPrevGenres(genres);
-              setTransitionProgress(1);
               animRef.current = null;
             }
           };
@@ -88,7 +75,7 @@ const ModernGenreWheel = ({
       // Not scrolling - ensure wheel is fully visible
       setWheelOpacity(1);
     }
-  }, [isScrolling, genres, prevGenres]);
+  }, [isScrolling, genres]);
 
   // Inside your isScrolling effect, add this timer to constantly update the scroll trigger
   useEffect(() => {
@@ -103,7 +90,7 @@ const ModernGenreWheel = ({
   }, [isScrolling]);
   
   // Simplified genre selection with no animation
-  const handleGenreClick = (genre, index) => {
+  const handleGenreClick = useCallback((genre, index) => {
     // Set selected genre and notify parent
     setSelectedGenre(index);
     onGenreSelect(genre);
@@ -112,7 +99,7 @@ const ModernGenreWheel = ({
     setTimeout(() => {
       setSelectedGenre(null);
     }, 500);
-  };
+  }, [onGenreSelect]);
   
   // Calculate and create genre segments
 // Replace the existing genreSegments useMemo in ModernGenreWheel.jsx
@@ -382,13 +369,6 @@ const genreSegments = useMemo(() => {
   
   return segments;
 }, [genres, hoveredGenre, selectedGenre, centerX, centerY, outerRadius, innerRadius, isFullscreen, handleGenreClick, rotationAngle]);
-  // Generate empty artist circles array - artists will be shown in a modal instead
-  const generateArtistCircles = () => {
-    return []; // Empty array as we're not showing artists in the wheel anymore
-  };
-  
-  // Constants for the artist counts
-  const MAX_ARTIST_COUNT = 28;
   
   // Generate a new random total artist count on every scroll position change
   const [dynamicTotalArtists, setDynamicTotalArtists] = useState(randomTotalArtists);
@@ -423,15 +403,6 @@ const genreSegments = useMemo(() => {
       );
     }
   }, [isScrolling, distanceFromCenter, dynamicTotalArtists, scrollTrigger]);
-  
-  // Calculate how many artists to show based on distance
-  const distanceThreshold = 15000;
-  const distanceRatio = distanceFromCenter / distanceThreshold;
-  const artistRatio = Math.pow(1 - distanceRatio, 1.5);
-  const artistsToShow = Math.min(
-    MAX_ARTIST_COUNT,
-    Math.max(0, Math.floor(MAX_ARTIST_COUNT * artistRatio))
-  );
   
 // You'll also need to update the centerElements useMemo to match the Design 5 style
 // This ensures the center display works well with the hover effect

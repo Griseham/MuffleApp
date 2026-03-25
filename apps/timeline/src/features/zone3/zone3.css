@@ -1,0 +1,912 @@
+/* ==================== MAIN CONTENT (BOTTOM ZONE) ==================== */
+.main-content {
+  flex: 1;
+  display: flex;
+  overflow: visible;
+  min-height: 0;
+}
+
+/* ==================== ZONE 3 LAYOUT ==================== */
+.zone3-layout {
+  --sidebar-width: 108px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+}
+
+/* ==================== DESIGN A: HORIZONTAL TOOLBAR ==================== */
+.zone3-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--color-border-primary);
+  background: var(--color-bg-primary);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  z-index: 30;
+  position: relative;
+}
+
+.toolbar-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-right: 2px;
+  flex-shrink: 0;
+}
+
+/* ── M / Y / D scale ── */
+.toolbar-scale {
+  display: flex;
+  background: #0a0a0a;
+  border-radius: 6px;
+  padding: 2px;
+  gap: 1px;
+  flex-shrink: 0;
+}
+
+.toolbar-scale-btn {
+  padding: 5px 10px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: #554e48;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.toolbar-scale-btn.is-active {
+  background: #282b29;
+  color: #a4a2a0;
+}
+
+.toolbar-scale-btn:hover:not(.is-active) {
+  color: #7b7a75;
+}
+
+/* ── Divider ── */
+.toolbar-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--color-border-primary);
+  flex-shrink: 0;
+}
+
+/* ── Filter buttons ── */
+.toolbar-filters {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.toolbar-filter-btn {
+  padding: 5px 12px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #554e48;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.toolbar-filter-btn.is-active {
+  background: #282b29;
+  color: #a4a2a0;
+}
+
+.toolbar-filter-btn:hover:not(.is-active) {
+  color: #7b7a75;
+}
+
+.toolbar-filter-btn.is-disabled,
+.toolbar-filter-btn:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* ── Genre chips ── */
+.toolbar-genres {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.toolbar-genre-chip {
+  padding: 4px 9px;
+  border: none;
+  border-radius: 8px;
+  background: #1a1a1a;
+  color: #7b7a75;
+  font-size: 10px;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.toolbar-genre-chip.is-active {
+  background: var(--color-accent);
+  color: #fff;
+}
+
+.toolbar-genre-chip:hover:not(.is-active):not(:disabled) {
+  background: #282b29;
+}
+
+.toolbar-genre-chip--disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  color: #554e48;
+}
+
+/* ── Icon buttons (trophy, volume) ── */
+.toolbar-icon-btn {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--color-border-primary);
+  border-radius: 8px;
+  background: #0d0d0d;
+  color: #7b7a75;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+
+.toolbar-icon-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.toolbar-icon-btn:hover {
+  border-color: var(--color-border-secondary);
+  color: var(--color-text-primary);
+}
+
+.toolbar-icon-btn.is-active {
+  border-color: var(--color-accent);
+  color: #d8e6e6;
+  background: linear-gradient(135deg, rgba(107, 142, 142, 0.14), rgba(107, 142, 142, 0.05));
+}
+
+.toolbar-icon-btn.is-disabled,
+.toolbar-icon-btn:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* ── Inline Volume Slider (sits in the toolbar flex row, to the right of the icon) ── */
+.toolbar-volume-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  background: #0d0d0d;
+  border: 1px solid var(--color-border-primary);
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.toolbar-volume-label {
+  font-size: 9px;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.toolbar-volume-track {
+  position: relative;
+  width: 120px;
+  height: 6px;
+  background: var(--color-border-secondary);
+  border-radius: 3px;
+  cursor: pointer;
+  overflow: visible;
+  user-select: none;
+}
+
+.toolbar-volume-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  background: var(--color-accent);
+  border-radius: 3px;
+  pointer-events: none;
+}
+
+.toolbar-volume-handle {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #e0e0e0;
+  border: 2px solid var(--color-bg-primary);
+  box-shadow: 0 0 6px rgba(107, 142, 142, 0.5), 0 1px 3px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+  z-index: 2;
+  transition: transform 0.08s ease;
+}
+
+/* Make handle bigger on hover/active for easier grab */
+.toolbar-volume-track:hover .toolbar-volume-handle,
+.toolbar-volume-track:active .toolbar-volume-handle {
+  transform: translate(-50%, -50%) scale(1.15);
+}
+
+.toolbar-volume-value {
+  font-size: 11px;
+  font-weight: 650;
+  color: var(--color-text-primary);
+  font-variant-numeric: tabular-nums;
+  min-width: 32px;
+  text-align: right;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+/* ── Spacer ── */
+.toolbar-spacer {
+  flex: 1;
+  min-width: 8px;
+}
+
+/* ── Add user (toolbar right side) ── */
+.toolbar-add-user {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.toolbar-avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid #282B29;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  color: #fff;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.toolbar-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  display: block;
+}
+
+.toolbar-avatar--removable {
+  cursor: pointer;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.toolbar-avatar--removable:hover {
+  transform: scale(1.1);
+  opacity: 0.8;
+}
+
+.toolbar-add-btn-wrap {
+  position: relative;
+}
+
+.toolbar-add-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: transparent;
+  border: 2px dashed #554E48;
+  color: #7B7A75;
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.toolbar-add-btn:hover,
+.toolbar-add-btn.is-active {
+  background: #282B29;
+  border-style: solid;
+  border-color: #7B7A75;
+}
+
+.toolbar-add-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  background: #121212;
+  border: 1px solid #282B29;
+  border-radius: 8px;
+  padding: 6px;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.8);
+  min-width: 120px;
+  animation: toolbarDropIn 0.15s ease;
+}
+
+@keyframes toolbarDropIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.toolbar-add-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease;
+}
+
+.toolbar-add-option:hover {
+  background: #1a1a1a;
+}
+
+.toolbar-add-option-avatar {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  color: #fff;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.toolbar-add-option-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  display: block;
+}
+
+.toolbar-add-option-name {
+  font-size: 11px;
+  color: #A4A2A0;
+}
+
+.toolbar-add-empty {
+  font-size: 10px;
+  color: #554E48;
+  padding: 4px 8px;
+}
+
+/* ==================== TOP BAR (User Header Row) ==================== */
+.zone3-top-bar {
+  display: flex;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--color-border-primary);
+  background: var(--color-bg-primary);
+  z-index: 20;
+}
+
+.zone3-header-corner {
+  width: var(--sidebar-width);
+  min-width: var(--sidebar-width);
+  flex-shrink: 0;
+  position: relative;
+  border-right: 1px solid var(--color-border-primary);
+  background: var(--color-bg-primary);
+  box-shadow: -20px 0 0 0 var(--color-bg-primary);
+  z-index: 21;
+}
+
+.zone3-header-scroll {
+  flex: 1;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.users-header {
+  display: flex;
+  width: max-content;
+  min-width: 100%;
+  background: var(--color-bg-primary);
+  height: var(--row-height);
+}
+
+/* ==================== SCROLL AREA ==================== */
+.zone3-scroll-area {
+  flex: 1;
+  overflow-x: auto;
+  overflow-y: visible;
+  min-height: 0;
+  background: var(--color-bg-tertiary);
+  position: relative;
+}
+
+/* ── Loading overlay ── */
+.zone3-loading-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(8, 8, 8, 0.75);
+  z-index: 15;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  pointer-events: none;
+  animation: loadFadeIn 0.1s ease;
+}
+
+@keyframes loadFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.zone3-loading-bar {
+  width: 100%;
+  height: 3px;
+  background: linear-gradient(90deg, transparent 0%, var(--color-accent) 50%, transparent 100%);
+  animation: loadSlide 0.6s ease;
+}
+
+@keyframes loadSlide {
+  0% { transform: scaleX(0); transform-origin: left; opacity: 0.5; }
+  50% { transform: scaleX(0.7); opacity: 1; }
+  100% { transform: scaleX(1); opacity: 0.2; }
+}
+
+/* ==================== BODY GRID ==================== */
+.body-grid {
+  width: max-content;
+  min-width: 100%;
+  background: var(--color-bg-tertiary);
+}
+
+.grid-row {
+  display: flex;
+  width: 100%;
+}
+
+.grid-row-new-year {
+  border-top: 2px solid var(--color-border-secondary);
+}
+
+.grid-month-cell {
+  width: var(--sidebar-width);
+  min-width: var(--sidebar-width);
+  flex-shrink: 0;
+  position: sticky;
+  left: 0;
+  z-index: 10;
+  height: var(--row-height);
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--color-border-subtle);
+  border-right: 1px solid var(--color-border-primary);
+  background: var(--color-bg-primary);
+  box-shadow: -20px 0 0 0 var(--color-bg-primary), 1px 0 0 var(--color-border-primary);
+  box-sizing: border-box;
+}
+
+/* Accent bar on year-start rows */
+.grid-row-new-year .grid-month-cell::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: linear-gradient(180deg, var(--color-accent), transparent);
+  border-radius: 0 2px 2px 0;
+}
+
+.grid-cell {
+  flex: 0 0 var(--user-column-width);
+  height: var(--row-height);
+  border-right: 1px solid var(--color-border-subtle);
+  border-bottom: 1px solid var(--color-border-subtle);
+  padding: 14px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.grid-cell-add {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+/* ==================== MONTH LABEL STYLES — Glass Cards ==================== */
+.year-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  position: relative;
+  z-index: 1;
+}
+
+.year-number {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-accent);
+  line-height: 1;
+  letter-spacing: 0.04em;
+  text-shadow: 0 0 12px rgba(107, 142, 142, 0.25);
+}
+
+.month-name-small {
+  font-size: 12px;
+  font-weight: 600;
+  color: #c8c4be;
+  letter-spacing: 0.01em;
+}
+
+.month-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: #5a5650;
+  padding-left: 2px;
+}
+
+/* ==================== USER HEADER COLUMNS ==================== */
+.user-column {
+  flex: 0 0 var(--user-column-width);
+  height: var(--row-height);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-right: 1px solid var(--color-border-subtle);
+  position: relative;
+  padding: 14px 10px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.015) 0%, transparent 100%);
+}
+
+.user-column-top {
+  background: linear-gradient(180deg, rgba(85, 78, 72, 0.1) 0%, transparent 100%);
+}
+
+.user-column-you {
+  background: linear-gradient(180deg, rgba(164, 162, 160, 0.08) 0%, transparent 100%);
+}
+
+.user-column-add {
+  background: transparent;
+}
+
+.user-close-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--color-border-primary);
+  border-radius: 5px;
+  background: rgba(0, 0, 0, 0.5);
+  color: #a4a2a0;
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+
+.user-close-btn:hover {
+  border-color: var(--color-accent);
+  color: #d8e6e6;
+  background: rgba(107, 142, 142, 0.1);
+}
+
+/* ── Circular user avatar ── */
+.user-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 700;
+  color: #b0b0b0;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  overflow: hidden;
+}
+
+.user-avatar-glass {
+  /* extra class hook if needed */
+}
+
+.user-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.user-avatar-top {
+  background: linear-gradient(135deg, rgba(85, 78, 72, 0.2), rgba(85, 78, 72, 0.08));
+  border-color: rgba(85, 78, 72, 0.3);
+}
+
+.user-avatar-you {
+  border-color: rgba(164, 162, 160, 0.3);
+  background: linear-gradient(135deg, rgba(164, 162, 160, 0.12), rgba(164, 162, 160, 0.04));
+}
+
+.user-name {
+  font-size: 11px;
+  font-weight: 600;
+  color: #d0ccc6;
+}
+
+.user-label-row {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+}
+
+/* ── Floating rank tag (top-right of user column) ── */
+.user-rank-tag {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(107, 142, 142, 0.18);
+  border: 1px solid rgba(107, 142, 142, 0.35);
+  border-radius: 6px;
+  padding: 3px 7px;
+  font-size: 10px;
+  font-weight: 800;
+  color: #a8dede;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  text-shadow: 0 0 8px rgba(107, 142, 142, 0.3);
+}
+
+/* Legacy rank label — hidden, replaced by rank tag */
+.user-rank-label {
+  display: none;
+}
+
+.you-badge {
+  font-size: 7px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ── Volume badge — pill style, high visibility ── */
+.user-volume-badge {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 3px;
+  padding: 4px 10px;
+  background: rgba(107, 142, 142, 0.14);
+  border: 1px solid rgba(125, 177, 177, 0.3);
+  border-radius: 20px;
+  box-shadow: 0 0 10px rgba(107, 142, 142, 0.08);
+}
+
+.user-volume-badge svg {
+  width: 13px;
+  height: 13px;
+  color: #c8eded;
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 5px rgba(107, 142, 142, 0.5));
+}
+
+.user-volume-badge span {
+  font-size: 11px;
+  font-weight: 800;
+  color: #e4f6f6;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  text-shadow: 0 0 6px rgba(107, 142, 142, 0.25);
+}
+
+/* Add User Button */
+.add-user-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 8px;
+  transition: background 0.15s ease;
+}
+
+.add-user-btn:hover {
+  background: var(--color-border-primary);
+}
+
+.add-user-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px dashed var(--color-text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
+  transition: all 0.15s ease;
+}
+
+.add-user-btn:hover .add-user-avatar {
+  border-color: var(--color-text-secondary);
+  color: var(--color-text-secondary);
+}
+
+.add-user-text {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+
+.add-user-btn:hover .add-user-text {
+  color: var(--color-text-secondary);
+}
+
+/* ==================== EMPTY CELL ==================== */
+.empty-cell {
+  width: 110px;
+  height: 110px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.015) 0%, rgba(255, 255, 255, 0.005) 100%);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.015);
+  position: relative;
+}
+
+.empty-cell::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 34px;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  transform: translate(-50%, -50%);
+}
+
+/* ==================== ALBUM CARD ==================== */
+.album-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.album-cover {
+  width: 110px;
+  height: 110px;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  position: relative;
+}
+
+.cover-inner {
+  width: 100%;
+  height: 100%;
+}
+
+.album-cover-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.rank-badge {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  background: rgba(8, 8, 8, 0.9);
+  color: var(--color-text-primary);
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 5px;
+  border-radius: 4px;
+  border: 1px solid var(--color-border-secondary);
+}
+
+.artist-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.artist-avatar {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--color-border-secondary);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.artist-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.artist-avatar-fallback {
+  font-size: 9px;
+  line-height: 1;
+  color: #111;
+  font-weight: 700;
+}
+
+.artist-name {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  max-width: 75px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ==================== TOP ALBUM ICON ==================== */
+.top-album-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.top-album-icon svg {
+  color: var(--color-text-muted);
+  width: 20px;
+  height: 20px;
+}
+
+/* ==================== PINNED COLUMN HIGHLIGHT ==================== */
+.user-column-pinned {
+  position: relative;
+}
+
+.user-avatar-pinned {
+  color: #fff;
+}

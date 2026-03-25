@@ -18,20 +18,6 @@ const XIcon = ({ size = 18, color = "white" }) => (
   </svg>
 );
 
-const ArrowLeftIcon = ({ size = 20, color = "white" }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M19 12H5" stroke={color} strokeWidth="2" strokeLinecap="round"/>
-    <path d="M12 19l-7-7 7-7" stroke={color} strokeWidth="2" strokeLinecap="round"/>
-  </svg>
-);
-
-const ArrowRightIcon = ({ size = 20, color = "white" }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M5 12h14" stroke={color} strokeWidth="2" strokeLinecap="round"/>
-    <path d="M12 5l7 7-7 7" stroke={color} strokeWidth="2" strokeLinecap="round"/>
-  </svg>
-);
-
 const StepCard = ({ step, isOpen, onToggle, iconColor }) => {
   const [showAll, setShowAll] = useState(false);
   const longText = step.content.length > 450;
@@ -119,7 +105,6 @@ const InfoIconModal = ({
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [portalContainer, setPortalContainer] = useState(null);
-  const [hasBeenClicked, setHasBeenClicked] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   
   // If no custom steps are provided, use a default single step
@@ -171,7 +156,6 @@ const InfoIconModal = ({
   const openModal = (e) => {
     e.stopPropagation(); // Prevent event bubbling to parent elements
     setIsModalOpen(true);
-    setHasBeenClicked(true);
   };
   
   const closeModal = () => setIsModalOpen(false);
@@ -220,13 +204,13 @@ const InfoIconModal = ({
 
 <h3
   style={{
-    fontSize: '1.5rem',          // 24 px
+    fontSize: '1.5rem',
     fontWeight: 600,
     letterSpacing: '0.01em',
     color: '#ffffff',
     display: 'flex',
     alignItems: 'center',
-    gap: '0.5rem',               // 🆕 8 px gap between icon and title
+    gap: '0.5rem',
     margin: 0
   }}
 >
@@ -257,7 +241,7 @@ const InfoIconModal = ({
         height: 'calc(100vh - 120px)', // Full height minus header
         overflowY: 'auto'
       }}>
-        {steps.map((step, index) => (
+        {modalSteps.map((step, index) => (
   <StepCard
     key={index}
     step={step}
@@ -272,7 +256,7 @@ const InfoIconModal = ({
       </div>
       
       {/* Custom scrollbar styles */}
-      <style jsx>{`
+      <style>{`
         /* Custom scrollbar for card container */
         div::-webkit-scrollbar {
           width: 6px;
@@ -376,7 +360,7 @@ const InfoIconModal = ({
       )}
 
       {/* Keyframes for animations */}
-      <style jsx>{`
+      <style>{`
         @keyframes modalFadeIn {
           from { opacity: 0; transform: translateY(20px); }
           to { opacity: 1; transform: translateY(0); }

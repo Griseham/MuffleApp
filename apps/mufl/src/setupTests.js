@@ -1,5 +1,13 @@
-// jest-dom adds custom jest matchers for asserting on DOM nodes.
-// allows you to do things like:
-// expect(element).toHaveTextContent(/react/i)
-// learn more: https://github.com/testing-library/jest-dom
-import '@testing-library/jest-dom';
+// Minimal DOM matcher to avoid external dependency on @testing-library/jest-dom
+expect.extend({
+  toBeInTheDocument(received) {
+    const pass = received !== null && received !== undefined;
+    return {
+      pass,
+      message: () =>
+        pass
+          ? 'Expected element not to be in the document'
+          : 'Expected element to be in the document'
+    };
+  }
+});

@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Heart, MessageCircle, Share2, Bookmark, MoreHorizontal, 
-  Headphones, Volume2, Users, Award, Music, Mic, Info
+  Headphones, Volume2, Users, Music, Mic, Info
 } from 'lucide-react';
 import InfoIconModal from '../../components/InfoIconModal';
 import { 
@@ -56,7 +56,7 @@ const EXPAND_FOLLOWED_ARTISTS = [
 const EXPAND_REC_ARTISTS = [
   'Snoh Aalegra','Charlotte Day Wilson','Pink Sweat$','UMI','Masego','KIRBY','Raveena','Sudan Archives','FKA twigs','James Blake','Moses Sumney','Caroline Polachek',
 ];
-const EXPAND_ALL_ARTISTS = [...new Set([
+const _EXPAND_ALL_ARTISTS = [...new Set([
   ...EXPAND_TOP_ARTISTS,
   ...EXPAND_FOLLOWED_ARTISTS,
   ...EXPAND_REC_ARTISTS,
@@ -91,7 +91,7 @@ const EXPAND_SUB_COMMENTS = [
 ];
 
 // Tooltip — renders downward so it's never clipped by overflow:auto scroll rows
-function _Tip({ children, text }) {
+function Tip({ children, text }) {
   const [v, setV] = React.useState(false);
   return (
     <div style={{ position: 'relative', display: 'inline-flex' }}
@@ -154,7 +154,7 @@ function _songsForArtist(name) {
   return _songsForArtistFromPool(name, ARTIST_SONG_POOL);
 }
 
-const EXPAND_ALL_TRACKS = (() => {
+const _EXPAND_ALL_TRACKS = (() => {
   const seen = new Set();
   const list = [];
 
@@ -268,12 +268,12 @@ function _ArtistPool({ onToggle, selected, artistImages, sections = EXPAND_ARTIS
                   <span style={{ fontSize: 12, fontWeight: 600, color: isSel ? '#ffffff' : '#8899a6', whiteSpace: 'nowrap' }}>
                     {name.split(',')[0].split(' ')[0]}
                   </span>
-                  <_Tip text={`${count}× recommended today`}>
+                  <Tip text={`${count}× recommended today`}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                       <svg width="8" height="8" viewBox="0 0 24 24" fill="#f97316"><path d="M12 2C9.5 6 14 10 11 14c-1-2-3-2.5-3-2.5C8.5 17 10.5 22 15 22c4 0 6-3 6-6 0-4-4-5-4-8-2 2-1.5 5-3.5 5S12 9 12 2z" /></svg>
                       <span style={{ fontSize: 9, color: '#fb923c', fontWeight: 700 }}>{count}</span>
                     </div>
-                  </_Tip>
+                  </Tip>
                 </div>
               );
             })}
@@ -299,7 +299,7 @@ function _GenrePill({ name, color, fill }) {
 }
 
 // Vertical rating bar for song response cards
-function _VertRatingBar({ avgRating, userRating, onRate }) {
+function VertRatingBar({ avgRating, userRating, onRate }) {
   const [hovering, setHovering] = React.useState(false);
   const [hoverVal, setHoverVal] = React.useState(0);
   const barRef = React.useRef(null);
@@ -329,7 +329,7 @@ function _VertRatingBar({ avgRating, userRating, onRate }) {
 }
 
 // Song response card — "Inset Sleeve": square album art with rounded corners, glow shadow, gradient bg bleed
-function _SongCard({ data, songName, artistName, albumArtUrl, onExpand, onUserClick, expanded }) {
+function SongCard({ data, songName, artistName, albumArtUrl, onExpand, onUserClick, expanded }) {
   const [localRating, setLocalRating] = React.useState(0);
   const displaySong = songName || data.song;
   const displayArtist = artistName || data.artist;
@@ -417,14 +417,14 @@ function _SongCard({ data, songName, artistName, albumArtUrl, onExpand, onUserCl
           </div>
         </div>
 
-        <_VertRatingBar avgRating={data.avgRating} userRating={localRating} onRate={v => setLocalRating(v)} />
+        <VertRatingBar avgRating={data.avgRating} userRating={localRating} onRate={v => setLocalRating(v)} />
       </div>
     </div>
   );
 }
 
 // Rating threshold scrollbar
-function _RatingScrollbar({ value, onChange }) {
+function RatingScrollbar({ value, onChange }) {
   const trackRef = React.useRef(null);
   const [dragging, setDragging] = React.useState(false);
   const [active, setActive] = React.useState(false);
@@ -470,7 +470,7 @@ function _RatingScrollbar({ value, onChange }) {
 }
 
 // Sub-comment view — bigger, more readable text
-function _SubCommentView({ song, onClose, onUserClick }) {
+function SubCommentView({ song, onClose, onUserClick }) {
   const [threshold, setThreshold] = React.useState(100);
   const [filterActive, setFilterActive] = React.useState(false);
   const sorted = [...EXPAND_SUB_COMMENTS].sort((a, b) => b.rating - a.rating);
@@ -520,7 +520,7 @@ function _SubCommentView({ song, onClose, onUserClick }) {
             );
           })}
         </div>
-        <_RatingScrollbar value={threshold} onChange={v => { setThreshold(v); setFilterActive(true); }} />
+        <RatingScrollbar value={threshold} onChange={v => { setThreshold(v); setFilterActive(true); }} />
       </div>
       {filterActive && (
         <div style={{ padding: '8px 16px', borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -548,7 +548,7 @@ if (typeof document !== 'undefined' && !document.getElementById(_expandAnimStyle
 }
 
 // Smoothly transitions height when song list content changes (default ↔ playlist)
-function _AnimatedSongList({ children, transitionKey }) {
+function AnimatedSongList({ children, transitionKey }) {
   const contentRef = React.useRef(null);
   const [height, setHeight] = React.useState('auto');
   const [isTransitioning, setIsTransitioning] = React.useState(false);
@@ -602,7 +602,7 @@ function _AnimatedSongList({ children, transitionKey }) {
 }
 
 // Wrapper for individual song cards to stagger their entry
-function _AnimatedSongEntry({ children, index, transitionKey }) {
+function AnimatedSongEntry({ children, index, transitionKey }) {
   const [visible, setVisible] = React.useState(false);
   const prevKeyRef = React.useRef(transitionKey);
   const timeoutRef = React.useRef(null);
@@ -629,15 +629,15 @@ function _AnimatedSongEntry({ children, index, transitionKey }) {
 }
 
 // ─── PostCard ─────────────────────────────────────────────────────────────────
-const PostCard = ({ post, onClick, onUserClick, POST_TYPE_INDICATORS, isCached }) => {
+const PostCard = ({ post, onClick, onUserClick, POST_TYPE_INDICATORS, _isCached }) => {
   const [genres] = useState(() => getPostGenres(post.id));
-  const [artists] = useState(() => getPostArtists(post.id));
+  const [_artists] = useState(() => getPostArtists(post.id));
   const [headerVolume] = useState(() => getRandomNumber(800, 4300));
   const [sideVolume] = useState(() => getRandomNumber(3, 23));
   const [liveUsers] = useState(() => getRandomNumber(1000, 20000));
-  const [recommendations] = useState(() => getRandomNumber(50, 350));
+  const [_recommendations] = useState(() => getRandomNumber(50, 350));
   const [artistsDiscovered] = useState(() => getRandomNumber(15, 100));
-  const [totalArtists] = useState(() => getRandomNumber(artistsDiscovered + 20, 300));
+  const [_totalArtists] = useState(() => getRandomNumber(artistsDiscovered + 20, 300));
 
   const likesCount = post.ups ?? 0;
   const bookmarksCount = post.bookmarks ?? 0;
@@ -804,6 +804,7 @@ const PostCard = ({ post, onClick, onUserClick, POST_TYPE_INDICATORS, isCached }
   };
 
   const backgroundStyle = useMemo(() => generateBackground(post.id), [post.id, themeColor]);
+  const hasInlineExpandedContent = expandOpen || expandedResponse !== null;
 
   return (
     <div 
@@ -818,8 +819,8 @@ const PostCard = ({ post, onClick, onUserClick, POST_TYPE_INDICATORS, isCached }
         position: 'relative',
         boxShadow: `0 -4px 12px ${getRgbaFromHex(themeColor, 0.2)}`,
         opacity: post.id === 'example_post_001' ? 0.92 : 1,
-        contentVisibility: 'auto',
-        containIntrinsicSize: hasImage ? '720px' : '540px'
+        contentVisibility: hasInlineExpandedContent ? 'visible' : 'auto',
+        containIntrinsicSize: hasInlineExpandedContent ? undefined : (hasImage ? '720px' : '540px')
       }}
     >
       {post.id === 'example_post_001' && (
@@ -1616,6 +1617,7 @@ const PostCard = ({ post, onClick, onUserClick, POST_TYPE_INDICATORS, isCached }
                 const songListKey = selectedArtists.size > 0
                   ? 'playlist-' + [...selectedArtists].sort().join(',')
                   : 'default';
+                const songLayoutKey = `${songListKey}|expanded:${expandedResponse ?? 'none'}`;
 
                 if (selectedArtists.size > 0) {
                   const playlist = [];
@@ -1627,16 +1629,16 @@ const PostCard = ({ post, onClick, onUserClick, POST_TYPE_INDICATORS, isCached }
                     });
                   });
                   return (
-                    <_AnimatedSongList transitionKey={songListKey}>
+                    <AnimatedSongList transitionKey={songLayoutKey}>
                       <div>
                         <div style={{ fontSize: 10, color: '#475569', letterSpacing: 2, marginBottom: 10 }}>
                           PLAYLIST · {playlist.length} SONG{playlist.length !== 1 ? 'S' : ''}
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                           {playlist.map((item, idx) => (
-                            <_AnimatedSongEntry key={item.key} index={idx} transitionKey={songListKey}>
+                            <AnimatedSongEntry key={item.key} index={idx} transitionKey={songListKey}>
                               <div>
-                                <_SongCard
+                                <SongCard
                                   data={{ ...item.template, albumColor: item.albumColor, accent: item.accent, avgRating: item.avgRating, totalRatings: item.totalRatings }}
                                   songName={item.songName}
                                   artistName={item.artistName}
@@ -1646,32 +1648,32 @@ const PostCard = ({ post, onClick, onUserClick, POST_TYPE_INDICATORS, isCached }
                                   expanded={expandedResponse === item.key}
                                 />
                                 {expandedResponse === item.key && (
-                                  <_SubCommentView
+                                  <SubCommentView
                                     song={{ song: item.songName, artist: item.artistName }}
                                     onUserClick={handleUserClick}
                                     onClose={() => setExpandedResponse(null)}
                                   />
                                 )}
                               </div>
-                            </_AnimatedSongEntry>
+                            </AnimatedSongEntry>
                           ))}
                         </div>
                       </div>
-                    </_AnimatedSongList>
+                    </AnimatedSongList>
                   );
                 }
 
                 return (
-                  <_AnimatedSongList transitionKey={songListKey}>
+                  <AnimatedSongList transitionKey={songLayoutKey}>
                     <div>
                       <div style={{ fontSize: 10, color: '#475569', letterSpacing: 2, marginBottom: 10 }}>
                         TOP RESPONSES WITH SONGS
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                         {expandSongResponses.map((r, idx) => (
-                          <_AnimatedSongEntry key={r.id} index={idx} transitionKey={songListKey}>
+                          <AnimatedSongEntry key={r.id} index={idx} transitionKey={songListKey}>
                             <div>
-                              <_SongCard
+                              <SongCard
                                 data={r}
                                 albumArtUrl={expandAlbumArtworks[_trackKey(r.song, r.artist)]?.artworkUrl || null}
                                 onExpand={() => setExpandedResponse(p => p === r.id ? null : r.id)}
@@ -1679,14 +1681,14 @@ const PostCard = ({ post, onClick, onUserClick, POST_TYPE_INDICATORS, isCached }
                                 expanded={expandedResponse === r.id}
                               />
                               {expandedResponse === r.id && (
-                                <_SubCommentView song={r} onUserClick={handleUserClick} onClose={() => setExpandedResponse(null)} />
+                                <SubCommentView song={r} onUserClick={handleUserClick} onClose={() => setExpandedResponse(null)} />
                               )}
                             </div>
-                          </_AnimatedSongEntry>
+                          </AnimatedSongEntry>
                         ))}
                       </div>
                     </div>
-                  </_AnimatedSongList>
+                  </AnimatedSongList>
                 );
               })()}
             </div>

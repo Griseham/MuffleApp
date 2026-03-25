@@ -64,6 +64,13 @@ h1 {
   color: #888;
 }
 
+.search-help-text {
+  margin: -8px 4px 12px;
+  color: #8d8d8d;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
 /* Search spinner */
 .search-spinner {
   position: absolute;
@@ -136,8 +143,13 @@ h1 {
   padding: 10px 0;
   margin-bottom: 80px; /* Space for fixed bottom bar */
   height: calc(100vh - 180px); /* Subtract header + bottom bar height */
+  scrollbar-width: none; /* Firefox hide scrollbar */
+  -ms-overflow-style: none; /* IE/Edge hide scrollbar */
 }
 
+.artists-area::-webkit-scrollbar {
+  display: none; /* Chrome/Safari/Opera hide scrollbar */
+}
 /* Artists grid */
 .artists-grid {
   display: grid;
@@ -160,6 +172,7 @@ h1 {
 
 /* Artist circle styles - FIXED */
 .selection-artist-circle {
+  appearance: none;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -167,6 +180,10 @@ h1 {
   transition: background-color 0.2s;
   padding: 10px;
   border-radius: 12px;
+  border: none;
+  background: transparent;
+  color: inherit;
+  text-align: inherit;
 }
 
 .selection-artist-circle:hover {
@@ -175,6 +192,10 @@ h1 {
 
 .selection-artist-circle.selected {
   background-color: rgba(29, 185, 84, 0.15);
+}
+
+.selection-artist-circle:disabled {
+  cursor: wait;
 }
 
 .selection-artist-image-container {
@@ -259,6 +280,17 @@ h1 {
   width: 100%;
 }
 
+.loading-container-full {
+  min-height: 100%;
+  height: calc(100vh - 280px);
+}
+
+.loading-container p {
+  margin: 0;
+  color: #aaa;
+  font-size: 14px;
+}
+
 .loading-spinner {
   border: 4px solid rgba(255, 255, 255, 0.1);
   border-radius: 50%;
@@ -322,52 +354,117 @@ h1 {
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* Fixed bottom area */
+/* Fixed bottom area - Pill Chips design */
 .bottom-area {
   position: fixed;
   bottom: 0;
   left: 50%;
   transform: translateX(-50%);
   width: 100%;
-  max-width: 800px;
-  background-color: rgba(0, 0, 0, 0.95);
+  max-width: 900px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.95) 18%);
   backdrop-filter: blur(10px);
-  padding: 16px 20px;
-  border-top: 1px solid #333;
+  padding: 28px 20px 18px;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
+  gap: 14px;
   z-index: 100;
   box-sizing: border-box;
 }
 
-/* Selected artists indicator */
-.selection-indicator {
+/* Chips row */
+.bottom-chips-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* Individual artist chip */
+.artist-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: rgba(255, 255, 255, 0.08);
+  border-radius: 50px;
+  padding: 5px 12px 5px 5px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  animation: chipFadeIn 0.3s ease both;
+  transition: background-color 0.2s;
+}
+
+.artist-chip:hover {
+  background-color: rgba(255, 255, 255, 0.12);
+}
+
+/* Avatar inside chip */
+.artist-chip-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.artist-chip-avatar .artist-circle-image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Name inside chip */
+.artist-chip-name {
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Remove button inside chip */
+.artist-chip-remove {
+  appearance: none;
+  background: none;
+  border: none;
+  color: #666;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0 2px;
+  line-height: 1;
+  transition: color 0.2s;
   display: flex;
   align-items: center;
 }
 
-.selected-artists-circles {
-  display: flex;
-  margin-right: 16px;
+.artist-chip-remove:hover {
+  color: #ff6b6b;
 }
 
-.small-artist-circle {
-  width: 40px;
-  height: 40px;
+/* Empty slot placeholder */
+.artist-chip-empty {
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
-  overflow: hidden;
-  margin-right: -15px; /* Create overlapping effect */
-  border: 2px solid black;
-  box-sizing: border-box;
-  transition: transform 0.2s;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-  position: relative;
+  border: 2px dashed rgba(255, 255, 255, 0.12);
+  flex-shrink: 0;
+  margin: 5px 2px;
 }
 
-.small-artist-circle:hover {
-  transform: translateY(-3px);
-  z-index: 10 !important;
+@keyframes chipFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Continue button */
@@ -376,13 +473,14 @@ h1 {
   color: white;
   border: none;
   border-radius: 50px;
-  padding: 10px 24px;
-  font-size: 16px;
+  padding: 13px 0;
+  font-size: 15px;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.2s;
-  text-transform: uppercase;
   letter-spacing: 1px;
+  text-transform: uppercase;
+  width: 100%;
 }
 
 .continue-button:hover:not(:disabled) {
@@ -403,12 +501,13 @@ h1 {
 /* Error message */
 .error-message {
   color: #ff6b6b;
-  text-align: center;
-  margin: 24px 16px;
-  padding: 16px;
+  text-align: left;
+  margin: 0 0 12px;
+  padding: 12px 14px;
   background-color: rgba(255, 107, 107, 0.1);
   border-radius: 8px;
   font-size: 14px;
+  border: 1px solid rgba(255, 107, 107, 0.25);
 }
 
 /* ─────────────────────────────────────────────────────────────

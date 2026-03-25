@@ -70,7 +70,10 @@ function serveRootAssetsPlugin() {
 }
 
 // https://vite.dev/config/
-export default defineConfig({
+export default defineConfig(({ command }) => ({
+  // The unified Express app serves Threads from /threads in production,
+  // but local Vite dev still runs at the web root.
+  base: command === 'build' ? '/threads/' : '/',
   plugins: [react(), serveRootAssetsPlugin()],
   publicDir: false,
   server: {
@@ -81,4 +84,4 @@ export default defineConfig({
   optimizeDeps: {
     include: ['lucide-react']
   }
-})
+}))

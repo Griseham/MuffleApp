@@ -1,23 +1,32 @@
-/* RoomsScreen.css - Main layout styles for the Rooms Screen with scoped tab styles */
+/* RoomsScreen.css - Main layout styles for the Rooms Screen with centered dial tuner */
 
 :root {
   --primary: #4ade80;
   --primary-glow: rgba(74, 222, 128, 0.6);
   --similarity-positive: #00F5FF;
-  --similarity-negative: #FF3D5A;
+  --similarity-negative: var(--similarity-positive);
   --similarity-positive-glow: rgba(0, 245, 255, 0.6);
-  --similarity-negative-glow: rgba(255, 61, 90, 0.6);
+  --similarity-negative-glow: var(--similarity-positive-glow);
   --tab-active: #333;
   --tab-active-text: #4ade80;
   --tab-inactive: #666;
   --disabled-color: #555;
   --disabled-bg: rgba(0, 0, 0, 0.3);
+  
+  /* Additional variables for SimpleTunerDial */
+  --bg-card: #0f172a;
+  --bg-medium: #121212;
+  --bg-dark: #0a0a0a;
+  --border-dark: #222;
+  --border-light: #333;
+  --text-muted: #888;
+  --text-light: #ccc;
 }
 
 /* Main Container */
 .radio-rooms-container {
-  width: 92%;
-  max-width: 900px;
+  width: 100%;
+  max-width: 1000px;
   margin: 0 auto;
   padding: 40px 20px 80px;
   height: 100vh;
@@ -43,56 +52,6 @@
 
 .radio-rooms-container::-webkit-scrollbar-thumb:hover {
   background: var(--primary);
-}
-
-/* Feed Overlay Loading – now spans the entire viewport */
-.feed-overlay-loading {
-  position: absolute;
-    top: 0;               
-  left: 0;              
-  right: 0;             
-  bottom: 0;            
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(4px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;        /* sit above everything */
-  border-radius: 0;     /* remove the rounded corners */
-}
-
-/* Inner card can stay the same */
-.feed-overlay-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-  padding: 24px;
-  background: rgba(18, 18, 18, 0.9);
-  border-radius: 12px;
-  border: 1px solid rgba(74, 222, 128, 0.3);
-}
-
-
-.feed-spinner {
-  width: 32px;
-  height: 32px;
-  border: 2px solid rgba(74, 222, 128, 0.2);
-  border-top: 2px solid #4ade80;
-  border-radius: 50%;
-  animation: feedSpin 1s linear infinite;
-}
-
-.feed-overlay-content span {
-  font-size: 14px;
-  color: #4ade80;
-  font-weight: 500;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-}
-
-@keyframes feedSpin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
 }
 
 /* Recents Loading Indicator */
@@ -134,8 +93,6 @@
   backdrop-filter: blur(4px);
 }
 
-
-
 .back-button:hover {
   background-color: #333;
 }
@@ -143,21 +100,20 @@
 /* Info icon that mirrors the Back button */
 .radio-info-button {
   position: absolute;
-  top: 47px;                         /* same vertical line as .back-button */
-  right: 32px;          /* 20 px from the tuner’s green border */
-  z-index: 50001;                   /* Higher than all other elements */
+  top: 47px;
+  right: 32px;
+  z-index: 101;
 }
 
 @media (max-width: 650px) {
   .radio-info-button {
-    right: 8px;                      /* keep it on-screen for small devices */
+    right: 8px;
   }
 }
 
-
 /* Selected Artists Container */
 .selected-artists-container {
-  margin: 0 auto 20px;
+  margin: 60px auto 20px;
   max-width: 1000px;
   color: white;
   background: #0a0a0a;
@@ -217,7 +173,7 @@
   text-overflow: ellipsis;
 }
 
-/* Tuner Container */
+/* Tuner Container - for expanded advanced tuner */
 .tuner-container {
   position: relative;
   z-index: 10;
@@ -230,6 +186,21 @@
   background: #0f172a;
   border: 2px solid var(--primary);
   transition: opacity 0.3s, filter 0.3s, border-color 0.3s;
+}
+
+.tuner-container.expanded {
+  margin-top: 0;
+  border-top: none;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+  padding-top: 14px;
+}
+
+.tuner-container__info {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 20;
 }
 
 .tuner-container.disabled {
@@ -246,6 +217,73 @@
   background: var(--disabled-bg);
   backdrop-filter: blur(2px);
   z-index: 100;
+}
+
+/* Collapsible tuner header - kept for backwards compatibility */
+.tuner-container.collapsed {
+  /* keep same border/box-shadow, just no inner padding from tuner-wrapper */
+}
+
+.tuner-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 96px 10px 16px;
+  background: #020617;
+  border-bottom: 1px solid #1f2937;
+}
+
+.tuner-header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tuner-header-label {
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.tuner-header-value {
+  font-family: ui-monospace, monospace;
+  font-size: 18px;
+  color: var(--primary);
+}
+
+.tuner-toggle-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  font-size: 13px;
+  border-radius: 999px;
+  border: 1px solid #333;
+  background: rgba(0,0,0,0.4);
+  color: #e5e7eb;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.tuner-toggle-button:hover {
+  background: rgba(15, 23, 42, 0.9);
+  border-color: var(--primary);
+  color: #ffffff;
+}
+
+.tuner-toggle-icon {
+  display: inline-block;
+  font-size: 11px;
+  transition: transform 0.2s ease;
+}
+
+.tuner-toggle-icon.collapsed {
+  transform: rotate(180deg);
+}
+
+.tuner-container.collapsed .tuner-wrapper {
+  display: none;
 }
 
 /* SCOPED TAB NAVIGATION FOR ROOMS SCREEN ONLY */
@@ -307,7 +345,6 @@
   left: 100%;
 }
 
-/* Ensure disabled tabs have consistent styling */
 .radio-rooms-container .tab-button.disabled {
   opacity: 0.5;
   cursor: not-allowed;
@@ -329,7 +366,7 @@
   padding: 32px 16px 40px;
   width: 100%;
   max-width: 1000px;
-  margin: 0 auto 24px;
+  margin: 0 auto;
 }
 
 .rt-wrapper {
@@ -344,6 +381,13 @@
   align-items: center;
   width: 100%;
   gap: 1.5rem;
+}
+
+/* Disable expanded tuner interaction while loading/tuning */
+.rt-wrapper.disabled {
+  pointer-events: none;
+  opacity: 0.72;
+  filter: grayscale(0.15);
 }
 
 .rt-header {
@@ -414,9 +458,9 @@
   transition: width 0.2s;
   box-shadow: 0 0 8px var(--primary-glow);
 }
+
 /* Station Cards List */
 .stations-list {
-  position: relative;
   display: flex;
   flex-direction: column;
   gap: 24px;
@@ -424,8 +468,12 @@
   width: 100%;
   max-width: 1000px;
   margin: 0 auto;
-  animation: fadeIn 0.5s ease-out;
 }
+
+.stations-list.fade-in {
+  animation: fadeIn 0.45s ease-out;
+}
+
 /* Info Messages */
 .mode-info-message {
   text-align: center;
@@ -480,16 +528,205 @@
   max-width: 1200px;
   margin: 0 auto;
 }
+
+.initial-loading-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.initial-load-panel {
+  width: 100%;
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 16px 18px;
+  border: 1px solid rgba(74, 222, 128, 0.22);
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(17, 24, 39, 0.94), rgba(7, 10, 16, 0.98));
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.22);
+}
+
+.initial-load-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.initial-load-kicker {
+  color: #d1d5db;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.initial-load-percentage {
+  color: var(--primary);
+  font-family: ui-monospace, monospace;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.initial-load-bar {
+  width: 100%;
+  height: 10px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.initial-load-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #1fd98d 0%, #4ade80 55%, #9ef7bf 100%);
+  box-shadow: 0 0 18px rgba(74, 222, 128, 0.32);
+  transition: width 0.28s ease-out;
+}
+
+.initial-load-status {
+  margin: 10px 0 0;
+  color: #9ca3af;
+  font-size: 14px;
+}
+
+/* In-feed overlays (tuning / quick loading) */
+.feed-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(140, 140, 140, 0.14);
+  backdrop-filter: blur(2px);
+  z-index: 60;
+  border-radius: 12px;
+}
+
+.feed-overlay-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 22px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 14px;
+}
+
+/* Loading bar shown above the spinner inside FeedOverlay */
+.feed-loading-bar {
+  width: 240px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.10);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.feed-loading-bar-fill {
+  height: 100%;
+  width: 40%;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    rgba(74, 222, 128, 0.25),
+    rgba(74, 222, 128, 0.95),
+    rgba(74, 222, 128, 0.25)
+  );
+  animation: feedBarSlide 1.05s ease-in-out infinite;
+}
+
+.feed-overlay-label {
+  font-size: 14px;
+  color: #e5e7eb;
+  font-family: ui-monospace, monospace;
+  letter-spacing: 0.02em;
+  opacity: 0.95;
+}
+
+/* Skeleton station cards (initial load) */
+.station-skeleton {
+  background: #0a0a0a;
+  border: 2px solid #222;
+  border-radius: 14px;
+  padding: 18px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.28);
+  position: relative;
+  overflow: hidden;
+}
+
+.station-skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-120%);
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+  animation: skeletonShimmer 1.2s ease-in-out infinite;
+}
+
+.station-skeleton-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+.station-skeleton-pill {
+  height: 14px;
+  width: 180px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.08);
+}
+
+.station-skeleton-pill.short {
+  width: 110px;
+}
+
+.station-skeleton-row {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.station-skeleton-circle {
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.07);
+}
+
+.station-skeleton-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.station-skeleton-bar {
+  height: 10px;
+  width: 220px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.07);
+}
+
+.station-skeleton-bar.short {
+  width: 120px;
+}
+
 .room-loader {
-  position: fixed;
+  position: absolute;
   inset: 0;
   display: flex;
   justify-content: center;
   align-items: center;
-  background: rgba(0, 0, 0, 0.8);
-  z-index: 1000;
-  pointer-events: all;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 50;
 }
+
 .lds-dual-ring {
   width: 64px;
   height: 64px;
@@ -499,13 +736,12 @@
   animation: spin 1s linear infinite;
 }
 
-
 /* Centered spinner for Recents tab */
 .recents-loader {
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 60px 0;   /* pushes it just under the tab bar */
+  padding: 60px 0;
 }
 
 /* Animations */
@@ -516,6 +752,16 @@
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes skeletonShimmer {
+  0% { transform: translateX(-120%); }
+  100% { transform: translateX(120%); }
+}
+
+@keyframes feedBarSlide {
+  0% { transform: translateX(-120%); }
+  100% { transform: translateX(220%); }
 }
 
 /* Responsive Design */
@@ -540,20 +786,4 @@
     padding: 8px 12px;
     font-size: 13px;
   }
-}
-/* ── Mobile (≤480 px) tweaks for overall Rooms screen ────────────────── */
-@media (max-width: 480px) {
-  /* pull content off the edges a bit more */
-  .radio-rooms-container        { padding: 16px 12px 64px; }
-
-  /* back / info buttons */
-  .back-button                  { top: 20px; left: 12px; padding: 6px 14px; font-size: 20px; }
-  .radio-info-button            { top: 26px; right: 12px; }
-
-  /* selected-artists strip – allow single-row scroll */
-  .selected-artists-container   { padding: 14px; }
-  .selected-artist-image        { width: 56px; height: 56px; }
-
-  /* tuner wrapper border + shadow feel lighter on phones */
-  .tuner-container              { border-width: 1px; box-shadow: 0 2px 10px rgba(0,0,0,0.35); }
 }

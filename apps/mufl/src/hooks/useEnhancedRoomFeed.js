@@ -27,6 +27,10 @@ export const useEnhancedRoomFeed = (selectedArtists = []) => {
   const [relatedArtists, setRelatedArtists] = useState([]);
   const [randomArtists, setRandomArtists] = useState([]);
   const [currentSimilarity, setCurrentSimilarity] = useState(80);
+  // Keep track of the most recent target volume chosen while tuning similarity.
+  // Without this, the debounced similarity effect would regenerate rooms without
+  // respecting the landed volume that was just selected on the tuner.
+  const targetVolumeRef = useRef(null);
   const [loadingState, setLoadingState] = useState({
     initialLoad: false,
     similarArtists: false,
@@ -34,8 +38,6 @@ export const useEnhancedRoomFeed = (selectedArtists = []) => {
     progress: 0
   });
   const [error, setError] = useState(null);
-
-  const lastParamsRef = useRef({ key: '', rooms: [] });
   
   // Refs for tracking
   const selectedArtistsRef = useRef([]);
@@ -44,10 +46,6 @@ export const useEnhancedRoomFeed = (selectedArtists = []) => {
     randomArtists: [],
     lastSelectedArtists: []
   });
-  
-  // AbortControllers for cleanup
-  const abortControllerRef = useRef(null);
-  const roomGenerationAbortRef = useRef(null);
   
   // Debounced similarity to avoid too frequent updates
   const debouncedSimilarity = useDebounce(currentSimilarity, 300);
@@ -69,12 +67,10 @@ export const useEnhancedRoomFeed = (selectedArtists = []) => {
     const lastNames = fetchedDataRef.current.lastSelectedArtists.map(a => a.name).sort().join('|');
     
     if (selectedNames === lastNames && fetchedDataRef.current.relatedArtists.length > 0) {
+      console.log('Using cached related artists');
       setRelatedArtists(fetchedDataRef.current.relatedArtists);
       return;
     }
-    
-    // Create new AbortController for this request
-    abortControllerRef.current = new AbortController();
     
     updateLoadingState({ similarArtists: true, progress: 0 });
     setError(null);
@@ -82,27 +78,20 @@ export const useEnhancedRoomFeed = (selectedArtists = []) => {
     try {
       const enhanced = await fetchEnhancedSimilarArtists(
         selectedArtists,
-        (progress) => updateLoadingState({ progress }),
-        abortControllerRef.current.signal
+        (progress) => updateLoadingState({ progress })
       );
       
-      // Check if request was aborted
-      if (abortControllerRef.current?.signal.aborted) {
-        return;
-      }
+      console.log(`Fetched ${enhanced.length} similar artists with images`);
       
       setRelatedArtists(enhanced);
       fetchedDataRef.current.relatedArtists = enhanced;
       fetchedDataRef.current.lastSelectedArtists = [...selectedArtists];
       
     } catch (err) {
-      if (err.name !== 'AbortError') {
-        setError('Failed to fetch similar artists. Please try again.');
-      }
+      console.error('Error fetching similar artists:', err);
+      setError('Failed to fetch similar artists. Please try again.');
     } finally {
-      if (!abortControllerRef.current?.signal.aborted) {
-        updateLoadingState({ similarArtists: false, progress: 100 });
-      }
+      updateLoadingState({ similarArtists: false, progress: 100 });
     }
   }, [selectedArtists, updateLoadingState]);
   
@@ -115,13 +104,16 @@ export const useEnhancedRoomFeed = (selectedArtists = []) => {
     
     try {
       const random = await fetchRandomGenreArtists(50, (progress) => {
-        // Progress callback
+        console.log(`Random artists fetch progress: ${progress}%`);
       });
+      
+      console.log(`Fetched ${random.length} random genre artists`);
       
       setRandomArtists(random);
       fetchedDataRef.current.randomArtists = random;
       
     } catch (err) {
+      console.error('Error fetching random artists:', err);
       // Use fallback data
       const fallback = Array.from({ length: 30 }, (_, i) => ({
         id: `random-${i}`,
@@ -135,27 +127,6 @@ export const useEnhancedRoomFeed = (selectedArtists = []) => {
   
   // Generate rooms based on current mode (volume or similarity)
   const generateRooms = useCallback(async (primaryValue, targetSecondaryValue = null, mode = 'similarity') => {
-
-       // ── 0. short-circuit if inputs are unchanged ────────────────
-   const paramKey = JSON.stringify([
-     mode,
-     primaryValue,
-     targetSecondaryValue,
-     selectedArtists.map(a => a.name).sort()
-   ]);
-
-   if (paramKey === lastParamsRef.current.key && lastParamsRef.current.rooms.length) {
-     setRooms(lastParamsRef.current.rooms);     // reuse stable copy
-     return;
-   }
-    // Abort any ongoing room generation
-    if (roomGenerationAbortRef.current) {
-      roomGenerationAbortRef.current.abort();
-    }
-    
-    // Create new AbortController for this room generation
-    roomGenerationAbortRef.current = new AbortController();
-    const signal = roomGenerationAbortRef.current.signal;
     
     updateLoadingState({ roomGeneration: true });
     
@@ -170,45 +141,29 @@ export const useEnhancedRoomFeed = (selectedArtists = []) => {
           // Use random artists for negative similarity
           if (randomArtists.length === 0) {
             await fetchRandomArtists();
-            if (signal.aborted) return;
             artistsToUse = fetchedDataRef.current.randomArtists;
           } else {
             artistsToUse = randomArtists;
           }
           
-          // Check if aborted before generating
-          if (signal.aborted) return;
-          
           // Generate rooms with random artists only
           const generatedRooms = generateSimplifiedRooms([], artistsToUse, primaryValue, 8, targetSecondaryValue, 'similarity');
-          
-          // Check if aborted before setting state
-          if (signal.aborted) return;
-          lastParamsRef.current = { key: paramKey, rooms: generatedRooms };
-
           setRooms(generatedRooms);
+          console.log(`Generated ${generatedRooms.length} rooms for similarity ${primaryValue} (${rangeInfo.name} range)${targetSecondaryValue ? ` with target volume ${targetSecondaryValue}` : ''}`);
           
         } else {
           // Use related artists for positive similarity
           if (relatedArtists.length === 0 && selectedArtists.length > 0) {
             await fetchSimilarArtists();
-            if (signal.aborted) return;
             artistsToUse = fetchedDataRef.current.relatedArtists;
           } else {
             artistsToUse = relatedArtists;
           }
           
-          // Check if aborted before generating
-          if (signal.aborted) return;
-          
           // Generate rooms with selected + related artists
           const generatedRooms = generateSimplifiedRooms(selectedArtists, artistsToUse, primaryValue, 8, targetSecondaryValue, 'similarity');
-          
-          // Check if aborted before setting state
-          if (signal.aborted) return;
-          lastParamsRef.current = { key: paramKey, rooms: generatedRooms };
-
           setRooms(generatedRooms);
+          console.log(`Generated ${generatedRooms.length} rooms for similarity ${primaryValue} (${rangeInfo.name} range)${targetSecondaryValue ? ` with target volume ${targetSecondaryValue}` : ''}`);
         }
         
       } else {
@@ -216,39 +171,31 @@ export const useEnhancedRoomFeed = (selectedArtists = []) => {
         // Always use related artists (no negative ranges in volume mode)
         if (relatedArtists.length === 0 && selectedArtists.length > 0) {
           await fetchSimilarArtists();
-          if (signal.aborted) return;
           artistsToUse = fetchedDataRef.current.relatedArtists;
         } else {
           artistsToUse = relatedArtists;
         }
         
-        // Check if aborted before generating
-        if (signal.aborted) return;
-        
         // Generate rooms with selected + related artists
         const generatedRooms = generateSimplifiedRooms(selectedArtists, artistsToUse, primaryValue, 8, targetSecondaryValue, 'volume');
-        
-        // Check if aborted before setting state
-        if (signal.aborted) return;
-        lastParamsRef.current = { key: paramKey, rooms: generatedRooms };
-
         setRooms(generatedRooms);
+        console.log(`Generated ${generatedRooms.length} rooms for volume ${primaryValue}${targetSecondaryValue ? ` with target similarity ${targetSecondaryValue}` : ''}`);
       }
       
     } catch (err) {
-      if (err.name !== 'AbortError') {
-        setError('Failed to generate rooms. Please try again.');
-      }
+      console.error('Error generating rooms:', err);
+      setError('Failed to generate rooms. Please try again.');
     } finally {
-      if (!signal.aborted) {
-        updateLoadingState({ roomGeneration: false });
-      }
+      updateLoadingState({ roomGeneration: false });
     }
   }, [selectedArtists, relatedArtists, randomArtists, fetchSimilarArtists, fetchRandomArtists, updateLoadingState]);
   
   // Handle similarity changes with optional landed volume
   const handleSimilarityChange = useCallback((newSimilarity, landedVolume = null) => {
+    // Remember the landed volume so subsequent debounced regeneration keeps it.
+    targetVolumeRef.current = landedVolume;
     setCurrentSimilarity(newSimilarity);
+
     // Generate rooms immediately with the landed volume
     if (!loadingState.initialLoad && !loadingState.similarArtists) {
       generateRooms(newSimilarity, landedVolume, 'similarity');
@@ -286,6 +233,7 @@ export const useEnhancedRoomFeed = (selectedArtists = []) => {
         updateLoadingState({ initialLoad: false, progress: 100 });
         
       } catch (err) {
+        console.error('Error in initial load:', err);
         setError('Failed to load initial data. Please try again.');
         updateLoadingState({ initialLoad: false });
       }
@@ -304,22 +252,9 @@ export const useEnhancedRoomFeed = (selectedArtists = []) => {
   // Effect: Generate rooms when similarity changes
   useEffect(() => {
     if (!loadingState.initialLoad && !loadingState.similarArtists) {
-      generateRooms(debouncedSimilarity);
+      generateRooms(debouncedSimilarity, targetVolumeRef.current, 'similarity');
     }
   }, [debouncedSimilarity, generateRooms, loadingState.initialLoad, loadingState.similarArtists]);
-  
-  // Cleanup effect
-  useEffect(() => {
-    return () => {
-      // Abort any ongoing requests when component unmounts
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-      if (roomGenerationAbortRef.current) {
-        roomGenerationAbortRef.current.abort();
-      }
-    };
-  }, []);
   
   // Regenerate rooms manually
   const regenerateRooms = useCallback(() => {
@@ -336,6 +271,7 @@ export const useEnhancedRoomFeed = (selectedArtists = []) => {
     rooms,
     selectedArtists,
     relatedArtists,
+    randomArtists,
     currentSimilarity,
     
     // Loading states

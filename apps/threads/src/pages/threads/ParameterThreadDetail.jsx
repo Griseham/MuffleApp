@@ -5,8 +5,8 @@ import {
   Tooltip, ResponsiveContainer
 } from 'recharts'; 
 import { 
-  ArrowLeft, Heart, MessageCircle, Share2, Bookmark, 
-  Play, Pause, BarChart3, GitBranch, Users, Music
+  Heart, MessageCircle, Share2, Bookmark, 
+  BarChart3, Users
 } from 'lucide-react';
 import InfoIconModal from '../InfoIconModal';
 
@@ -60,7 +60,7 @@ const parameterThreadMockData = {
         name: 'Demons',
         artistName: 'Imagine Dragons',
         artwork: '/assets/image123.png',
-        previewUrl: '/backend/public/HeartShapedBox.mp3',
+        previewUrl: null,
         userRating: null,
         avgRating: null,
         totalRatings: null,
@@ -80,7 +80,7 @@ const parameterThreadMockData = {
         name: 'Basket Case',
         artistName: 'Green Day',
         artwork: '/assets/image234.png',
-        previewUrl: '/backend/public/HeartShapedBox.mp3',
+        previewUrl: null,
         userRating: null,
         avgRating: null,
         totalRatings: null,
@@ -100,7 +100,7 @@ const parameterThreadMockData = {
         name: 'Counting Stars',
         artistName: 'OneRepublic',
         artwork: '/assets/image345.png',
-        previewUrl: '/backend/public/HeartShapedBox.mp3',
+        previewUrl: null,
         userRating: null,
         avgRating: null,
         totalRatings: null,
@@ -120,7 +120,7 @@ const parameterThreadMockData = {
         name: 'This Love',
         artistName: 'Maroon 5',
         artwork: '/assets/image456.png',
-        previewUrl: '/backend/public/HeartShapedBox.mp3',
+        previewUrl: null,
         userRating: null,
         avgRating: null,
         totalRatings: null,
@@ -140,7 +140,7 @@ const parameterThreadMockData = {
         name: 'Thunder',
         artistName: 'Imagine Dragons',
         artwork: '/assets/image567.png',
-        previewUrl: '/backend/public/HeartShapedBox.mp3',
+        previewUrl: null,
         userRating: null,
         avgRating: null,
         totalRatings: null,
@@ -160,7 +160,7 @@ const parameterThreadMockData = {
         name: 'When I Come Around',
         artistName: 'Green Day',
         artwork: '/assets/image678.png',
-        previewUrl: '/backend/public/HeartShapedBox.mp3',
+        previewUrl: null,
         userRating: null,
         avgRating: null,
         totalRatings: null,
@@ -180,7 +180,7 @@ const parameterThreadMockData = {
         name: 'Apologize',
         artistName: 'OneRepublic',
         artwork: '/assets/image789.png',
-        previewUrl: '/backend/public/HeartShapedBox.mp3',
+        previewUrl: null,
         userRating: null,
         avgRating: null,
         totalRatings: null,
@@ -200,7 +200,7 @@ const parameterThreadMockData = {
         name: 'Sunday Morning',
         artistName: 'Maroon 5',
         artwork: '/assets/image890.png',
-        previewUrl: '/backend/public/HeartShapedBox.mp3',
+        previewUrl: null,
         userRating: null,
         avgRating: null,
         totalRatings: null,
@@ -220,7 +220,7 @@ const parameterThreadMockData = {
         name: 'Radioactive',
         artistName: 'Imagine Dragons',
         artwork: '/assets/image901.png',
-        previewUrl: '/backend/public/HeartShapedBox.mp3',
+        previewUrl: null,
         userRating: null,
         avgRating: null,
         totalRatings: null,
@@ -240,7 +240,7 @@ const parameterThreadMockData = {
         name: 'Good Riddance (Time of Your Life)',
         artistName: 'Green Day',
         artwork: '/assets/image012.png',
-        previewUrl: '/backend/public/HeartShapedBox.mp3',
+        previewUrl: null,
         userRating: null,
         avgRating: null,
         totalRatings: null,
@@ -310,7 +310,7 @@ const parameterThreadMockData = {
   ]
 };
 
-export default function ParameterThreadDetail({ postId, onBack, onSelectUser }) {
+export default function ParameterThreadDetail({ postId, onBack, _onSelectUser }) {
   // Transition state
   const [isVisible, setIsVisible] = useState(false);
   
@@ -318,7 +318,7 @@ export default function ParameterThreadDetail({ postId, onBack, onSelectUser }) 
   const [post, setPost] = useState(null);
   const [comments, setComments] = useState([]);
   const [snippetRecs, setSnippetRecs] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [_isLoading, setIsLoading] = useState(true);
   
   // UI states
   const [graphRatings, setGraphRatings] = useState([]);

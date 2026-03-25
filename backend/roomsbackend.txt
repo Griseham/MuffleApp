@@ -1,0 +1,864 @@
+Rooms / Mufl Backend Summary
+============================
+
+This file documents how the current backend for the Mufl / Rooms app works as of the current repo state.
+
+1. High-level architecture
+--------------------------
+
+The Mufl app does not run its own backend anymore.
+
+It now uses the unified root backend:
+
+- Root server entrypoint: server.js
+- Shared route module: backend/unifiedRoutes.js
+- Mufl frontend app: apps/mufl
+
+The runtime model is:
+
+1. The Mufl React frontend runs from apps/mufl.
+2. In development, CRA proxies API requests to http://localhost:8080.
+3. In production, the root Express server serves the built Mufl app under /rooms.
+4. All API traffic for Mufl goes through the root Express app and backend/unifiedRoutes.js.
+
+
+2. Root server responsibilities
+-------------------------------
+
+File: server.js
+
+The root server does four important things for Rooms:
+
+- Loads environment variables from the repo root .env.
+- Enables CORS and JSON parsing.
+- Registers the shared API routes by calling registerUnifiedRoutes(app).
+- Serves the Mufl frontend build from apps/mufl/build.
+
+Relevant behavior:
+
+- /rooms serves the Mufl SPA.
+- /rooms/* falls back to apps/mufl/build/index.html so client-side routing works.
+- /assets serves shared static assets from the repo-level assets folder.
+- /health returns 200 and is useful for checking that the unified backend is up.
+
+So when you run node server.js or nodemon server.js from the repo root, that one process is the backend for Rooms.
+
+
+3. Frontend to backend wiring
+-----------------------------
+
+Files:
+
+- apps/mufl/package.json
+- apps/mufl/src/utils/api.js
+
+Development:
+
+- apps/mufl/package.json has "proxy": "http://localhost:8080"
+- That means relative frontend requests like /spotify/artists are forwarded by CRA to the root backend.
+
+Production:
+
+- The root Express server serves the built frontend and the API from the same origin.
+- The frontend can therefore keep using relative API paths.
+
+apps/mufl/src/utils/api.js is the small abstraction layer:
+
+- API_BASE_URL reads REACT_APP_API_BASE_URL if you explicitly want to override the backend.
+- buildApiUrl(path, baseUrl) builds a final request URL.
+- apiClient is a shared axios instance with a 12s timeout.
+
+Normal intended setup:
+
+- Root backend on port 8080
+- Mufl frontend dev server on port 3000
+- Frontend uses relative routes and CRA proxy
+
+
+4. Backend route organization
+-----------------------------
+
+File: backend/unifiedRoutes.js
+
+This file is a single shared route module used by multiple apps, but only part of it is relevant to Rooms.
+
+For Mufl, the route groups that matter are:
+
+- Spotify routes
+- Last.fm routes
+- Apple Music routes
+- Media caching route
+
+The route module also contains helper functions, caches, fallbacks, and data normalization logic.
+
+
+5. Environment variables used by Rooms backend
+----------------------------------------------
+
+Main values expected in the root .env:
+
+- SPOTIFY_CLIENT_ID
+- SPOTIFY_CLIENT_SECRET
+- APPLE_DEVELOPER_TOKEN
+- APPLE_API_BASE_URL
+- LASTFM_API_KEY
+
+Optional values:
+
+- MUFFLE_RUNTIME_DIR
+- THREADS_MEDIA_CACHE_DIR
+
+Fallback compatibility still exists for some REACT_APP_* variables, but the intended backend source of truth is the root .env.
+
+
+6. Shared backend helpers used by Rooms
+---------------------------------------
+
+6.1. Spotify token cache
+
+getAccessToken() caches the Spotify client-credentials token in memory:
+
+- spotifyToken
+- tokenExpiration
+
+If the token is still valid, it is reused instead of requesting a new one for every route call.
+
+
+6.2. Mock artist fallback
+
+mockArtists and getRandomMockArtists() provide a last-resort fallback dataset.
+
+This matters because some Rooms experiences should stay visually usable even if Spotify or Apple Music has temporary failures.
+
+
+6.3. Apple Music search and song normalization
+
+Several helper functions support the Apple Music routes:
+
+- fetchPlaylistArtists()
+- fetchAppleImagesFor()
+- searchAppleCatalogSongs()
+- getPreviewableSongsForArtist()
+- mapTrackToMuflSong()
+- dedupeMuflSongs()
+
+These helpers are important because Mufl wants song previews, artwork, and artist imagery in a consistent frontend-friendly shape.
+
+
+6.4. Shared media cache
+
+The backend creates a runtime media cache directory:
+
+- default base: os.tmpdir()/muffle-runtime/cached_media
+- overrideable by MUFFLE_RUNTIME_DIR or THREADS_MEDIA_CACHE_DIR
+
+It exposes that folder at:
+
+- /cached_media
+
+This is mostly for downloaded artwork / preview assets when caching is needed.
+
+
+7. Screen-by-screen Rooms backend flow
+--------------------------------------
+
+7.1. Selection screen
+
+Main frontend file:
+
+- apps/mufl/src/components/SelectionScreen.js
+
+Primary backend endpoints used:
+
+- GET /spotify/artists
+- GET /spotify/search-artists
+
+Behavior:
+
+- On first load, SelectionScreen requests /spotify/artists?genre=pop
+- When a user changes genre, it requests /spotify/artists with a different genre value
+- When a user scrolls for more artists, it requests /spotify/artists with genre, page, and limit
+- When a user types into search, it requests /spotify/search-artists?query=...
+
+What the backend returns:
+
+- Arrays of artist objects
+- Each object is shaped roughly like:
+  id, name, image, genres, popularity
+
+Important detail:
+
+- The shared backend route /spotify/artists now supports page and limit for SelectionScreen infinite scroll.
+- The backend normalizes some genre aliases:
+  - r&b -> r-n-b
+  - rnb -> r-n-b
+  - hip hop / hiphop -> hip-hop
+  - all -> pop
+
+Fallback behavior:
+
+- If Spotify fails upstream, getPopArtists() falls back to getRandomMockArtists().
+- SelectionScreen itself also has frontend fallback logic, but ideally the backend succeeds first.
+
+
+7.2. Similar-artist and room-generation flow
+
+Main frontend files:
+
+- apps/mufl/src/hooks/useEnhancedRoomFeed.js
+- apps/mufl/src/utils/fetchSimilar.js
+- apps/mufl/src/utils/enhancedFetchSimilar.js
+
+Primary backend endpoints used:
+
+- POST /lastfm/similar-artists
+- POST /spotify/fetch-images
+- POST /spotify/artists-data
+- GET /apple-music/search-artists
+- GET /apple-music/random-genre-artists
+
+Behavior:
+
+1. User picks seed artists in SelectionScreen.
+2. The room feed logic asks Last.fm for similar artist names.
+3. Those names are enriched with images using Spotify or Apple Music routes.
+4. The frontend then generates room cards locally using those artist pools.
+
+Meaning:
+
+- The backend is not generating final room objects.
+- The backend supplies artist data and song data.
+- The frontend uses that data to generate the interactive room feed.
+
+
+7.3. Rooms screen trending / pool replenishment
+
+Main frontend files:
+
+- apps/mufl/src/components/RoomsScreen.js
+- apps/mufl/src/components/ArtistPool.js
+
+Primary backend endpoints used:
+
+- GET /spotify/artists
+- GET /apple-music/random-genre-artists
+
+Behavior:
+
+- RoomsScreen uses /spotify/artists to create trending artist pools.
+- ArtistPool uses /apple-music/random-genre-artists when it needs additional artists with images.
+
+The /apple-music/random-genre-artists route:
+
+- pulls from multiple diverse genres
+- tries to produce variety for low / negative similarity experiences
+- falls back to mock artists if real data is too sparse
+
+
+7.4. Playing screen and snippet queue
+
+Main frontend file:
+
+- apps/mufl/src/components/PlayingScreen.js
+
+Primary backend endpoint used:
+
+- POST /apple-music/snippets
+
+Behavior:
+
+- When a room opens, the playing screen sends a list of room artist names.
+- The backend loops through those artist names and tries to fetch one previewable song per artist.
+- The response is a simple array of normalized song objects.
+
+This route exists specifically so the playing screen can build an initial queue of Apple Music preview clips for the room.
+
+
+7.5. Widget song search and artist song lookup
+
+Main frontend file:
+
+- apps/mufl/src/components/Widget.js
+
+Primary backend endpoints used:
+
+- POST /apple-music/artist-songs
+- POST /apple-music/search
+- POST /apple-music/artist-search
+
+Behavior:
+
+- /apple-music/artist-songs:
+  returns one or more previewable songs for a specific artist
+
+- /apple-music/search:
+  returns general Apple Music search results for song queries
+
+- /apple-music/artist-search:
+  returns song search results scoped toward a specific artist
+
+These routes normalize Apple Music responses into a Rooms-friendly object shape:
+
+- id
+- track / trackName
+- artist / artistName
+- album / albumName
+- artworkUrl
+- previewUrl
+- duration
+
+
+8. Route-by-route backend details for Rooms
+-------------------------------------------
+
+8.1. GET /spotify/artists
+
+Purpose:
+
+- main artist feed for SelectionScreen
+- genre-based artist loading
+- paginated artist loading
+- trending artist inputs for Rooms
+- support for negative / diverse artist gathering through internal reuse
+
+Implementation notes:
+
+- Calls getPopArtists(genre, minPopularity, limit, page)
+- Uses Spotify search with q=genre:"..."
+- Applies popularity filtering
+- Filters out artists without images
+- Falls back to mock artists on Spotify failure
+
+
+8.2. GET /spotify/search-artists
+
+Purpose:
+
+- artist search from SelectionScreen
+
+Implementation notes:
+
+- Uses Spotify search endpoint directly
+- Keeps an in-memory cache:
+  spotifySearchCache
+- TTL:
+  15 minutes
+- Returns artists with best available image
+
+
+8.3. POST /spotify/fetch-images
+
+Purpose:
+
+- enrich similar artists with Spotify images
+
+Input:
+
+- { artistNames: [...] }
+
+Output:
+
+- { artists: [...] }
+
+Behavior:
+
+- Loops artist names
+- Searches each artist on Spotify
+- Returns image-backed artist objects only
+
+
+8.4. POST /spotify/artists-data
+
+Purpose:
+
+- compatibility route used by older Mufl utility logic
+
+Input / output:
+
+- same artistNames pattern
+- currently returns the same shape as /spotify/fetch-images
+
+
+8.5. POST /lastfm/similar-artists
+
+Purpose:
+
+- get similar artist names for selected seeds
+
+Input:
+
+- { selectedArtists: ["Artist A", "Artist B", ...] }
+
+Output:
+
+- { similarArtists: [{ name: "..." }, ...] }
+
+Behavior:
+
+- Calls Last.fm artist.getsimilar for each selected artist
+- Combines results
+- De-duplicates by lowercase name
+
+Important limitation:
+
+- Last.fm is used mainly for similarity names, not final imagery
+- Image enrichment is done afterward through Spotify or Apple Music
+
+
+8.6. GET /apple-music/search-artists
+
+Purpose:
+
+- fetch Apple Music artist imagery and ids for artist-name lookups
+
+Behavior:
+
+- Searches Apple Music catalog artists
+- Filters out entries with no name or no artwork
+- Uses an in-memory cache:
+  appleArtistSearchCache
+- TTL:
+  15 minutes
+
+
+8.7. GET /apple-music/random-genre-artists
+
+Purpose:
+
+- provide diverse artists for low / negative similarity room generation
+- provide extra artists for ArtistPool refreshes
+
+Behavior:
+
+- Iterates across multiple genres
+- Reuses getPopArtists() internally
+- shuffles and slices results
+- falls back to mock artists when needed
+
+
+8.8. POST /apple-music/artist-songs
+
+Purpose:
+
+- fetch previewable songs for a chosen artist
+
+Input:
+
+- { artist: "..." } or { artistName: "..." }
+
+Output:
+
+- { success, data, songs }
+
+Behavior:
+
+- Uses getPreviewableSongsForArtist()
+- Searches Apple catalog songs
+- keeps only songs with previews
+- sorts so exact / close artist matches rank higher
+- returns a normalized list and the first result separately
+
+
+8.9. POST /apple-music/snippets
+
+Purpose:
+
+- build the playing-screen snippet queue
+
+Input:
+
+- { artistNames: [...] }
+
+Output:
+
+- plain array of normalized song objects
+
+Behavior:
+
+- For each artist, fetches one previewable song
+- returns only successful hits
+
+
+8.10. POST /apple-music/search
+
+Purpose:
+
+- general song search used by the widget
+
+Input:
+
+- { query: "..." } or { searchQuery: "..." }
+
+Output:
+
+- { results: [...] }
+
+Behavior:
+
+- Searches Apple Music song catalog
+- normalizes song shape through mapTrackToMuflSong()
+- de-duplicates duplicate songs
+
+
+8.11. POST /apple-music/artist-search
+
+Purpose:
+
+- artist-scoped song search used by the widget
+
+Input:
+
+- { query: "...", artistName: "..." }
+
+Behavior:
+
+- searches Apple with "artistName + query"
+- also runs a smaller general query
+- filters secondary results down to the requested artist
+- combines and de-duplicates results
+
+
+8.12. POST /apple-music/artist-images
+
+Purpose:
+
+- generic helper route for Apple artist image resolution
+
+This is more of a compatibility / utility route than a core Rooms route, but it is still part of the shared backend surface.
+
+
+8.13. POST /cache-media
+
+Purpose:
+
+- download and persist remote artwork / preview media into the shared cache directory
+
+Input:
+
+- artworkUrl
+- previewUrl
+- songId
+
+Output:
+
+- success flag
+- artworkPath
+- previewPath
+
+This route is available if the app needs locally cached media assets instead of repeatedly hotlinking remote files.
+
+
+9. Caching behavior relevant to Rooms
+-------------------------------------
+
+In-memory caches:
+
+- Spotify token cache
+- spotifySearchCache
+- appleArtistSearchCache
+- playlistArtistCache
+
+Disk/runtime cache:
+
+- /cached_media via the runtime cached_media folder
+
+Goal of caching:
+
+- reduce Spotify token churn
+- reduce repeated Apple / Spotify artist searches
+- improve responsiveness for repeated room-building and artist lookup flows
+
+
+10. Failure and fallback strategy
+---------------------------------
+
+The backend is intentionally tolerant of partial upstream failure.
+
+Examples:
+
+- If Spotify genre fetch fails, /spotify/artists falls back to mock artists.
+- If Apple Music artist search misses with 400 or 404, /apple-music/search-artists returns [] instead of hard-failing.
+- If snippet lookup cannot find a preview, the backend returns a soft failure or empty list rather than crashing the flow.
+- If random diverse artist fetching is too sparse, /apple-music/random-genre-artists fills gaps with mock artists.
+
+This is important because the Rooms app is very visual and interactive; graceful degradation is better than a blank UI.
+
+
+11. Current data ownership split
+--------------------------------
+
+The current Mufl architecture splits work like this:
+
+Backend responsibilities:
+
+- authenticate to Spotify
+- call Spotify, Apple Music, and Last.fm
+- normalize third-party responses
+- cache repeated results
+- provide fallback data when upstream services fail
+- expose simple artist/song APIs to the frontend
+
+Frontend responsibilities:
+
+- manage user interaction
+- load initial artist grids
+- handle search / scroll / selection UX
+- request similar artist data
+- generate room objects locally
+- build playback and snippet UI from backend song responses
+
+
+12. Practical run instructions
+------------------------------
+
+To run the current Rooms stack locally:
+
+1. Start the root backend from the repo root:
+   nodemon server.js
+
+2. Start the Mufl frontend from apps/mufl:
+   npm start
+
+Expected ports:
+
+- backend: 8080
+- frontend dev server: 3000
+
+Important note:
+
+- In development, the frontend should use relative API requests and let the CRA proxy forward them to the root backend.
+- In production, /rooms is served directly by the root Express app.
+
+
+13. Most important files for future backend work
+------------------------------------------------
+
+If you need to change the Rooms backend, start here:
+
+- server.js
+  root app wiring and /rooms hosting
+
+- backend/unifiedRoutes.js
+  all active shared API routes and helpers used by Rooms
+
+- apps/mufl/src/utils/api.js
+  frontend API URL construction
+
+- apps/mufl/src/components/SelectionScreen.js
+  main artist-loading consumer
+
+- apps/mufl/src/hooks/useEnhancedRoomFeed.js
+  similar-artist / room-data consumer
+
+- apps/mufl/src/components/PlayingScreen.js
+  Apple snippet consumer
+
+- apps/mufl/src/components/Widget.js
+  Apple song-search consumer
+
+
+14. Short version
+-----------------
+
+The current Rooms backend is a unified Express backend at the repo root. Mufl no longer has a separate server. The frontend talks to the root backend for Spotify artist lists, Last.fm similarity, Apple Music artist/song/snippet data, and optional media caching. The backend normalizes third-party API responses, caches what it can, and uses fallbacks so the Rooms UI still works when upstream services are unreliable.
+
+
+15. Exact Request Flow: SelectionScreen -> RoomsScreen -> PlayingScreen
+-----------------------------------------------------------------------
+
+This section is the compact request-flow view of how the Rooms app moves through its main screens.
+
+15.1. SelectionScreen flow
+
+Frontend file:
+
+- apps/mufl/src/components/SelectionScreen.js
+
+Main purpose:
+
+- load an initial artist grid
+- let the user browse by genre
+- let the user search artists
+- let the user select seed artists
+
+Request flow:
+
+1. SelectionScreen mounts.
+2. It requests:
+   GET /spotify/artists?genre=pop
+3. The backend route /spotify/artists calls getPopArtists().
+4. getPopArtists():
+   - gets or reuses a Spotify access token
+   - searches Spotify artists by genre
+   - filters out artists without images
+   - filters by minimum popularity
+   - returns normalized artist objects
+5. SelectionScreen renders that artist grid.
+
+Genre switching flow:
+
+1. User clicks a genre.
+2. SelectionScreen requests:
+   GET /spotify/artists?genre=<genre>
+3. Backend returns the new artist list.
+4. Frontend replaces the displayed artist grid.
+
+Infinite scroll flow:
+
+1. User scrolls near the bottom.
+2. SelectionScreen requests:
+   GET /spotify/artists?genre=<genre>&page=<n>&limit=10
+3. Backend applies the page offset in getPopArtists().
+4. Frontend appends those artists into the current list.
+
+Artist search flow:
+
+1. User types in the search box.
+2. After debounce, SelectionScreen requests:
+   GET /spotify/search-artists?query=<text>
+3. Backend searches Spotify directly.
+4. Backend caches that search for 15 minutes.
+5. Frontend shows the returned artist matches.
+
+When the user continues:
+
+1. The selected artist objects are passed into the next screen.
+2. No backend write happens here.
+3. The frontend simply carries selected artists forward into the Rooms flow.
+
+
+15.2. RoomsScreen flow
+
+Frontend files:
+
+- apps/mufl/src/components/RoomsScreen.js
+- apps/mufl/src/hooks/useEnhancedRoomFeed.js
+- apps/mufl/src/utils/enhancedFetchSimilar.js
+- apps/mufl/src/utils/fetchSimilar.js
+
+Main purpose:
+
+- turn seed artists into a set of generated room/station cards
+- support similarity-based exploration
+- support low/negative-similarity discovery
+
+Request flow after entering RoomsScreen:
+
+1. useEnhancedRoomFeed starts its initial load.
+2. It fetches similar-artist data for the selected seeds.
+3. In parallel, it also prepares the random/diverse artist pool.
+
+Similar-artist branch:
+
+1. Frontend requests:
+   POST /lastfm/similar-artists
+   body: { selectedArtists: ["artist 1", "artist 2", ...] }
+2. Backend calls Last.fm artist.getsimilar for each selected artist.
+3. Backend returns similar artist names only.
+4. Frontend then enriches those names with images using:
+   POST /spotify/fetch-images
+   or Apple Music artist-image lookups in the enhanced flow
+5. Frontend now has a visual related-artist pool.
+
+Negative / diverse branch:
+
+1. Frontend requests:
+   GET /apple-music/random-genre-artists?count=<n>
+2. Backend gathers artists from multiple genres by internally reusing getPopArtists().
+3. Backend shuffles, slices, and falls back to mock data if needed.
+4. Frontend stores those as the random/diverse pool.
+
+Room generation step:
+
+1. After artist data is loaded, the frontend generates room objects locally.
+2. The backend does not build final room cards.
+3. The frontend combines:
+   - selected seed artists
+   - related artists from Last.fm + Spotify/Apple
+   - random artists for negative ranges
+4. The result becomes the room/station list shown on the screen.
+
+Trending room helper flow:
+
+1. RoomsScreen may also request:
+   GET /spotify/artists
+2. That response is used to build trending-style artist pools for room cards.
+
+ArtistPool refresh flow:
+
+1. If the current pool needs more artists, ArtistPool requests:
+   GET /apple-music/random-genre-artists?count=<n>
+2. Backend returns extra artists with images.
+3. Frontend merges them into the visible pool.
+
+When the user joins a room:
+
+1. The frontend takes the selected/generated room object.
+2. It passes that room object into PlayingScreen.
+3. No backend write is required for room join in the current implementation.
+
+
+15.3. PlayingScreen flow
+
+Frontend files:
+
+- apps/mufl/src/components/PlayingScreen.js
+- apps/mufl/src/components/Widget.js
+
+Main purpose:
+
+- build a preview/snippet queue for the room
+- support song discovery and artist-specific searches
+- let the user interact with the room’s artist pool
+
+Initial snippet queue flow:
+
+1. PlayingScreen receives a station object containing room artists.
+2. It extracts up to 10 artist names from that room.
+3. It requests:
+   POST /apple-music/snippets
+   body: { artistNames: [...] }
+4. Backend loops those artist names.
+5. For each artist, backend uses getPreviewableSongsForArtist().
+6. That helper:
+   - searches Apple Music song catalog
+   - keeps songs with previews
+   - normalizes them into the Mufl song shape
+7. Backend returns an array of snippet/song objects.
+8. PlayingScreen maps those into the room’s snippet queue and now-playing state.
+
+Artist-specific song lookup flow in Widget:
+
+1. User focuses on a selected artist inside the widget.
+2. Widget requests:
+   POST /apple-music/artist-songs
+   body: { artist: "..."} or { artistName: "..." }
+3. Backend returns one or more previewable songs for that artist.
+4. Widget shows those songs and can queue them locally in the UI.
+
+Global song search flow in Widget:
+
+1. User searches for any song.
+2. Widget requests:
+   POST /apple-music/search
+   body: { query: "..."} or { searchQuery: "..." }
+3. Backend searches Apple Music song catalog.
+4. Backend normalizes and de-duplicates results.
+5. Widget displays those global search results.
+
+Artist-scoped search flow in Widget:
+
+1. User searches for a song within a specific artist context.
+2. Widget requests:
+   POST /apple-music/artist-search
+   body: { query: "...", artistName: "..." }
+3. Backend searches Apple twice:
+   - direct "artistName + query"
+   - smaller general query filtered back to the artist
+4. Backend combines and de-duplicates those songs.
+5. Widget displays the scoped results.
+
+
+15.4. One-line end-to-end summary
+
+SelectionScreen gets candidate artists from Spotify, RoomsScreen turns chosen artists into generated stations using Last.fm plus Spotify/Apple enrichment, and PlayingScreen turns the chosen room’s artist list into Apple Music preview/snippet playback data.

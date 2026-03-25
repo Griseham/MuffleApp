@@ -1,0 +1,71 @@
+Project structure overview
+==========================
+
+Top level
+---------
+src/                       # React app, shared timeline data, bundled cache JSON
+public/                    # Static public assets
+dist/                      # Production build output
+package.json               # Vite scripts/dependencies
+package-lock.json          # Lockfile
+.env                       # Optional local env file (currently unused by runtime)
+eslint.config.js           # ESLint config
+vite.config.js             # Vite config
+README.md                  # Project notes
+Plan.txt                   # Planning notes
+STRUCTURE.txt              # This file
+
+Frontend feature shell
+----------------------
+src/features/TimelineScreen.jsx     # Composes Zone 1 + Zone 2 + Zone 3
+src/features/useTimelineState.js    # Shared selectedArtist / selectedAlbum / hover state
+src/features/Icons.jsx              # Shared icons
+src/features/timeline.css           # Shared layout styles
+
+src/features/zone1/
+-------------------
+PersonalTimeline.jsx       # Zone 1 state/render; selects artists for Zone 2
+ArtistDot.jsx              # Individual artist point
+Zone1Header.jsx            # Zone 1 controls/header
+Topartistsview.jsx         # Top artists lane support
+position.js                # Zone 1 positioning helpers
+seed.js                    # Seed helpers
+zone1.css                  # Zone 1 styles
+
+src/features/zone2/
+-------------------
+ContextPanel.jsx           # Zone 2 state owner; resolves artists/albums from bundled cache
+AlbumDetail.jsx            # Album detail panel for selected album
+zone2.css                  # Zone 2 styles
+
+src/features/zone3/
+-------------------
+TimelineGrid.jsx           # Zone 3 state owner; reads bundled calendar cache
+GridBody.jsx               # Month x user grid mapping from calendar payload
+AlbumCell.jsx              # Cell wrapper (empty vs AlbumCard)
+AlbumCard.jsx              # Album cover + rank + artist avatar render
+MonthSidebar.jsx           # Time/genre filter controls
+UsersHeader.jsx            # Column headers
+PinnedAvatarsBar.jsx       # Pinned friend strip
+AddUserColumn.jsx          # Add-user column
+gridHelpers.js             # Density/ranking/gradient helpers
+zone3.css                  # Zone 3 styles
+
+Shared data / bundled cache
+---------------------------
+src/backend/timelineMockData.js     # Static seed data used across zones
+src/backend/cacheReadyArtists.js    # Curated cache-safe artist registry for Zone 1/2
+src/backend/cache/                  # Bundled JSON data used directly by the frontend
+  artist_images.json                # Artist name -> image URL cache
+  album_artworks.json               # Track lookup -> artwork metadata cache
+  artist_discography.json           # Cached artist discographies for Zone 2
+  zone3_data.json                   # Source dataset retained for reference
+  zone3_calendar_v4.json            # Bundled Zone 3 calendar payload
+
+Current runtime model
+---------------------
+1) The app is frontend-only at runtime.
+2) Zone 1 reads from `cacheReadyArtists.js` and bundled cache JSON.
+3) Zone 2 resolves artists, albums, and artwork locally from bundled cache data.
+4) Zone 3 reads `zone3_calendar_v4.json` directly.
+5) No local Express server or runtime API routes are required.

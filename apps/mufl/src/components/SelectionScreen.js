@@ -1,13 +1,31 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import axios from 'axios';
 import './SelectionScreen.css';
 import { fetchSimilarArtists } from '../utils/fetchSimilar';
-import _ from 'lodash';
+import { apiClient } from '../utils/api';
+import {
+  MIN_SEARCH_QUERY_LENGTH,
+  sanitizeSearchInput,
+  isSafeHttpUrl,
+} from '../utils/searchSecurity';
 
+const api = apiClient;
+const EMPTY_STATE_DELAY_MS = 2000;
 
-// Set base URL for API requests
- axios.defaults.baseURL =
-  process.env.REACT_APP_API_BASE_URL || '/api';
+const isCanceledError = (err) => err?.code === 'ERR_CANCELED' || err?.name === 'CanceledError';
+const hasValidImage = (artist) =>
+  artist &&
+  artist.image &&
+  artist.image !== 'fallback.jpg' &&
+  !artist.image.includes('/api/placeholder/');
+
+// Simple user silhouette SVG as data URI for missing images
+const USER_PLACEHOLDER_SVG =
+  'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 24 24" fill="none" stroke="%23ccc" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4" fill="%23222"/><path d="M4 20c0-3.314 3.582-6 8-6s8 2.686 8 6" fill="%23222"/></svg>';
+
+// Lightweight logger to keep debug output consistent in this screen
+const log = (...args) => console.log('[SelectionScreen]', ...args);
+const logWarn = (...args) => console.warn('[SelectionScreen]', ...args);
+const logError = (...args) => console.error('[SelectionScreen]', ...args);
 
 // Utility functions
 const shuffleArray = (array) => {
@@ -19,55 +37,139 @@ const shuffleArray = (array) => {
   return newArray;
 };
 
-// Remove artists that normalise to the same name
-const normalise = (name) => {
-  const raw = name.trim().toLowerCase();
+const GENRE_QUERY_BY_LABEL = Object.freeze({
+  All: 'all',
+  Pop: 'pop',
+  'Hip-Hop': 'hip-hop',
+  Rock: 'rock',
+  'R&B': 'r&b',
+  Electronic: 'electronic',
+  Country: 'country',
+  Indie: 'indie',
+  Latin: 'latin',
+  Jazz: 'jazz',
+  'K-Pop': 'k-pop',
+  Alternative: 'alternative',
+});
 
-  /* SPECIAL-CASE ── treat any “Morgan Wallen …” string as the same key */
-  if (raw.includes('morgan wallen')) return 'morganwallen';
+const getGenreQueryValue = (genre = 'All') =>
+  GENRE_QUERY_BY_LABEL[genre] || String(genre || 'all').trim().toLowerCase();
 
-  /* default: strip spaces, quotes, punctuation */
-  return raw.replace(/[\u2019’'".\s]/g, '');
-};  // strips spaces & quotes
+const getArtistIdentityKey = (artist) => {
+  if (!artist || typeof artist !== 'object') {
+    return '';
+  }
 
+  if (artist.id) {
+    return String(artist.id);
+  }
 
-const dedupeArtists = (arr) => {
-  const seen = new Set();
-  return arr.filter((a) => {
-    const key = normalise(a.name || '');
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
+  const normalizedName = String(artist.name || '').trim().toLowerCase();
+  const normalizedImage = String(artist.image || '').trim();
+
+  if (!normalizedName && !normalizedImage) {
+    return '';
+  }
+
+  return `${normalizedName}|${normalizedImage}`;
 };
 
-
 // Reusable components
-const ArtistImage = ({ name, src, size = "large" }) => {
+const ArtistImage = ({ name, src }) => {
   return (
     <img
-      src={src || '/placeholder.jpg'}
+      src={src || USER_PLACEHOLDER_SVG}
       alt={name}
       className="artist-circle-image"
       onError={(e) => { 
-        // Only use placeholder for non-search results to avoid placeholder circles
-        if (!src || !src.includes("api.spotify.com")) {
-          e.currentTarget.src = '/placeholder.jpg';
-        }
+        e.currentTarget.src = USER_PLACEHOLDER_SVG;
       }}
     />
   );
 };
 
-const LoadingIndicator = ({ message = "Loading artists..." }) => (
-  <div className="loading-container">
+const LoadingIndicator = ({ message = "Loading artists...", fullHeight = false }) => (
+  <div className={`loading-container ${fullHeight ? 'loading-container-full' : ''}`}>
     <div className="loading-spinner"></div>
-    <p>{message}</p>
+    {message ? <p>{message}</p> : null}
   </div>
 );
 
 // Main SelectionScreen component
 const SelectionScreen = ({ onContinue }) => {
+  const isMountedRef = useRef(true);
+  const noticeTimeoutRef = useRef(null);
+  const emptyStateDelayTimeoutRef = useRef(null);
+  const artistListVersionRef = useRef(0);
+  const requestControllers = useRef({
+    main: null,
+    genre: null,
+    more: null,
+    search: null
+  });
+  const searchDebounceRef = useRef(null);
+  const latestSearchQueryRef = useRef('');
+
+  // Cancel any in-flight request of a given type
+  const cancelRequest = useCallback((key) => {
+    const ctrl = requestControllers.current[key];
+    if (ctrl) {
+      ctrl.abort();
+      requestControllers.current[key] = null;
+    }
+  }, []);
+
+  const startRequest = useCallback((key) => {
+    cancelRequest(key);
+    const ctrl = new AbortController();
+    requestControllers.current[key] = ctrl;
+    return ctrl.signal;
+  }, [cancelRequest]);
+
+  // Ensure incoming artists get a unique id (avoids merges dropping items when API repeats data)
+  const appendWithUniqueIds = useCallback((incoming, existing = []) => {
+    // Use id when present, otherwise name+image combo to allow same name with different artwork
+    const seenKeys = new Set(
+      existing.map(a => {
+        const keyId = a?.id;
+        const keyName = a?.name ? a.name.toLowerCase() : '';
+        const keyImg = a?.image || '';
+        return keyId || `${keyName}|${keyImg}`;
+      })
+    );
+
+    const result = [];
+
+    incoming.forEach((artist, idx) => {
+      const keyId = artist?.id;
+      const keyName = artist?.name ? artist.name.toLowerCase() : '';
+      const keyImg = artist?.image || '';
+      const compositeKey = keyId || `${keyName}|${keyImg}`;
+
+      if (seenKeys.has(compositeKey)) {
+        return;
+      }
+
+      // Normalize image to always have something displayable
+      const safeImage = hasValidImage(artist)
+        ? artist.image
+        : USER_PLACEHOLDER_SVG;
+
+      const baseId = keyId || artist?.name || `artist-${Date.now()}-${idx}`;
+      let uniqueId = baseId;
+      let counter = 1;
+      while (seenKeys.has(uniqueId)) {
+        uniqueId = `${baseId}-dup-${counter++}`;
+      }
+
+      seenKeys.add(compositeKey);
+      seenKeys.add(uniqueId);
+      result.push({ ...artist, id: uniqueId, image: safeImage });
+    });
+
+    return result;
+  }, []);
+
   // Consolidated loading states
   const [loadingState, setLoadingState] = useState({
     main: true,           // Main loading state
@@ -81,31 +183,88 @@ const SelectionScreen = ({ onContinue }) => {
   const [displayedArtists, setDisplayedArtists] = useState([]);
   const [selectedArtists, setSelectedArtists] = useState([]);
   const [searchResults, setSearchResults] = useState([]);
-
   
   // UI control states
-  const [error, setError] = useState(null);
+  const [notice, setNotice] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
-
+  const [selectedGenre, setSelectedGenre] = useState('All');
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [canShowBrowseEmptyState, setCanShowBrowseEmptyState] = useState(false);
+  
   // Refs
   const genreFiltersRef = useRef(null);
   const artistsAreaRef = useRef(null);
-  const [hasMore, setHasMore] = useState(true);
+
 
   
+  // Constants
+  const genreOptions = useMemo(() => 
+    ['All', 'Pop', 'Hip-Hop', 'Rock', 'R&B', 'Electronic', 'Country', 'Indie', 'Latin', 'Jazz', 'K-Pop', 'Alternative'],
+    []
+  );
   
   // Helper for updating loading states
   const setLoading = useCallback((type, value) => {
+    // Avoid state updates after unmount
+    if (!isMountedRef.current) return;
     setLoadingState(prev => ({ ...prev, [type]: value }));
   }, []);
-  
-  // API helper function
-  const safeApiCall = useCallback(async (apiCall, fallbackData = [], errorMsg = 'API Error') => {
-    try {
-      return await apiCall();
-    } catch (error) {
-      setError(errorMsg);
-      return fallbackData;
+
+  const clearNotice = useCallback(() => {
+    if (noticeTimeoutRef.current) {
+      clearTimeout(noticeTimeoutRef.current);
+      noticeTimeoutRef.current = null;
+    }
+
+    if (isMountedRef.current) {
+      setNotice(null);
+    }
+  }, []);
+
+  const showNotice = useCallback((message, durationMs = 5000) => {
+    if (!message || !isMountedRef.current) {
+      return;
+    }
+
+    if (noticeTimeoutRef.current) {
+      clearTimeout(noticeTimeoutRef.current);
+    }
+
+    setNotice(message);
+
+    if (durationMs > 0) {
+      noticeTimeoutRef.current = setTimeout(() => {
+        if (isMountedRef.current) {
+          setNotice(null);
+        }
+        noticeTimeoutRef.current = null;
+      }, durationMs);
+    }
+  }, []);
+
+  const startBrowseEmptyStateDelay = useCallback(() => {
+    if (emptyStateDelayTimeoutRef.current) {
+      clearTimeout(emptyStateDelayTimeoutRef.current);
+    }
+
+    setCanShowBrowseEmptyState(false);
+    emptyStateDelayTimeoutRef.current = setTimeout(() => {
+      if (isMountedRef.current) {
+        setCanShowBrowseEmptyState(true);
+      }
+      emptyStateDelayTimeoutRef.current = null;
+    }, EMPTY_STATE_DELAY_MS);
+  }, []);
+
+  const settleBrowseEmptyStateDelay = useCallback(() => {
+    if (emptyStateDelayTimeoutRef.current) {
+      clearTimeout(emptyStateDelayTimeoutRef.current);
+      emptyStateDelayTimeoutRef.current = null;
+    }
+
+    if (isMountedRef.current) {
+      setCanShowBrowseEmptyState(true);
     }
   }, []);
   
@@ -113,188 +272,342 @@ const SelectionScreen = ({ onContinue }) => {
   const generateMockArtists = useCallback((baseNames, prefix = '') => {
     return baseNames.map((name, index) => ({
       name,
-      image: `/api/placeholder/200/200`,
+      image: USER_PLACEHOLDER_SVG,
       id: `${prefix}-${index + 1}`,
       isMain: true
     }));
   }, []);
-
-  // Sanitize input to prevent injection attacks
-  const sanitizeInput = useCallback((input) => {
-    // Remove potentially dangerous characters and patterns
-    return input
-      .replace(/[<>"'`\\]/g, '') // Remove HTML/script injection chars
-      .replace(/javascript:/gi, '') // Remove javascript: protocol
-      .replace(/data:/gi, '') // Remove data: protocol
-      .replace(/vbscript:/gi, '') // Remove vbscript: protocol
-      .replace(/on\w+=/gi, '') // Remove event handlers
-      .replace(/\{\{.*?\}\}/g, '') // Remove template injection
-      .replace(/\$\{.*?\}/g, '') // Remove ES6 template literals
-      .replace(/eval\s*\(/gi, '') // Remove eval calls
-      .replace(/Function\s*\(/gi, '') // Remove Function constructor
-      .replace(/setTimeout\s*\(/gi, '') // Remove setTimeout
-      .replace(/setInterval\s*\(/gi, '') // Remove setInterval
-      .trim();
-  }, []);
-
-  // Validate search query length and content
-  const validateSearchQuery = useCallback((query) => {
-    const sanitized = sanitizeInput(query);
-    
-    // Length validation
-    if (sanitized.length > 100) {
-      return sanitized.substring(0, 100);
-    }
-    
-    // Only allow alphanumeric, spaces, hyphens, apostrophes, and basic punctuation
-    const allowedPattern = /^[a-zA-Z0-9\s\-'.,&()]+$/;
-    if (sanitized && !allowedPattern.test(sanitized)) {
-      return sanitized.replace(/[^a-zA-Z0-9\s\-'.,&()]/g, '');
-    }
-    
-    return sanitized;
-  }, [sanitizeInput]);
   
-// Search for artists with enhanced security
-const searchArtists = useCallback(async (query) => {
-  if (!query.trim()) {
-    setSearchResults([]);
-    return;
-  }
+  const searchArtists = useCallback(async (query) => {
+    const finalQuery = sanitizeSearchInput(query);
 
-
-
-  // Additional server-side validation
-  const finalQuery = validateSearchQuery(query);
-  if (!finalQuery || finalQuery.length < 2) {
-    setSearchResults([]);
-    return;
-  }
-  
-  setLoading('search', true);
-  try {
-    // Use GET request with query parameter
-    const res = await axios.get('/apple-music/search-artists', {
-      params : { query: finalQuery },
-      timeout: 10_000
-    });
-    
-    
-    
-    // Validate response structure
-    if (!Array.isArray(res.data)) {
-      throw new Error('Invalid response format');
+    if (!finalQuery) {
+      latestSearchQueryRef.current = '';
+      cancelRequest('search');
+      setSearchResults([]);
+      setLoading('search', false);
+      return;
     }
-    
-    // Filter and validate results
-    const filteredResults = res.data
-      .filter(artist => 
-        artist && 
-        typeof artist === 'object' &&
-        artist.name &&
-        typeof artist.name === 'string' &&
-        artist.image && 
-        artist.image !== 'fallback.jpg' && 
-        !artist.image.includes('/api/placeholder/') &&
-        artist.image.startsWith('http') // Ensure valid URL
-      )
-      .slice(0, 50); // Limit results to prevent memory issues
-    
-    setSearchResults(filteredResults);
-  } catch (err) {
-    
-    // More descriptive error message based on error type
-    const errorMessage = err.response?.status === 500 
-      ? "Our search service is currently unavailable. Showing you similar results instead."
-      : err.code === 'ECONNABORTED'
-      ? "Search request timed out. Please try again."
-      : "We couldn't complete your search. Showing you similar results instead.";
-    
-    setError(errorMessage);
-    
-    // Fallback to safe mock filtering if API fails
-    const queryLower = finalQuery.toLowerCase();
-    const safeMockArtists = [
-      'Taylor Swift', 'Drake', 'Billie Eilish', 'The Weeknd', 'Bad Bunny',
-      'Dua Lipa', 'Post Malone', 'Ariana Grande', 'Travis Scott', 'BTS',
-      'Lil Nas X', 'Olivia Rodrigo', 'Doja Cat', 'Harry Styles', 'Justin Bieber'
-    ];
-    
-    const mockResults = safeMockArtists
-      .filter(name => name.toLowerCase().includes(queryLower))
-      .slice(0, 10); // Limit mock results
-    
-    const formattedResults = generateMockArtists(mockResults, 'search');
-    setSearchResults(formattedResults);
-    
-    // Clear error after 5 seconds
-    setTimeout(() => setError(null), 5000);
-  }
-  setLoading('search', false);
-}, [generateMockArtists, setLoading, validateSearchQuery]);
-const debouncedSearch = useRef(_.debounce(searchArtists, 400)).current;
+
+    if (finalQuery.length < MIN_SEARCH_QUERY_LENGTH) {
+      latestSearchQueryRef.current = finalQuery;
+      cancelRequest('search');
+      setSearchResults([]);
+      setLoading('search', false);
+      return;
+    }
+
+    log('search:start', { query: finalQuery });
+    setLoading('search', true);
+    latestSearchQueryRef.current = finalQuery;
+
+    try {
+      const signal = startRequest('search');
+      const res = await api.get('/spotify/search-artists', {
+        params: { query: finalQuery },
+        signal
+      });
+
+      if (!Array.isArray(res.data)) {
+        throw new Error('Invalid response format');
+      }
+
+      const filteredResults = res.data
+        .filter((artist) =>
+          artist &&
+          typeof artist === 'object' &&
+          typeof artist.name === 'string' &&
+          isSafeHttpUrl(artist.image) &&
+          artist.image !== 'fallback.jpg' &&
+          !artist.image.includes('/api/placeholder/')
+        )
+        .slice(0, 24);
+
+      log('search:response', {
+        returned: res.data.length,
+        filtered: filteredResults.length
+      });
+
+      if (latestSearchQueryRef.current === finalQuery) {
+        clearNotice();
+        setSearchResults(filteredResults);
+      }
+    } catch (err) {
+      if (isCanceledError(err)) {
+        log('search:canceled', { query: finalQuery });
+        return;
+      }
+
+      logError('search:failed', err);
+
+      const errorMessage = err.response?.status === 500
+        ? 'Artist search is temporarily unavailable. Showing demo matches instead.'
+        : err.code === 'ECONNABORTED'
+          ? 'Artist search timed out. Showing demo matches instead.'
+          : 'We could not complete the live artist search. Showing demo matches instead.';
+
+      const queryLower = finalQuery.toLowerCase();
+      const safeMockArtists = [
+        'Taylor Swift', 'Drake', 'Billie Eilish', 'The Weeknd', 'Bad Bunny',
+        'Dua Lipa', 'Post Malone', 'Ariana Grande', 'Travis Scott', 'BTS',
+        'Lil Nas X', 'Olivia Rodrigo', 'Doja Cat', 'Harry Styles', 'Justin Bieber'
+      ];
+
+      const mockResults = safeMockArtists
+        .filter((name) => name.toLowerCase().includes(queryLower))
+        .slice(0, 10);
+
+      const formattedResults = generateMockArtists(mockResults, 'search');
+
+      if (latestSearchQueryRef.current === finalQuery) {
+        showNotice(errorMessage);
+        setSearchResults(formattedResults);
+      }
+    } finally {
+      setLoading('search', false);
+      log('search:end', { query: finalQuery });
+    }
+  }, [cancelRequest, clearNotice, generateMockArtists, setLoading, showNotice, startRequest]);
 
 // Also, let's apply the same filtering to the main artists fetch and genre fetch:
 // For fetchMainArtists
-// SelectionScreen.js
-const fetchMainArtists = useCallback(async () => {
+  const fetchMainArtists = useCallback(async () => {
+  const requestVersion = ++artistListVersionRef.current;
+  log('mainFetch:start');
+  startBrowseEmptyStateDelay();
   setLoading('main', true);
   try {
-    const { data } = await axios.get('/apple-music/popular-artists', {
-      params: { limit: 20, offset: 0 }
-    });
-
-    setDisplayedArtists(
-      dedupeArtists(data.artists.filter(a => a.image))
-    );
-
-    /* 👉 store the whole pool NOW, while `data` is in scope */
-    localStorage.setItem(
-      'mufl_popularArtists',
-      JSON.stringify(data.artists)      // we’ll re-use this in Rooms
-    );
+    const signal = startRequest('main');
+    const res = await api.get('/spotify/artists', { params: { genre: 'pop' }, signal });
+    
+    // Filter out artists without images; if none, fall back to mock data
+    const filteredArtists = (res.data || []).filter(hasValidImage);
+    const finalArtists = filteredArtists.length > 0
+      ? filteredArtists
+      : generateMockArtists(['Artist A', 'Artist B', 'Artist C', 'Artist D'], 'fallback-main');
+    
+    const normalized = appendWithUniqueIds(shuffleArray(finalArtists));
+    if (requestVersion !== artistListVersionRef.current) {
+      return;
+    }
+    clearNotice();
+    setDisplayedArtists(normalized);
+    if (normalized.length > 0) {
+      settleBrowseEmptyStateDelay();
+    }
+    log('mainFetch:success', { received: (res.data || []).length, filtered: filteredArtists.length, finalCount: normalized.length });
+    setHasMore(normalized.length >= 8);
   } catch (err) {
-    setError('Could not load artists – showing sample list');
-    setDisplayedArtists(dedupeArtists(generateMockArtists(
-      ['Taylor Swift','Drake','Billie Eilish','The Weeknd','Bad Bunny'],
-      'apple-fallback'
-    )));
-    setHasMore(false);
+    if (isCanceledError(err)) {
+      log('mainFetch:canceled');
+      setLoading('main', false);
+      return;
+    }
+    logError('mainFetch:error', err);
+    showNotice('Live artist data is unavailable. Showing demo artists instead.');
+    
+    // Fallback to mock data if API fails
+    const mockArtistNames = [
+      'Taylor Swift', 'Drake', 'Billie Eilish', 'The Weeknd', 'Bad Bunny',
+      'Dua Lipa', 'Post Malone', 'Ariana Grande', 'Travis Scott', 'BTS'
+    ];
+    const mockArtists = generateMockArtists(mockArtistNames, 'artist');
+    const normalized = appendWithUniqueIds(shuffleArray(mockArtists));
+    if (requestVersion !== artistListVersionRef.current) {
+      return;
+    }
+    setDisplayedArtists(normalized);
+    if (normalized.length > 0) {
+      settleBrowseEmptyStateDelay();
+    }
+    logWarn('mainFetch:fallback', { mockCount: normalized.length });
+  }
+  if (requestVersion !== artistListVersionRef.current) {
+    return;
   }
   setLoading('main', false);
-}, [generateMockArtists, setLoading]);
+  setPage(1);
+}, [appendWithUniqueIds, clearNotice, generateMockArtists, setLoading, settleBrowseEmptyStateDelay, showNotice, startBrowseEmptyStateDelay, startRequest]);
 
 // For fetchArtistsByGenre
-
+  const fetchArtistsByGenre = useCallback(async (genre) => {
+  if (genre === 'All') {
+    log('genreFetch:all');
+    fetchMainArtists();
+    return;
+  }
+  
+  const requestVersion = ++artistListVersionRef.current;
+  log('genreFetch:start', { genre });
+  startBrowseEmptyStateDelay();
+  setLoading('genre', true);
+  try {
+    const signal = startRequest('genre');
+    const res = await api.get('/spotify/artists', {
+      params: { genre: getGenreQueryValue(genre) },
+      signal
+    });
+    
+    // Filter out artists without images; if none, fall back to mock data
+    const filteredArtists = (res.data || []).filter(hasValidImage);
+    const finalArtists = filteredArtists.length > 0
+      ? filteredArtists
+      : generateMockArtists([
+          `${genre} Artist 1`,
+          `${genre} Artist 2`,
+          `${genre} Artist 3`,
+          `${genre} Artist 4`
+        ], `genre-${genre.toLowerCase()}`);
+    
+    const normalized = appendWithUniqueIds(finalArtists);
+    if (requestVersion !== artistListVersionRef.current) {
+      return;
+    }
+    clearNotice();
+    setDisplayedArtists(normalized);
+    if (normalized.length > 0) {
+      settleBrowseEmptyStateDelay();
+    }
+    log('genreFetch:success', { genre, received: (res.data || []).length, filtered: filteredArtists.length, finalCount: normalized.length });
+    setHasMore(normalized.length >= 6);
+  } catch (err) {
+    if (isCanceledError(err)) {
+      log('genreFetch:canceled', { genre });
+      setLoading('genre', false);
+      return;
+    }
+    logError(`genreFetch:error ${genre}`, err);
+    showNotice(`Could not load live ${genre} artists. Showing demo artists instead.`);
+    
+    // Fallback to mock data if API fails
+    const genreArtists = generateMockArtists([
+      `${genre} Artist 1`,
+      `${genre} Artist 2`,
+      `${genre} Artist 3`,
+      `${genre} Artist 4`,
+      `${genre} Artist 5`,
+      `${genre} Artist 6`
+    ], `genre-${genre.toLowerCase()}`);
+    
+    const normalized = appendWithUniqueIds(genreArtists);
+    if (requestVersion !== artistListVersionRef.current) {
+      return;
+    }
+    setDisplayedArtists(normalized);
+    if (normalized.length > 0) {
+      settleBrowseEmptyStateDelay();
+    }
+    logWarn('genreFetch:fallback', { genre, mockCount: normalized.length });
+  }
+  if (requestVersion !== artistListVersionRef.current) {
+    return;
+  }
+  setLoading('genre', false);
+  setPage(1);
+}, [appendWithUniqueIds, clearNotice, fetchMainArtists, generateMockArtists, setLoading, settleBrowseEmptyStateDelay, showNotice, startBrowseEmptyStateDelay, startRequest]);
+  
   // Load more artists
   const loadMoreArtists = useCallback(async () => {
     if (loadingState.more || !hasMore) return;
-  
+    
+    const requestVersion = artistListVersionRef.current;
+    log('loadMore:start', { page, selectedGenre, hasMore });
     setLoading('more', true);
+    const newPage = page + 1;
+    
     try {
-      const { data } = await axios.get('/apple-music/popular-artists', {
-        params: {
-          limit : 20,
-          offset: displayedArtists.length
-        }
+      // Get the active genre
+      const genre = selectedGenre === 'All' ? 'pop' : getGenreQueryValue(selectedGenre);
+      const signal = startRequest('more');
+      const res = await api.get('/spotify/artists', { 
+        params: { 
+          genre, 
+          page: newPage,
+          limit: 10 
+        },
+        signal 
       });
-  
-      if (data.artists.length) {
-        setDisplayedArtists((prev) =>
-          dedupeArtists([...prev, ...data.artists])
-        );                                                    
-                setHasMore(data.hasMore);
+      
+      // Add new artists to the displayed list
+      if (res.data && res.data.length > 0) {
+        if (requestVersion !== artistListVersionRef.current) {
+          return;
+        }
+        clearNotice();
+        setDisplayedArtists(prev => {
+          const incoming = appendWithUniqueIds(res.data, prev);
+          const next = [...prev, ...incoming];
+          log('loadMore:success', { received: res.data.length, mergedIncoming: incoming.length, newTotal: next.length });
+          const grew = incoming.length > 0;
+          setHasMore(res.data.length >= 10 && grew); // Only keep hasMore if we actually grew
+          return next;
+        });
       } else {
-        setHasMore(false);                 // nothing left across both playlists
+        if (requestVersion !== artistListVersionRef.current) {
+          return;
+        }
+        logWarn('loadMore:empty', { page: newPage, genre });
+        setHasMore(false);
       }
-    } catch (_) {
-      setError('Could not load more artists');
+    } catch (err) {
+      if (isCanceledError(err)) {
+        log('loadMore:canceled', { page: newPage });
+        setLoading('more', false);
+        return;
+      }
+      logError('loadMore:error', err);
+      showNotice('Could not load more live artists. Showing demo artists instead.');
+      
+      // Fallback to mock data if API fails
+      const moreArtists = generateMockArtists([
+        `More Artist ${newPage}-1`,
+        `More Artist ${newPage}-2`,
+        `More Artist ${newPage}-3`,
+        `More Artist ${newPage}-4`
+      ], `more-page-${newPage}`);
+      
+      if (requestVersion !== artistListVersionRef.current) {
+        return;
+      }
+      setDisplayedArtists(prev => {
+        const incoming = appendWithUniqueIds(moreArtists, prev);
+        const next = [...prev, ...incoming];
+        logWarn('loadMore:fallback', { page: newPage, mockCount: incoming.length, newTotal: next.length });
+        return next;
+      });
+      setHasMore(newPage < 3); // Limit to 3 pages for mock data
     }
+    
+    if (requestVersion !== artistListVersionRef.current) {
+      return;
+    }
+    setPage(newPage);
     setLoading('more', false);
-  }, [loadingState.more, hasMore, displayedArtists.length, setLoading]);
+  }, [appendWithUniqueIds, clearNotice, generateMockArtists, hasMore, loadingState.more, page, selectedGenre, setLoading, showNotice, startRequest]);
   
   // Handle genre selection
-
+  const handleGenreSelect = useCallback((genre) => {
+    if (genre === selectedGenre || loadingState.genre) return;
+    
+    log('genre:select', { genre });
+    cancelRequest('main');
+    cancelRequest('genre');
+    cancelRequest('more');
+    cancelRequest('search');
+    setSelectedGenre(genre);
+    setLoading('main', false);
+    setLoading('more', false);
+    setLoadingState(prev => ({ ...prev, artistId: null }));
+    fetchArtistsByGenre(genre);
+    setSearchQuery('');
+    setSearchResults([]);
+    setLoading('search', false);
+    // Reset scroll to top when changing genres so new content starts at the top
+    if (artistsAreaRef.current) {
+      artistsAreaRef.current.scrollTo({ top: 0, behavior: 'auto' });
+    }
+  }, [cancelRequest, selectedGenre, loadingState.genre, fetchArtistsByGenre, setLoading]);
+  
   // Handle infinite scroll
   const handleScroll = useCallback(() => {
     if (!artistsAreaRef.current || loadingState.more || !hasMore || searchQuery.trim()) return;
@@ -303,24 +616,55 @@ const fetchMainArtists = useCallback(async () => {
     
     // Load more when near bottom
     if (scrollTop + clientHeight >= scrollHeight - 200) {
+      log('scroll:triggerLoadMore', { scrollTop, clientHeight, scrollHeight });
       loadMoreArtists();
     }
   }, [loadingState.more, hasMore, searchQuery, loadMoreArtists]);
 
   // Handle search input with security measures
-  const handleSearchChange = (e) => {
-    const value = validateSearchQuery(e.target.value);   // keeps your “security” rules
-    setSearchQuery(value);
-    debouncedSearch(value);                              // ≤ 1 call / 400 ms
-  };
+  const handleSearchChange = useCallback((e) => {
+    const sanitizedQuery = sanitizeSearchInput(e.target.value);
+
+    setSearchQuery(sanitizedQuery);
+
+    if (searchDebounceRef.current) {
+      clearTimeout(searchDebounceRef.current);
+    }
+
+    if (!sanitizedQuery) {
+      latestSearchQueryRef.current = '';
+      cancelRequest('search');
+      setLoading('search', false);
+      setSearchResults([]);
+      clearNotice();
+      log('search:cleared');
+      return;
+    }
+
+    if (sanitizedQuery.length < MIN_SEARCH_QUERY_LENGTH) {
+      latestSearchQueryRef.current = sanitizedQuery;
+      cancelRequest('search');
+      setLoading('search', false);
+      setSearchResults([]);
+      return;
+    }
+
+    searchDebounceRef.current = setTimeout(() => {
+      log('search:debouncedFire', { query: sanitizedQuery });
+      searchArtists(sanitizedQuery);
+    }, 500);
+  }, [cancelRequest, clearNotice, searchArtists, setLoading]);
+  
   
   // Fetch similar artists - Now using the centralized fetchSimilarArtists utility
   const fetchSimilarForArtist = useCallback(async (artist) => {
     try {
+      log('similar:fetch', { artist: artist.name });
       // Create a simple array with just this artist
       const similarArtists = await fetchSimilarArtists([artist]);
       return similarArtists;
     } catch (err) {
+      logError('similar:failed', err);
       
       // Fallback to mock data
       return generateMockArtists([
@@ -336,52 +680,80 @@ const fetchMainArtists = useCallback(async () => {
   const handleArtistSelection = useCallback(async (artist) => {
     // Prevent interaction during loading
     if (loadingState.artistId !== null || loadingState.genre) return;
+
+    const artistKey = getArtistIdentityKey(artist);
+    if (!artistKey) return;
     
-    const isAlreadySelected = selectedArtists.some(a => a.name === artist.name);
+    const isAlreadySelected = selectedArtists.some(
+      (selectedArtist) => getArtistIdentityKey(selectedArtist) === artistKey
+    );
     
     // Handle deselection
     if (isAlreadySelected) {
-      setSelectedArtists(prev => prev.filter(a => a.name !== artist.name));
+      log('artist:deselect', { name: artist.name });
+      setSelectedArtists(prev => prev.filter(
+        (selectedArtist) => getArtistIdentityKey(selectedArtist) !== artistKey
+      ));
       return;
     }
     
     // Handle selection (limit to 5)
-    if (selectedArtists.length < 5) {
-      setSelectedArtists(prev => [...prev, artist]);
-      
-      // Show similar artists if not in search mode
-      if (artist.isMain && !searchQuery.trim()) {
-        setLoadingState(prev => ({ ...prev, artistId: artist.id }));
-        
-        const similarArtists = await fetchSimilarForArtist(artist);
-        
-        if (similarArtists && similarArtists.length > 0) {
-          const relatedArtists = similarArtists
-  .filter(r => !displayedArtists.some(d => normalise(d.name) === normalise(r.name)))
-  .map(r => ({ ...r, isMain:false, fadeIn:true }));
-
-          
-          // Insert related artists after the selected artist
-          setDisplayedArtists(prev => {
-            const index = prev.findIndex(a => a.id === artist.id || a.name === artist.name);
-            if (index !== -1) {
-              const updated = [...prev];
-              updated.splice(index + 1, 0, ...relatedArtists);
-              return updated;
-            }
-            return prev;
-          });
-        }
-        
-        setLoadingState(prev => ({ ...prev, artistId: null }));
-      }
+    if (selectedArtists.length >= 5) {
+      showNotice('Select up to 5 artists for the demo.');
+      return;
     }
-  }, [loadingState.artistId, loadingState.genre, selectedArtists, searchQuery, fetchSimilarForArtist]);
+
+    log('artist:select', { name: artist.name, isMain: artist.isMain });
+    setSelectedArtists(prev => [
+      ...prev,
+      artist.id ? artist : { ...artist, id: artistKey }
+    ]);
+    
+    // Show similar artists if not in search mode
+    if (artist.isMain && !searchQuery.trim()) {
+      const requestVersion = artistListVersionRef.current;
+      setLoadingState(prev => ({ ...prev, artistId: artist.id }));
+      
+      const similarArtists = await fetchSimilarForArtist(artist);
+      if (requestVersion !== artistListVersionRef.current) {
+        setLoadingState(prev => ({ ...prev, artistId: null }));
+        return;
+      }
+      
+      if (similarArtists && similarArtists.length > 0) {
+        const relatedArtists = similarArtists.map(related => ({
+          ...related,
+          isMain: false,
+          fadeIn: true
+        }));
+        
+        // Insert related artists after the selected artist without duplicating prior entries
+        setDisplayedArtists(prev => {
+          const index = prev.findIndex(a => a.id === artist.id || a.name === artist.name);
+          if (index === -1) {
+            return prev;
+          }
+
+          const dedupedRelatedArtists = appendWithUniqueIds(relatedArtists, prev);
+          if (dedupedRelatedArtists.length === 0) {
+            return prev;
+          }
+
+          const updated = [...prev];
+          updated.splice(index + 1, 0, ...dedupedRelatedArtists);
+          return updated;
+        });
+      }
+      
+      setLoadingState(prev => ({ ...prev, artistId: null }));
+    }
+  }, [appendWithUniqueIds, fetchSimilarForArtist, loadingState.artistId, loadingState.genre, searchQuery, selectedArtists, showNotice]);
   
   // Effects ----------------
   
   // Initial data fetch
   useEffect(() => {
+    log('effect:initFetchMain');
     fetchMainArtists();
   }, [fetchMainArtists]);
   
@@ -395,7 +767,40 @@ const fetchMainArtists = useCallback(async () => {
   }, [handleScroll]);
   
   // Scroll selected genre button into view
+  useEffect(() => {
+    if (genreFiltersRef.current && selectedGenre !== 'All') {
+      const button = genreFiltersRef.current.querySelector('.genre-button.active');
+      if (button) {
+        const containerWidth = genreFiltersRef.current.clientWidth;
+        const buttonLeft = button.offsetLeft;
+        const buttonWidth = button.clientWidth;
+        
+        // Center the button in the container
+        genreFiltersRef.current.scrollLeft = buttonLeft - (containerWidth / 2) + (buttonWidth / 2);
+      }
+    }
+  }, [selectedGenre]);
+  
+  // Clean up search timeout
+  useEffect(() => {
+    // React 18 strict mode mounts/unmounts twice in dev; re-affirm mount flag here
+    isMountedRef.current = true;
+    const controllers = requestControllers.current;
 
+    return () => {
+      isMountedRef.current = false;
+      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+      if (noticeTimeoutRef.current) clearTimeout(noticeTimeoutRef.current);
+      if (emptyStateDelayTimeoutRef.current) clearTimeout(emptyStateDelayTimeoutRef.current);
+      Object.keys(controllers).forEach((key) => {
+        const ctrl = controllers[key];
+        if (ctrl) {
+          ctrl.abort();
+          controllers[key] = null;
+        }
+      });
+    };
+  }, []);
   
   // Computed values ----------------
   
@@ -404,11 +809,10 @@ const fetchMainArtists = useCallback(async () => {
     searchQuery.trim() ? searchResults : displayedArtists,
     [searchQuery, searchResults, displayedArtists]
   );
-  
-  const isMaxSelected = useMemo(() => 
-    selectedArtists.length >= 5,
-    [selectedArtists]
-  );
+  const isBrowseLoading = !searchQuery.trim() && (loadingState.main || loadingState.genre);
+  const shouldShowBrowseLoadingState =
+    !searchQuery.trim() &&
+    (isBrowseLoading || (!canShowBrowseEmptyState && displayedArtists.length === 0));
   
   // UI Rendering ----------------
   
@@ -426,7 +830,7 @@ const fetchMainArtists = useCallback(async () => {
             onChange={handleSearchChange}
             className="search-input"
             autoComplete="off"
-            maxLength={100}
+            maxLength={80}
             spellCheck={false}
             data-lpignore="true"
             data-form-type="other"
@@ -436,31 +840,61 @@ const fetchMainArtists = useCallback(async () => {
           />
           {loadingState.search && <div className="search-spinner"></div>}
         </div>
+        {notice && (
+          <div className="error-message" role="status" aria-live="polite">
+            {notice}
+          </div>
+        )}
         
-      
+        {/* Genre filters - only when not searching */}
+        {!searchQuery.trim() && (
+          <div className="genre-filters-container">
+            <div className="genre-filters" ref={genreFiltersRef}>
+              {genreOptions.map(genre => (
+                <button
+                  key={genre}
+                  className={`genre-button ${selectedGenre === genre ? 'active' : ''}`}
+                  onClick={() => handleGenreSelect(genre)}
+                  disabled={loadingState.genre}
+                >
+                  {genre}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="artists-area" ref={artistsAreaRef}>
-        {loadingState.main ? (
-          <LoadingIndicator />
-        ) : error ? (
-          <div className="error-message">{error}</div>
+        {shouldShowBrowseLoadingState ? (
+          <LoadingIndicator fullHeight message={null} />
         ) : (
           <>
-            {/* Search loading indicator */}
             {loadingState.search ? (
               <LoadingIndicator message="Searching for artists..." />
             ) : (
               <div className="artists-grid">
                 {artistsToShow.length > 0 ? (
-                  artistsToShow.map((artist, index) => (
-                    <div
-                      key={`${artist.id || artist.name}-${index}`}
-                      className={`selection-artist-circle ${
-                        selectedArtists.some(a => a.name === artist.name) ? 'selected' : ''
-                      } ${artist.fadeIn ? 'fade-in' : ''}`}
-                      onClick={() => handleArtistSelection(artist)}
-                    >
+                  artistsToShow.map((artist, index) => {
+                    const artistKey = getArtistIdentityKey(artist) || `${artist.name}-${index}`;
+                    const isSelected = selectedArtists.some(
+                      (selectedArtist) => getArtistIdentityKey(selectedArtist) === artistKey
+                    );
+
+                    return (
+                      <button
+                        type="button"
+                        key={`${artistKey}-${index}`}
+                        className={`selection-artist-circle ${
+                          isSelected ? 'selected' : ''
+                        } ${artist.fadeIn ? 'fade-in' : ''}`}
+                        onClick={() => handleArtistSelection(artist)}
+                        aria-pressed={isSelected}
+                        disabled={
+                          loadingState.genre ||
+                          (loadingState.artistId !== null && loadingState.artistId !== artist.id)
+                        }
+                      >
                       <div className="selection-artist-image-container">
                         {loadingState.artistId === artist.id && (
                           <div className="artist-loading-overlay">
@@ -470,8 +904,9 @@ const fetchMainArtists = useCallback(async () => {
                         <ArtistImage name={artist.name} src={artist.image} />
                       </div>
                       <div className="selection-artist-name">{artist.name}</div>
-                    </div>
-                  ))
+                      </button>
+                    );
+                  })
                 ) : searchQuery.trim() ? (
                   <div className="no-results">
                     No artists found matching "{searchQuery}"
@@ -485,7 +920,7 @@ const fetchMainArtists = useCallback(async () => {
             )}
             
             {/* Load more button */}
-            {!loadingState.main && !searchQuery.trim() && !loadingState.search && artistsToShow.length > 0 && (
+            {!loadingState.main && !searchQuery.trim() && artistsToShow.length > 0 && (
               <div className="load-more-container">
                 {loadingState.more ? (
                   <div className="loading-spinner"></div>
@@ -506,29 +941,44 @@ const fetchMainArtists = useCallback(async () => {
         )}
       </div>
       
-      {/* Bottom fixed area */}
+      {/* Bottom fixed area - Pill Chips design */}
       <div className="bottom-area">
-        <div className="selection-indicator">
-          <div className="selected-artists-circles">
-            {selectedArtists.slice(0, 5).map((artist, index) => (
-              <div 
-                key={`selected-${artist.id || artist.name}-${index}`} 
-                className="small-artist-circle"
-                style={{ zIndex: 5 - index }}
-              >
-                <ArtistImage name={artist.name} src={artist.image} size="small" />
+        <div className="bottom-chips-row">
+          {selectedArtists.slice(0, 5).map((artist, index) => (
+            <div
+              key={`chip-${artist.id || artist.name}-${index}`}
+              className="artist-chip"
+              style={{ animationDelay: `${index * 0.06}s` }}
+            >
+              <div className="artist-chip-avatar">
+                <ArtistImage name={artist.name} src={artist.image} />
               </div>
-            ))}
-          </div>
-          <div className="selected-count">{selectedArtists.length} / 5</div>
+              <span className="artist-chip-name">{artist.name}</span>
+              <button
+                className="artist-chip-remove"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const artistKey = getArtistIdentityKey(artist);
+                  setSelectedArtists(prev => prev.filter(
+                    (selectedArtist) => getArtistIdentityKey(selectedArtist) !== artistKey
+                  ));
+                }}
+                aria-label={`Remove ${artist.name}`}
+              >
+                ×
+              </button>
+            </div>
+          ))}
+          {selectedArtists.length < 5 && Array.from({ length: 5 - selectedArtists.length }).map((_, i) => (
+            <div key={`empty-${i}`} className="artist-chip-empty" />
+          ))}
         </div>
-        
         <button
           className="continue-button"
           disabled={selectedArtists.length === 0}
           onClick={() => onContinue(selectedArtists)}
         >
-          Continue
+          Continue · {selectedArtists.length}/5 selected
         </button>
       </div>
     </div>

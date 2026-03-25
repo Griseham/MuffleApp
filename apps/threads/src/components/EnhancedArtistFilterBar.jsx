@@ -28,16 +28,10 @@ const EnhancedArtistFilterBar = ({
   const [constellationIndex, setConstellationIndex] = useState(0);
   const searchRef = useRef(null);
   const resultsRef = useRef(null);
+  const searchAbortRef = useRef(null);
+  const searchDebounceRef = useRef(null);
 
-  // Mock function to simulate searching for artists
-  // In a real implementation, this would call your Spotify API
-// Replace the mock searchForArtists function with this improved version
-// that connects to a more realistic API endpoint
-
-// Replace the mock searchForArtists function with this real Spotify API implementation
-// Place this in your EnhancedArtistFilterBar.jsx file
-
-const searchForArtists = useCallback(async (searchQuery) => {
+  const searchForArtists = useCallback(async (searchQuery) => {
   if (!searchQuery || searchQuery.trim().length < 2) return [];
   
   // Rate limiting check
@@ -57,53 +51,37 @@ const searchForArtists = useCallback(async (searchQuery) => {
   setError('');
   
   try {
-    // Step 1: Get the Spotify token from your server
-    const tokenResponse = await fetch(buildApiUrl('/spotify-token'));
-    
-    if (!tokenResponse.ok) {
-      setError("Could not connect to Spotify API");
-      return [];
+    if (searchAbortRef.current) {
+      searchAbortRef.current.abort();
     }
-    
-    const tokenData = await tokenResponse.json();
-    if (!tokenData.success || !tokenData.token) {
-      setError("Authentication error");
-      return [];
-    }
-    
-    const token = tokenData.token;
-    
-    // Step 2: Search for artists using the sanitized token
+
+    searchAbortRef.current = new AbortController();
+
     const searchResponse = await fetch(
-      `https://api.spotify.com/v1/search?type=artist&q=${encodeURIComponent(sanitizedQuery)}&limit=5`,
-      {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      }
+      buildApiUrl(`/spotify-artist-search?q=${encodeURIComponent(sanitizedQuery)}`),
+      { signal: searchAbortRef.current.signal }
     );
-    
+
     if (!searchResponse.ok) {
-      setError("Search failed. Please try again.");
       return [];
     }
-    
+
     const searchData = await searchResponse.json();
+    if (!searchData?.success) {
+      setError(searchData?.error || "Search failed. Please try again.");
+      return [];
+    }
     
     // Process and return the artists
-    if (searchData.artists && searchData.artists.items && searchData.artists.items.length > 0) {
-      // Map to our expected format
-      return searchData.artists.items.map(artist => ({
-        id: artist.id,
-        name: artist.name,
-        imageUrl: artist.images && artist.images.length > 0 ? artist.images[0].url : null,
-        genres: artist.genres || [],
-        popularity: artist.popularity
-      }));
+    if (Array.isArray(searchData.artists) && searchData.artists.length > 0) {
+      return searchData.artists.filter(artist => artist?.id && artist?.name);
     } else {
       return [];
     }
   } catch (error) {
+    if (error?.name === 'AbortError') {
+      return [];
+    }
     setError("Search error. Please try again.");
     return [];
   } finally {
@@ -111,10 +89,8 @@ const searchForArtists = useCallback(async (searchQuery) => {
   }
 }, []);
 
-
-
   // Handle search input changes
-  const handleSearchChange = useCallback(async (e) => {
+  const handleSearchChange = useCallback((e) => {
     const value = e.target.value;
     
     // Validate and sanitize the input
@@ -138,26 +114,10 @@ const searchForArtists = useCallback(async (searchQuery) => {
       setError('');
     }
     
-    if (sanitizedValue.trim().length >= 2) {
-      const results = await searchForArtists(sanitizedValue);
-      setSearchResults(results);
-    } else {
+    if (sanitizedValue.trim().length < 2) {
       setSearchResults([]);
     }
-  }, [searchForArtists, error]);
-
-  // Generate a random coordinate for a new constellation
-  const generateConstellationCoordinate = useCallback(() => {
-    const centerX = TOTAL_WIDTH / 2;
-    const centerY = TOTAL_HEIGHT / 2;
-    const angle = Math.random() * Math.PI * 2;
-    const distance = 2000 + Math.random() * 3000; // Keep constellations far from center
-    
-    return {
-      x: centerX + Math.cos(angle) * distance,
-      y: centerY + Math.sin(angle) * distance
-    };
-  }, []);
+  }, [error]);
 
   // Handle adding a new artist
 // Replace the handleAddArtist function with this improved version
@@ -248,7 +208,7 @@ const handleAddArtist = useCallback((artist) => {
   // Clear search UI
   setQuery('');
   setSearchResults([]);
-}, [activeArtists, onAddArtist, TOTAL_WIDTH, TOTAL_HEIGHT]);
+}, [activeArtists, onAddArtist]);
   // Handle selecting an artist to view their constellations
   const handleSelectArtist = useCallback((artist) => {
     setConstellationIndex(0);
@@ -287,8 +247,43 @@ const handleAddArtist = useCallback((artist) => {
     };
     
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      if (searchDebounceRef.current) {
+        clearTimeout(searchDebounceRef.current);
+      }
+      if (searchAbortRef.current) {
+        searchAbortRef.current.abort();
+      }
+    };
   }, []);
+
+  useEffect(() => {
+    if (searchDebounceRef.current) {
+      clearTimeout(searchDebounceRef.current);
+    }
+
+    const trimmedQuery = query.trim();
+    if (trimmedQuery.length < 2) {
+      if (searchAbortRef.current) {
+        searchAbortRef.current.abort();
+      }
+      setLoading(false);
+      setSearchResults([]);
+      return undefined;
+    }
+
+    searchDebounceRef.current = setTimeout(async () => {
+      const results = await searchForArtists(trimmedQuery);
+      setSearchResults(results);
+    }, 250);
+
+    return () => {
+      if (searchDebounceRef.current) {
+        clearTimeout(searchDebounceRef.current);
+      }
+    };
+  }, [query, searchForArtists]);
 
   return (
     <div style={isFullscreen ? styles.containerFullscreen : styles.containerWindowed}>
@@ -385,9 +380,7 @@ const handleAddArtist = useCallback((artist) => {
         <div style={styles.artistsContainer}>
           {activeArtists.map(artist => {
             const isSelected = selectedArtist && selectedArtist.id === artist.id;
-            const hasMultipleConstellations = 
-              artist.constellations && artist.constellations.length > 1;
-              
+
             return (
               <div 
                 key={artist.id}

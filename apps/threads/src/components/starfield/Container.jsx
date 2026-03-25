@@ -25,7 +25,6 @@ import InfoIconModal from "../InfoIconModal";
 export default function Container({
   onLoadFeed,
   onViewThread,
-  activeFilters = [],
   posts = [],
   initialArtists = [],
   jumpGenre = null,
@@ -53,6 +52,7 @@ export default function Container({
   const [isScrolling, setIsScrolling] = useState(false);
   const scrollingRafRef = useRef(null);
   const scrollingTimeoutRef = useRef(null);
+  const hasInitializedForYouRef = useRef(false);
   
   // Feed related states
   const [feedButtonDisabled, setFeedButtonDisabled] = useState(false);
@@ -108,7 +108,6 @@ export default function Container({
   const { 
     snapToOrigin, 
     snapToFriend, 
-    snapToArtist,
     handleNavigateConstellation,
     friends // Get friends from the navigation hook
   } = useNavigation(containerRef, containerDimensions, isFullscreen, scrollPos);
@@ -144,11 +143,8 @@ export default function Container({
     
     setArtists(prevArtists => {
       if (prevArtists.some(a => a.id === artist.id)) {
-        console.log("Artist already exists:", artist.name);
         return prevArtists;
       }
-      
-      console.log("Adding artist:", artist.name);
       // Add constellation index when adding a new artist
       return [...prevArtists, { 
         ...artist, 
@@ -179,8 +175,6 @@ export default function Container({
     const nextIndex = constellationIndex !== undefined 
       ? constellationIndex 
       : (artistConstellations[artist.id] || 0);
-    
-    console.log(`Selecting artist ${artist.name} with constellation index: ${nextIndex}`);
     
     // Update constellation index for this artist
     setArtistConstellations(prev => ({
@@ -230,51 +224,103 @@ export default function Container({
     // Calculate next index (cycle through 0, 1, 2)
     const nextIndex = (currentIndex + 1) % 3;
     
-    console.log(`Cycling constellation for ${artist.name} from ${currentIndex} to ${nextIndex}`);
-    
     // Select the artist with the new index
     handleSelectArtist(artist, nextIndex);
   }, [handleSelectArtist, artistConstellations]);
+
+  const getViewportSize = useCallback(() => {
+    const container = containerRef.current;
+    const width = container?.clientWidth || window.innerWidth;
+    const height = container?.clientHeight || 800;
+    return { width, height };
+  }, []);
+
+  const measureContainer = useCallback(() => {
+    const nextDimensions = getViewportSize();
+    setContainerDimensions(prev => (
+      prev.width === nextDimensions.width && prev.height === nextDimensions.height
+        ? prev
+        : nextDimensions
+    ));
+    return nextDimensions;
+  }, [getViewportSize]);
+
+  const centerOnForYou = useCallback(() => {
+    if (!containerRef.current) return false;
+
+    const { width: cw, height: ch } = measureContainer();
+    const left = Math.max(0, TOTAL_WIDTH / 2 - cw / 2);
+    const top = Math.max(0, TOTAL_HEIGHT / 2 - ch / 2);
+
+    containerRef.current.scrollTo({ left, top, behavior: "auto" });
+
+    const actualLeft = containerRef.current.scrollLeft;
+    const actualTop = containerRef.current.scrollTop;
+
+    setScrollPos({ left: actualLeft, top: actualTop });
+    setLastFullscreenPosition({ left: actualLeft, top: actualTop });
+
+    return Math.abs(actualLeft - left) <= 2 && Math.abs(actualTop - top) <= 2;
+  }, [measureContainer]);
   
   // Measure container on mount and resize
   useEffect(() => {
     if (!isActive) return undefined;
-    const handleResize = () => {
-      setContainerDimensions({ width: window.innerWidth, height: 800 });
+    measureContainer();
+
+    let resizeObserver;
+    if (typeof ResizeObserver === "function" && containerRef.current) {
+      resizeObserver = new ResizeObserver(() => {
+        measureContainer();
+      });
+      resizeObserver.observe(containerRef.current);
+    }
+
+    window.addEventListener("resize", measureContainer);
+    return () => {
+      resizeObserver?.disconnect();
+      window.removeEventListener("resize", measureContainer);
     };
-    
-    // Set initial size
-    handleResize();
-    
-    // Add resize listener
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [isActive]);
+  }, [isActive, measureContainer]);
 
   // Set initial scroll position to center on the For You circle
   useEffect(() => {
-    if (!isActive) return;
-    if (containerRef.current && containerDimensions.width > 0) {
-      // For You circle is at the center of the starfield
-      const forYouCenterX = TOTAL_WIDTH / 2;
-      const forYouCenterY = TOTAL_HEIGHT / 2;
-      
-      // Calculate viewport dimensions
-      const cw = isFullscreen ? window.innerWidth : containerDimensions.width;
-      const ch = isFullscreen ? window.innerHeight : containerDimensions.height;
-      
-      // Calculate scroll position to center the For You circle in viewport
-      const initialScrollLeft = forYouCenterX - cw / 2;
-      const initialScrollTop = forYouCenterY - ch / 2;
-      
-      // Set initial scroll position
-      containerRef.current.scrollLeft = initialScrollLeft;
-      containerRef.current.scrollTop = initialScrollTop;
-      
-      // Update scroll state
-      setScrollPos({ left: initialScrollLeft, top: initialScrollTop });
+    if (!isActive || !containerRef.current || jumpGenre) {
+      return undefined;
     }
-  }, [containerDimensions.width, isFullscreen, isActive]); // Re-run when dimensions change
+
+    hasInitializedForYouRef.current = false;
+    let cancelled = false;
+    let attemptCount = 0;
+    let rafId = 0;
+    const timeoutId = window.setTimeout(() => {
+      if (!cancelled) {
+        centerOnForYou();
+      }
+    }, 220);
+
+    const tryCenter = () => {
+      if (cancelled || hasInitializedForYouRef.current) return;
+
+      const settled = centerOnForYou();
+      attemptCount += 1;
+
+      if (settled || attemptCount >= 8) {
+        hasInitializedForYouRef.current = true;
+        return;
+      }
+
+      rafId = window.requestAnimationFrame(tryCenter);
+    };
+
+    tryCenter();
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeoutId);
+      if (rafId) cancelAnimationFrame(rafId);
+    };
+  }, [isActive, jumpGenre, centerOnForYou]);
   
   // Fullscreen logic
   useEffect(() => {
@@ -329,9 +375,10 @@ export default function Container({
   }, []);
   
   // Calculate viewport dimensions based on fullscreen state
-  const { cw, ch, centerWorldX, centerWorldY, displayedX, displayedY } = useCallback(() => {
-    const cw = isFullscreen ? window.innerWidth : containerDimensions.width;
-    const ch = isFullscreen ? window.innerHeight : containerDimensions.height;
+  const { displayedX, displayedY } = useCallback(() => {
+    const viewport = getViewportSize();
+    const cw = viewport.width;
+    const ch = viewport.height;
     const centerWorldX = scrollPos.left + cw / 2;
     const centerWorldY = scrollPos.top + ch / 2;
     
@@ -339,8 +386,8 @@ export default function Container({
     const displayedX = Math.round((centerWorldX / TOTAL_WIDTH) * 100);
     const displayedY = Math.round((centerWorldY / TOTAL_HEIGHT) * 100);
     
-    return { cw, ch, centerWorldX, centerWorldY, displayedX, displayedY };
-  }, [scrollPos, isFullscreen, containerDimensions])();
+    return { displayedX, displayedY };
+  }, [scrollPos, getViewportSize])();
   
   // Create throttled scroll handler using useCallback and useMemo for stable reference
   const handleScrollRaw = useCallback(() => {
@@ -401,24 +448,12 @@ export default function Container({
 useEffect(() => {
   if (!isActive || !jumpGenre || !containerRef.current) return;
 
-  // 1. pick a random viewport origin
-  const cw = isFullscreen
-    ? window.innerWidth
-    : containerDimensions.width;
-  const ch = isFullscreen
-    ? window.innerHeight
-    : containerDimensions.height;
-  const left = Math.random() * (TOTAL_WIDTH - cw);
-  const top  = Math.random() * (TOTAL_HEIGHT - ch);
-
-  containerRef.current.scrollTo({ left, top, behavior: 'smooth' });
-
-  // 2. lock the wheel
+  // Lock the wheel to the requested genre without moving the viewport.
   setForcedGenres([{ genre: jumpGenre, color: '#1DB954', fraction: 1 }]);
 
-  // 3. clear the flag in Home
+  // Clear the one-shot flag in Home.
   onJumpComplete();
-}, [jumpGenre, isActive]);
+}, [jumpGenre, isActive, onJumpComplete]);
 
   useEffect(() => {
     if (!isActive) {
@@ -477,9 +512,6 @@ useEffect(() => {
     
     // Call parent's handler
     if (onViewThread && post) {
-      console.log("Starfield navigating to post:", post);
-      console.log("Post ID:", post.id, "Post Type:", post.postType);
-      
       // Ensure the post has all necessary properties
       const enhancedPost = {
         ...post,
@@ -734,13 +766,11 @@ useEffect(() => {
             toggleFullscreen={toggleFullscreen}
             snapToOrigin={snapToOrigin}
             snapToFriend={snapToFriend}
-            snapToArtist={snapToArtist}
             artists={processedArtists}
             onAddArtist={handleAddArtist}
             onRemoveArtist={handleRemoveArtist}
             onSelectArtist={handleSelectArtist}
             selectedArtist={selectedArtist}
-            handleCycleConstellation={handleCycleConstellation}
             onNavigateConstellation={handleNavigateConstellation}
             artistConstellations={artistConstellations}
           />

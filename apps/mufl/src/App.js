@@ -1,24 +1,32 @@
-import React, { useState, useRef } from 'react';
-import { CSSTransition, TransitionGroup } from 'react-transition-group';
+import React, { useState } from 'react';
 
 // Import components
 import SelectionScreen from './components/SelectionScreen';
 import RoomsScreen from './components/RoomsScreen';
-import PlayingScreen from './components/PlayingScreen2';
+import PlayingScreen from './components/PlayingScreen';
 
 // Global unified styles
 import './styles.css';
 import './components/Sidebar.css'; // Import Sidebar styles
 
+const ScreenSlot = ({ active, keepMounted = true, children }) => {
+  if (!keepMounted && !active) return null;
+
+  return (
+    <div
+      style={{ display: active ? 'block' : 'none', width: '100%' }}
+      aria-hidden={!active}
+    >
+      {children}
+    </div>
+  );
+};
+
 function App() {
   const [step, setStep] = useState('selection');
   const [selectedArtists, setSelectedArtists] = useState([]);
   const [activeStation, setActiveStation] = useState(null);
-
-  // Refs for CSSTransition components to avoid findDOMNode deprecation warnings
-  const selectionRef = useRef(null);
-  const roomsRef = useRef(null);
-  const playingRef = useRef(null);
+  const [hasEnteredRooms, setHasEnteredRooms] = useState(false);
 
   // For demo purposes, let's create some mock selected artists if needed
   const mockSelectedArtists = [
@@ -39,94 +47,66 @@ function App() {
     }
   ];
 
+  const blurActiveElement = () => {
+    if (typeof document === 'undefined') return;
+
+    const activeElement = document.activeElement;
+    if (activeElement instanceof HTMLElement) {
+      activeElement.blur();
+    }
+  };
+
   const handleContinue = (artists) => {
+    blurActiveElement();
+    setHasEnteredRooms(true);
     setSelectedArtists(artists.length > 0 ? artists : mockSelectedArtists);
     setStep('rooms');
   };
 
   const handleJoinRoom = (station) => {
+    blurActiveElement();
+    const stationWithSession = {
+      ...station,
+      _sessionKey: `${station?.id || 'station'}-${Date.now()}`
+    };
 
-    setActiveStation(station);   // keep the artists!
+    setActiveStation(stationWithSession);
     setStep('playing');
   };
 
   const handleBackToSelection = () => {
+    blurActiveElement();
+    setActiveStation(null);
     setStep('selection');
   };
 
   const handleBackToRooms = () => {
+    blurActiveElement();
     setStep('rooms');
   };
-  // in App.js, inside the App() function, alongside handleContinue, handleJoinRoom, etc.
-
-  const handlePickTrending = (station) => {
-    // keep radar & pool in sync
-  
-    // make this the active room
-    setActiveStation(station);          // contains name, freqNumber, listeners …
-  
-    // jump straight into PlayingScreen
-    setStep('playing');
-  };
-
 
   return (
     <div className="app-container">
-      {/* Sidebar - fixed position, won't affect screen layouts */}
-   
-      
-      {/* TransitionGroup manages screen transitions */}
-      <TransitionGroup component={null}>
-        {step === 'selection' && (
-          <CSSTransition
-            nodeRef={selectionRef}
-            key="selection"
-            timeout={300}
-            classNames="slide"
-            unmountOnExit
-          >
-            <div ref={selectionRef} style={{ width: '100%' }}>
-              <SelectionScreen onContinue={handleContinue} />
-            </div>
-          </CSSTransition>
-        )}
+      <ScreenSlot active={step === 'selection'}>
+        <SelectionScreen onContinue={handleContinue} />
+      </ScreenSlot>
 
-        {step === 'rooms' && (
-          <CSSTransition
-            nodeRef={roomsRef}
-            key="rooms"
-            timeout={300}
-            classNames="slide"
-            unmountOnExit
-          >
-            <div ref={roomsRef} style={{ width: '100%' }}>
-              <RoomsScreen
-                selectedArtists={selectedArtists}
-                onJoinRoom={handleJoinRoom}
-                onBack={handleBackToSelection}
-                onPickTrending={handlePickTrending}
-              />
-            </div>
-          </CSSTransition>
-        )}
+      <ScreenSlot active={step === 'rooms'} keepMounted={hasEnteredRooms}>
+          <RoomsScreen
+            selectedArtists={selectedArtists}
+            onJoinRoom={handleJoinRoom}
+            onBack={handleBackToSelection}
+          />
+      </ScreenSlot>
 
-        {step === 'playing' && (
-          <CSSTransition
-            nodeRef={playingRef}
-            key="playing"
-            timeout={300}
-            classNames="slide"
-            unmountOnExit
-          >
-            <div ref={playingRef} style={{ width: '100%' }}>
-              <PlayingScreen
-                station={activeStation}        // <— important
-                onBack={handleBackToRooms}
-              />
-            </div>
-          </CSSTransition>
-        )}
-      </TransitionGroup>
+      <ScreenSlot active={step === 'playing'} keepMounted={false}>
+        <PlayingScreen
+          key={activeStation?._sessionKey}
+          station={activeStation}        // <— important
+          selectedArtists={selectedArtists}
+          onBack={handleBackToRooms}
+        />
+      </ScreenSlot>
     </div>
   );
 }

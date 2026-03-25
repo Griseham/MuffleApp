@@ -2,6 +2,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import TikTokModal from "./TikTokModal";
 import { getAvatarSrc } from "../posts/postCardUtils";
+import { getAppleMusicAlbumArtworks } from "../../services/appleMusic";
+import { buildApiUrl } from "../../utils/api";
 
 // Helper to format Apple Music artwork URLs - replace {w} and {h} with actual dimensions
 function formatArtworkUrl(url, size = 300) {
@@ -10,6 +12,10 @@ function formatArtworkUrl(url, size = 300) {
     .replace('{w}', String(size))
     .replace('{h}', String(size))
     .replace('{f}', 'jpg');
+}
+
+function needsSnippetMediaRecovery(url = "") {
+  return !url || String(url).includes("/cached_media/");
 }
 
 export default function HomeTikTokModal({ onClose, cachedPosts = [], onNavigateToThread }) {
@@ -101,27 +107,61 @@ export default function HomeTikTokModal({ onClose, cachedPosts = [], onNavigateT
           const postType = String(post?.postType || "").toLowerCase();
           const postId = String(post?.id || "").toLowerCase();
           const snippets = Array.isArray(post?.snippets) ? post.snippets : [];
+          const snippetCount = Number(post?.snippetCount) || snippets.length;
           return (
             postType !== "parameter" &&
             postType !== "news" &&
             postType !== "groupchat" &&
             !postId.includes("parameter") &&
-            snippets.length > 0
+            snippetCount > 0
           );
         });
         const chosenPosts = shuffle(eligiblePosts).slice(0, 5);
+        const repairedPosts = await Promise.all(
+          chosenPosts.map(async post => {
+            if (!post?.id) return post;
+
+            try {
+              const response = await fetch(buildApiUrl(`/cached-posts/${post.id}`));
+              if (!response.ok) {
+                return post;
+              }
+
+              const result = await response.json();
+              if (result?.success && result?.data) {
+                return result.data;
+              }
+            } catch (error) {
+              console.warn(`HomeTikTokModal: failed to load repaired cached post ${post.id}:`, error);
+            }
+
+            return post;
+          })
+        );
 
         const cards = [];
-        for (let i = 0; i < chosenPosts.length; i++) {
-          const post = chosenPosts[i];
+        for (let i = 0; i < repairedPosts.length; i++) {
+          const post = repairedPosts[i];
           if (!post?.id) continue;
           const snippets = shuffle(Array.isArray(post?.snippets) ? post.snippets : []);
           const chosenSnippet = snippets.find(
             snippet =>
-              (snippet?.previewUrl || snippet?.snippetData?.attributes?.previews?.[0]?.url) &&
-              (snippet?.artworkUrl ||
+              (
+                snippet?.songName ||
+                snippet?.name ||
+                snippet?.snippetData?.attributes?.name
+              ) &&
+              (
+                snippet?.artistName ||
+                snippet?.snippetData?.attributes?.artistName
+              ) &&
+              (
+                snippet?.previewUrl ||
+                snippet?.snippetData?.attributes?.previews?.[0]?.url ||
+                snippet?.artworkUrl ||
                 snippet?.artwork ||
-                snippet?.snippetData?.attributes?.artwork?.url)
+                snippet?.snippetData?.attributes?.artwork?.url
+              )
           );
           if (!chosenSnippet) continue;
 
@@ -187,6 +227,45 @@ export default function HomeTikTokModal({ onClose, cachedPosts = [], onNavigateT
             totalRatings,
             didRate: false,
           });
+        }
+
+        if (cards.length > 0) {
+          const recoveredArtworkMap = await getAppleMusicAlbumArtworks(
+            cards.map((card) => ({
+              songName: card.songName,
+              artistName: card.artistName,
+            }))
+          );
+
+          const recoveredCards = cards.map((card) => {
+            const trackKey = `${card.songName || ""}|||${card.artistName || ""}`;
+            const recovered = recoveredArtworkMap?.[trackKey];
+            const shouldRecoverArtwork = needsSnippetMediaRecovery(card.artworkUrl);
+            const shouldRecoverPreview = needsSnippetMediaRecovery(card.previewUrl);
+            const nextArtworkUrl = shouldRecoverArtwork
+              ? formatArtworkUrl(recovered?.artworkUrl || "", 300) || card.artworkUrl || ""
+              : card.artworkUrl;
+            const nextPreviewUrl = shouldRecoverPreview
+              ? recovered?.previewUrl || card.previewUrl || ""
+              : card.previewUrl;
+
+            return {
+              ...card,
+              artworkUrl: nextArtworkUrl,
+              artwork: nextArtworkUrl,
+              previewUrl: nextPreviewUrl,
+              snippetData: {
+                ...card.snippetData,
+                attributes: {
+                  ...card.snippetData?.attributes,
+                  artwork: { url: nextArtworkUrl || "" },
+                  previews: nextPreviewUrl ? [{ url: nextPreviewUrl }] : [],
+                },
+              },
+            };
+          });
+
+          cards.splice(0, cards.length, ...recoveredCards);
         }
 
         if (cancelled) return;
@@ -266,9 +345,10 @@ export default function HomeTikTokModal({ onClose, cachedPosts = [], onNavigateT
 
     loadAllSnippets();
 
+    const audioElement = audioRef.current;
     return () => {
       cancelled = true;
-      if (audioRef.current) audioRef.current.pause();
+      if (audioElement) audioElement.pause();
     };
   }, [cachedPosts]);
 

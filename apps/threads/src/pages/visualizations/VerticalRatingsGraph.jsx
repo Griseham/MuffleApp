@@ -1,5 +1,5 @@
 // src/components/VerticalRatingsGraph.jsx
-import React, { useState } from "react";
+import React from "react";
 
 /**
  * Bullet Chart Style Ratings Graph Component
@@ -9,8 +9,7 @@ import React, { useState } from "react";
  *   placeholders => integer (max bars)
  *   isEnlarged => boolean (for modal view)
  */
-export default function VerticalRatingsGraph({ ratings = [], placeholders = 6, isEnlarged = false }) {
-  const [hoveredIndex, setHoveredIndex] = useState(null);
+function VerticalRatingsGraph({ ratings = [], placeholders = 6, isEnlarged = false }) {
   const containerWidth = '100%';
 
   // Build array with the correct number of placeholders
@@ -140,8 +139,6 @@ export default function VerticalRatingsGraph({ ratings = [], placeholders = 6, i
           }
 
           // Real data row
-          const isHovered = hoveredIndex === idx;
-          
           return (
             <div 
               key={item.snippetId || idx}
@@ -151,13 +148,19 @@ export default function VerticalRatingsGraph({ ratings = [], placeholders = 6, i
                 gap: isEnlarged ? "12px" : "8px",
                 padding: isEnlarged ? "10px" : "6px",
                 borderRadius: "8px",
-                backgroundColor: isHovered ? "rgba(139, 224, 255, 0.08)" : "rgba(255,255,255,0.02)",
+                backgroundColor: "rgba(255,255,255,0.02)",
                 transition: "all 0.2s ease",
                 cursor: "pointer",
-                border: isHovered ? "1px solid rgba(139, 224, 255, 0.2)" : "1px solid transparent",
+                border: "1px solid transparent",
               }}
-              onMouseEnter={() => setHoveredIndex(idx)}
-              onMouseLeave={() => setHoveredIndex(null)}
+              onMouseEnter={(event) => {
+                event.currentTarget.style.backgroundColor = "rgba(139, 224, 255, 0.08)";
+                event.currentTarget.style.border = "1px solid rgba(139, 224, 255, 0.2)";
+              }}
+              onMouseLeave={(event) => {
+                event.currentTarget.style.backgroundColor = "rgba(255,255,255,0.02)";
+                event.currentTarget.style.border = "1px solid transparent";
+              }}
             >
               {/* User avatar */}
               <div style={{ position: "relative", flexShrink: 0 }}>
@@ -171,7 +174,7 @@ export default function VerticalRatingsGraph({ ratings = [], placeholders = 6, i
                       borderRadius: "50%", 
                       objectFit: "cover",
                       border: "2px solid rgba(139, 224, 255, 0.5)",
-                      boxShadow: isHovered ? "0 0 10px rgba(139, 224, 255, 0.4)" : "0 2px 4px rgba(0,0,0,0.2)",
+                      boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
                       transition: "all 0.2s ease",
                     }}
                   />
@@ -240,9 +243,7 @@ export default function VerticalRatingsGraph({ ratings = [], placeholders = 6, i
                     background: "linear-gradient(90deg, #8be0ff, #67d1ff)",
                     borderRadius: "2px",
                     transition: "width 0.5s cubic-bezier(0.16, 1, 0.3, 1)",
-                    boxShadow: isHovered 
-                      ? "0 0 12px rgba(139, 224, 255, 0.6)" 
-                      : "0 0 6px rgba(139, 224, 255, 0.3)",
+                    boxShadow: "0 0 6px rgba(139, 224, 255, 0.3)",
                   }}>
                     {/* Shine effect */}
                     <div style={{
@@ -265,9 +266,7 @@ export default function VerticalRatingsGraph({ ratings = [], placeholders = 6, i
                     width: isEnlarged ? "3px" : "2px",
                     backgroundColor: "#1d9bf0",
                     transform: "translateX(-50%)",
-                    boxShadow: isHovered 
-                      ? "0 0 8px rgba(29, 155, 240, 0.8)" 
-                      : "0 0 4px rgba(29, 155, 240, 0.5)",
+                    boxShadow: "0 0 4px rgba(29, 155, 240, 0.5)",
                     borderRadius: "1px",
                     zIndex: 2,
                   }} />
@@ -288,63 +287,6 @@ export default function VerticalRatingsGraph({ ratings = [], placeholders = 6, i
                   ))}
                 </div>
                 
-                {/* Tooltip on hover */}
-                {isHovered && isEnlarged && (
-                  <div style={{
-                    position: "absolute",
-                    bottom: "calc(100% + 8px)",
-                    left: "50%",
-                    transform: "translateX(-50%)",
-                    backgroundColor: "rgba(0, 0, 0, 0.9)",
-                    color: "#fff",
-                    borderRadius: "8px",
-                    padding: "10px 14px",
-                    boxShadow: "0 4px 16px rgba(0,0,0,0.4)",
-                    border: "1px solid rgba(255,255,255,0.15)",
-                    zIndex: 20,
-                    minWidth: "160px",
-                    pointerEvents: "none",
-                    fontSize: "12px",
-                  }}>
-                    <div style={{ 
-                      marginBottom: "8px", 
-                      fontWeight: "bold",
-                      fontSize: "13px",
-                      borderBottom: "1px solid rgba(255,255,255,0.1)",
-                      paddingBottom: "6px",
-                      color: "#8be0ff",
-                    }}>
-                      Rating Details
-                    </div>
-                    <div style={{ 
-                      display: "flex", 
-                      justifyContent: "space-between",
-                      marginBottom: "4px",
-                    }}>
-                      <span style={{ color: "#aaa" }}>Your rating:</span>
-                      <span style={{ color: "#8be0ff", fontWeight: "bold" }}>{item.userRating || 0}</span>
-                    </div>
-                    <div style={{ 
-                      display: "flex", 
-                      justifyContent: "space-between",
-                    }}>
-                      <span style={{ color: "#aaa" }}>Avg rating:</span>
-                      <span style={{ color: "#1d9bf0", fontWeight: "bold" }}>{item.avgRating || 0}</span>
-                    </div>
-                    {/* Tooltip arrow */}
-                    <div style={{
-                      position: "absolute",
-                      bottom: "-6px",
-                      left: "50%",
-                      transform: "translateX(-50%)",
-                      width: 0,
-                      height: 0,
-                      borderLeft: "6px solid transparent",
-                      borderRight: "6px solid transparent",
-                      borderTop: "6px solid rgba(0, 0, 0, 0.9)",
-                    }} />
-                  </div>
-                )}
               </div>
               
               {/* Values display - Your Rating and Average side by side */}
@@ -384,3 +326,5 @@ export default function VerticalRatingsGraph({ ratings = [], placeholders = 6, i
     </div>
   );
 }
+
+export default VerticalRatingsGraph;

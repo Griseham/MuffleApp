@@ -1,106 +1,97 @@
-/**
- * Fast-failing unit tests for parameter threads Apple Music snippet functionality
- * These tests ensure that comments with snippets in parameter threads have proper album art and preview URLs
- */
+import assert from 'node:assert/strict'
+import fs from 'node:fs'
+import path from 'node:path'
+import { before, describe, it } from 'node:test'
+import { fileURLToPath } from 'node:url'
 
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+const CACHED_POSTS_DIR = path.resolve(__dirname, '../src/backend/cached_posts')
+const NETWORK_CHECKS_ENABLED = process.env.THREADS_TEST_NETWORK === '1'
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+let parameterThread001
+let parameterThread002
 
-// Path to cached parameter thread files
-const CACHED_POSTS_DIR = path.resolve(__dirname, '../src/backend/cached_posts');
+function readCachedThread(fileName) {
+  const filePath = path.join(CACHED_POSTS_DIR, fileName)
+  assert.ok(fs.existsSync(filePath), `Missing cached thread file: ${filePath}`)
+  return JSON.parse(fs.readFileSync(filePath, 'utf8'))
+}
+
+function assertHasOwnProperty(value, propertyName) {
+  assert.ok(
+    Object.prototype.hasOwnProperty.call(value, propertyName),
+    `Expected property "${propertyName}" to exist`
+  )
+}
+
+function assertValidSnippet(snippet) {
+  for (const field of ['songName', 'artistName', 'artworkUrl', 'previewUrl', 'albumName', 'releaseDate', 'duration']) {
+    assertHasOwnProperty(snippet, field)
+  }
+
+  assert.ok(snippet.songName)
+  assert.ok(snippet.artistName)
+  assert.ok(snippet.artworkUrl)
+  assert.ok(snippet.previewUrl)
+  assert.ok(snippet.albumName)
+  assert.match(snippet.artworkUrl, /^https?:\/\//)
+  assert.match(snippet.previewUrl, /^https?:\/\//)
+  assert.match(snippet.artworkUrl, /mzstatic\.com/)
+  assert.match(snippet.previewUrl, /(itunes\.apple\.com|mzstatic\.com)/)
+  assert.match(snippet.releaseDate, /^\d{4}-\d{2}-\d{2}$/)
+  assert.equal(typeof snippet.duration, 'number')
+  assert.ok(snippet.duration > 0)
+}
+
+before(() => {
+  parameterThread001 = readCachedThread('parameter_thread_001.json')
+  parameterThread002 = readCachedThread('parameter_thread_002.json')
+})
 
 describe('Parameter Threads Apple Music Integration', () => {
-  let parameterThread001, parameterThread002;
+  describe('Parameter Thread 001', () => {
+    it('has the expected post structure', () => {
+      assert.equal(parameterThread001.id, 'parameter_thread_001')
+      assert.equal(parameterThread001.postType, 'parameter')
+      assert.deepEqual(
+        parameterThread001.parameters,
+        ['Imagine Dragons', 'Green Day', 'OneRepublic', 'Maroon 5']
+      )
+    })
 
-  beforeAll(() => {
-    // Load parameter thread data
-    const thread001Path = path.join(CACHED_POSTS_DIR, 'parameter_thread_001.json');
-    const thread002Path = path.join(CACHED_POSTS_DIR, 'parameter_thread_002.json');
-    
-    if (!fs.existsSync(thread001Path)) {
-      throw new Error(`Parameter thread 001 not found at ${thread001Path}`);
-    }
-    
-    if (!fs.existsSync(thread002Path)) {
-      throw new Error(`Parameter thread 002 not found at ${thread002Path}`);
-    }
-    
-    parameterThread001 = JSON.parse(fs.readFileSync(thread001Path, 'utf8'));
-    parameterThread002 = JSON.parse(fs.readFileSync(thread002Path, 'utf8'));
-  });
+    it('marks snippet comments correctly', () => {
+      const commentsWithSnippets = parameterThread001.comments.filter((comment) => comment.hasSnippet)
+      assert.ok(commentsWithSnippets.length >= 10)
 
-  describe('Parameter Thread 001 (Imagine Dragons, Green Day, OneRepublic, Maroon 5)', () => {
-    it('should have valid post structure', () => {
-      expect(parameterThread001).toBeDefined();
-      expect(parameterThread001.id).toBe('parameter_thread_001');
-      expect(parameterThread001.postType).toBe('parameter');
-      expect(parameterThread001.parameters).toEqual(['Imagine Dragons', 'Green Day', 'OneRepublic', 'Maroon 5']);
-    });
+      for (const comment of commentsWithSnippets) {
+        assert.equal(comment.hasSnippet, true)
+        assertHasOwnProperty(comment, 'parameter')
+        assert.ok(['Imagine Dragons', 'Green Day', 'OneRepublic', 'Maroon 5'].includes(comment.parameter))
+      }
+    })
 
-    it('should have comments with hasSnippet flag correctly set', () => {
-      const commentsWithSnippets = parameterThread001.comments.filter(c => c.hasSnippet);
-      expect(commentsWithSnippets.length).toBeGreaterThanOrEqual(10);
-      
-      commentsWithSnippets.forEach(comment => {
-        expect(comment).toHaveProperty('hasSnippet', true);
-        expect(comment).toHaveProperty('parameter');
-        expect(['Imagine Dragons', 'Green Day', 'OneRepublic', 'Maroon 5']).toContain(comment.parameter);
-      });
-    });
+    it('has a snippet for every snippet-enabled comment', () => {
+      const commentsWithSnippets = parameterThread001.comments.filter((comment) => comment.hasSnippet)
+      assert.equal(parameterThread001.snippets.length, commentsWithSnippets.length)
 
-    it('should have corresponding snippets for all hasSnippet comments', () => {
-      const commentsWithSnippets = parameterThread001.comments.filter(c => c.hasSnippet);
-      expect(parameterThread001.snippets.length).toBe(commentsWithSnippets.length);
-      
-      commentsWithSnippets.forEach(comment => {
-        const snippet = parameterThread001.snippets.find(s => s.commentId === comment.id);
-        expect(snippet).toBeDefined();
-        expect(snippet.commentId).toBe(comment.id);
-      });
-    });
+      for (const comment of commentsWithSnippets) {
+        const snippet = parameterThread001.snippets.find((entry) => entry.commentId === comment.id)
+        assert.ok(snippet, `Missing snippet for comment ${comment.id}`)
+        assert.equal(snippet.commentId, comment.id)
+      }
+    })
 
-    it('should have valid Apple Music data for all snippets', () => {
-      parameterThread001.snippets.forEach(snippet => {
-        // Fast-fail: Check required fields
-        expect(snippet).toHaveProperty('songName');
-        expect(snippet).toHaveProperty('artistName');
-        expect(snippet).toHaveProperty('artworkUrl');
-        expect(snippet).toHaveProperty('previewUrl');
-        
-        // Fast-fail: Check that values are not empty
-        expect(snippet.songName).toBeTruthy();
-        expect(snippet.artistName).toBeTruthy();
-        expect(snippet.artworkUrl).toBeTruthy();
-        expect(snippet.previewUrl).toBeTruthy();
-        
-        // Fast-fail: Check URL formats
-        expect(snippet.artworkUrl).toMatch(/^https?:\/\//);
-        expect(snippet.previewUrl).toMatch(/^https?:\/\//);
-        
-        // Check Apple Music URL patterns
-        expect(snippet.artworkUrl).toMatch(/mzstatic\.com/);
-        expect(snippet.previewUrl).toMatch(/(itunes\.apple\.com|mzstatic\.com)/);
-        
-        // Check enhanced metadata
-        expect(snippet).toHaveProperty('albumName');
-        expect(snippet).toHaveProperty('releaseDate');
-        expect(snippet).toHaveProperty('duration');
-        
-        expect(snippet.albumName).toBeTruthy();
-        expect(snippet.releaseDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-        expect(typeof snippet.duration).toBe('number');
-        expect(snippet.duration).toBeGreaterThan(0);
-      });
-    });
+    it('stores valid Apple Music data for every snippet', () => {
+      for (const snippet of parameterThread001.snippets) {
+        assertValidSnippet(snippet)
+      }
+    })
 
-    it('should have correct artist mapping for each snippet', () => {
+    it('maps the expected artists for known songs', () => {
       const artistMapping = {
         'Demons': 'Imagine Dragons',
-        'Thunder': 'Imagine Dragons', 
+        'Thunder': 'Imagine Dragons',
         'Radioactive': 'Imagine Dragons',
         'Basket Case': 'Green Day',
         'When I Come Around': 'Green Day',
@@ -109,64 +100,42 @@ describe('Parameter Threads Apple Music Integration', () => {
         'Apologize': 'OneRepublic',
         'This Love': 'Maroon 5',
         'Sunday Morning': 'Maroon 5'
-      };
+      }
 
-      parameterThread001.snippets.forEach(snippet => {
-        const expectedArtist = artistMapping[snippet.songName];
-        expect(snippet.artistName).toBe(expectedArtist);
-      });
-    });
-  });
+      for (const snippet of parameterThread001.snippets) {
+        assert.equal(snippet.artistName, artistMapping[snippet.songName])
+      }
+    })
+  })
 
-  describe('Parameter Thread 002 (Olivia Rodrigo, Tyla, Tate McRae, Sabrina Carpenter)', () => {
-    it('should have valid post structure', () => {
-      expect(parameterThread002).toBeDefined();
-      expect(parameterThread002.id).toBe('parameter_thread_002');
-      expect(parameterThread002.postType).toBe('parameter');
-      expect(parameterThread002.parameters).toEqual(['Olivia Rodrigo', 'Tyla', 'Tate McRae', 'Sabrina Carpenter']);
-    });
+  describe('Parameter Thread 002', () => {
+    it('has the expected post structure', () => {
+      assert.equal(parameterThread002.id, 'parameter_thread_002')
+      assert.equal(parameterThread002.postType, 'parameter')
+      assert.deepEqual(
+        parameterThread002.parameters,
+        ['Olivia Rodrigo', 'Tyla', 'Tate McRae', 'Sabrina Carpenter']
+      )
+    })
 
-    it('should have comments with hasSnippet flag correctly set', () => {
-      const commentsWithSnippets = parameterThread002.comments.filter(c => c.hasSnippet);
-      expect(commentsWithSnippets.length).toBeGreaterThanOrEqual(10);
-      
-      commentsWithSnippets.forEach(comment => {
-        expect(comment).toHaveProperty('hasSnippet', true);
-        expect(comment).toHaveProperty('parameter');
-        expect(['Olivia Rodrigo', 'Tyla', 'Tate McRae', 'Sabrina Carpenter']).toContain(comment.parameter);
-      });
-    });
+    it('marks snippet comments correctly', () => {
+      const commentsWithSnippets = parameterThread002.comments.filter((comment) => comment.hasSnippet)
+      assert.ok(commentsWithSnippets.length >= 10)
 
-    it('should have valid Apple Music data for all snippets', () => {
-      parameterThread002.snippets.forEach(snippet => {
-        // Fast-fail: Check required fields
-        expect(snippet).toHaveProperty('songName');
-        expect(snippet).toHaveProperty('artistName');
-        expect(snippet).toHaveProperty('artworkUrl');
-        expect(snippet).toHaveProperty('previewUrl');
-        
-        // Fast-fail: Check that values are not empty
-        expect(snippet.songName).toBeTruthy();
-        expect(snippet.artistName).toBeTruthy();
-        expect(snippet.artworkUrl).toBeTruthy();
-        expect(snippet.previewUrl).toBeTruthy();
-        
-        // Fast-fail: Check URL formats
-        expect(snippet.artworkUrl).toMatch(/^https?:\/\//);
-        expect(snippet.previewUrl).toMatch(/^https?:\/\//);
-        
-        // Check Apple Music URL patterns
-        expect(snippet.artworkUrl).toMatch(/mzstatic\.com/);
-        expect(snippet.previewUrl).toMatch(/(itunes\.apple\.com|mzstatic\.com)/);
-        
-        // Check enhanced metadata
-        expect(snippet).toHaveProperty('albumName');
-        expect(snippet).toHaveProperty('releaseDate');
-        expect(snippet).toHaveProperty('duration');
-      });
-    });
+      for (const comment of commentsWithSnippets) {
+        assert.equal(comment.hasSnippet, true)
+        assertHasOwnProperty(comment, 'parameter')
+        assert.ok(['Olivia Rodrigo', 'Tyla', 'Tate McRae', 'Sabrina Carpenter'].includes(comment.parameter))
+      }
+    })
 
-    it('should have correct artist mapping for each snippet', () => {
+    it('stores valid Apple Music data for every snippet', () => {
+      for (const snippet of parameterThread002.snippets) {
+        assertValidSnippet(snippet)
+      }
+    })
+
+    it('maps the expected artists for known songs', () => {
       const artistMapping = {
         'vampire': 'Olivia Rodrigo',
         'good 4 u': 'Olivia Rodrigo',
@@ -178,130 +147,98 @@ describe('Parameter Threads Apple Music Integration', () => {
         'you broke me first': 'Tate McRae',
         'Espresso': 'Sabrina Carpenter',
         'Nonsense': 'Sabrina Carpenter'
-      };
+      }
 
-      parameterThread002.snippets.forEach(snippet => {
-        const expectedArtist = artistMapping[snippet.songName];
-        expect(snippet.artistName).toBe(expectedArtist);
-      });
-    });
-  });
+      for (const snippet of parameterThread002.snippets) {
+        assert.equal(snippet.artistName, artistMapping[snippet.songName])
+      }
+    })
+  })
 
-  describe('Apple Music API Integration Requirements', () => {
-    it('should ensure all snippet URLs are accessible', async () => {
-      // Test a sample of URLs for accessibility
-      const allSnippets = [...parameterThread001.snippets, ...parameterThread002.snippets];
-      const sampleSnippets = allSnippets.slice(0, 3); // Test first 3 for speed
-      
-      for (const snippet of sampleSnippets) {
-        try {
-          // Test artwork URL
-          const artworkResponse = await fetch(snippet.artworkUrl, { method: 'HEAD' });
-          expect(artworkResponse.ok).toBeTruthy();
-          
-          // Test preview URL  
-          const previewResponse = await fetch(snippet.previewUrl, { method: 'HEAD' });
-          expect(previewResponse.ok).toBeTruthy();
-        } catch (error) {
-          // Fast-fail if URLs are not accessible
-          throw new Error(`URL accessibility test failed for ${snippet.songName}: ${error.message}`);
+  describe('Cross-thread requirements', () => {
+    it('uses a consistent snippet data shape', () => {
+      const allSnippets = [...parameterThread001.snippets, ...parameterThread002.snippets]
+      const requiredFields = [
+        'commentId',
+        'query',
+        'songName',
+        'artistName',
+        'artworkUrl',
+        'previewUrl',
+        'albumName',
+        'releaseDate',
+        'duration'
+      ]
+
+      for (const snippet of allSnippets) {
+        for (const field of requiredFields) {
+          assertHasOwnProperty(snippet, field)
+          assert.ok(snippet[field], `Expected snippet field "${field}" to be truthy`)
         }
       }
-    }, 10000); // 10 second timeout for network requests
+    })
 
-    it('should have consistent data structure across all snippets', () => {
-      const allSnippets = [...parameterThread001.snippets, ...parameterThread002.snippets];
-      const requiredFields = ['commentId', 'query', 'songName', 'artistName', 'artworkUrl', 'previewUrl', 'albumName', 'releaseDate', 'duration'];
-      
-      allSnippets.forEach(snippet => {
-        requiredFields.forEach(field => {
-          expect(snippet).toHaveProperty(field);
-          expect(snippet[field]).toBeTruthy();
-        });
-      });
-    });
+    it('keeps unique comment IDs and unique song-artist pairs', () => {
+      const allSnippets = [...parameterThread001.snippets, ...parameterThread002.snippets]
+      const commentIds = allSnippets.map((snippet) => snippet.commentId)
+      const songArtistCombos = allSnippets.map((snippet) => `${snippet.songName}-${snippet.artistName}`)
 
-    it('should have unique comment IDs and song combinations', () => {
-      const allSnippets = [...parameterThread001.snippets, ...parameterThread002.snippets];
-      const commentIds = allSnippets.map(s => s.commentId);
-      const uniqueCommentIds = [...new Set(commentIds)];
-      
-      expect(commentIds.length).toBe(uniqueCommentIds.length);
-      
-      const songArtistCombos = allSnippets.map(s => `${s.songName}-${s.artistName}`);
-      const uniqueCombos = [...new Set(songArtistCombos)];
-      
-      expect(songArtistCombos.length).toBe(uniqueCombos.length);
-    });
-  });
+      assert.equal(commentIds.length, new Set(commentIds).size)
+      assert.equal(songArtistCombos.length, new Set(songArtistCombos).size)
+    })
 
-  describe('Performance and Caching Requirements', () => {
-    it('should have reasonable file sizes for cached data', () => {
-      const thread001Path = path.join(CACHED_POSTS_DIR, 'parameter_thread_001.json');
-      const thread002Path = path.join(CACHED_POSTS_DIR, 'parameter_thread_002.json');
-      
-      const thread001Size = fs.statSync(thread001Path).size;
-      const thread002Size = fs.statSync(thread002Path).size;
-      
-      // Files should be under 100KB each
-      expect(thread001Size).toBeLessThan(100 * 1024);
-      expect(thread002Size).toBeLessThan(100 * 1024);
-    });
+    it('keeps cached thread files at a reasonable size', () => {
+      const thread001Path = path.join(CACHED_POSTS_DIR, 'parameter_thread_001.json')
+      const thread002Path = path.join(CACHED_POSTS_DIR, 'parameter_thread_002.json')
 
-    it('should have snippets with appropriate artwork resolution', () => {
-      const allSnippets = [...parameterThread001.snippets, ...parameterThread002.snippets];
-      
-      allSnippets.forEach(snippet => {
-        // Check that artwork URLs specify 300x300 resolution
-        expect(snippet.artworkUrl).toMatch(/300x300/);
-      });
-    });
+      assert.ok(fs.statSync(thread001Path).size < 100 * 1024)
+      assert.ok(fs.statSync(thread002Path).size < 100 * 1024)
+    })
 
-    it('should have reasonable duration values', () => {
-      const allSnippets = [...parameterThread001.snippets, ...parameterThread002.snippets];
-      
-      allSnippets.forEach(snippet => {
-        // Duration should be between 60 seconds and 10 minutes (in milliseconds)
-        expect(snippet.duration).toBeGreaterThan(60 * 1000);
-        expect(snippet.duration).toBeLessThan(10 * 60 * 1000);
-      });
-    });
-  });
-});
+    it('stores 300x300 artwork URLs', () => {
+      const allSnippets = [...parameterThread001.snippets, ...parameterThread002.snippets]
+      for (const snippet of allSnippets) {
+        assert.match(snippet.artworkUrl, /300x300/)
+      }
+    })
 
-// Helper function to run a quick smoke test
-export function runParameterThreadSmokeTest() {
-  const thread001Path = path.join(CACHED_POSTS_DIR, 'parameter_thread_001.json');
-  const thread002Path = path.join(CACHED_POSTS_DIR, 'parameter_thread_002.json');
-  
-  if (!fs.existsSync(thread001Path) || !fs.existsSync(thread002Path)) {
-    throw new Error('Parameter thread files not found');
-  }
-  
-  const thread001 = JSON.parse(fs.readFileSync(thread001Path, 'utf8'));
-  const thread002 = JSON.parse(fs.readFileSync(thread002Path, 'utf8'));
-  
-  const errors = [];
-  
-  // Quick validation
-  if (!thread001.snippets || thread001.snippets.length < 5) {
-    errors.push('Parameter thread 001 missing sufficient snippets');
-  }
-  
-  if (!thread002.snippets || thread002.snippets.length < 5) {
-    errors.push('Parameter thread 002 missing sufficient snippets');
-  }
-  
-  // Check snippet structure
-  [...thread001.snippets, ...thread002.snippets].forEach((snippet, index) => {
-    if (!snippet.artworkUrl || !snippet.previewUrl) {
-      errors.push(`Snippet ${index} missing required URLs`);
+    it('stores durations in a reasonable range', () => {
+      const allSnippets = [...parameterThread001.snippets, ...parameterThread002.snippets]
+      for (const snippet of allSnippets) {
+        assert.ok(snippet.duration > 60 * 1000)
+        assert.ok(snippet.duration < 10 * 60 * 1000)
+      }
+    })
+  })
+
+  const networkIt = NETWORK_CHECKS_ENABLED ? it : it.skip
+
+  networkIt('can reach a small sample of remote snippet URLs', { timeout: 10_000 }, async () => {
+    const allSnippets = [...parameterThread001.snippets, ...parameterThread002.snippets]
+    const sampleSnippets = allSnippets.slice(0, 3)
+
+    for (const snippet of sampleSnippets) {
+      const artworkResponse = await fetch(snippet.artworkUrl, { method: 'HEAD' })
+      assert.ok(artworkResponse.ok, `Artwork URL was not reachable for ${snippet.songName}`)
+
+      const previewResponse = await fetch(snippet.previewUrl, { method: 'HEAD' })
+      assert.ok(previewResponse.ok, `Preview URL was not reachable for ${snippet.songName}`)
     }
-  });
-  
-  if (errors.length > 0) {
-    throw new Error(`Parameter thread smoke test failed: ${errors.join(', ')}`);
+  })
+})
+
+export function runParameterThreadSmokeTest() {
+  const thread001 = readCachedThread('parameter_thread_001.json')
+  const thread002 = readCachedThread('parameter_thread_002.json')
+  const allSnippets = [...thread001.snippets, ...thread002.snippets]
+
+  assert.ok(thread001.snippets.length >= 5, 'Parameter thread 001 missing sufficient snippets')
+  assert.ok(thread002.snippets.length >= 5, 'Parameter thread 002 missing sufficient snippets')
+
+  for (const [index, snippet] of allSnippets.entries()) {
+    assert.ok(snippet.artworkUrl, `Snippet ${index} missing artworkUrl`)
+    assert.ok(snippet.previewUrl, `Snippet ${index} missing previewUrl`)
   }
-  
-  return true;
+
+  return true
 }

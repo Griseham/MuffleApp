@@ -1,12 +1,56 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Play, Music, Pause, X, Search, Send, Disc } from 'lucide-react';
-import { Info } from "lucide-react";
 import InfoIconModal from "../InfoIconModal";
 import { validateAndSanitizeInput, sanitizeSearchQuery, checkRateLimit } from '../../utils/security';
 import { getAvatarForUser } from '../../utils/avatarService';
 import { buildApiUrl } from '../../utils/api';
 
+const DEFAULT_ARTWORK = '/assets/default-artist.png';
 
+function formatArtworkUrl(url, size = 100) {
+  if (!url || typeof url !== 'string') {
+    return DEFAULT_ARTWORK;
+  }
+
+  return url
+    .replace('{w}', String(size))
+    .replace('{h}', String(size))
+    .replace('{f}', 'jpg');
+}
+
+function buildSnippetFromSong(song) {
+  if (!song) return null;
+
+  const songName = song.attributes?.name || "Unknown Song";
+  const artistName = song.attributes?.artistName || "Unknown Artist";
+  const artworkUrl = formatArtworkUrl(song.attributes?.artwork?.url, 100);
+  const previewUrl = song.attributes?.previews?.[0]?.url || null;
+
+  return {
+    id: song.id,
+    commentId: null,
+    name: songName,
+    songName,
+    artistName,
+    artwork: artworkUrl,
+    artworkUrl,
+    previewUrl,
+    userRating: null,
+    avgRating: 0,
+    totalRatings: 0,
+    didRate: false,
+    snippetData: {
+      ...song,
+      attributes: {
+        ...song.attributes,
+        name: songName,
+        artistName,
+        artwork: { url: artworkUrl || "" },
+        previews: previewUrl ? [{ url: previewUrl }] : [],
+      },
+    },
+  };
+}
 
 const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
   // State declarations
@@ -18,6 +62,7 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
   const [searchResults, setSearchResults] = useState([]);
   const [selectedSong, setSelectedSong] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [previewingSongId, setPreviewingSongId] = useState(null);
   const [audioElement, setAudioElement] = useState(null);
   
   // Refs
@@ -56,6 +101,7 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
   const handleSelectSong = (song) => {
     setSelectedSong(song);
     setShowSongSearch(false);
+    setPreviewingSongId(null);
     
     // Stop audio if playing when song is selected
     if (audioElement && isPlaying) {
@@ -70,9 +116,10 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
     if (!previewUrl) return;
     
     // If already playing this song, pause it
-    if (isPlaying && audioElement && song.id === selectedSong?.id) {
+    if (isPlaying && audioElement && song.id === previewingSongId) {
       audioElement.pause();
       setIsPlaying(false);
+      setPreviewingSongId(null);
       return;
     }
     
@@ -80,7 +127,10 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
     let audio = audioElement;
     if (!audio) {
       audio = new Audio(previewUrl);
-      audio.addEventListener('ended', () => setIsPlaying(false));
+      audio.addEventListener('ended', () => {
+        setIsPlaying(false);
+        setPreviewingSongId(null);
+      });
       setAudioElement(audio);
     } else {
       audio.src = previewUrl;
@@ -89,7 +139,10 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
     // Play the audio
     audio.play().then(() => {
       setIsPlaying(true);
-    }).catch(err => {
+      setPreviewingSongId(song.id);
+    }).catch(() => {
+      setIsPlaying(false);
+      setPreviewingSongId(null);
     });
   };
 
@@ -100,6 +153,7 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
       audioElement.pause();
       setIsPlaying(false);
     }
+    setPreviewingSongId(null);
     setSelectedSong(null);
   };
 
@@ -124,12 +178,12 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
       const data = await resp.json();
       
       if (data.success && data.data) {
-        // Store as an array for multiple results
-        setSearchResults([data.data]);
+        const items = Array.isArray(data.data) ? data.data : [data.data];
+        setSearchResults(items);
       } else {
         setSearchResults([]);
       }
-    } catch (error) {
+    } catch {
       setSearchResults([]);
     } finally {
       setIsSearching(false);
@@ -149,6 +203,14 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
     
     return () => clearTimeout(debounceTimer);
   }, [searchQuery]);
+
+  useEffect(() => {
+    return () => {
+      if (audioElement) {
+        audioElement.pause();
+      }
+    };
+  }, [audioElement]);
 
   // Auto-resize the textarea as user types
   const handleInput = (e) => {
@@ -212,21 +274,13 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
       body: validation.sanitized,
       createdUtc: Date.now() / 1000,
       likes: 0,
-      replies: 0,
+      replies: [],
       postType: 'thread'
     };
     
     // If there's a selected song, attach it to the comment
     if (selectedSong) {
-      newComment.snippet = {
-        id: selectedSong.id,
-        name: selectedSong.attributes?.name || "Unknown Song",
-        artistName: selectedSong.attributes?.artistName || "Unknown Artist",
-        artwork: selectedSong.attributes?.artwork?.url
-          ?.replace("{w}", "100")
-          ?.replace("{h}", "100") || "/threads/assets/default-artist.png",
-        previewUrl: selectedSong.attributes?.previews?.[0]?.url || null
-      };
+      newComment.snippet = buildSnippetFromSong(selectedSong);
     }
     
     // Call the parent's onSubmit function
@@ -239,6 +293,8 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
     setSelectedSong(null);
     setSearchQuery('');
     setSearchResults([]);
+    setShowSongSearch(false);
+    setPreviewingSongId(null);
     
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
@@ -277,11 +333,12 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
               <div style={styles.attachedSnippetInner}>
                 <div style={styles.snippetImageContainer}>
                   <img
-                    src={selectedSong.attributes.artwork?.url
-                      ?.replace("{w}", "100")
-                      ?.replace("{h}", "100") || "/threads/assets/default-artist.png"}
+                    src={formatArtworkUrl(selectedSong.attributes.artwork?.url, 100)}
                     alt={selectedSong.attributes.name}
                     style={styles.snippetImage}
+                    onError={(e) => {
+                      e.currentTarget.src = DEFAULT_ARTWORK;
+                    }}
                   />
                 </div>
                 <div style={styles.snippetContent}>
@@ -419,10 +476,13 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
                       <div style={styles.resultImageContainer}>
                         <img
                           src={song.attributes.artwork?.url
-                            ?.replace("{w}", "100")
-                            ?.replace("{h}", "100") || "/threads/assets/default-artist.png"}
+                            ? formatArtworkUrl(song.attributes.artwork?.url, 100)
+                            : DEFAULT_ARTWORK}
                           alt={song.attributes.name}
                           style={styles.resultImage}
+                          onError={(e) => {
+                            e.currentTarget.src = DEFAULT_ARTWORK;
+                          }}
                         />
                       </div>
                       <div style={styles.resultInfo}>
@@ -433,13 +493,13 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
                         {/* Preview button */}
                         <button
                           style={styles.previewButton}
-                          title={isPlaying && selectedSong?.id === song.id ? "Pause preview" : "Preview song"}
+                          title={isPlaying && previewingSongId === song.id ? "Pause preview" : "Preview song"}
                           onClick={(e) => {
                             e.stopPropagation();
                             handlePreviewToggle(song);
                           }}
                         >
-                          {isPlaying && selectedSong?.id === song.id ? 
+                          {isPlaying && previewingSongId === song.id ? 
                             <Pause size={18} color="#fff" /> : 
                             <Play size={18} color="#fff" />}
                         </button>
@@ -464,7 +524,7 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
               {/* No results message */}
               {searchQuery.trim() && searchResults.length === 0 && !isSearching && (
                 <div style={styles.noResultsContainer}>
-                  <p style={styles.noResultsText}>No results found for "{searchQuery}"</p>
+                  <p style={styles.noResultsText}>No results found for &quot;{searchQuery}&quot;</p>
                   <p style={styles.noResultsSubtext}>Try a different search term</p>
                 </div>
               )}

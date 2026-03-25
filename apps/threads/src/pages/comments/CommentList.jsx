@@ -3,7 +3,6 @@ import React from "react";
 import { FixedSizeList } from "react-window";
 import CommentItem from "./CommentItem";
 import CommentStyles from "./CommentStyles";
-import SnippetStyles from "./SnippetStyles";
 
 export default function CommentList({ comments, snippetRecs, onPlaySnippet, onSetRating, activeSnippet }) {
   return (

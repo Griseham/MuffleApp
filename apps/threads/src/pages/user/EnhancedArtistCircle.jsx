@@ -11,17 +11,22 @@ const EnhancedArtistCircle = ({ artist }) => {
   });
   const isMounted = useRef(true);
 
-  // Return null or fallback if artist is not provided
-  if (!artist || !artist.id || !artist.name) {
-    return null;
-  }
-
   // Effect to handle image loading and caching
   useEffect(() => {
+    isMounted.current = true;
+
+    if (!artist || !artist.id || !artist.name) {
+      return () => {
+        isMounted.current = false;
+      };
+    }
+
     // Check if we already have this artist's image in cache
     if (IMAGE_CACHE[artist.id]) {
       setImageStatus(IMAGE_CACHE[artist.id]);
-      return;
+      return () => {
+        isMounted.current = false;
+      };
     }
 
     // Otherwise, load the image
@@ -51,7 +56,11 @@ const EnhancedArtistCircle = ({ artist }) => {
     return () => {
       isMounted.current = false;
     };
-  }, [artist.id, artist.imageUrl]);
+  }, [artist?.id, artist?.imageUrl, artist?.name]);
+
+  if (!artist || !artist.id || !artist.name) {
+    return null;
+  }
 
   // First letter as fallback
   const firstLetter = artist.name.charAt(0).toUpperCase();

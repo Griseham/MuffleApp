@@ -3,7 +3,7 @@ import React from "react";
 import { authorToAvatar } from "../utils/utils";
 import styles from "../threads/ThreadDetailStyles";
 
-export default function CommentItem({ comment, snippet, onPlaySnippet, activeSnippet, onSetRating }) {
+export default function CommentItem({ comment, snippet, onPlaySnippet, activeSnippet }) {
   return (
     <div style={styles.commentCard}>
       <img src={authorToAvatar(comment.author)} alt="Avatar" style={styles.tweetAvatar} />

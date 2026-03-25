@@ -16,12 +16,12 @@ export function hashString(str) {
     return `/assets/image${mod + 1}.png`;
   }
   
-  export function removeLinks(text) {
-    if (!text) return "";
-    let cleaned = text.replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/gi, "$1");
-    cleaned = cleaned.replace(/https?:\/\/\S+/gi, "");
-    return cleaned;
-  }
+export function removeLinks(text) {
+  if (!text) return "";
+  let cleaned = text.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/gi, "$1");
+  cleaned = cleaned.replace(/https?:\/\/\S+/gi, "");
+  return cleaned;
+}
   
 
 export function getAvatarSrc(post) {
@@ -31,4 +31,3 @@ export function getAvatarSrc(post) {
   }
   
   
-  const COMMENT_LENGTH_THRESHOLD = 80;

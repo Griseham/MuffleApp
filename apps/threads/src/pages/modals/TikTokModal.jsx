@@ -32,9 +32,6 @@ export default function TikTokModal({
   comments = [], 
   onClose, 
   audioRef, 
-  isPlaying, 
-  activeSnippet, 
-  playOrPauseSnippet, 
   onUserRate, 
   startIndex = 0, 
   isInitialLoading = false,
@@ -59,7 +56,7 @@ export default function TikTokModal({
   };
 
   const [currentIndex, setCurrentIndex] = useState(startIndex);
-  const [loading, setLoading] = useState(false);
+  const [loading] = useState(false);
   const [modalIsPlaying, setModalIsPlaying] = useState(false);
   const [currentSnippetId, setCurrentSnippetId] = useState(null);
   const [audioProgress, setAudioProgress] = useState(25);
@@ -329,6 +326,8 @@ export default function TikTokModal({
       .catch(err => {
         console.error("Error playing audio:", err, { previewUrl });
         setModalIsPlaying(false);
+        setCurrentSnippetId(null);
+        setAudioProgress(0);
       });
   };
   

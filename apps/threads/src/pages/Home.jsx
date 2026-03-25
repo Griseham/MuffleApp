@@ -102,6 +102,10 @@ const MemoThreadCommentComposer = React.memo(ThreadCommentComposer);
 const PINNED_HOME_THREAD_IDS = ['1hc9b9g', '1h41sz5', '1gzncch'];
 const PINNED_HOME_PARAMETER_ID = 'parameter_thread_002';
 
+function normalizePostType(postType = '') {
+  return String(postType).trim().toLowerCase();
+}
+
 function hashStringToInt(str = "") {
   let h = 0;
   for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0;
@@ -132,9 +136,24 @@ function buildStableRoomStats(post) {
 
 function enrichPost(post) {
   if (!post) return post;
-  if (post.roomVolume && post.genreStats) return post;
+  const normalizedPost = {
+    ...post,
+    postType: normalizePostType(post?.postType),
+  };
+  if (normalizedPost.roomVolume && normalizedPost.genreStats) return normalizedPost;
   const stats = buildStableRoomStats(post);
-  return { ...post, ...stats };
+  return { ...normalizedPost, ...stats };
+}
+
+function tagCachedPosts(postList) {
+  return (Array.isArray(postList) ? postList : [])
+    .filter(Boolean)
+    .map((post) => ({
+      ...post,
+      source: 'cached',
+      hasCachedData: true,
+      postType: normalizePostType(post?.postType),
+    }));
 }
 
 function buildCachedFeedPosts(cachedPostList, examplePost) {
@@ -336,7 +355,7 @@ const MusicHome = () => {
       return posts;
     }
 
-    return posts.filter(post => post.postType === currentFilter);
+    return posts.filter((post) => normalizePostType(post?.postType) === currentFilter);
   }, [currentFilter, posts]);
 
   const deferredFilteredPosts = useDeferredValue(filteredPosts);
@@ -357,10 +376,49 @@ const MusicHome = () => {
     setNavigationHistory(prev => [...prev, 'home']);
     setSelectedUser(user);
   }, []);
+
+  const resolveSelectedPost = useCallback((postOrId) => {
+    if (!postOrId) {
+      return null;
+    }
+
+    const postId = typeof postOrId === 'string' ? postOrId : postOrId.id;
+    if (postId) {
+      return posts.find((post) => post.id === postId)
+        || cachedPosts.find((post) => post.id === postId)
+        || (typeof postOrId === 'object' ? postOrId : null);
+    }
+
+    return typeof postOrId === 'object' ? postOrId : null;
+  }, [cachedPosts, posts]);
   
-  const handleViewThread = useCallback((post) => {
+  const handleViewThread = useCallback((postOrId) => {
+    const resolvedPost = resolveSelectedPost(postOrId);
+    if (!resolvedPost) {
+      return;
+    }
+
     setNavigationHistory(prev => [...prev, 'home']);
-    setSelectedThread({ ...post, entryTransition: true });
+    setSelectedThread({
+      ...resolvedPost,
+      postType: normalizePostType(resolvedPost?.postType),
+      entryTransition: true,
+    });
+  }, [resolveSelectedPost]);
+
+  const handleUserProfileBack = useCallback(() => {
+    const lastPage = navigationHistory[navigationHistory.length - 1];
+    setNavigationHistory((prev) => prev.slice(0, -1));
+    setSelectedUser(null);
+
+    if (lastPage !== 'thread') {
+      setSelectedThread(null);
+    }
+  }, [navigationHistory]);
+
+  const handleThreadBack = useCallback(() => {
+    setNavigationHistory((prev) => prev.slice(0, -1));
+    setSelectedThread(null);
   }, []);
 
   const handleStarfieldLoadFeed = useCallback(({ x, y, genres = [] }) => {
@@ -380,23 +438,46 @@ const MusicHome = () => {
       artists: []
     });
     setJumpGenre(genreName);
+    setIsStarfieldOpen(true);
   }, []);
 
   const handleCommentSubmit = useCallback((newComment) => {
+    const commentId = newComment?.id || `temp_${Date.now()}`;
+    const attachedSnippet = newComment?.snippet
+      ? {
+          ...newComment.snippet,
+          commentId: newComment.snippet.commentId || commentId,
+        }
+      : null;
+    const fallbackSnippetTitle = newComment.snippet
+      ? `Shared ${newComment.snippet.name} by ${newComment.snippet.artistName}`
+      : 'New thread';
+
     const newPost = {
       id: `user_post_${Date.now()}`,
       author: 'You',
-      title: newComment.body,
+      title: newComment.body?.trim() || fallbackSnippetTitle,
       selftext: '',
       createdUtc: Date.now() / 1000,
       postType: 'thread',
+      hasCachedData: false,
+      isLocalOnly: true,
       ups: 0,
-      num_comments: 0,
-      imageUrl: null
+      num_comments: 1,
+      imageUrl: null,
+      comments: [
+        {
+          ...newComment,
+          id: commentId,
+          replies: Array.isArray(newComment?.replies) ? newComment.replies : [],
+          snippet: attachedSnippet,
+        },
+      ],
+      snippets: attachedSnippet ? [attachedSnippet] : [],
     };
     
-    if (newComment.snippet) {
-      newPost.snippet = newComment.snippet;
+    if (attachedSnippet) {
+      newPost.snippet = attachedSnippet;
     }
 
     startTransition(() => {
@@ -405,16 +486,16 @@ const MusicHome = () => {
   }, []);
 
   useEffect(() => {
+    let isMounted = true;
+
     const handleCachedPostsRefresh = async () => {
-      console.log("Refreshing cached posts");
-      
       try {
         const response = await fetch(buildApiUrl("/cached-posts"));
         
         if (response.ok) {
           const result = await response.json();
-          if (result.success) {
-            const taggedCached = (result.data || []).map(p => ({ ...p, source: 'cached', hasCachedData: true }));
+          if (isMounted && result.success) {
+            const taggedCached = tagCachedPosts(result.data);
             setCachedPosts(taggedCached);
             startTransition(() => {
               setPosts(buildCachedFeedPosts(taggedCached, examplePost));
@@ -427,14 +508,17 @@ const MusicHome = () => {
     };
 
     window.addEventListener('refreshCachedPosts', handleCachedPostsRefresh);
-    
+
     return () => {
+      isMounted = false;
       window.removeEventListener('refreshCachedPosts', handleCachedPostsRefresh);
     };
-  }, [examplePost]); // eslint-disable-line react-hooks/exhaustive-deps — stable via refs, intentionally runs once
+  }, [examplePost]);
 
   // Load only cached posts on page load — runs once on mount only
   useEffect(() => {
+    let isMounted = true;
+
     async function loadCachedPosts() {
       setIsLoading(true);
       try {
@@ -442,21 +526,28 @@ const MusicHome = () => {
         
         if (response.ok) {
           const result = await response.json();
-          if (result.success && result.data.length > 0) {
-            const cachedData = (result.data || []).map(p => ({ ...p, source: 'cached', hasCachedData: true }));
+          const cachedData = tagCachedPosts(result.data);
+
+          if (!isMounted) {
+            return;
+          }
+
+          if (result.success && cachedData.length > 0) {
             setCachedPosts(cachedData);
 
             startTransition(() => {
               setPosts(buildCachedFeedPosts(cachedData, examplePost));
             });
-            console.log(`Loaded ${cachedData.length} cached posts`);
           } else {
             startTransition(() => {
               setPosts([examplePost]);
             });
-            console.log("No cached posts found, showing only example post");
           }
         } else {
+          if (!isMounted) {
+            return;
+          }
+
           startTransition(() => {
             setPosts([examplePost]);
           });
@@ -465,16 +556,26 @@ const MusicHome = () => {
         
       } catch (err) {
         console.error("Error loading cached posts:", err);
+        if (!isMounted) {
+          return;
+        }
+
         startTransition(() => {
           setPosts([examplePost]);
         });
       } finally {
-        setIsLoading(false);
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     }
     
     loadCachedPosts();
-  }, [examplePost]); // eslint-disable-line react-hooks/exhaustive-deps — intentionally runs once on mount
+
+    return () => {
+      isMounted = false;
+    };
+  }, [examplePost]);
 
   const handleFilterChange = useCallback((filter) => {
     startTransition(() => {
@@ -486,6 +587,10 @@ const MusicHome = () => {
     startTransition(() => {
       setCurrentFilter("all");
       setPosts(cachedFeedPosts);
+      setFeedLoaded(false);
+      setFeedData({ genres: [], artists: [] });
+      setJumpGenre(null);
+      setIsStarfieldOpen(false);
     });
   }, [cachedFeedPosts]);
 
@@ -521,23 +626,13 @@ const MusicHome = () => {
       {selectedUser ? (
         <UserProfile 
           user={selectedUser} 
-          onBack={() => {
-            const lastPage = navigationHistory.pop();
-            setNavigationHistory([...navigationHistory]);
-            
-            if (lastPage === 'thread') {
-              setSelectedUser(null);
-            } else {
-              setSelectedUser(null);
-              setSelectedThread(null);
-            }
-          }}
+          onBack={handleUserProfileBack}
         />
       ) : selectedThread ? (
         selectedThread.postType === "groupchat" ? (
           <GroupChatDetail
             post={selectedThread}
-            onBack={() => setSelectedThread(null)}
+            onBack={handleThreadBack}
             onUserListUpdate={() => {}}
           />
         ) : (
@@ -548,7 +643,7 @@ const MusicHome = () => {
               setNavigationHistory(prev => [...prev, 'thread']);
               setSelectedUser(user);
             }}
-            onBack={() => setSelectedThread(null)} 
+            onBack={handleThreadBack} 
           />
         )
       ) : (
@@ -997,7 +1092,7 @@ const MusicHome = () => {
         </div>
       )}
       
-      <style jsx>{`
+      <style>{`
         @keyframes spin {
           0% { transform: rotate(0deg); }
           100% { transform: rotate(360deg); }

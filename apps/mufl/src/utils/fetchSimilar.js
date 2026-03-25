@@ -1,8 +1,5 @@
 // fetchSimilar.js - Centralized Last.fm API call & cache
-import axios from 'axios';
-
-// Backend API url
-const API_URL = process.env.REACT_APP_API_BASE_URL || '/api';
+import { apiClient } from './api';
 
 // Global cache for similar artists to avoid redundant API calls
 let similarArtistsCache = {
@@ -10,6 +7,14 @@ let similarArtistsCache = {
   timestamp: null,
   seedArtists: []
 };
+
+const getSortedSeedArtistNames = (artists = []) =>
+  artists
+    .map((artist) => (typeof artist === 'string' ? artist : artist?.name))
+    .filter(Boolean)
+    .slice()
+    .sort()
+    .join(',');
 
 /**
  * Fetches similar artists from Last.fm API via backend and maintains a session cache
@@ -28,17 +33,18 @@ export const fetchSimilarArtists = async (selectedArtists = [], forceRefresh = f
   const cacheExpired = !similarArtistsCache.timestamp || 
                        (Date.now() - similarArtistsCache.timestamp > 3600000); // 1 hour cache
 
-  const seedArtistNames = selectedArtists.map(a => a.name).sort().join(',');
-  const cacheSeedNames = similarArtistsCache.seedArtists.sort().join(',');
+  const seedArtistNames = getSortedSeedArtistNames(selectedArtists);
+  const cacheSeedNames = getSortedSeedArtistNames(similarArtistsCache.seedArtists);
+  const hasMatchingCache = seedArtistNames === cacheSeedNames;
   
-  if (!forceRefresh && !cacheExpired && seedArtistNames === cacheSeedNames) {
-    // Using cached similar artists
+  if (!forceRefresh && !cacheExpired && hasMatchingCache) {
+    console.log('Using cached similar artists');
     return similarArtistsCache.artists;
   }
 
   try {
     // Call the backend API for similar artists - lastFmService now returns just names
-    const response = await axios.post(`${API_URL}/api/lastfm/similar-artists`, {
+    const response = await apiClient.post('/lastfm/similar-artists', {
       selectedArtists: selectedArtists.map(a => a.name)
     });
     
@@ -48,7 +54,7 @@ export const fetchSimilarArtists = async (selectedArtists = [], forceRefresh = f
     const lastFmNames = lastFmArtists.slice(0, 100).map(a => a.name);
     
     // Use our new fetchImagesFor helper to get reliable images from Spotify
-    const withImages = await axios.post(`${API_URL}/api/spotify/fetch-images`, {
+    const withImages = await apiClient.post('/spotify/fetch-images', {
       artistNames: lastFmNames
     });
     
@@ -64,11 +70,11 @@ export const fetchSimilarArtists = async (selectedArtists = [], forceRefresh = f
     
     return similarArtists;
   } catch (error) {
-    // Error fetching similar artists
+    console.error('Error fetching similar artists:', error);
     
     // If the backend API fails, try to get artist data from Spotify directly
     try {
-      const spotifyResponse = await axios.post(`${API_URL}/api/spotify/artists-data`, {
+      const spotifyResponse = await apiClient.post('/spotify/artists-data', {
         artistNames: selectedArtists.map(a => a.name)
       });
       
@@ -100,11 +106,13 @@ export const fetchSimilarArtists = async (selectedArtists = [], forceRefresh = f
         return similarArtists;
       }
     } catch (spotifyError) {
-      // Error fetching artist data from Spotify
+      console.error('Error fetching artist data from Spotify:', spotifyError);
     }
     
     // Return cache if available despite error, or empty array
-    return similarArtistsCache.artists.length ? similarArtistsCache.artists : [];
+    return hasMatchingCache && similarArtistsCache.artists.length
+      ? similarArtistsCache.artists
+      : [];
   }
 };
 

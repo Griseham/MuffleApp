@@ -1,14 +1,52 @@
 // utils/enhancedFetchSimilar.js - Enhanced similar artists fetching with Apple Music images and caching
+import { buildApiUrl } from './api';
 
 const CACHE_KEY = 'enhanced_similar_artists_cache';
 const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
+const DEFAULT_REQUEST_TIMEOUT_MS = 8000;
+const DEFAULT_CONCURRENCY = 8;
+const DEFAULT_PLACEHOLDER_IMG = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 24 24" fill="none" stroke="%23ccc" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4" fill="%23222"/><path d="M4 20c0-3.314 3.582-6 8-6s8 2.686 8 6" fill="%23222"/></svg>';
 
-/* ---------- top of file (add just under CACHE_DURATION line) ---------- */
-const RATE_DELAY_MS   = 300;               // 4 req/sec
-const imageRequestMem = new Map();         // session-cache: name → artist
+const fetchWithTimeout = async (url, options = {}, timeoutMs = DEFAULT_REQUEST_TIMEOUT_MS, externalSignal = null) => {
+  const controller = new AbortController();
 
-const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
+  const abortHandler = () => controller.abort();
+  if (externalSignal) {
+    if (externalSignal.aborted) {
+      controller.abort();
+    } else {
+      externalSignal.addEventListener('abort', abortHandler);
+    }
+  }
 
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timeoutId);
+    if (externalSignal) {
+      externalSignal.removeEventListener('abort', abortHandler);
+    }
+  }
+};
+
+const runWithConcurrency = async (items, limit, worker) => {
+  if (!Array.isArray(items) || items.length === 0) return [];
+  const results = new Array(items.length);
+  let index = 0;
+
+  const runners = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (index < items.length) {
+      const current = index;
+      index += 1;
+      results[current] = await worker(items[current], current);
+    }
+  });
+
+  await Promise.all(runners);
+  return results;
+};
 
 // Cache management
 const getFromCache = (key) => {
@@ -21,6 +59,7 @@ const getFromCache = (key) => {
       }
     }
   } catch (error) {
+    console.error('Cache read error:', error);
   }
   return null;
 };
@@ -33,6 +72,7 @@ const saveToCache = (key, data) => {
     };
     localStorage.setItem(`${CACHE_KEY}_${key}`, JSON.stringify(cacheData));
   } catch (error) {
+    console.error('Cache write error:', error);
   }
 };
 
@@ -45,11 +85,9 @@ const generateCacheKey = (selectedArtists) => {
 };
 
 // Fetch similar artists from Last.fm
-const fetchLastFmSimilarArtists = async (selectedArtists, targetCount = 50) => {
-  const API_BASE = process.env.REACT_APP_API_BASE_URL || '/api';
-  
+const fetchLastFmSimilarArtists = async (selectedArtists, targetCount = 50, options = {}) => {
   try {
-    const response = await fetch(`${API_BASE}/lastfm/similar-artists`, {
+    const response = await fetchWithTimeout(buildApiUrl('/lastfm/similar-artists'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -57,7 +95,7 @@ const fetchLastFmSimilarArtists = async (selectedArtists, targetCount = 50) => {
       body: JSON.stringify({
         selectedArtists: selectedArtists.map(artist => artist.name)
       })
-    });
+    }, options.requestTimeoutMs, options.signal);
 
     if (!response.ok) {
       throw new Error(`Last.fm API error: ${response.status}`);
@@ -66,51 +104,129 @@ const fetchLastFmSimilarArtists = async (selectedArtists, targetCount = 50) => {
     const data = await response.json();
     return data.similarArtists || [];
   } catch (error) {
+    if (error?.name !== 'AbortError') {
+      console.error('Last.fm fetch error:', error);
+    }
     return [];
   }
 };
 
-// Fetch images from Apple Music for artists
-/* ---------- replace the whole fetchAppleMusicImages function ----------- */
-const fetchAppleMusicImages = async (artistNames, progressCallback = null) => {
-  const API_BASE = process.env.REACT_APP_API_BASE_URL || '/api';
+// Fetch images from Apple Music for artists; falls back to placeholder on auth/other failures
+const fetchAppleMusicImages = async (artistNames, progressCallback = null, options = {}) => {
   const artistsWithImages = [];
+  const placeholderImg = DEFAULT_PLACEHOLDER_IMG;
+  const createPlaceholderArtist = (artistName, prefix = 'am-fallback', genres = []) => ({
+    id: `${prefix}-${artistName}`,
+    name: artistName,
+    image: placeholderImg,
+    genres,
+  });
+  const totalArtists = Math.max(artistNames.length, 1);
+  let processedArtists = 0;
+  const requestTimeoutMs = options.requestTimeoutMs || DEFAULT_REQUEST_TIMEOUT_MS;
+  const concurrency = options.concurrency || DEFAULT_CONCURRENCY;
 
-  for (let i = 0; i < artistNames.length; i++) {
-    const name = artistNames[i];
+  const reportProgress = () => {
+    if (!progressCallback) return;
+    progressCallback(Math.min(100, (processedArtists / totalArtists) * 100));
+  };
+  
+  let authFailed = false;
 
-    /* ① session cache – no fetch if we’ve asked for this name already */
-    if (imageRequestMem.has(name)) {
-      artistsWithImages.push(imageRequestMem.get(name));
-      if (progressCallback) progressCallback(((i + 1) / artistNames.length) * 100);
-      continue;
+  const tasks = await runWithConcurrency(artistNames, concurrency, async (artistName) => {
+    if (authFailed) {
+      processedArtists += 1;
+      reportProgress();
+      return createPlaceholderArtist(artistName, 'am-authfail');
     }
 
     try {
-      const res = await fetch(`${API_BASE}/apple-music/search-artists?query=${encodeURIComponent(name)}`);
-      if (res.ok) {
-        const results = await res.json();
-        const best   = results.find(a => a.name.toLowerCase() === name.toLowerCase()) || results[0];
+      const response = await fetchWithTimeout(
+        buildApiUrl(`/apple-music/search-artists?query=${encodeURIComponent(artistName)}`),
+        {},
+        requestTimeoutMs,
+        options.signal
+      );
 
-        if (best && best.image && !best.image.includes('fallback')) {
-          imageRequestMem.set(name, best);          // memoise for this session
-          artistsWithImages.push(best);
+      if (response.ok) {
+        const results = await response.json();
+        const exactMatch = results.find(
+          (artist) => artist.name.toLowerCase() === artistName.toLowerCase()
+        );
+        const bestMatch = exactMatch || results[0];
+
+        if (bestMatch && bestMatch.image && !bestMatch.image.includes('fallback')) {
+          return {
+            id: bestMatch.id,
+            name: bestMatch.name,
+            image: bestMatch.image,
+            genres: bestMatch.genres || []
+          };
         }
+
+        return createPlaceholderArtist(
+          bestMatch?.name || artistName,
+          bestMatch?.id ? String(bestMatch.id) : 'am',
+          bestMatch?.genres || []
+        );
       }
-    } catch (_) {
-      /* swallow network errors – we’ll just skip the image */
+
+      if (response.status === 401 || response.status === 403) {
+        authFailed = true;
+      }
+
+      return createPlaceholderArtist(artistName, 'am-fallback');
+    } catch (error) {
+      if (error?.name === 'AbortError') {
+        return createPlaceholderArtist(artistName, 'am-abort');
+      }
+      if (process.env.NODE_ENV === 'development') {
+        console.error(`Error fetching image for ${artistName}:`, error);
+      }
+
+      return createPlaceholderArtist(artistName, 'am-error');
+    } finally {
+      processedArtists += 1;
+      reportProgress();
     }
+  });
 
-    if (progressCallback)
-      progressCallback(((i + 1) / artistNames.length) * 100);
+  artistsWithImages.push(...tasks.filter(Boolean));
 
-    /* ② throttle – wait before the next Apple request */
-    await sleep(RATE_DELAY_MS);
-  }
-
-  return artistsWithImages;
+  return { artistsWithImages, authFailed };
 };
 
+// Fetch images from Spotify as a fallback when Apple Music auth fails
+const fetchSpotifyImages = async (artistNames, options = {}) => {
+  const placeholderImg = DEFAULT_PLACEHOLDER_IMG;
+  try {
+    const response = await fetchWithTimeout(buildApiUrl('/spotify/fetch-images'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ artistNames })
+    }, options.requestTimeoutMs || DEFAULT_REQUEST_TIMEOUT_MS, options.signal);
+    if (!response.ok) {
+      throw new Error(`Spotify fetch-images failed: ${response.status}`);
+    }
+    const data = await response.json();
+    return (data.artists || []).map((artist, idx) => ({
+      id: artist.id || `spotify-${idx}`,
+      name: artist.name,
+      image: artist.image || placeholderImg,
+      genres: artist.genres || []
+    }));
+  } catch (err) {
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Spotify fallback error:', err);
+    }
+    return artistNames.map((name, idx) => ({
+      id: `spotify-fallback-${idx}`,
+      name,
+      image: placeholderImg,
+      genres: []
+    }));
+  }
+};
 
 // Remove duplicates based on artist name (case insensitive)
 const removeDuplicates = (artists, selectedArtists = []) => {
@@ -131,15 +247,23 @@ const removeDuplicates = (artists, selectedArtists = []) => {
 };
 
 // Main function to fetch enhanced similar artists
-export const fetchEnhancedSimilarArtists = async (selectedArtists, progressCallback = null) => {
+export const fetchEnhancedSimilarArtists = async (
+  selectedArtists,
+  progressCallback = null,
+  options = {}
+) => {
   if (!selectedArtists || selectedArtists.length === 0) {
     return [];
   }
+
+  const requestTimeoutMs = options.requestTimeoutMs || DEFAULT_REQUEST_TIMEOUT_MS;
+  const concurrency = options.concurrency || DEFAULT_CONCURRENCY;
 
   // Check cache first
   const cacheKey = generateCacheKey(selectedArtists);
   const cached = getFromCache(cacheKey);
   if (cached) {
+    console.log('Using cached similar artists');
     if (progressCallback) progressCallback(100);
     return cached;
   }
@@ -147,13 +271,24 @@ export const fetchEnhancedSimilarArtists = async (selectedArtists, progressCallb
   try {
     // Step 1: Fetch similar artists from Last.fm (20%)
     if (progressCallback) progressCallback(10);
+    console.log('Fetching similar artists from Last.fm...');
     
-    const similarArtists = await fetchLastFmSimilarArtists(selectedArtists, 60); // Get more to account for filtering
+    const similarArtists = await fetchLastFmSimilarArtists(selectedArtists, 60, {
+      signal: options.signal,
+      requestTimeoutMs,
+    }); // Get more to account for filtering
     
     if (progressCallback) progressCallback(20);
     
     if (similarArtists.length === 0) {
-      return [];
+      console.warn('No similar artists found from Last.fm');
+      const fallbackFromSelected = (selectedArtists || []).map((artist, idx) => ({
+        id: artist.id || `selected-${idx}`,
+        name: artist.name || `Artist ${idx + 1}`,
+        image: artist.image || artist.artworkUrl || DEFAULT_PLACEHOLDER_IMG,
+        genres: artist.genres || []
+      }));
+      return fallbackFromSelected;
     }
 
     // Step 2: Remove duplicates and limit count
@@ -163,25 +298,53 @@ export const fetchEnhancedSimilarArtists = async (selectedArtists, progressCallb
     if (progressCallback) progressCallback(25);
     
     // Step 3: Fetch images from Apple Music (25% -> 95%)
+    console.log(`Fetching images for ${limitedArtists.length} artists from Apple Music...`);
     
-    const artistsWithImages = await fetchAppleMusicImages(
+    const { artistsWithImages, authFailed } = await fetchAppleMusicImages(
       limitedArtists.map(a => a.name),
       (imageProgress) => {
         // Map image fetching progress from 25% to 95%
         const mappedProgress = 25 + (imageProgress * 0.7);
         if (progressCallback) progressCallback(mappedProgress);
+      },
+      {
+        signal: options.signal,
+        requestTimeoutMs,
+        concurrency,
       }
     );
 
-    // Step 4: Final filtering - only keep artists with images
-    const finalArtists = artistsWithImages.filter(artist => 
-      artist.image && 
-      !artist.image.includes('fallback') && 
-      !artist.image.includes('placeholder')
-    );
+    let finalArtists = artistsWithImages.filter(artist => artist?.image);
+
+    if (finalArtists.length === 0) {
+      finalArtists = limitedArtists.map((artist, idx) => ({
+        id: artist.id || `am-fallback-${idx}`,
+        name: artist.name,
+        image: artist.image || DEFAULT_PLACEHOLDER_IMG,
+        genres: artist.genres || []
+      }));
+    }
+
+    // If Apple Music auth failed or results are sparse, use Spotify fallback for all names
+    if (authFailed || finalArtists.length < limitedArtists.length) {
+      const spotifyFallback = await fetchSpotifyImages(limitedArtists.map(a => a.name), {
+        signal: options.signal,
+        requestTimeoutMs,
+      });
+      // Prefer existing Apple entries when they have images; otherwise overwrite with Spotify
+      const byName = new Map(finalArtists.map(a => [a.name.toLowerCase(), a]));
+      spotifyFallback.forEach(artist => {
+        const key = artist.name.toLowerCase();
+        if (!byName.has(key) || !byName.get(key).image) {
+          byName.set(key, artist);
+        }
+      });
+      finalArtists = Array.from(byName.values());
+    }
 
     if (progressCallback) progressCallback(100);
     
+    console.log(`Successfully fetched ${finalArtists.length} similar artists with images`);
     
     // Cache the results
     saveToCache(cacheKey, finalArtists);
@@ -189,21 +352,28 @@ export const fetchEnhancedSimilarArtists = async (selectedArtists, progressCallb
     return finalArtists;
     
   } catch (error) {
+    if (error?.name !== 'AbortError') {
+      console.error('Error in fetchEnhancedSimilarArtists:', error);
+    }
     if (progressCallback) progressCallback(100);
     return [];
   }
 };
 
 // Fetch random genre artists from Apple Music (for negative similarity)
-export const fetchRandomGenreArtists = async (count = 50, progressCallback = null) => {
-  const API_BASE = process.env.REACT_APP_API_BASE_URL || 'api';
-  
+export const fetchRandomGenreArtists = async (count = 50, progressCallback = null, options = {}) => {
   try {
     if (progressCallback) progressCallback(20);
     
+    console.log(`Fetching ${count} random genre artists from Apple Music...`);
     
     // Use the new random genre endpoint
-    const response = await fetch(`${API_BASE}/apple-music/random-genre-artists?count=${count}`);
+    const response = await fetchWithTimeout(
+      buildApiUrl(`/apple-music/random-genre-artists?count=${count}`),
+      {},
+      options.requestTimeoutMs || DEFAULT_REQUEST_TIMEOUT_MS,
+      options.signal
+    );
     
     if (!response.ok) {
       throw new Error(`Apple Music random genre fetch failed: ${response.status}`);
@@ -213,19 +383,30 @@ export const fetchRandomGenreArtists = async (count = 50, progressCallback = nul
     
     if (progressCallback) progressCallback(80);
     
-    // Handle both old format (direct array) and new format ({ artists: [...] })
-    const artistsArray = data.artists || data || [];
-    
     // Filter out any artists without images
-    const filteredArtists = artistsArray
+    let filteredArtists = (data.artists || [])
       .filter(artist => artist.image && !artist.image.includes('fallback') && !artist.image.includes('placeholder'));
+
+    if (filteredArtists.length === 0) {
+      filteredArtists = Array.from({ length: count }, (_, i) => ({
+        id: `random-fallback-${i}`,
+        name: `Random Artist ${i + 1}`,
+        image: DEFAULT_PLACEHOLDER_IMG,
+        genres: ['random']
+      }));
+    }
     
     if (progressCallback) progressCallback(100);
     
+    console.log(`Successfully fetched ${filteredArtists.length} random artists from genre: ${data.genre}`);
     
     return filteredArtists;
     
   } catch (error) {
+    if (error?.name === 'AbortError') {
+      return [];
+    }
+    console.error('Error fetching random genre artists:', error);
     if (progressCallback) progressCallback(100);
     
     // Fallback to mock data
@@ -247,6 +428,8 @@ export const clearSimilarArtistsCache = () => {
         localStorage.removeItem(key);
       }
     });
+    console.log('Similar artists cache cleared');
   } catch (error) {
+    console.error('Error clearing cache:', error);
   }
 };

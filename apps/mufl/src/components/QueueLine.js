@@ -1,57 +1,85 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { VolumeIcon } from "./Icons/Icons";
 import UserHoverCard from "./UserHoverCard";
 import { getAvatarForUser } from "../utils/avatarService";
 
-// Trend arrow components - Smaller sizes
-const UpArrow = ({ className = "" }) => (
-  <svg width="14" height="14" viewBox="0 0 24 24" className={`text-green-400 fill-current ${className}`}>
-    <path d="M7 14L12 9L17 14H7Z" />
-  </svg>
-);
+// Trend indicator component
+const TrendIcon = ({ trend, change }) => {
+  if (trend === 'up') return (
+    <div className="ql-trend ql-trend--up">
+      <svg className="ql-trend__icon" viewBox="0 0 20 20" fill="currentColor">
+        <path fillRule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
+      </svg>
+      <span className="ql-trend__value">+{change}</span>
+    </div>
+  );
+  if (trend === 'down') return (
+    <div className="ql-trend ql-trend--down">
+      <svg className="ql-trend__icon" viewBox="0 0 20 20" fill="currentColor">
+        <path fillRule="evenodd" d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z" clipRule="evenodd" />
+      </svg>
+      <span className="ql-trend__value">-{change}</span>
+    </div>
+  );
+  return <span className="ql-trend ql-trend--stable">—</span>;
+};
 
-const DownArrow = ({ className = "" }) => (
-  <svg width="14" height="14" viewBox="0 0 24 24" className={`text-red-400 fill-current ${className}`}>
-    <path d="M17 10L12 15L7 10H17Z" />
-  </svg>
-);
-
-const StableIcon = ({ className = "" }) => (
-  <svg width="14" height="14" viewBox="0 0 24 24" className={`text-gray-500 ${className}`}>
-    <path d="M5 12H19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+// Chevron icon for expand/collapse
+const ChevronIcon = ({ isExpanded }) => (
+  <svg 
+    className={`ql-row__chevron ${isExpanded ? 'is-expanded' : ''}`}
+    viewBox="0 0 24 24" 
+    fill="none" 
+    stroke="currentColor"
+  >
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
   </svg>
 );
 
 const QueueLine = ({ qlUsers }) => {
-  // Track which user is selected (clicked)
-  const [selectedUser, setSelectedUser] = useState(null);
-  // Position for the modal
-  const [cardPosition, setCardPosition] = useState({ top: 100, left: 100 });
+  // Track which user is expanded
+  const [expandedId, setExpandedId] = useState(null);
   
-  // Store references to user elements for positioning
-  const userRefs = useRef({});
-  // Reference to the container element for boundary checking
-  const containerRef = useRef(null);
+  // Track which user is hovered for the hover card
+  const [hoveredUserId, setHoveredUserId] = useState(null);
 
-  // State for users with ranking logic - NOW USING AVATAR SERVICE
-  const [users, setUsers] = useState(() => 
-    qlUsers.slice(0, 8).map((user, index) => ({ 
-      ...user, 
-      score: 100 - (index * 8) + Math.random() * 10, // Initial scores based on volume order
-      trend: 'stable', 
+  // Generate consistent avatar assignments for each user ID
+  const getUserAvatar = useCallback((userId) => {
+    return getAvatarForUser(userId);
+  }, []);
+
+  const buildUsers = useCallback((incomingUsers = []) => (
+    incomingUsers.slice(0, 8).map((user, index) => ({
+      ...user,
+      score: 100 - (index * 8) + Math.random() * 10,
+      trend: 'stable',
       lastPosition: index + 1,
       position: index + 1,
-      avatarUrl: getAvatarForUser(user.id) // Add avatar URL using the service
+      avatar: getUserAvatar(user.id),
+      rightSwipes: Math.floor(Math.random() * 100) + 20,
+      leftSwipes: Math.floor(Math.random() * 30),
+      queued: Math.floor(Math.random() * 50) + 10,
+      approvalRate: Math.floor((Math.random() * 30) + 70)
     }))
+  ), [getUserAvatar]);
+
+  // State for users with ranking logic
+  const [users, setUsers] = useState(() => 
+    buildUsers(Array.isArray(qlUsers) ? qlUsers : [])
   );
+
+  useEffect(() => {
+    setUsers(buildUsers(Array.isArray(qlUsers) ? qlUsers : []));
+    setExpandedId(null);
+    setHoveredUserId(null);
+  }, [buildUsers, qlUsers]);
 
   // Logic to move users around and calculate trends
   useEffect(() => {
     const interval = setInterval(() => {
       setUsers(prevUsers => {
         const updatedUsers = prevUsers.map(user => {
-          // Randomly adjust scores to create movement
-          const scoreChange = (Math.random() - 0.5) * 15; // -7.5 to +7.5
+          const scoreChange = (Math.random() - 0.5) * 15;
           const newScore = Math.max(0, Math.min(100, user.score + scoreChange));
           
           return {
@@ -61,49 +89,45 @@ const QueueLine = ({ qlUsers }) => {
           };
         });
         
-        // Sort by score to get new positions
         const sortedUsers = [...updatedUsers].sort((a, b) => b.score - a.score);
         
-        // Update positions and calculate trends
         return sortedUsers.map((user, index) => {
           const newPosition = index + 1;
           const oldPosition = user.lastPosition;
           
           let trend = 'stable';
-          if (newPosition < oldPosition) trend = 'up';
-          else if (newPosition > oldPosition) trend = 'down';
+          let change = 0;
+          if (newPosition < oldPosition) {
+            trend = 'up';
+            change = oldPosition - newPosition;
+          } else if (newPosition > oldPosition) {
+            trend = 'down';
+            change = newPosition - oldPosition;
+          }
           
           return {
             ...user,
             position: newPosition,
-            trend
+            trend,
+            change
           };
         });
       });
-    }, 3000); // Update every 3 seconds
+    }, 3000);
     
     return () => clearInterval(interval);
   }, []);
 
-  // Create unique random data for each user
+  // Create unique random data for each user (for UserHoverCard)
   const generateRandomUserData = (user) => {
-    // Each month has an equal chance
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const randomMonth = months[Math.floor(Math.random() * months.length)];
-    
-    // Years between 2020 and 2023
     const randomYear = 2020 + Math.floor(Math.random() * 4);
-    
-    // Generate custom discovery percent based on user ID (lower IDs have higher discovery)
     const discoveryPercent = Math.max(1, Math.min(15, Math.floor(20 - (user.id / 2))));
-    
-    // Generate following/followers with some correlation to volume
     const volumeFactor = user.volume / 1000;
     const following = Math.floor(50 + (Math.random() * 400) + volumeFactor * 100);
     const followers = Math.floor(20 + (Math.random() * 300) + volumeFactor * 200);
-    
-    // Verification status (higher volume users more likely to be verified)
-    const verifiedThreshold = 1800; // Users with volume above this are more likely verified
+    const verifiedThreshold = 1800;
     const baseVerifyChance = user.volume > verifiedThreshold ? 0.7 : 0.3;
     const verified = Math.random() < baseVerifyChance;
     
@@ -115,7 +139,7 @@ const QueueLine = ({ qlUsers }) => {
       followers: followers,
       discoveryPercent: discoveryPercent,
       volume: user.volume,
-      // Generate unique arrow counts for each user
+      avatar: user.avatar,
       arrowCounts: {
         positive: {
           one: 80 + Math.floor(Math.random() * 80),
@@ -131,197 +155,146 @@ const QueueLine = ({ qlUsers }) => {
     };
   };
 
-  // Create static user data with unique values for each user - NOW USING AVATAR SERVICE
-  const staticUserData = useRef(users.map(user => ({
-    id: user.id,
-    name: user.name,
-    volume: user.volume,
-    avatarUrl: getAvatarForUser(user.id), // Use avatar service instead of generating data
-    userData: generateRandomUserData(user)
-  }))).current;
+  const staticUserDataRef = useRef({});
 
-  // Function to calculate a safe position for the modal
-  const calculateSafePosition = (userElement) => {
-    if (!userElement) return { top: 100, left: 100 };
-    
-    const rect = userElement.getBoundingClientRect();
-    const containerRect = containerRef.current?.getBoundingClientRect() || { top: 0, left: 0, width: window.innerWidth, height: window.innerHeight };
-    
-    // Get window dimensions
-    const windowHeight = window.innerHeight;
-    const windowWidth = window.innerWidth;
-    
-    // Modal dimensions (approximate)
-    const modalHeight = 400; // Approximate modal height
-    const modalWidth = 280; // Approximate modal width
-    
-    // Calculate initial position (centered above the user)
-    let top = rect.top - modalHeight - 20;
-    let left = rect.left + (rect.width / 2) - (modalWidth / 2);
-    
-    // If the modal would be off the top of the screen, position it below the user
-    if (top < 20) {
-      top = rect.bottom + 20;
-    }
-    
-    // Make sure the modal doesn't go off the right side
-    if (left + modalWidth > windowWidth - 20) {
-      left = windowWidth - modalWidth - 20;
-    }
-    
-    // Make sure the modal doesn't go off the left side
-    if (left < 20) {
-      left = 20;
-    }
-    
-    // Make sure the modal is visible in the container
-    if (top + modalHeight > containerRect.top + containerRect.height) {
-      top = containerRect.top + containerRect.height - modalHeight - 20;
-    }
-    
-    // Ensure minimum top position
-    if (top < 20) {
-      top = 20;
-    }
-    
-    return { top, left };
-  };
+  const staticUserData = useMemo(() => users.map((user) => {
+    const cached = staticUserDataRef.current[user.id];
 
-  // Handle click on user circle
-  const handleUserClick = (userId, index) => {
-    // Find the user in our static data
-    const user = staticUserData.find(u => u.id === userId);
-    if (!user) return;
-    
-    // Calculate position based on user element
-    const userElement = userRefs.current[`user-${index}`];
-    if (userElement) {
-      // Calculate a safe position for the modal
-      setCardPosition(calculateSafePosition(userElement));
-      
-      // If clicking the same user, close the modal
-      if (selectedUser && selectedUser.id === userId) {
-        setSelectedUser(null);
-      } else {
-        // Set the newly selected user
-        setSelectedUser(user);
+    if (!cached) {
+      staticUserDataRef.current[user.id] = {
+        id: user.id,
+        name: user.name,
+        volume: user.volume,
+        avatar: user.avatar,
+        userData: generateRandomUserData(user)
+      };
+      return staticUserDataRef.current[user.id];
+    }
+
+    staticUserDataRef.current[user.id] = {
+      ...cached,
+      id: user.id,
+      name: user.name,
+      volume: user.volume,
+      avatar: user.avatar,
+      userData: {
+        ...cached.userData,
+        displayName: user.name,
+        volume: user.volume,
+        avatar: user.avatar
       }
-    }
+    };
+
+    return staticUserDataRef.current[user.id];
+  }), [users]);
+
+  // Handle row click to expand/collapse
+  const handleRowClick = (userId) => {
+    setExpandedId(expandedId === userId ? null : userId);
   };
 
-  // This will create a global click handler to close the modal when clicking outside
-  useEffect(() => {
-    const handleGlobalClick = (e) => {
-      // If we're clicking a user circle, let the circle's click handler manage it
-      if (e.target.closest('.user-circle')) return;
-      
-      // If we're clicking on the modal, don't close it
-      if (e.target.closest('.user-modal')) return;
-      
-      // Otherwise, close the modal
-      setSelectedUser(null);
-    };
-
-    // Only add the listener if a user is selected
-    if (selectedUser) {
-      document.addEventListener('click', handleGlobalClick);
-    }
-
-    return () => {
-      document.removeEventListener('click', handleGlobalClick);
-    };
-  }, [selectedUser]);
+  const hoveredUser = staticUserData.find((user) => user.id === hoveredUserId);
 
   return (
-    <div className="ql-content relative" ref={containerRef}>
-      {/* Grid of user profiles - Now using real avatar images */}
-      <div className="grid grid-cols-4 gap-x-6 gap-y-6 px-3 pt-2 pb-2">
-        {users.map((user, index) => (
-          <div 
-            key={user.id}
-            className="flex flex-col items-center relative"
-            ref={el => userRefs.current[`user-${index}`] = el}
-          >
-            {/* Rank Badge - Smaller */}
-            <div className={`absolute -top-2 left-1/2 transform -translate-x-1/2 w-5 h-5 rounded-full text-xs font-bold flex items-center justify-center z-10 ${
-              index === 0 ? 'bg-yellow-500 text-black' :
-              index === 1 ? 'bg-gray-300 text-black' :
-              index === 2 ? 'bg-amber-600 text-white' :
-              'bg-gray-600 text-white'
-            }`}>
-              {index + 1}
-            </div>
-            
-            {/* Volume Badge - Smaller and repositioned */}
-            <div className="absolute -bottom-2 -left-2 py-0.5 px-1.5 rounded text-xs flex items-center justify-center bg-black border border-gray-800 z-10">
-              <VolumeIcon className="w-3 h-3 mr-1 text-[#1DB954]" />
-              <span className="text-gray-300 font-medium text-xs">{user.volume}</span>
-            </div>
-            
-            {/* User Circle with Avatar Image from Assets */}
-            <div 
-              className={`user-circle w-12 h-12 rounded-full overflow-hidden shadow-md transition cursor-pointer relative ${
-                selectedUser?.id === user.id ? 'ring-[#1DB954] ring-2' : 
-                index === 0 ? 'ring-2 ring-yellow-500 hover:ring-yellow-400' :
-                index === 1 ? 'ring-2 ring-gray-300 hover:ring-gray-200' :
-                index === 2 ? 'ring-2 ring-amber-600 hover:ring-amber-500' :
-                'ring-1 ring-gray-800 hover:ring-[#1DB954]'
-              }`}
-              onClick={() => handleUserClick(user.id, index)}
-            >
-              {/* Avatar Image from Assets */}
-              <img 
-                src={user.avatarUrl} 
-                alt={`${user.name} avatar`}
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  // Fallback to a default image if the avatar fails to load
-                  e.currentTarget.src = '/assets/users/assets2/image1.png'; 
-                }}
-              />
-            </div>
-            
-            {/* Username - Smaller text */}
-            <p className="text-xs text-gray-400 mt-2 truncate w-full text-center font-medium max-w-16">
-              {user.name}
-            </p>
-            
-            {/* Trend Arrow with Position Change - Smaller arrows */}
-            <div className="mt-1 flex items-center justify-center gap-1">
-              {user.trend === 'up' && (
-                <div className="flex items-center">
-                  <UpArrow className="animate-bounce w-3.5 h-3.5" />
-                  <span className="text-xs text-green-400 ml-0.5 font-medium">+{user.lastPosition - user.position}</span>
+    <div className="ql-compact">
+      <div className="ql-compact__list">
+        {users.map((user, index) => {
+          const isExpanded = expandedId === user.id;
+          
+          return (
+            <div key={user.id} className="ql-row-wrapper">
+                <div 
+                  className={`ql-row ${isExpanded ? 'is-expanded' : ''} ${index === 0 ? 'is-first' : ''}`}
+                  onClick={() => handleRowClick(user.id)}
+                >
+                {/* Rank & Trend */}
+                <div className="ql-row__rank-section">
+                  <span className={`ql-row__rank ${
+                    index === 0 ? 'is-gold' : 
+                    index === 1 ? 'is-silver' : 
+                    index === 2 ? 'is-bronze' : ''
+                  }`}>
+                    #{index + 1}
+                  </span>
+                  <TrendIcon trend={user.trend} change={user.change || 0} />
+                </div>
+                
+                {/* Avatar */}
+                <div
+                  className="ql-row__avatar-wrap"
+                  onMouseEnter={() => setHoveredUserId(user.id)}
+                  onMouseLeave={() => setHoveredUserId(null)}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div 
+                    className={`ql-row__avatar ${
+                      hoveredUserId === user.id ? 'is-selected' : ''
+                    } ${
+                      index === 0 ? 'is-gold' : 
+                      index === 1 ? 'is-silver' : 
+                      index === 2 ? 'is-bronze' : ''
+                    }`}
+                  >
+                    <img 
+                      src={user.avatar} 
+                      alt={user.name}
+                      className="ql-row__avatar-img"
+                      onError={(e) => {
+                        e.target.src = getAvatarForUser(1);
+                      }}
+                    />
+                  </div>
+                  {hoveredUserId === user.id && hoveredUser && (
+                    <div className="ql-row__hovercard">
+                      <UserHoverCard 
+                        user={hoveredUser} 
+                        userData={hoveredUser.userData}
+                        className="w-72"
+                      />
+                    </div>
+                  )}
+                </div>
+                
+                {/* Name */}
+                <p className="ql-row__name">{user.name}</p>
+                
+                {/* Volume */}
+                <span className="ql-row__volume">
+                  <VolumeIcon className="ql-row__volume-icon" />
+                  {user.volume}
+                </span>
+                
+                {/* Chevron */}
+                <ChevronIcon isExpanded={isExpanded} />
+              </div>
+              
+              {/* Expanded Stats */}
+              {isExpanded && (
+                <div className="ql-row__expanded">
+                  <div className="ql-row__stats">
+                    <div className="ql-row__stat">
+                      <span className="ql-row__stat-label">Swipes: </span>
+                      <span className="ql-row__stat-value is-positive">+{user.rightSwipes}</span>
+                      <span className="ql-row__stat-divider"> / </span>
+                      <span className="ql-row__stat-value is-negative">-{user.leftSwipes}</span>
+                    </div>
+                    <div className="ql-row__stat">
+                      <span className="ql-row__stat-label">Queued: </span>
+                      <span className="ql-row__stat-value is-queued">{user.queued}</span>
+                    </div>
+                    <div className="ql-row__stat">
+                      <span className="ql-row__stat-label">Rate: </span>
+                      <span className="ql-row__stat-value is-rate">{user.approvalRate}%</span>
+                    </div>
+                  </div>
                 </div>
               )}
-              {user.trend === 'down' && (
-                <div className="flex items-center">
-                  <DownArrow className="animate-bounce w-3.5 h-3.5" />
-                  <span className="text-xs text-red-400 ml-0.5 font-medium">-{user.position - user.lastPosition}</span>
-                </div>
-              )}
-              {user.trend === 'stable' && <StableIcon className="w-3.5 h-3.5" />}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
-      {/* Selected user modal (from click) */}
-      {selectedUser && (
-        <div 
-          className="scale-110 origin-bottom fixed z-[1000] user-modal"
-          style={{
-            top: cardPosition.top,
-            left: cardPosition.left
-          }}
-        >
-          <UserHoverCard 
-            user={selectedUser} 
-            userData={selectedUser.userData}
-            className="w-72"
-          />
-        </div>
-      )}
+      {/* Hover card rendered per-avatar */}
     </div>
   );
 };

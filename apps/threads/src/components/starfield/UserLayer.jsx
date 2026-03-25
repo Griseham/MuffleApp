@@ -103,7 +103,7 @@ export default function UserLayer({ snapToFriend }) {
               transform: 'translateX(-50%)', // Center horizontally above the avatar
               color: fc
             }}>
-              Friend {f.id + 1}'s For You
+              Friend {f.id + 1}&apos;s For You
             </div>
             
             {/* Friend icon with avatar */}

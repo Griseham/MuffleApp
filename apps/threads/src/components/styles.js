@@ -1,6 +1,3 @@
-// styles.js - Mobile responsive starfield component styles
-import { WINDOWED_WIDTH, WINDOWED_HEIGHT } from './utils';
-
 // Mobile detection utility
 const isMobile = () => window.innerWidth <= 768;
 
@@ -255,7 +252,6 @@ const styles = {
   loadFeedBtn: {
     backgroundColor: "#1d9bf0",
     color: "#fff",
-    border: "none",
     padding: isMobile() ? "0.7rem 1.5rem" : "0.8rem 2rem",
     borderRadius: "8px",
     cursor: "pointer",

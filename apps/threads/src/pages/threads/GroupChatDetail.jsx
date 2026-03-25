@@ -1,10 +1,13 @@
 // src/pages/GroupChatDetail.jsx
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { Music, Search, Plus, Users, Send, MessageCircle, Heart, Share2, Bookmark, Volume2, Play, X } from "lucide-react";
+import { Music, Search, Users, Send, Volume2, X } from "lucide-react";
 import styles from "./GroupChatDetailStyles";
-import { validateAndSanitizeInput, checkRateLimit, sanitizeComment, sanitizeSearchQuery } from "../../utils/security";
+import { validateAndSanitizeInput, checkRateLimit, sanitizeComment } from "../../utils/security";
 import { buildApiUrl, toApiOriginUrl } from "../../utils/api";
+
+const DEFAULT_ARTWORK = "/assets/default-artist.png";
+const GROUPCHAT_MUSIC_SEARCH_ENABLED = false;
 
 // Helper function to generate avatar URLs
 function authorToAvatar(author) {
@@ -39,6 +42,14 @@ function formatArtworkUrl(url, size = 100) {
       .replace("{h}", String(size))
       .replace("{f}", "jpg")
   );
+}
+
+function getArtworkSrc(url, size = 100) {
+  return formatArtworkUrl(url, size) || DEFAULT_ARTWORK;
+}
+
+function needsSnippetMediaRecovery(url) {
+  return !url || url.startsWith("/cached_media/");
 }
 
 const PLACEHOLDER_NAMES = [
@@ -127,8 +138,8 @@ function generateGenreStats() {
 export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
   // Core state
   const [messages, setMessages] = useState([]);
-  const [allMessages, setAllMessages] = useState([]);
-  const [messageIndex, setMessageIndex] = useState(0);
+  const [_allMessages, setAllMessages] = useState([]);
+  const [_messageIndex, setMessageIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   
   // UI state
@@ -136,7 +147,7 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
   const [activeSection, setActiveSection] = useState(null);
   const [isSongSearchVisible, setIsSongSearchVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchedSnippet, setSearchedSnippet] = useState(null);
+  const [_searchedSnippet, setSearchedSnippet] = useState(null);
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [attachedSnippet, setAttachedSnippet] = useState(null);
@@ -147,6 +158,7 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
   const [onlineUsers, setOnlineUsers] = useState([]);
   const [onlineCount, setOnlineCount] = useState(() => 23 + Math.floor(Math.random() * 21));
   const [isVisible, setIsVisible] = useState(false);
+  const [panelNotice, setPanelNotice] = useState(null);
   
   // Room stats
   const [roomVolume] = useState(() => post?.roomVolume ?? generateRoomVolume());
@@ -162,6 +174,63 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
   const chatRef = useRef(null);
   const messageIntervalRef = useRef(null);
   const typingTimeoutRef = useRef(null);
+
+  const recoverSnippetMedia = useCallback(async (snippet) => {
+    if (!snippet) return snippet;
+
+    const attrs = snippet.snippetData?.attributes;
+    const songName = snippet.songName || snippet.name || attrs?.name || "";
+    const artistName = snippet.artistName || attrs?.artistName || "";
+    const artworkUrl =
+      snippet.artworkUrl ||
+      snippet.artwork ||
+      snippet.artistImage ||
+      attrs?.artwork?.url ||
+      "";
+    const previewUrl =
+      snippet.previewUrl ||
+      attrs?.previews?.[0]?.url ||
+      "";
+
+    if (
+      !songName ||
+      !artistName ||
+      (!needsSnippetMediaRecovery(artworkUrl) && !needsSnippetMediaRecovery(previewUrl))
+    ) {
+      return snippet;
+    }
+
+    try {
+      const response = await fetch(
+        `${buildApiUrl("/apple-music-search")}?query=${encodeURIComponent(`${songName} ${artistName}`)}&limit=1`
+      );
+      const data = await response.json();
+      const recovered = Array.isArray(data?.data) ? data.data[0] : null;
+      const recoveredAttrs = recovered?.attributes;
+
+      if (!recoveredAttrs) {
+        return snippet;
+      }
+
+      return {
+        ...snippet,
+        artworkUrl: recoveredAttrs.artwork?.url || snippet.artworkUrl || snippet.artwork,
+        previewUrl: recoveredAttrs.previews?.[0]?.url || snippet.previewUrl || null,
+        snippetData: {
+          ...snippet.snippetData,
+          attributes: {
+            ...attrs,
+            ...recoveredAttrs,
+            artwork: recoveredAttrs.artwork || attrs?.artwork,
+            previews: recoveredAttrs.previews || attrs?.previews || [],
+          },
+        },
+      };
+    } catch (error) {
+      console.warn("Failed to recover snippet media for groupchat:", error?.message || error);
+      return snippet;
+    }
+  }, []);
 
   // Handle entrance animation
   useEffect(() => {
@@ -203,8 +272,8 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
         setLoading(true);
 
         const formatArtwork = (url) => {
-          if (!url || typeof url !== "string") return "/assets/default-artist.png";
-          return formatArtworkUrl(url, 100);
+          if (!url || typeof url !== "string") return DEFAULT_ARTWORK;
+          return getArtworkSrc(url, 100);
         };
 
         const toSnippetShape = (snippet) => {
@@ -285,6 +354,10 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
             console.log("No snippets found:", e.message);
           }
         }
+
+        snippetsData = await Promise.all(
+          (Array.isArray(snippetsData) ? snippetsData : []).map((snippet) => recoverSnippetMedia(snippet))
+        );
 
         // Create snippets map
         const snippetsMap = {};
@@ -437,14 +510,15 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
 
     loadMessages();
 
+    const audioElement = audioRef.current;
     return () => {
       clearInterval(messageIntervalRef.current);
       clearTimeout(typingTimeoutRef.current);
-      if (audioRef.current) {
-        audioRef.current.pause();
+      if (audioElement) {
+        audioElement.pause();
       }
     };
-  }, [post?.id]);
+  }, [post?.id, recoverSnippetMedia]);
 
   // Simplified message streaming
   const startMessageSequence = useCallback((allMsgs) => {
@@ -578,7 +652,10 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
     
     const userId = "user_local";
     if (!checkRateLimit(`comment_${userId}`, 5, 60000)) {
-      alert("You're sending messages too quickly. Please wait a moment.");
+      setPanelNotice({
+        type: "warning",
+        text: "You’re sending messages too quickly. Please wait a moment."
+      });
       return;
     }
     
@@ -589,7 +666,10 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
     });
     
     if (!validation.isValid && newComment.trim()) {
-      alert(`Invalid message: ${validation.error}`);
+      setPanelNotice({
+        type: "warning",
+        text: `Invalid message: ${validation.error}`
+      });
       return;
     }
     
@@ -607,6 +687,7 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
     setAttachedSnippet(null);
     setSearchedSnippet(null);
     setIsSongSearchVisible(false);
+    setPanelNotice(null);
     
     setTimeout(() => scrollToBottom(), 100);
   }, [newComment, attachedSnippet, scrollToBottom]);
@@ -614,77 +695,52 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
   // Handle audio playback
   const handlePlayInChat = useCallback((snippet) => {
     if (!snippet?.previewUrl) return;
+
+    const audioElement = audioRef.current;
+    if (!audioElement) return;
     
     if (currentPlayingSnippetId === snippet.id && isSnippetAudioPlaying) {
-      audioRef.current?.pause();
+      audioElement.pause();
+      audioElement.currentTime = 0;
       setIsSnippetAudioPlaying(false);
+      setCurrentPlayingSnippetId(null);
       return;
     }
     
     setCurrentPlayingSnippetId(snippet.id);
     setIsSnippetAudioPlaying(true);
-    
-    if (!audioRef.current) {
-      audioRef.current = new Audio();
-    }
-    
-    audioRef.current.pause();
-    audioRef.current.src = normalizeMediaUrl(snippet.previewUrl);
-    audioRef.current.play().catch(err => {
+
+    audioElement.pause();
+    audioElement.currentTime = 0;
+    audioElement.src = normalizeMediaUrl(snippet.previewUrl);
+    audioElement.load();
+    audioElement.play().catch(err => {
       console.error("Error playing audio:", err);
       setIsSnippetAudioPlaying(false);
+      setCurrentPlayingSnippetId(null);
     });
     
-    audioRef.current.onended = () => {
+    audioElement.onerror = () => {
+      setIsSnippetAudioPlaying(false);
+      setCurrentPlayingSnippetId(null);
+    };
+
+    audioElement.onended = () => {
       setIsSnippetAudioPlaying(false);
       setCurrentPlayingSnippetId(null);
     };
   }, [currentPlayingSnippetId, isSnippetAudioPlaying]);
 
   // Handle song search with security validation
-  const handleSongSearch = useCallback(async () => {
-    if (!searchQuery.trim()) return;
-    
-    const userId = "user_local";
-    if (!checkRateLimit(`search_${userId}`, 10, 60000)) {
-      alert("You're searching too frequently. Please wait a moment.");
-      return;
-    }
-    
-    const validation = validateAndSanitizeInput(searchQuery, {
-      type: 'search',
-      maxLength: 100,
-      minLength: 1
+  const handleSongSearch = useCallback(() => {
+    setIsSearching(false);
+    setSearchedSnippet(null);
+    setSearchResults([]);
+    setPanelNotice({
+      type: "info",
+      text: "Music search is disabled in the group chat prototype."
     });
-    
-    if (!validation.isValid) {
-      alert(`Invalid search query: ${validation.error}`);
-      return;
-    }
-    
-    const sanitizedQuery = sanitizeSearchQuery(validation.sanitized);
-    if (!sanitizedQuery) {
-      alert("Please enter a valid search term.");
-      return;
-    }
-    
-    setIsSearching(true);
-    try {
-      const response = await fetch(`${buildApiUrl("/apple-music-search")}?query=${encodeURIComponent(sanitizedQuery)}`);
-      const data = await response.json();
-      
-      if (data.success && data.data) {
-        const items = Array.isArray(data.data) ? data.data : [data.data];
-        setSearchedSnippet(items[0] || null);
-        setSearchResults(items.slice(0, 5));
-      }
-    } catch (error) {
-      console.error("Error searching for song:", error);
-      alert("Search failed. Please try again.");
-    } finally {
-      setIsSearching(false);
-    }
-  }, [searchQuery]);
+  }, []);
 
   // Handle attaching snippet
   const handleAttachSnippet = useCallback((snippet) => {
@@ -693,21 +749,36 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
       id: snippet.id || `snippet_${Date.now()}`,
       name: attrs.name,
       artistName: attrs.artistName,
-      artwork: formatArtworkUrl(attrs.artwork?.url) || "/assets/default-artist.png",
+      artwork: getArtworkSrc(attrs.artwork?.url),
       previewUrl: normalizeMediaUrl(attrs.previews?.[0]?.url || null)
     });
     setIsSongSearchVisible(false);
+    setPanelNotice(null);
   }, []);
 
   // Toggle panels
   const toggleMusicPanel = useCallback(() => {
-    setIsSongSearchVisible(prev => !prev);
+    setIsSongSearchVisible(prev => {
+      const next = !prev;
+      if (next) {
+        setPanelNotice({
+          type: "info",
+          text: "Music search is disabled in the group chat prototype."
+        });
+      } else {
+        setPanelNotice(null);
+      }
+      return next;
+    });
     setActiveSection(null);
+    setSearchResults([]);
+    setSearchedSnippet(null);
   }, []);
 
   const toggleUsersPanel = useCallback(() => {
     setActiveSection(prev => prev === 'users' ? null : 'users');
     setIsSongSearchVisible(false);
+    setPanelNotice(null);
   }, []);
 
   // Render messages
@@ -752,9 +823,12 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
               {msg.snippet && (
                 <div style={styles.snippetContainer}>
                   <img
-                    src={msg.snippet.artwork}
+                    src={msg.snippet.artwork || DEFAULT_ARTWORK}
                     alt={msg.snippet.name}
                     style={styles.snippetArtwork}
+                    onError={(e) => {
+                      e.currentTarget.src = DEFAULT_ARTWORK;
+                    }}
                   />
                   <div style={styles.snippetInfo}>
                     <div style={styles.snippetTitle}>
@@ -766,7 +840,12 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
                   </div>
                   <button
                     onClick={() => handlePlayInChat(msg.snippet)}
-                    style={styles.playButton}
+                    disabled={!msg.snippet.previewUrl}
+                    title={msg.snippet.previewUrl ? "Play preview" : "Preview unavailable"}
+                    style={{
+                      ...styles.playButton,
+                      ...(msg.snippet.previewUrl ? null : styles.playButtonDisabled)
+                    }}
                   >
                     {currentPlayingSnippetId === msg.snippet.id && isSnippetAudioPlaying ? "⏸" : "▶"}
                   </button>
@@ -962,23 +1041,48 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
               <input
                 value={searchQuery}
                 onChange={(e) => {
+                  if (!GROUPCHAT_MUSIC_SEARCH_ENABLED) {
+                    handleSongSearch();
+                    return;
+                  }
                   const input = e.target.value;
                   if (input.length <= 100) {
                     setSearchQuery(input);
+                    if (panelNotice) {
+                      setPanelNotice(null);
+                    }
                   }
                 }}
-                placeholder="Search Apple Music..."
-                style={styles.searchInput}
+                placeholder={GROUPCHAT_MUSIC_SEARCH_ENABLED ? "Search Apple Music..." : "Music search disabled in prototype"}
+                style={{
+                  ...styles.searchInput,
+                  ...(GROUPCHAT_MUSIC_SEARCH_ENABLED ? null : styles.searchInputDisabled)
+                }}
                 onKeyDown={(e) => e.key === 'Enter' && handleSongSearch()}
+                disabled={!GROUPCHAT_MUSIC_SEARCH_ENABLED}
               />
               <button 
                 onClick={handleSongSearch}
-                disabled={isSearching}
-                style={styles.searchButton}
+                disabled={isSearching || !GROUPCHAT_MUSIC_SEARCH_ENABLED}
+                style={{
+                  ...styles.searchButton,
+                  ...(GROUPCHAT_MUSIC_SEARCH_ENABLED ? null : styles.searchButtonDisabled)
+                }}
               >
                 {isSearching ? '...' : <Search size={16} />}
               </button>
             </div>
+
+            {panelNotice && (
+              <div
+                style={{
+                  ...styles.notice,
+                  ...(panelNotice.type === "warning" ? styles.noticeWarning : styles.noticeInfo)
+                }}
+              >
+                {panelNotice.text}
+              </div>
+            )}
             
             {searchResults.length > 0 && (
               <div style={styles.searchResults}>
@@ -986,9 +1090,14 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
                   const attrs = song.attributes || song;
                   return (
                     <div key={i} style={styles.searchResultItem}>
-                      <div style={styles.searchResultArtwork}>
-                        <Play size={16} color="#fff" />
-                      </div>
+                      <img
+                        src={getArtworkSrc(attrs.artwork?.url)}
+                        alt={attrs.name}
+                        style={styles.searchResultArtwork}
+                        onError={(e) => {
+                          e.currentTarget.src = DEFAULT_ARTWORK;
+                        }}
+                      />
                       <div style={styles.searchResultInfo}>
                         <div style={styles.searchResultName}>{attrs.name}</div>
                         <div style={styles.searchResultArtist}>{attrs.artistName}</div>
@@ -1004,6 +1113,12 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
                 })}
               </div>
             )}
+
+            {searchQuery.trim() && searchResults.length === 0 && !isSearching && !panelNotice && (
+              <div style={{ ...styles.notice, ...styles.noticeInfo }}>
+                No songs found yet. Try another search term.
+              </div>
+            )}
           </div>
         )}
 
@@ -1012,6 +1127,12 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
           <div style={styles.joinMessage}>— You joined the chat —</div>
           
           {renderMessages()}
+
+          {!loading && messages.length === 0 && (
+            <div style={styles.emptyState}>
+              No chat messages yet. Start the conversation.
+            </div>
+          )}
           
           {/* Typing indicator */}
           {isTyping && (
@@ -1036,7 +1157,14 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
         {/* Attached Snippet Preview */}
         {attachedSnippet && (
           <div style={styles.attachedPreview}>
-            <img src={attachedSnippet.artwork} alt={attachedSnippet.name} style={styles.attachedArtwork} />
+            <img
+              src={attachedSnippet.artwork || DEFAULT_ARTWORK}
+              alt={attachedSnippet.name}
+              style={styles.attachedArtwork}
+              onError={(e) => {
+                e.currentTarget.src = DEFAULT_ARTWORK;
+              }}
+            />
             <div style={styles.attachedInfo}>
               <div style={styles.attachedName}>{attachedSnippet.name}</div>
               <div style={styles.attachedArtist}>{attachedSnippet.artistName}</div>
@@ -1047,6 +1175,18 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
           </div>
         )}
 
+        {panelNotice && !isSongSearchVisible && (
+          <div
+            style={{
+              ...styles.notice,
+              ...(panelNotice.type === "warning" ? styles.noticeWarning : styles.noticeInfo),
+              margin: '12px 20px 0'
+            }}
+          >
+            {panelNotice.text}
+          </div>
+        )}
+
         {/* Input Area */}
         <div style={styles.inputArea}>
           <input
@@ -1054,6 +1194,9 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
             onChange={(e) => {
               if (e.target.value.length <= 500) {
                 setNewComment(e.target.value);
+                if (panelNotice) {
+                  setPanelNotice(null);
+                }
               }
             }}
             placeholder="Type a message..."

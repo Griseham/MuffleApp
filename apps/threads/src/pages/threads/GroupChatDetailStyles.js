@@ -337,6 +337,11 @@ const GroupChatDetailStyles = {
     outline: 'none',
   },
 
+  searchInputDisabled: {
+    opacity: 0.65,
+    cursor: 'not-allowed',
+  },
+
   searchButton: {
     padding: '12px 16px',
     borderRadius: '12px',
@@ -347,6 +352,12 @@ const GroupChatDetailStyles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+
+  searchButtonDisabled: {
+    background: 'rgba(255,255,255,0.12)',
+    color: 'rgba(255,255,255,0.6)',
+    cursor: 'not-allowed',
   },
 
   searchResults: {
@@ -370,9 +381,9 @@ const GroupChatDetailStyles = {
     height: '40px',
     borderRadius: '8px',
     background: '#333',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
+    display: 'block',
+    objectFit: 'cover',
+    flexShrink: 0,
   },
 
   searchResultInfo: {
@@ -405,6 +416,26 @@ const GroupChatDetailStyles = {
     cursor: 'pointer',
   },
 
+  notice: {
+    marginTop: '12px',
+    padding: '10px 12px',
+    borderRadius: '10px',
+    fontSize: '12px',
+    lineHeight: 1.4,
+  },
+
+  noticeWarning: {
+    color: '#ffd7e8',
+    background: 'rgba(255,105,180,0.12)',
+    border: '1px solid rgba(255,105,180,0.2)',
+  },
+
+  noticeInfo: {
+    color: '#cbd5e1',
+    background: 'rgba(255,255,255,0.04)',
+    border: '1px solid rgba(255,255,255,0.08)',
+  },
+
   // =========================
   // Messages Area
   // =========================
@@ -422,6 +453,13 @@ const GroupChatDetailStyles = {
     fontSize: '12px',
     marginBottom: '16px',
     padding: '8px',
+  },
+
+  emptyState: {
+    textAlign: 'center',
+    color: '#777',
+    fontSize: '13px',
+    padding: '24px 12px',
   },
 
   // =========================
@@ -567,6 +605,12 @@ const GroupChatDetailStyles = {
     alignItems: 'center',
     justifyContent: 'center',
     fontSize: '12px',
+  },
+
+  playButtonDisabled: {
+    background: 'rgba(255,255,255,0.12)',
+    color: 'rgba(255,255,255,0.6)',
+    cursor: 'not-allowed',
   },
 
   // =========================

@@ -7,8 +7,42 @@ const registerUnifiedRoutes = require('./backend/unifiedRoutes.js');
 dotenv.config();
 const app = express();
 
+const parseAllowedOrigins = () => {
+  const configuredOrigins = String(process.env.CORS_ALLOWED_ORIGINS || '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
+  const defaultDevOrigins = [
+    'http://localhost:3000',
+    'http://localhost:4173',
+    'http://localhost:5173',
+    'http://127.0.0.1:3000',
+    'http://127.0.0.1:4173',
+    'http://127.0.0.1:5173',
+  ];
+
+  return new Set([...defaultDevOrigins, ...configuredOrigins]);
+};
+
+const allowedOrigins = parseAllowedOrigins();
+const corsOptions = {
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.has(origin)) {
+      return callback(null, true);
+    }
+
+    return callback(null, false);
+  },
+  methods: ['GET', 'HEAD', 'POST', 'OPTIONS'],
+  credentials: false,
+  optionsSuccessStatus: 204,
+};
+
 // 1) Middleware for JSON and CORS
-app.use(cors());
+app.set('trust proxy', 1);
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 app.use(express.json());
 
 // 2) Your API routes

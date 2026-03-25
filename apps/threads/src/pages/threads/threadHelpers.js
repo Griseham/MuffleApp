@@ -29,8 +29,8 @@ export const getAverageRating = (snippetId) => {
 export const createExampleData = () => {
   const exampleComment = {
     id: 'example_comment_001',
-    author: 'MusicExpert42',
-    body: 'Example Comment',
+    author: 'Demo Example',
+    body: 'Example content',
     likeCount: 15,
     commentCount: 3,
     createdUtc: Date.now() / 1000 - 3600,
@@ -40,10 +40,10 @@ export const createExampleData = () => {
   const exampleSnippet = {
     id: 'example_comment_001',
     commentId: 'example_comment_001',
-    name: 'Midnight Vibes',
-    artistName: 'Lunar Sounds',
+    name: 'Example snippet',
+    artistName: 'Prototype audio unavailable',
     artwork: null,
-    previewUrl: '/backend/public/HeartShapedBox.mp3',
+    previewUrl: null,
     userRating: 78,
     avgRating: 65,
     totalRatings: 23,
@@ -53,9 +53,8 @@ export const createExampleData = () => {
   return { exampleComment, exampleSnippet };
 };
 
-export const formatSnippetData = (snippet, relatedComment, comments) => {
+export const formatSnippetData = (snippet, _relatedComment, _comments) => {
   const snippetId = snippet?.id || snippet?.commentId;
-  const commentAuthor = relatedComment?.author || comments.find(c => c.id === snippetId)?.author || "Unknown";
   
   if (snippet.snippetData) {
     const artworkUrl = snippet.snippetData.attributes?.artwork?.url || snippet.artistImage || "/assets/default-artist.png";

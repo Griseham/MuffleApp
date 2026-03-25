@@ -1,8 +1,8 @@
 // useNavigation.js - Hook for navigating between constellations
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { TOTAL_WIDTH, TOTAL_HEIGHT, generateFriends } from "../utils";
 
-export function useNavigation(containerRef, containerDimensions, isFullscreen, scrollPos) {
+export function useNavigation(containerRef, containerDimensions, isFullscreen) {
   // Generate friend positions with a stable reference
   const [friends] = useState(() => generateFriends());
   

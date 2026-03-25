@@ -6,11 +6,9 @@ import ScatterRatingsGraph from "./ScatterRatingsGraph";
 import styles from "./ThreadDetailStyles";
 
 export default function PostControls({
-  post,
   activeSection,
   setActiveSection,
   uniqueUsers,
-  artistList,
   graphRatings,
   scatterData,
   isSongSearchVisible,

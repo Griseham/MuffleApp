@@ -7,11 +7,11 @@ export default function useThreadData(postId, postData = null) {
   const [comments, setComments] = useState([]);
   const [snippetRecs, setSnippetRecs] = useState([]);
   const [uniqueUsers, setUniqueUsers] = useState([]);
-  const [artistList, setArtistList] = useState([]);
-  const [users, setUsers] = useState([]);
+  const [artistList, _setArtistList] = useState([]);
+  const [_users, setUsers] = useState([]);
   const [usedCache, setUsedCache] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [_isLoading, setIsLoading] = useState(true);
+  const [_error, setError] = useState(null);
   const [commentsLoaded, setCommentsLoaded] = useState(false);
   const [snippetsLoading, setSnippetsLoading] = useState(false);
   const didFetchLiveRef = useRef(false);
@@ -28,7 +28,12 @@ export default function useThreadData(postId, postData = null) {
     return { ...postData, createdUtc };
   };
 
-  const fetchMoreComments = async (count = 10) => {
+  const isLocalOnlyPost = useCallback((value) => {
+    const id = String(value?.id || postId || "").trim();
+    return Boolean(value?.isLocalOnly) || id.startsWith("user_post_");
+  }, [postId]);
+
+  const fetchMoreComments = async (_count = 10) => {
     return [];
   };
 
@@ -186,6 +191,29 @@ export default function useThreadData(postId, postData = null) {
       if (postData) {
         console.log("useThreadData: Using provided postData, will also fetch cached comments");
         setPost(ensureValidDate(postData));
+
+        if (isLocalOnlyPost(postData)) {
+          const localComments = Array.isArray(postData.comments) ? postData.comments : [];
+          const localSnippets = Array.isArray(postData.snippets)
+            ? postData.snippets
+            : (postData.snippet ? [{ ...postData.snippet, commentId: postData.snippet.commentId || localComments[0]?.id }] : []);
+
+          if (!cancelled) {
+            setComments(localComments);
+
+            if (localSnippets.length > 0) {
+              const processedSnippets = processCachedSnippets(localSnippets, localComments);
+              setSnippetRecs(processedSnippets);
+              console.log(`useThreadData: Loaded ${processedSnippets.length} local snippets`);
+            }
+
+            setUsedCache(true);
+            setCommentsLoaded(true);
+            setIsLoading(false);
+            console.log("useThreadData: Loaded local-only post data without backend fetch");
+          }
+          return;
+        }
         
         // Try to load cached comments and snippets for this post
         let cachedData = null;
@@ -339,7 +367,7 @@ export default function useThreadData(postId, postData = null) {
     return () => {
       cancelled = true;
     };
-  }, [postId, postData, fetchCachedPostData, processCachedSnippets]);
+  }, [postId, postData, fetchCachedPostData, processCachedSnippets, isLocalOnlyPost]);
 
   // Reset per-post live fetch guard
   useEffect(() => {
@@ -348,7 +376,10 @@ export default function useThreadData(postId, postData = null) {
 
   // For non-cached posts (e.g., posts added via the Reddit button), fetch live comments + snippets
   useEffect(() => {
-    const shouldSkipLiveFetch = post?.postType === "news" || post?.postType === "parameter";
+    const shouldSkipLiveFetch =
+      post?.postType === "news" ||
+      post?.postType === "parameter" ||
+      isLocalOnlyPost(post);
 
     if (!postId || !post || usedCache) {
       console.log("useThreadData: Live fetch skipped - conditions not met", { postId: !!postId, post: !!post, usedCache });
@@ -430,12 +461,12 @@ export default function useThreadData(postId, postData = null) {
       console.log("useThreadData: Live fetch effect cleanup called");
       cancelled = true; 
     };
-  }, [postId, post, usedCache, processCachedSnippets]); // FIXED: Removed comments, snippetRecs, commentsLoaded from deps
+  }, [postId, post, usedCache, processCachedSnippets, isLocalOnlyPost]); // FIXED: Removed comments, snippetRecs, commentsLoaded from deps
 
   // Load snippets when needed (for non-cached posts)
   useEffect(() => {
     if (!post || !postId || usedCache) return;
-    if (post.postType === "news" || post.postType === "parameter") return;
+    if (post.postType === "news" || post.postType === "parameter" || isLocalOnlyPost(post)) return;
     if (!commentsLoaded) return;
     if (!didFetchLiveRef.current) return;
     if (snippetRecs.length > 0) return;
@@ -446,25 +477,25 @@ export default function useThreadData(postId, postData = null) {
         {
           id: `fallback_1_${postId}`,
           commentId: `fallback_1_${postId}`,
-          query: "Bohemian Rhapsody - Queen",
-          name: "Bohemian Rhapsody",
-          songName: "Bohemian Rhapsody",
-          artistName: "Queen",
+          query: "Example content",
+          name: "Example snippet",
+          songName: "Example snippet",
+          artistName: "Prototype audio unavailable",
           artwork: `/assets/default-artist.png`,
           artworkUrl: `/assets/default-artist.png`,
-          previewUrl: `/backend/public/HeartShapedBox.mp3`,
+          previewUrl: null,
           snippetData: {
             attributes: {
-              name: "Bohemian Rhapsody",
-              artistName: "Queen",
-              previews: [{ url: `/backend/public/HeartShapedBox.mp3` }],
+              name: "Example snippet",
+              artistName: "Prototype audio unavailable",
+              previews: [],
               artwork: { url: `/assets/default-artist.png` }
             }
           },
-          author: "MusicLover123",
+          author: "Demo Example",
           timestamp: Date.now() / 1000 - 86400,
           artistImage: `/assets/default-artist.png`,
-          snippetAuthorAvatar: authorToAvatar("MusicLover123"),
+          snippetAuthorAvatar: authorToAvatar("Demo Example"),
           userRating: null,
           avgRating: Math.floor(Math.random() * 50) + 50,
           totalRatings: Math.floor(Math.random() * 200) + 50,
@@ -476,7 +507,7 @@ export default function useThreadData(postId, postData = null) {
     };
     
     generateFallbackSnippets();
-  }, [post, postId, usedCache, commentsLoaded, snippetRecs.length]);
+  }, [post, postId, usedCache, commentsLoaded, snippetRecs.length, isLocalOnlyPost]);
 
   // Update unique users when comments change
   useEffect(() => {

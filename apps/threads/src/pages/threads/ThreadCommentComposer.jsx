@@ -1,7 +1,54 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Play, Music, Pause, X, Search, Disc, Upload } from 'lucide-react';
+import { Play, Music, Pause, X, Search, Disc, Send } from 'lucide-react';
 import { validateAndSanitizeInput, sanitizeSearchQuery, checkRateLimit } from '../../utils/security';
 import { buildApiUrl } from '../../utils/api';
+
+const DEFAULT_ARTWORK = '/assets/default-artist.png';
+
+function formatArtworkUrl(url, size = 100) {
+  if (!url || typeof url !== 'string') {
+    return DEFAULT_ARTWORK;
+  }
+
+  return url
+    .replace('{w}', String(size))
+    .replace('{h}', String(size))
+    .replace('{f}', 'jpg');
+}
+
+function buildSnippetFromSong(song) {
+  if (!song) return null;
+
+  const songName = song.attributes?.name || "Unknown Song";
+  const artistName = song.attributes?.artistName || "Unknown Artist";
+  const artworkUrl = formatArtworkUrl(song.attributes?.artwork?.url, 100);
+  const previewUrl = song.attributes?.previews?.[0]?.url || null;
+
+  return {
+    id: song.id,
+    commentId: null,
+    name: songName,
+    songName,
+    artistName,
+    artwork: artworkUrl,
+    artworkUrl,
+    previewUrl,
+    userRating: null,
+    avgRating: 0,
+    totalRatings: 0,
+    didRate: false,
+    snippetData: {
+      ...song,
+      attributes: {
+        ...song.attributes,
+        name: songName,
+        artistName,
+        artwork: { url: artworkUrl || "" },
+        previews: previewUrl ? [{ url: previewUrl }] : [],
+      },
+    },
+  };
+}
 
 const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
   // State declarations
@@ -43,6 +90,7 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
         audioElement.pause();
         setIsPlaying(false);
       }
+      setPreviewingSongId(null);
     }
   };
 
@@ -148,6 +196,14 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
     return () => clearTimeout(debounceTimer);
   }, [searchQuery]);
 
+  useEffect(() => {
+    return () => {
+      if (audioElement) {
+        audioElement.pause();
+      }
+    };
+  }, [audioElement]);
+
   // Auto-resize the textarea as user types
   const handleInput = (e) => {
     const textarea = textareaRef.current;
@@ -176,7 +232,7 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
     setSearchQuery(inputValue);
   };
 
-  const handleSubmit = () => {
+  const _handleSubmit = () => {
     if (!comment.trim() && !selectedSong) return;
     
     if (!checkRateLimit('comment_submit', 5, 60000)) {
@@ -203,30 +259,29 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
       body: validation.sanitized,
       createdUtc: Date.now() / 1000,
       likes: 0,
-      replies: 0,
+      replies: [],
       postType: 'thread'
     };
     
     if (selectedSong) {
-      newComment.snippet = {
-        id: selectedSong.id,
-        name: selectedSong.attributes?.name || "Unknown Song",
-        artistName: selectedSong.attributes?.artistName || "Unknown Artist",
-        artwork: selectedSong.attributes?.artwork?.url
-          ?.replace("{w}", "100")
-          ?.replace("{h}", "100") || "/assets/default-artist.png",
-        previewUrl: selectedSong.attributes?.previews?.[0]?.url || null
-      };
+      newComment.snippet = buildSnippetFromSong(selectedSong);
     }
     
     if (onSubmit) {
       onSubmit(newComment);
+    }
+
+    if (audioElement && isPlaying) {
+      audioElement.pause();
+      setIsPlaying(false);
     }
     
     setComment('');
     setSelectedSong(null);
     setSearchQuery('');
     setSearchResults([]);
+    setShowSongSearch(false);
+    setPreviewingSongId(null);
     
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
@@ -259,6 +314,12 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
             placeholder="Reply with a song, thought, or take..."
             value={comment}
             onChange={handleInput}
+            onKeyDown={(e) => {
+              if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                e.preventDefault();
+                _handleSubmit();
+              }
+            }}
             style={styles.textInput}
             rows={1}
             maxLength={2000}
@@ -270,11 +331,12 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
               <div style={styles.attachedSnippetInner}>
                 <div style={styles.snippetImageContainer}>
                   <img
-                    src={selectedSong.attributes.artwork?.url
-                      ?.replace("{w}", "100")
-                      ?.replace("{h}", "100") || "/assets/default-artist.png"}
+                    src={formatArtworkUrl(selectedSong.attributes.artwork?.url, 100)}
                     alt={selectedSong.attributes.name}
                     style={styles.snippetImage}
+                    onError={(e) => {
+                      e.currentTarget.src = DEFAULT_ARTWORK;
+                    }}
                   />
                 </div>
                 <div style={styles.snippetContent}>
@@ -334,6 +396,20 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
                 <span style={styles.buttonLabel}>Music</span>
               </button>
             </div>
+
+            <button
+              onClick={_handleSubmit}
+              disabled={isSubmitting || (!comment.trim() && !selectedSong)}
+              style={
+                (comment.trim() || selectedSong) && !isSubmitting
+                  ? styles.submitButton
+                  : styles.submitButtonDisabled
+              }
+              title="Post reply"
+            >
+              <span style={styles.submitButtonText}>Reply</span>
+              <Send size={14} color="#fff" />
+            </button>
           </div>
           
           {/* Song Search Box */}
@@ -347,6 +423,12 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
                   type="text"
                   value={searchQuery}
                   onChange={handleSearchInput}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleSearch();
+                    }
+                  }}
                   placeholder="Search for artists, songs, or albums..."
                   style={styles.searchInput}
                   maxLength={200}
@@ -371,11 +453,12 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
                     >
                       <div style={styles.resultImageContainer}>
                         <img
-                          src={song.attributes.artwork?.url
-                            ?.replace("{w}", "100")
-                            ?.replace("{h}", "100") || "/assets/default-artist.png"}
+                          src={formatArtworkUrl(song.attributes.artwork?.url, 100)}
                           alt={song.attributes.name}
                           style={styles.resultImage}
+                          onError={(e) => {
+                            e.currentTarget.src = DEFAULT_ARTWORK;
+                          }}
                         />
                       </div>
                       <div style={styles.resultInfo}>
@@ -415,7 +498,7 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
               {/* No results message */}
               {searchQuery.trim() && searchResults.length === 0 && !isSearching && (
                 <div style={styles.noResultsContainer}>
-                  <p style={styles.noResultsText}>No results found for "{searchQuery}"</p>
+                  <p style={styles.noResultsText}>No results found for &quot;{searchQuery}&quot;</p>
                   <p style={styles.noResultsSubtext}>Try a different search term</p>
                 </div>
               )}
@@ -516,13 +599,15 @@ const styles = {
   actionsRow: {
     display: 'flex',
     alignItems: 'center',
-    justifyContent: 'flex-start',
+    justifyContent: 'space-between',
     marginTop: '14px',
+    gap: '12px',
   },
   actionButtonsContainer: {
     display: 'flex',
     alignItems: 'center',
     gap: '10px',
+    flexWrap: 'wrap',
   },
   
   // Snippet/TikTok Button - More prominent
@@ -545,7 +630,9 @@ const styles = {
     gap: '8px',
     padding: '10px 16px',
     backgroundColor: '#1e293b',
-    border: '1px solid rgba(250, 45, 85, 0.4)',
+    borderWidth: '1px',
+    borderStyle: 'solid',
+    borderColor: 'rgba(250, 45, 85, 0.4)',
     borderRadius: '10px',
     cursor: 'pointer',
     transition: 'all 0.2s ease',
@@ -572,6 +659,40 @@ const styles = {
     fontSize: '13px',
     fontWeight: '600',
     color: '#e2e8f0',
+  },
+  submitButton: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    border: 'none',
+    borderRadius: '9999px',
+    padding: '10px 16px',
+    background: 'linear-gradient(135deg, #1d9bf0 0%, #2563eb 100%)',
+    color: '#fff',
+    cursor: 'pointer',
+    fontSize: '13px',
+    fontWeight: '700',
+    whiteSpace: 'nowrap',
+    flexShrink: 0,
+    boxShadow: '0 10px 24px rgba(29, 155, 240, 0.24)',
+  },
+  submitButtonDisabled: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    border: 'none',
+    borderRadius: '9999px',
+    padding: '10px 16px',
+    backgroundColor: 'rgba(51, 65, 85, 0.9)',
+    color: 'rgba(226, 232, 240, 0.6)',
+    cursor: 'not-allowed',
+    fontSize: '13px',
+    fontWeight: '700',
+    whiteSpace: 'nowrap',
+    flexShrink: 0,
+  },
+  submitButtonText: {
+    lineHeight: 1,
   },
   
   // Attached snippet preview

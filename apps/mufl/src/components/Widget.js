@@ -1,9 +1,12 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { PlayIcon, PauseIcon, MusicNoteIcon, AlbumIcon } from './Icons/Icons';
-import axios from "axios";
-
-// Front-end → Back-end base URL
-const API_BASE = process.env.REACT_APP_API_BASE_URL || '/api';
+import { buildApiUrl } from '../utils/api';
+import {
+  MAX_SEARCH_QUERY_LENGTH,
+  MIN_SEARCH_QUERY_LENGTH,
+  sanitizeSearchInput as sanitizeUserInput,
+  isSafeHttpUrl,
+} from '../utils/searchSecurity';
 
 // Additional icons needed for the new design
 const SearchIcon = ({ size = 24, className = "" }) => (
@@ -47,44 +50,15 @@ const PlusIcon = ({ size = 24, className = "" }) => (
     <path d="M12 5V19M5 12H19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 );
-const CheckIcon = ({ size = 24, className = "" }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-       xmlns="http://www.w3.org/2000/svg" className={className}>
-    <path d="M20 6L9 17L4 12" stroke="currentColor" strokeWidth="2"
-          strokeLinecap="round" strokeLinejoin="round"/>
-  </svg>
-);
 
-/* ------------------------------------------------------------------ *
- * SHARED HELPERS                                                     *
- * ------------------------------------------------------------------ */
-
-// 1) Normalise anything we get back from Apple Music or our mocks into
-//    the internal shape the UI expects.
-const normaliseSong = raw => ({
-  id:             raw.id               ?? `tmp-${Date.now()}-${Math.random()}`,
-  track:          raw.track            ?? raw.trackName   ?? raw.name        ?? 'Unknown',
-  artist:         raw.artist           ?? raw.artistName  ?? 'Unknown',
-  album:          raw.album            ?? raw.albumName   ?? '',
-  artworkUrl:     raw.artworkUrl       ?? (raw.attributes?.artwork?.url
-                       ? raw.attributes.artwork.url.replace('{w}x{h}', '300x300')
-                       : ''),
-  previewUrl:     raw.previewUrl       ?? raw.previews?.[0]?.url ?? '',
-});
-
-// 2) Image-sanity checker (unchanged, just moved down a little)
-// Helper function to validate if an image URL is real
-const hasValidImage = (imageUrl) => {
-  return imageUrl && 
-         imageUrl !== 'fallback.jpg' && 
-         imageUrl !== '/placeholder-200.png' &&
-         !imageUrl.includes('placeholder') &&
-         !imageUrl.includes('picsum') &&
-         !imageUrl.includes('scdn.co') && // ← ADD THIS LINE
-         imageUrl.startsWith('http');
-};
-
-const Widget = ({ selectedArtists = [], queuedSongs = [], setWidgetSelectedArtist, onRemoveArtist, onSongFromWidget }) => {
+const Widget = ({
+  apiBaseUrl = "",
+  selectedArtists = [],
+  setWidgetSelectedArtist,
+  onRemoveArtist,
+  onSongFromWidget
+}) => {
+  const apiUrl = useCallback((path) => buildApiUrl(path, apiBaseUrl), [apiBaseUrl]);
   // States
   const [selectedArtist, setSelectedArtist] = useState(null);
   const [playingSong, setPlayingSong] = useState(null);
@@ -93,149 +67,349 @@ const Widget = ({ selectedArtists = [], queuedSongs = [], setWidgetSelectedArtis
   const [artistSongs, setArtistSongs] = useState({});
   const [loadingSongs, setLoadingSongs] = useState(false);
   const [searchError, setSearchError] = useState('');
-  
-  // Global search states
+
+  // --- AUDIO (single shared player for the widget) ---
+  const audioRef = React.useRef(null);
+  const [, setAudioError] = useState(false);
+  const searchDebounceRef = React.useRef(null);
+  const searchAbortRef = React.useRef(null);
+  const searchRequestIdRef = React.useRef(0);
+  const latestSearchQueryRef = React.useRef('');
+  const personalQueueRef = React.useRef([]);
+
+  const stopAudio = () => {
+    if (!audioRef.current) return;
+    audioRef.current.pause();
+    audioRef.current.currentTime = 0;
+  };
+
+  // 🔍 global search
   const [globalSearchResults, setGlobalSearchResults] = useState([]);
   const [loadingSearchResults, setLoadingSearchResults] = useState(false);
-  const [searchTimeout, setSearchTimeout] = useState(null);
-  const audioRef = useRef(null);
+
+  useEffect(() => {
+    personalQueueRef.current = personalQueue;
+  }, [personalQueue]);
+
+  // Helper function to validate if an image URL is real
+  const hasValidImage = (imageUrl) => {
+    return imageUrl && 
+           imageUrl !== 'fallback.jpg' && 
+           imageUrl !== '/placeholder-200.png' &&
+           !imageUrl.includes('placeholder') &&
+           !imageUrl.includes('picsum') &&
+           isSafeHttpUrl(imageUrl);
+  };
 
   // Filter selected artists to only show those with valid images and from artist pool
-// Memoised list so the reference is stable between renders
-const validSelectedArtists = useMemo(
-  () =>
-    selectedArtists.filter(
-      artist => hasValidImage(artist.image) && artist.name && artist.id
-    ),
-  [selectedArtists]
-);
+  const validSelectedArtists = useMemo(
+    () =>
+      selectedArtists.filter(
+        (artist) => hasValidImage(artist.image) && artist.name && artist.id
+      ),
+    [selectedArtists]
+  );
 
-  // UPDATED: Generate mock popular songs based on artist name (no API calls)
-  const generateMockPopularSongs = (artistName) => {
-    // Create deterministic "popular" songs based on artist name
-    const songTemplates = [
-      { suffix: "- Greatest Hit", albumSuffix: "Best Of" },
-      { suffix: "- Popular Track", albumSuffix: "Greatest Hits" },
-      { suffix: "- Fan Favorite", albumSuffix: "Collection" },
-      { suffix: "- Top Single", albumSuffix: "Singles" },
-      { suffix: "- Chart Topper", albumSuffix: "Hits Collection" }
-    ];
+  const selectedArtistRecord = useMemo(
+    () => validSelectedArtists.find((artist) => artist.id === selectedArtist) || null,
+    [selectedArtist, validSelectedArtists]
+  );
 
-    return songTemplates.map((template, index) => ({
-      track: `${artistName} ${template.suffix}`,
-      artist: artistName,
-      album: `${artistName} ${template.albumSuffix}`,
-      artworkUrl: '', // No artwork - will show SVG fallback
-      previewUrl: '' // No audio
-    }));
-  };
+  const normalizeSearchQuery = useCallback(
+    (query) => sanitizeUserInput(query, { maxLength: MAX_SEARCH_QUERY_LENGTH }),
+    []
+  );
 
-/* ------------------------------------------------------------------ *
- * FETCH helpers                                                      *
- * ------------------------------------------------------------------ */
-
-const MAX_SONGS = 5;                       // show ≤ 5 songs for clarity
-
-// a) Popular songs for the artist panel (real Apple Music data first,
-//    fallback to deterministic mock)
-const fetchArtistSongs = async (artistName) => {
-  setLoadingSongs(true);
-  try {
-    // hit the generic search so we can grab a handful at once
-    const { data } = await axios.post(
-      `/apple-music/search`,
-      { query: artistName }
-    );
-
-    const songs = (data.results || [])
-      .filter(s => s.previewUrl)      // must be playable
-      .slice(0, MAX_SONGS)            // keep it tidy
-      .map(normaliseSong);
-
-    // if nothing playable came back, fall through to mock
-    if (songs.length) {
-      setArtistSongs(prev => ({ ...prev, [artistName]: songs }));
-      return;
+  const cancelPendingSearch = useCallback(() => {
+    if (searchAbortRef.current) {
+      searchAbortRef.current.abort();
+      searchAbortRef.current = null;
     }
-  } catch (err) {
-  } finally {
-    setLoadingSongs(false);
-  }
-
-  // deterministic mock so the UI never shows "empty"
-  setArtistSongs(prev => ({
-    ...prev,
-    [artistName]: generateMockPopularSongs(artistName),
-  }));
-};
-
-  // Sanitize search input to prevent injection attacks
-  const sanitizeSearchInput = (input) => {
-    if (!input || typeof input !== 'string') return '';
-    
-    return input
-      .replace(/[<>"'`\\]/g, '') // Remove HTML/script injection chars
-      .replace(/javascript:/gi, '') // Remove javascript: protocol
-      .replace(/data:/gi, '') // Remove data: protocol
-      .replace(/vbscript:/gi, '') // Remove vbscript: protocol
-      .replace(/on\w+=/gi, '') // Remove event handlers
-      .replace(/\{\{.*?\}\}/g, '') // Remove template injection
-      .replace(/\$\{.*?\}/g, '') // Remove ES6 template literals
-      .replace(/eval\s*\(/gi, '') // Remove eval calls
-      .replace(/Function\s*\(/gi, '') // Remove Function constructor
-      .replace(/setTimeout\s*\(/gi, '') // Remove setTimeout
-      .replace(/setInterval\s*\(/gi, '') // Remove setInterval
-      .trim()
-      .substring(0, 100); // Limit length
-  };
-
-  // Validate search query
-  const validateSearchQuery = useCallback((query) => {
-    const sanitized = sanitizeSearchInput(query);
-    
-    // Only allow safe characters for music search
-    const allowedPattern = /^[a-zA-Z0-9\s\-'.,&()!?]+$/;
-    if (sanitized && !allowedPattern.test(sanitized)) {
-      return sanitized.replace(/[^a-zA-Z0-9\s\-'.,&()!?]/g, '');
-    }
-    
-    return sanitized;
   }, []);
 
-const fetchGlobalSongs = useCallback(async (query) => {
-  const validated = validateSearchQuery(query);
-  if (!validated || validated.length < 2) return setGlobalSearchResults([]);
+  const clearSearchResults = useCallback(() => {
+    cancelPendingSearch();
+    setLoadingSearchResults(false);
+    setGlobalSearchResults((prev) => (prev.length > 0 ? [] : prev));
+  }, [cancelPendingSearch]);
 
-  setLoadingSearchResults(true); setSearchError('');
-  try {
-    const { data } = await axios.post(
-      `${API_BASE}/apple-music/search`,
-      { query: validated }
-    );
-    setGlobalSearchResults(
-      (data.results || []).slice(0, MAX_SONGS).map(normaliseSong)
-    );
-  } catch { setSearchError('Search failed – try again'); }
-  finally   { setLoadingSearchResults(false); }
-}, [validateSearchQuery]);
+  const startTimedSearchRequest = useCallback(() => {
+    cancelPendingSearch();
+    searchRequestIdRef.current += 1;
+    const requestId = searchRequestIdRef.current;
+    const controller = new AbortController();
+    let timedOut = false;
 
-const fetchArtistSearch = useCallback(async (query, artistName) => {
-  const validated = validateSearchQuery(query);
-  if (!validated || validated.length < 2) return setGlobalSearchResults([]);
+    searchAbortRef.current = controller;
 
-  setLoadingSearchResults(true); setSearchError('');
-  try {
-    const { data } = await axios.post(
-      `${API_BASE}/apple-music/search`,
-      { query: `${artistName} ${validated}` }
-    );
-    setGlobalSearchResults(
-      (data.results || []).slice(0, MAX_SONGS).map(normaliseSong)
-    );
-  } catch { setSearchError('Search failed – try again'); }
-  finally   { setLoadingSearchResults(false); }
-}, [validateSearchQuery]);
+    const timeoutId = window.setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, 15000);
 
+    return {
+      requestId,
+      signal: controller.signal,
+      didTimeout: () => timedOut,
+      cleanup: () => {
+        window.clearTimeout(timeoutId);
+        if (searchAbortRef.current === controller) {
+          searchAbortRef.current = null;
+        }
+      }
+    };
+  }, [cancelPendingSearch]);
+
+  // Fetch songs for an artist from the dedicated Apple Music artist songs endpoint
+  const fetchArtistSongs = useCallback(async (artistName) => {
+    const safeArtistName = sanitizeUserInput(artistName, { maxLength: 120 });
+
+    if (!safeArtistName) {
+      setSearchError('Invalid artist name');
+      return [];
+    }
+
+    if (artistSongs[safeArtistName]) {
+      return artistSongs[safeArtistName]; // Return cached songs
+    }
+
+    setLoadingSongs(true);
+    setSearchError('');
+
+    try {
+      console.log('[Widget] fetching top tracks for', artistName);
+      
+      // Call the dedicated artist songs endpoint
+      const response = await fetch(apiUrl('/apple-music/artist-songs'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          artist: safeArtistName,
+          artistName: safeArtistName
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const normalizedSongs = Array.isArray(data?.songs)
+        ? data.songs
+        : data?.data
+          ? [data.data]
+          : [];
+      const songs = normalizedSongs
+        .map((song) => ({
+          id: song.id || `${safeArtistName}-${song.trackName || song.track || 'song'}`,
+          track: sanitizeUserInput(song.track || song.trackName || '', { maxLength: 120 }),
+          artist: sanitizeUserInput(song.artist || song.artistName || safeArtistName, { maxLength: 120 }),
+          album: sanitizeUserInput(song.album || song.albumName || '', { maxLength: 120 }),
+          artworkUrl: isSafeHttpUrl(song.artworkUrl) ? song.artworkUrl : '',
+          previewUrl: isSafeHttpUrl(song.previewUrl) ? song.previewUrl : ''
+        }))
+        .filter((song) => song.track)
+        .slice(0, 3);
+
+      console.log('[Widget] top-tracks data →', songs);
+
+      // Cache the songs
+      setArtistSongs(prev => ({
+        ...prev,
+        [safeArtistName]: songs
+      }));
+
+      return songs;
+
+    } catch (error) {
+      console.error(`Error fetching songs for ${artistName}:`, error);
+      setSearchError(`Failed to load songs for ${artistName}`);
+      return [];
+    } finally {
+      setLoadingSongs(false);
+    }
+  }, [apiUrl, artistSongs]);
+
+  // Search ANY song on Apple Music with enhanced security
+  const fetchGlobalSongs = useCallback(async (query) => {
+    const validatedQuery = normalizeSearchQuery(query);
+
+    if (!validatedQuery || validatedQuery.length < MIN_SEARCH_QUERY_LENGTH) {
+      latestSearchQueryRef.current = validatedQuery;
+      clearSearchResults();
+      return;
+    }
+    
+    setLoadingSearchResults(true);
+    setSearchError('');
+    latestSearchQueryRef.current = validatedQuery;
+
+    const request = startTimedSearchRequest();
+    
+    try {
+      console.log('[Widget] global search →', validatedQuery);
+
+      const res = await fetch(
+        apiUrl('/apple-music/search'),
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            query: validatedQuery,
+            searchQuery: validatedQuery,
+            timestamp: Date.now(),
+            source: 'widget_global_search'
+          }),
+          signal: request.signal
+        }
+      );
+
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+      }
+      
+      const data = await res.json();
+      const rawResults = Array.isArray(data)
+        ? data
+        : Array.isArray(data?.results)
+          ? data.results
+          : [];
+
+      const validatedResults = rawResults
+        .map((song) => ({
+          id: song.id || `${song.track || song.trackName || song.name}-${song.artist || song.artistName || 'artist'}`,
+          track: sanitizeUserInput(song.track || song.trackName || song.name || '', { maxLength: 120 }),
+          artist: sanitizeUserInput(song.artist || song.artistName || '', { maxLength: 120 }),
+          album: sanitizeUserInput(song.album || song.albumName || '', { maxLength: 120 }),
+          artworkUrl: isSafeHttpUrl(song.artworkUrl) ? song.artworkUrl : '',
+          previewUrl: isSafeHttpUrl(song.previewUrl) ? song.previewUrl : ''
+        }))
+        .filter(song => 
+          song &&
+          typeof song === 'object' &&
+          song.track &&
+          typeof song.track === 'string' &&
+          song.artist &&
+          typeof song.artist === 'string'
+        )
+        .slice(0, 20); // Limit results
+
+      console.log('[Widget] global search results =', validatedResults.length);
+      if (request.requestId === searchRequestIdRef.current &&
+          latestSearchQueryRef.current === validatedQuery) {
+        setGlobalSearchResults(validatedResults);
+      }
+    } catch (err) {
+      if (err.name === 'AbortError') {
+        if (request.didTimeout() && request.requestId === searchRequestIdRef.current) {
+          setSearchError('Search timed out - try again');
+          setLoadingSearchResults(false);
+        }
+        return;
+      }
+
+      console.error('[Widget] global search error', err);
+      if (request.requestId === searchRequestIdRef.current) {
+        setSearchError('Search failed – try again');
+      }
+    } finally {
+      request.cleanup();
+      if (request.requestId === searchRequestIdRef.current) {
+        setLoadingSearchResults(false);
+      }
+    }
+  }, [apiUrl, clearSearchResults, normalizeSearchQuery, startTimedSearchRequest]);
+
+  // Search within a specific artist's catalog with security
+  const fetchArtistSearch = useCallback(async (query, artistName) => {
+    const validatedQuery = normalizeSearchQuery(query);
+    const validatedArtistName = sanitizeUserInput(artistName, { maxLength: 120 });
+    
+    if (!validatedQuery || validatedQuery.length < MIN_SEARCH_QUERY_LENGTH || !validatedArtistName) {
+      latestSearchQueryRef.current = validatedQuery;
+      clearSearchResults();
+      return;
+    }
+    
+    setLoadingSearchResults(true);
+    setSearchError('');
+    latestSearchQueryRef.current = validatedQuery;
+
+    const request = startTimedSearchRequest();
+    
+    try {
+      const res = await fetch(
+        apiUrl('/apple-music/artist-search'),
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            query: validatedQuery,
+            searchQuery: validatedQuery, 
+            artistName: validatedArtistName,
+            timestamp: Date.now(),
+            source: 'widget_artist_search'
+          }),
+          signal: request.signal
+        }
+      );
+      
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+      }
+      
+      const data = await res.json();
+      const rawResults = Array.isArray(data)
+        ? data
+        : Array.isArray(data?.results)
+          ? data.results
+          : [];
+
+      const validatedResults = rawResults
+        .map((song) => ({
+          id: song.id || `${song.track || song.trackName || song.name}-${validatedArtistName}`,
+          track: sanitizeUserInput(song.track || song.trackName || song.name || '', { maxLength: 120 }),
+          artist: sanitizeUserInput(song.artist || song.artistName || validatedArtistName, { maxLength: 120 }),
+          album: sanitizeUserInput(song.album || song.albumName || '', { maxLength: 120 }),
+          artworkUrl: isSafeHttpUrl(song.artworkUrl) ? song.artworkUrl : '',
+          previewUrl: isSafeHttpUrl(song.previewUrl) ? song.previewUrl : ''
+        }))
+        .filter(song => 
+          song &&
+          typeof song === 'object' &&
+          song.track &&
+          typeof song.track === 'string' &&
+          song.artist &&
+          typeof song.artist === 'string'
+        )
+        .slice(0, 15); // Limit artist-specific results
+      
+      if (request.requestId === searchRequestIdRef.current &&
+          latestSearchQueryRef.current === validatedQuery) {
+        setGlobalSearchResults(validatedResults);
+      }
+    } catch (err) {
+      if (err.name === 'AbortError') {
+        if (request.didTimeout() && request.requestId === searchRequestIdRef.current) {
+          setSearchError('Search timed out - try again');
+          setLoadingSearchResults(false);
+        }
+        return;
+      }
+
+      console.error('[Widget] artist search error', err);
+      if (request.requestId === searchRequestIdRef.current) {
+        setSearchError('Search failed – try again');
+      }
+    } finally {
+      request.cleanup();
+      if (request.requestId === searchRequestIdRef.current) {
+        setLoadingSearchResults(false);
+      }
+    }
+  }, [apiUrl, clearSearchResults, normalizeSearchQuery, startTimedSearchRequest]);
 
   // Handle artist selection
   const handleSelectArtist = async (artistId) => {
@@ -244,6 +418,8 @@ const fetchArtistSearch = useCallback(async (query, artistName) => {
       setSelectedArtist(artist.id);
       setSearchQuery('');
       setSearchError('');
+      latestSearchQueryRef.current = '';
+      clearSearchResults();
       setWidgetSelectedArtist(artist);
       
       // Fetch songs for this artist
@@ -256,6 +432,8 @@ const fetchArtistSearch = useCallback(async (query, artistName) => {
     setSelectedArtist(null);
     setSearchQuery('');
     setSearchError('');
+    latestSearchQueryRef.current = '';
+    clearSearchResults();
     setWidgetSelectedArtist(null);
   };
 
@@ -271,43 +449,82 @@ const fetchArtistSearch = useCallback(async (query, artistName) => {
     }
   };
 
-  // Toggle play state for a song (visual only - no audio)
-  const togglePlay = (songKey, previewUrl) => {
-    // pause the current track if it's already playing
-    if (playingSong === songKey) {
-      audioRef.current?.pause();
-      setPlayingSong(null);
+  // Play/pause a specific song (uses previewUrl)
+  const togglePlay = async (songKey, song) => {
+    const url =
+      song?.previewUrl &&
+      typeof song.previewUrl === "string" &&
+      isSafeHttpUrl(song.previewUrl)
+        ? song.previewUrl
+        : "";
+
+    if (!url) {
+      setSearchError("No preview available for this song");
+      setTimeout(() => setSearchError(""), 2000);
       return;
     }
-  
-    // stop any previous audio
-    if (audioRef.current) audioRef.current.pause();
-  
-    // start the new preview
-    if (previewUrl) {
-      audioRef.current = new Audio(previewUrl);
-      audioRef.current.play().catch(() => {});
+
+    if (!audioRef.current) return;
+
+    if (playingSong === songKey) {
+      if (audioRef.current.paused) {
+        try {
+          await audioRef.current.play();
+          setAudioError(false);
+        } catch {
+          setAudioError(true);
+        }
+      } else {
+        audioRef.current.pause();
+      }
+      setPlayingSong(audioRef.current.paused ? null : songKey);
+      return;
+    }
+
+    try {
+      setAudioError(false);
+      stopAudio();
+      audioRef.current.src = url;
+      await audioRef.current.play();
       setPlayingSong(songKey);
+    } catch (e) {
+      console.error("[Widget] audio play failed:", e);
+      setAudioError(true);
+      setPlayingSong(null);
+      setSearchError("Audio blocked — click play again");
+      setTimeout(() => setSearchError(""), 2000);
     }
   };
-  
-  // clean-up on unmount
-  useEffect(() => () => audioRef.current?.pause(), []);
+
+  const handleAudioEnded = () => setPlayingSong(null);
+
+  const handleAudioError = () => {
+    setAudioError(true);
+    setPlayingSong(null);
+  };
+
   // Add song to personal queue with validation and timer
   const addToPersonalQueue = (song) => {
     // Validate song object
     if (!song || typeof song !== 'object' || !song.track || !song.artist) {
+      console.error('[Widget] Invalid song object for queue');
       return;
     }
     
     // Sanitize song data
     const sanitizedSong = {
-      track: sanitizeSearchInput(song.track),
-      artist: sanitizeSearchInput(song.artist),
-      album: song.album ? sanitizeSearchInput(song.album) : '',
-      artworkUrl: song.artworkUrl && song.artworkUrl.startsWith('http') ? song.artworkUrl : '',
-      previewUrl: song.previewUrl || ''
-        };
+      track: sanitizeUserInput(song.track, { maxLength: 120 }),
+      artist: sanitizeUserInput(song.artist, { maxLength: 120 }),
+      album: song.album ? sanitizeUserInput(song.album, { maxLength: 120 }) : '',
+      artworkUrl: isSafeHttpUrl(song.artworkUrl) ? song.artworkUrl : '',
+      previewUrl: isSafeHttpUrl(song.previewUrl) ? song.previewUrl : ''
+    };
+
+    if (!sanitizedSong.previewUrl) {
+      setSearchError('No snippet preview available for this song');
+      setTimeout(() => setSearchError(''), 2000);
+      return;
+    }
     
     // Check for duplicate songs in queue
     const isDuplicate = personalQueue.some(item => 
@@ -326,16 +543,6 @@ const fetchArtistSearch = useCallback(async (query, artistName) => {
       setTimeout(() => setSearchError(''), 2000);
       return;
     }
-    onSongFromWidget({
-    
-   id: song.id,
-   track: song.track,
-   artist: song.artist,
-  album: song.album,
-      artworkUrl: song.artworkUrl,
-      previewUrl: song.previewUrl,
-      isFromWidget: true
-    });
     
     const newQueueItem = {
       ...sanitizedSong,
@@ -386,106 +593,104 @@ const fetchArtistSearch = useCallback(async (query, artistName) => {
   };
 
   // Update countdowns every second and move finished songs to main queue
-// Update countdowns every second and move finished songs to main queue
-useEffect(() => {
-  const interval = setInterval(() => {
-    let songsFinished = [];
-    setPersonalQueue(prev => {
-      const updated = prev.map(item => {
-        if (item.isPaused) return item;
-        
-        const newCountdown = item.countdown - 1;
-        
-        if (newCountdown <= 0) {
-          songsFinished.push(item);
-          return null;
-        }
-        
-        return { ...item, countdown: newCountdown };
-      }).filter(Boolean);
-      
-      return updated;
-    });
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const currentQueue = personalQueueRef.current;
+      if (!currentQueue.length) return;
 
-    /* fire AFTER React has finished updating Widget */
-    if (songsFinished.length && onSongFromWidget) {
-      Promise.resolve().then(() =>
-        songsFinished.forEach(onSongFromWidget)
-      );
-    }
-  }, 1000);
-  
-  return () => clearInterval(interval);
-}, [onSongFromWidget]);
+      const songsToMoveToMain = [];
+      const updatedQueue = currentQueue
+        .map((item) => {
+          if (item.isPaused) return item;
 
-  // Cleanup search timeout on unmount
+          const newCountdown = item.countdown - 1;
+          if (newCountdown <= 0) {
+            songsToMoveToMain.push(item);
+            return null;
+          }
+
+          return { ...item, countdown: newCountdown };
+        })
+        .filter(Boolean);
+
+      personalQueueRef.current = updatedQueue;
+      setPersonalQueue(updatedQueue);
+
+      if (songsToMoveToMain.length > 0 && onSongFromWidget) {
+        console.log(`🎵 Moving ${songsToMoveToMain.length} songs from Widget to main queue`);
+        songsToMoveToMain.forEach((song) => {
+          onSongFromWidget(song);
+        });
+      }
+    }, 1000);
+    
+    return () => clearInterval(interval);
+  }, [onSongFromWidget]);
+
+  // Cleanup search resources on unmount
   useEffect(() => {
     return () => {
-      if (searchTimeout) {
-        clearTimeout(searchTimeout);
+      if (searchDebounceRef.current) {
+        clearTimeout(searchDebounceRef.current);
       }
+      cancelPendingSearch();
     };
-  }, [searchTimeout]);
+  }, [cancelPendingSearch]);
 
   // Debounced search with security measures
   useEffect(() => {
-    // Clear existing timeout
-    if (searchTimeout) {
-      clearTimeout(searchTimeout);
+    if (searchDebounceRef.current) {
+      clearTimeout(searchDebounceRef.current);
     }
     
-    const artist = validSelectedArtists.find(a => a.id === selectedArtist);
-    const validatedQuery = validateSearchQuery(searchQuery);
+    const validatedQuery = normalizeSearchQuery(searchQuery);
     
-    if (!validatedQuery || validatedQuery.length < 2) {
-      if (globalSearchResults.length) {          // only clear if not already empty
-        setGlobalSearchResults([]);
-      }
+    if (!validatedQuery || validatedQuery.length < MIN_SEARCH_QUERY_LENGTH) {
+      latestSearchQueryRef.current = validatedQuery;
+      clearSearchResults();
       return;
     }
     
-    
     // Debounce search to prevent excessive API calls
-    const timeout = setTimeout(() => {
-      if (artist) {
-        // Search within this artist's catalog (mock)
-        fetchArtistSearch(validatedQuery, artist.name);
+    searchDebounceRef.current = setTimeout(() => {
+      if (selectedArtistRecord) {
+        // limit search to this artist's catalogue
+        fetchArtistSearch(validatedQuery, selectedArtistRecord.name);
       } else {
-        // Global search using Spotify API
+        // no artist selected → fall back to global search
         fetchGlobalSongs(validatedQuery);
       }
     }, 600); // 600ms debounce
-    
-    setSearchTimeout(timeout);
-    
-    // Cleanup function
+
     return () => {
-      if (timeout) {
-        clearTimeout(timeout);
+      if (searchDebounceRef.current) {
+        clearTimeout(searchDebounceRef.current);
+        searchDebounceRef.current = null;
       }
     };
-  }, [searchQuery, selectedArtist, validSelectedArtists.length,
-    fetchArtistSearch, fetchGlobalSongs, validateSearchQuery]);
+  }, [clearSearchResults, fetchArtistSearch, fetchGlobalSongs, normalizeSearchQuery, searchQuery, selectedArtistRecord]);
 
   // Get current artist's songs
   const getCurrentArtistSongs = () => {
-    // Global search overrides everything
+    // 1️⃣ global search overrides everything
     if (searchQuery.trim()) {
       return globalSearchResults;
     }
 
-    // Otherwise show cached popular songs for the chosen artist
+    // 2️⃣ otherwise show cached top-5 for the chosen artist
     if (!selectedArtist) return [];
-    const artist = validSelectedArtists.find(a => a.id === selectedArtist);
-    return artist ? (artistSongs[artist.name] || []) : [];
+    return selectedArtistRecord ? (artistSongs[selectedArtistRecord.name] || []) : [];
   };
 
   // Get filtered songs based on search query
   const filteredSongs = getCurrentArtistSongs();
 
   return (
-<div className="flex flex-col sm:flex-row h-full rounded-lg overflow-hidden bg-gray-950 border border-gray-800">      {/* LEFT PANEL */}
-<div className={`widget-left ${selectedArtist ? 'sm:w-3/5' : 'sm:w-1/2'}  w-full flex-1 sm:h-full bg-black transition-all duration-300 flex flex-col`}>
+    <div className="flex h-full rounded-lg overflow-hidden bg-gray-950 border border-gray-800">
+      {/* Single shared audio element for widget previews */}
+      <audio ref={audioRef} preload="metadata" onEnded={handleAudioEnded} onError={handleAudioError} />
+      {/* LEFT PANEL */}
+      <div className={`${selectedArtist ? 'w-3/5' : 'w-1/2'} bg-black transition-all duration-300 flex flex-col`}>
         {selectedArtist ? (
           // Artist Detail View with Search and Songs
           <div className="flex flex-col h-full">
@@ -498,12 +703,12 @@ useEffect(() => {
                 <ArrowLeftIcon size={18} className="text-white" />
               </button>
               
-              {/* Artist Profile Image from Spotify */}
+              {/* Artist Profile Image */}
               <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-800 flex items-center justify-center mr-3 shadow-lg">
-                {hasValidImage(validSelectedArtists.find(a => a.id === selectedArtist)?.image) ? (
+                {hasValidImage(selectedArtistRecord?.image) ? (
                   <img 
-                    src={validSelectedArtists.find(a => a.id === selectedArtist)?.image} 
-                    alt={validSelectedArtists.find(a => a.id === selectedArtist)?.name}
+                    src={selectedArtistRecord?.image} 
+                    alt={selectedArtistRecord?.name}
                     className="w-full h-full object-cover"
                   />
                 ) : (
@@ -513,7 +718,7 @@ useEffect(() => {
               
               <div className="flex-1">
                 <h3 className="text-sm font-medium text-white">
-                  {validSelectedArtists.find(a => a.id === selectedArtist)?.name}
+                  {selectedArtistRecord?.name}
                 </h3>
                 <p className="text-xs text-gray-400">Popular songs</p>
               </div>
@@ -527,14 +732,8 @@ useEffect(() => {
                   placeholder="Search songs..."
                   className="w-full bg-gray-900 border border-gray-800 rounded-md py-2 pl-9 pr-3 text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#1DB954]"
                   value={searchQuery}
-                  onChange={(e) => {
-                    const validatedValue = validateSearchQuery(e.target.value);
-                    if (validatedValue !== e.target.value) {
-                      e.target.value = validatedValue;
-                    }
-                    setSearchQuery(validatedValue);
-                  }}
-                  maxLength={100}
+                  onChange={(e) => setSearchQuery(normalizeSearchQuery(e.target.value))}
+                  maxLength={MAX_SEARCH_QUERY_LENGTH}
                   spellCheck={false}
                   autoComplete="off"
                   data-lpignore="true"
@@ -553,127 +752,115 @@ useEffect(() => {
             </div>
             
             {/* Song list */}
-            {/* Song list */}
-<div className="flex-1 overflow-y-auto">
-  <div className="p-2">
-    {loadingSearchResults && (
-      <div className="flex flex-col items-center justify-center h-40 p-4">
-        <div className="w-8 h-8 border-2 border-gray-600 border-t-[#1DB954] rounded-full animate-spin mb-2"></div>
-        <p className="text-sm text-gray-400">Searching…</p>
-      </div>
-    )}
-    {loadingSongs ? (
-      <div className="flex flex-col items-center justify-center h-40 text-center p-4">
-        <div className="w-8 h-8 border-2 border-gray-600 border-t-[#1DB954] rounded-full animate-spin mb-2"></div>
-        <p className="text-sm text-gray-400">Loading songs...</p>
-      </div>
-    ) : filteredSongs.length > 0 ? (
-      <div className="space-y-1">
-        {filteredSongs.map((song, index) => {
-          const isInQueue = personalQueue.some(
-            item => item.track === song.track && item.artist === song.artist
-          );
-          return (
-            <div 
-              key={`${song.track}-${index}`}
-              className={`flex items-center p-2 rounded-md ${
-                playingSong === `${song.track}-${index}`
-                  ? 'bg-[#1DB954]/10 border border-[#1DB954]/30' 
-                  : 'hover:bg-gray-900/80'
-              } group`}
-            >
-              {/* Song artwork or icon */}
-              <div className="w-9 h-9 rounded mr-3 overflow-hidden bg-gray-800 flex-shrink-0">
-                {song.artworkUrl && hasValidImage(song.artworkUrl) ? (
-                  <img 
-                    src={song.artworkUrl} 
-                    alt={song.track}
-                    className="w-full h-full object-cover"
-                  />
+            <div className="flex-1 overflow-y-auto">
+              <div className="p-2">
+                {loadingSearchResults && (
+                  <div className="flex flex-col items-center justify-center h-40 p-4">
+                    <div className="w-8 h-8 border-2 border-gray-600 border-t-[#1DB954] rounded-full animate-spin mb-2"></div>
+                    <p className="text-sm text-gray-400">Searching…</p>
+                  </div>
+                )}
+                {loadingSongs ? (
+                  <div className="flex flex-col items-center justify-center h-40 text-center p-4">
+                    <div className="w-8 h-8 border-2 border-gray-600 border-t-[#1DB954] rounded-full animate-spin mb-2"></div>
+                    <p className="text-sm text-gray-400">Loading songs...</p>
+                  </div>
+                ) : filteredSongs.length > 0 ? (
+                  <div className="space-y-1">
+                    {filteredSongs.map((song, index) => (
+                      <div 
+                        key={`${song.track}-${index}`}
+                        className={`flex items-center p-2 rounded-md ${
+                          playingSong === `${song.track}-${index}`
+                            ? 'bg-[#1DB954]/10 border border-[#1DB954]/30' 
+                            : 'hover:bg-gray-900/80'
+                        } group`}
+                      >
+                        {/* Song artwork or play button */}
+                        <div className="w-9 h-9 rounded mr-3 overflow-hidden bg-gray-800 flex-shrink-0">
+                          {song.artworkUrl && hasValidImage(song.artworkUrl) ? (
+                            <img 
+                              src={song.artworkUrl} 
+                              alt={song.track}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <AlbumIcon size={20} className="text-gray-600" />
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* Song info */}
+                        <div className="flex-1 min-w-0 mr-2">
+                          <h4 className="text-sm font-medium text-white truncate">
+                            {song.track}
+                          </h4>
+                          <p className="text-xs text-gray-400 truncate">
+                            {song.artist}
+                          </p>
+                        </div>
+                        
+                        {/* Controls */}
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          {/* Play button */}
+                          <button 
+                            onClick={() => togglePlay(`${song.track}-${index}`, song)}
+                            className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                              playingSong === `${song.track}-${index}`
+                                ? 'bg-[#1DB954]' 
+                                : 'bg-gray-800 hover:bg-gray-700'
+                            }`}
+                          >
+                            {playingSong === `${song.track}-${index}` ? (
+                              <PauseIcon size={12} className="text-black" />
+                            ) : (
+                              <PlayIcon size={12} className="text-white" />
+                            )}
+                          </button>
+                          
+                          {/* Add to queue button */}
+                          <button 
+                            onClick={() => addToPersonalQueue(song)}
+                            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-[#1DB954]/20 text-[#1DB954]"
+                            title="Add to queue"
+                          >
+                            <PlusIcon size={14} className="text-[#1DB954]" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : searchQuery.trim() ? (
+                  <div className="flex flex-col items-center justify-center h-40 text-center p-4">
+                    <SearchIcon size={24} className="text-gray-600 mb-2" />
+                    <p className="text-sm text-gray-400">No songs found</p>
+                    <p className="text-xs text-gray-500 mt-1">Try a different search term</p>
+                  </div>
+                ) : filteredSongs.length === 0 && !searchQuery.trim() ? (
+                  <div className="flex flex-col items-center justify-center h-40 text-center p-4">
+                    <MusicNoteIcon size={24} className="text-gray-600 mb-2" />
+                    <p className="text-sm text-gray-400">No popular songs found</p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Try searching for specific song titles
+                    </p>
+                  </div>
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <AlbumIcon size={20} className="text-gray-600" />
+                  <div className="flex flex-col items-center justify-center h-40 text-center p-4">
+                    <MusicNoteIcon size={24} className="text-gray-600 mb-2" />
+                    <p className="text-sm text-gray-400">Loading artist songs...</p>
                   </div>
                 )}
               </div>
-              
-              {/* Song info */}
-              <div className="flex-1 min-w-0 mr-2 leading-tight">
-                <h4 className="text-sm font-medium text-white truncate">
-                  {song.track}
-                </h4>
-                <p className="text-xs text-gray-400 truncate">
-                  {song.artist}
-                  {song.album && <> • {song.album}</>}
-                </p>
-              </div>
-              
-              {/* Controls */}
-              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                {/* Visual-only play button */}
-                <button
-                  onClick={() => togglePlay(`${song.track}-${index}`, song.previewUrl)}
-                  className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-800"
-                >
-                  {playingSong === `${song.track}-${index}` ? (
-                    <PauseIcon size={12} className="text-black" />
-                  ) : (
-                    <PlayIcon size={12} className="text-white" />
-                  )}
-                </button>
-                
-                {/* Add to queue button */}
-                {/* Add / Already-added button */}
-<button
-  onClick={() => !isInQueue && addToPersonalQueue(song)}
-  disabled={isInQueue}
-  className={`w-8 h-8 flex items-center justify-center rounded-full
-    ${isInQueue
-        ? 'bg-[#1DB954]/20 text-[#1DB954] cursor-default'
-        : 'hover:bg-[#1DB954]/20 text-[#1DB954]'}`}
-  title={isInQueue ? 'Already in queue' : 'Add to queue'}
->
-  {isInQueue
-      ? <CheckIcon size={14} className="text-[#1DB954]" />
-      : <PlusIcon  size={14} className="text-[#1DB954]" />}
-</button>
-
-              </div>
             </div>
-          );
-        })}
-      </div>
-    ) : searchQuery.trim() ? (
-      <div className="flex flex-col items-center justify-center h-40 text-center p-4">
-        <SearchIcon size={24} className="text-gray-600 mb-2" />
-        <p className="text-sm text-gray-400">No songs found</p>
-        <p className="text-xs text-gray-500 mt-1">Try a different search term</p>
-      </div>
-    ) : filteredSongs.length === 0 && !searchQuery.trim() ? (
-      <div className="flex flex-col items-center justify-center h-40 text-center p-4">
-        <MusicNoteIcon size={24} className="text-gray-600 mb-2" />
-        <p className="text-sm text-gray-400">No popular songs available</p>
-        <p className="text-xs text-gray-500 mt-1">
-          Try searching for specific song titles
-        </p>
-      </div>
-    ) : (
-      <div className="flex flex-col items-center justify-center h-40 text-center p-4">
-        <MusicNoteIcon size={24} className="text-gray-600 mb-2" />
-        <p className="text-sm text-gray-400">Loading artist songs...</p>
-      </div>
-    )}
-  </div>
-</div>
           </div>
         ) : (
-          // Artist Selection Grid - Only show artists from pool with valid Spotify images
+          // Artist Selection Grid - Only show artists from pool with valid images
           <div className="flex flex-col h-full">
             <div className="p-3 border-b border-gray-800 bg-gray-900/30">
               <h3 className="text-sm uppercase font-semibold tracking-wider text-[#1DB954]">
                 Selected Artists ({validSelectedArtists.length})
               </h3>
-              <p className="text-xs text-gray-400 mt-1">From Spotify artist pool</p>
             </div>
             
             <div className="flex-1 overflow-y-auto p-3">
@@ -685,7 +872,7 @@ useEffect(() => {
                         onClick={() => handleSelectArtist(artist.id)}
                         className="w-full flex flex-col items-center p-3 rounded-lg bg-gray-900/40 border border-gray-800/40 hover:bg-gray-900 hover:border-gray-700 transition-all"
                       >
-                        {/* Artist avatar with Spotify image */}
+                        {/* Artist avatar with real image */}
                         <div className="w-16 h-16 rounded-full overflow-hidden bg-gray-800 flex items-center justify-center mb-2 shadow-lg">
                           {hasValidImage(artist.image) ? (
                             <img 
@@ -702,6 +889,8 @@ useEffect(() => {
                         <span className="text-sm text-white text-center truncate w-full">
                           {artist.name}
                         </span>
+                        
+                     
                       </button>
                       
                       {/* Remove button */}
@@ -710,8 +899,8 @@ useEffect(() => {
                           e.stopPropagation();
                           handleRemoveArtist(artist.id);
                         }}
-                        className="absolute -top-1 -right-1 w-6 h-6 bg-red-600 hover:bg-red-700 rounded-full flex items-center justify-center
-                           opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"                        title="Remove artist"
+                        className="absolute -top-1 -right-1 w-6 h-6 bg-red-600 hover:bg-red-700 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        title="Remove artist"
                       >
                         <XIcon size={12} className="text-white" />
                       </button>
@@ -733,8 +922,8 @@ useEffect(() => {
       </div>
       
       {/* RIGHT PANEL - Personal Queue */}
-      <div className="widget-right hidden sm:flex flex-1 bg-gradient-to-br from-gray-900 to-black transition-all duration-300 flex-col sm:w-2/5">
-      <div className="p-3 border-b border-gray-800 bg-gray-900/30 flex justify-between items-center">
+      <div className={`${selectedArtist ? 'w-2/5' : 'w-1/2'} bg-gradient-to-br from-gray-900 to-black transition-all duration-300 flex flex-col`}>
+        <div className="p-3 border-b border-gray-800 bg-gray-900/30 flex justify-between items-center">
           <h3 className="text-sm uppercase font-semibold tracking-wider text-[#1DB954]">
             Your Queue
           </h3>
@@ -840,7 +1029,7 @@ useEffect(() => {
               <p className="text-gray-400 text-sm">Your personal queue is empty</p>
               <p className="text-gray-500 text-xs mt-1">
                 {selectedArtist 
-                  ? "Add songs from the artist's catalog"
+                  ? "Add songs from the artist's top tracks"
                   : "Select an artist to view and add songs"
                 }
               </p>

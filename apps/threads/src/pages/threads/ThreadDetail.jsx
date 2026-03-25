@@ -10,6 +10,7 @@ import ThreadCommentComposer from './ThreadCommentComposer';
 import { GraphSection } from './GraphComponents';
 import useThreadData from "./useThreadData";
 import { authorToAvatar, getAvatarSrc } from "../utils/utils";
+import { ClickableUserAvatar } from "../posts/UserHoverCard";
 import { FiArrowLeft } from "react-icons/fi";
 import ThreadDetailStyles from "./ThreadDetailStyles";
 import './../../styles/threadDetailStyles.css';
@@ -35,6 +36,32 @@ function formatArtworkUrl(url, size = 300) {
     .replace('{w}', String(size))
     .replace('{h}', String(size))
     .replace('{f}', 'jpg');
+}
+
+function buildProfileUser(userLike, fallbackName, fallbackAvatar) {
+  const displayName =
+    userLike?.displayName ||
+    userLike?.name ||
+    userLike?.author ||
+    fallbackName ||
+    "User";
+
+  const username =
+    userLike?.username ||
+    String(displayName)
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "")
+      .slice(0, 24) ||
+    "user";
+
+  return {
+    ...userLike,
+    displayName,
+    name: userLike?.name || displayName,
+    username,
+    avatar: userLike?.avatar || fallbackAvatar || authorToAvatar(displayName),
+  };
 }
 
 export default function ThreadDetail({ postId, postData, onBack, onSelectUser }) {
@@ -171,6 +198,10 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
   const [activeGraphType, setActiveGraphType] = useState('vertical');
   const [postStats] = useState(() => generateRandomStats());
   const { exampleComment, exampleSnippet } = useMemo(() => createExampleData(), []);
+  const postUser = useMemo(
+    () => buildProfileUser(post, post?.author, post?.avatar || (post ? getAvatarSrc(post) : null)),
+    [post]
+  );
   
   // FIXED: Use comments directly in stableCommentOrder, include comments in dependency array
   const [stableCommentOrder, setStableCommentOrder] = useState([]);
@@ -293,6 +324,11 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
     setIsGraphModalOpen(false);
   }, []);
 
+  const handleSelectUser = useCallback((user) => {
+    if (!onSelectUser) return;
+    onSelectUser(user);
+  }, [onSelectUser]);
+
   const updateScatterData = useCallback((snippets) => {
     const newScatterData = processScatterData(snippets, comments, getSnippetId);
     setScatterData(newScatterData);
@@ -373,7 +409,7 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
 
     try {
       stopAudio?.();
-    } catch (e) {
+    } catch {
       // ignore
     }
 
@@ -391,7 +427,36 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
   const handleSubmitComment = useCallback((newComment) => {
     if (!newComment) return;
     
-    setComments(prevComments => [...prevComments, newComment]);
+    const normalizedComment = {
+      ...newComment,
+      replies: Array.isArray(newComment?.replies) ? newComment.replies : [],
+    };
+
+    if (normalizedComment.snippet) {
+      const snippetCommentId = normalizedComment.id || `temp_${Date.now()}`;
+      normalizedComment.id = snippetCommentId;
+      normalizedComment.snippet = {
+        ...normalizedComment.snippet,
+        commentId: normalizedComment.snippet.commentId || snippetCommentId,
+      };
+
+      setSnippetRecs((prevSnippets) => {
+        const nextSnippet = formatSnippetData(
+          {
+            ...normalizedComment.snippet,
+            id: normalizedComment.snippet.id || snippetCommentId,
+            commentId: normalizedComment.snippet.commentId || snippetCommentId,
+            author: normalizedComment.author,
+          },
+          normalizedComment,
+          [...comments, normalizedComment]
+        );
+
+        return [...prevSnippets, nextSnippet];
+      });
+    }
+
+    setComments(prevComments => [...prevComments, normalizedComment]);
     
     setTimeout(() => {
       window.scrollTo({
@@ -399,7 +464,7 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
         behavior: 'smooth'
       });
     }, 100);
-  }, [setComments]);
+  }, [comments, setComments, setSnippetRecs]);
 
   const openTikTokView = useCallback(() => {
     setIsTikTokOpen(true);
@@ -420,13 +485,6 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
   const styles = ThreadDetailStyles;
   const graphsCount = graphRatings?.length || 0;
   const usersCount = uniqueUsers?.length || 0;
-
-  const handleBackWithTransition = useCallback(() => {
-    setIsVisible(false);
-    setTimeout(() => {
-      if (onBack) onBack();
-    }, 300);
-  }, [onBack]);
 
   // Get all snippets for TikTokModal (including injected ones, excluding example)
   const getTikTokSnippets = useCallback(() => {
@@ -503,27 +561,37 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
             alignItems: "center",
             marginBottom: "16px",
           }}>
-            <img
-              src={getAvatarSrc(post)}
-              alt="User avatar"
-              style={{
-                width: "48px",
-                height: "48px",
-                borderRadius: "50%",
-                objectFit: "cover",
-                marginRight: "12px",
-                border: "2px solid rgba(255, 255, 255, 0.1)",
-              }}
-            />
+            <div
+              style={{ marginRight: "12px" }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <ClickableUserAvatar
+                user={postUser}
+                avatarSrc={postUser.avatar}
+                size={48}
+                onUserClick={handleSelectUser}
+              />
+            </div>
             <div style={{
               display: "flex",
               flexDirection: "column",
             }}>
-              <div style={{
-                fontWeight: "700",
-                fontSize: "18px",
-                color: "#fff",
-              }}>{post.author}</div>
+              <button
+                type="button"
+                onClick={() => handleSelectUser(postUser)}
+                style={{
+                  fontWeight: "700",
+                  fontSize: "18px",
+                  color: "#fff",
+                  background: "none",
+                  border: "none",
+                  padding: 0,
+                  textAlign: "left",
+                  cursor: "pointer",
+                }}
+              >
+                {postUser.displayName}
+              </button>
               <div style={{
                 fontSize: "14px",
                 color: "#64748b",
@@ -886,14 +954,26 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
                     <div 
                       key={user.name} 
                       style={styles.userMinimal}
-                      onClick={() => onSelectUser && onSelectUser(user)}
                     >
-                      <img
-                        src={user.avatar}
-                        alt={user.name}
-                        style={styles.userAvatar}
+                      <ClickableUserAvatar
+                        user={buildProfileUser(user, user.name, user.avatar)}
+                        avatarSrc={user.avatar}
+                        size={56}
+                        onUserClick={handleSelectUser}
                       />
-                      <p style={styles.userName}>{user.name}</p>
+                      <button
+                        type="button"
+                        onClick={() => handleSelectUser(buildProfileUser(user, user.name, user.avatar))}
+                        style={{
+                          ...styles.userName,
+                          background: "none",
+                          border: "none",
+                          padding: 0,
+                          cursor: "pointer",
+                        }}
+                      >
+                        {user.name}
+                      </button>
                     </div>
                   ))}
                 </div>
@@ -1028,6 +1108,7 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
                   onPlayPause={isNewsThread ? null : () => playSnippetInComment(snippetObj)}
                   onRate={isNewsThread ? null : handleUserRate}
                   onRatingPause={isNewsThread ? null : handleRatingPause}
+                  onUserClick={handleSelectUser}
                   isFirstSnippet={!isNewsThread && index === 0 && snippetObj && c.id === 'example_comment_001'}
                   isNewsThread={isNewsThread}
                   snippetsLoading={!isNewsThread && !usedCache && snippetsLoading}

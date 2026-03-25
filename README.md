@@ -15,6 +15,7 @@ Located in `apps/threads/`
 - Music discussion threads and community features
 - React + Vite application
 - Run with: `npm run dev:threads`
+- In production it is hosted by the root server at `/threads`
 
 ## Shared Resources
 - `shared/assets/` - Common images, videos, and media files
@@ -31,12 +32,14 @@ npm install
 # Run individual apps
 npm run dev:mufl     # Start Mufl (Rooms) app
 npm run dev:threads  # Start Threads app
+npm run dev          # Start the unified backend/API server
+npm run dev:threads:stack # Start unified backend + Threads frontend together
 
 # Build apps
 npm run build:mufl
 npm run build:threads
 
-# Start backend server
+# Start backend server only
 npm start
 ```
 
@@ -83,6 +86,9 @@ For the shared backend used by Threads:
 cd /path/to/UpdatedWebsite2
 # Edit the root .env with your actual API keys
 ```
+
+Threads does not run its production API from `apps/threads/src/backend/server.js` when hosted from the main website.
+The deployed website uses the root [server.js](/Users/graham/Desktop/UpdatedWebsite2/server.js) plus [backend/unifiedRoutes.js](/Users/graham/Desktop/UpdatedWebsite2/backend/unifiedRoutes.js), and serves the built Threads frontend from `/threads`.
 
 3. Install dependencies:
 ```bash

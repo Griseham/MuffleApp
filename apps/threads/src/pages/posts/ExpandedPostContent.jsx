@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   Play, Pause, Headphones, Volume2, Music, 
   Mic, Users, Lock
@@ -7,12 +7,10 @@ import InfoIconModal from '../InfoIconModal';
 import { 
   getRandomNumber, 
   hashString, 
-  generateUsername, 
-  formatCompactNumber,
-  getAvatarSrc
+  generateUsername
 } from './postCardUtils';
 
-const ExpandedPostContent = ({ post, themeColor, genres, getRgbaFromHex }) => {
+const ExpandedPostContent = ({ post, themeColor, _genres, getRgbaFromHex }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [volumeGain, setVolumeGain] = useState(0);
   
@@ -332,7 +330,7 @@ const ExpandedPostContent = ({ post, themeColor, genres, getRgbaFromHex }) => {
               gridTemplateColumns: 'repeat(4, 1fr)',
               gap: '16px 12px',
             }}>
-              {artistsList.discovered.map((artist, index) => (
+              {artistsList.discovered.map((artist) => (
                 <div key={artist.id} style={{
                   display: 'flex',
                   flexDirection: 'column',
@@ -386,7 +384,7 @@ const ExpandedPostContent = ({ post, themeColor, genres, getRgbaFromHex }) => {
                 </div>
               ))}
               
-              {artistsList.undiscovered.map((artist, index) => (
+              {artistsList.undiscovered.map((artist) => (
                 <div key={artist.id} style={{
                   display: 'flex',
                   flexDirection: 'column',

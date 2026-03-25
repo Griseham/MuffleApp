@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useRef, useEffect } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { getAppleMusicAlbumArtworks } from "../services/appleMusic";
 import { ClickableUserAvatar } from "../pages/posts/UserHoverCard";
 import { getAvatarSrc, hashString } from "../pages/posts/postCardUtils";
@@ -231,7 +231,6 @@ const SongCarousel = ({ songs, onNavigateToThread, albumArtworks = {} }) => {
   const [animating, setAnimating] = useState(false);
   const [direction, setDirection] = useState(0);
   const [hoveredThread, setHoveredThread] = useState(false);
-  const song = songs[idx];
 
   // Keep idx in bounds if songs array changes
   const safeIdx = Math.min(idx, songs.length - 1);
@@ -627,7 +626,7 @@ export default function RightPanel({
                       transition: "color 0.15s",
                     }}
                   >
-                    {hoveredGenre === g.name ? `Go to ${g.name}` : g.name}
+                    {hoveredGenre === g.name ? `Focus on ${g.name}` : g.name}
                   </span>
                 </div>
 

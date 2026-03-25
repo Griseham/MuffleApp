@@ -13,6 +13,13 @@ const htmlEntities = {
   '=': '&#x3D;'
 };
 
+const memoryRateLimitStore = new Map();
+const stripControlCharacters = (value) =>
+  value.split('').filter((char) => {
+    const code = char.charCodeAt(0);
+    return code >= 32 && code !== 127;
+  }).join('');
+
 /**
  * Sanitize HTML content to prevent XSS attacks
  * @param {string} input - The input string to sanitize
@@ -21,7 +28,7 @@ const htmlEntities = {
 export const sanitizeHtml = (input) => {
   if (typeof input !== 'string') return '';
   
-  return input.replace(/[&<>"'`=\/]/g, (match) => htmlEntities[match]);
+  return input.replace(/[&<>"'`=/]/g, (match) => htmlEntities[match]);
 };
 
 /**
@@ -32,21 +39,19 @@ export const sanitizeHtml = (input) => {
 export const sanitizeSearchQuery = (query) => {
   if (typeof query !== 'string') return '';
   
-  // Remove potentially dangerous characters and patterns
-  let sanitized = query
-    // Remove script tags and their content
+  // Normalize unicode, remove control chars, strip dangerous protocols/tags,
+  // then keep only a conservative set of artist-search characters.
+  const sanitized = query
+    .normalize('NFKC')
+    .split('\n').map(stripControlCharacters).join(' ')
     .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-    // Remove HTML tags
     .replace(/<[^>]*>/g, '')
-    // Remove SQL injection patterns
-    .replace(/('|(\\)|;|--|\||`|<|>|&|\$)/g, '')
-    // Remove potentially dangerous URLs
     .replace(/(javascript:|data:|vbscript:|file:|about:)/gi, '')
-    // Limit length
-    .substring(0, 200)
-    // Trim whitespace
+    .replace(/[^\p{L}\p{N}\s.'\-&()]/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .substring(0, 80)
     .trim();
-    
+
   return sanitized;
 };
 
@@ -134,28 +139,67 @@ export const validateAndSanitizeInput = (input, options = {}) => {
 export const checkRateLimit = (key, maxRequests = 10, windowMs = 60000) => {
   const now = Date.now();
   const windowKey = `${key}_${Math.floor(now / windowMs)}`;
-  
-  // Get current count from localStorage (in a real app, use Redis or similar)
-  const stored = localStorage.getItem(windowKey);
-  const count = stored ? parseInt(stored, 10) : 0;
+
+  const readCount = () => {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const stored = localStorage.getItem(windowKey);
+        return stored ? parseInt(stored, 10) : 0;
+      }
+    } catch {
+      // Fall back to in-memory storage when localStorage is unavailable.
+    }
+    return memoryRateLimitStore.get(windowKey) || 0;
+  };
+
+  const writeCount = (count) => {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(windowKey, count.toString());
+        return;
+      }
+    } catch {
+      // Fall back to in-memory storage when localStorage is unavailable.
+    }
+    memoryRateLimitStore.set(windowKey, count);
+  };
+
+  const cleanupOldEntries = () => {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const keys = Object.keys(localStorage);
+        keys.forEach(storageKey => {
+          if (storageKey.startsWith(`${key}_`) && storageKey !== windowKey) {
+            const keyTime = parseInt(storageKey.split('_')[1], 10);
+            if (Number.isFinite(keyTime) && now - keyTime * windowMs > windowMs * 2) {
+              localStorage.removeItem(storageKey);
+            }
+          }
+        });
+        return;
+      }
+    } catch {
+      // Fall back to in-memory storage when localStorage is unavailable.
+    }
+
+    for (const storageKey of memoryRateLimitStore.keys()) {
+      if (storageKey.startsWith(`${key}_`) && storageKey !== windowKey) {
+        const keyTime = parseInt(storageKey.split('_')[1], 10);
+        if (Number.isFinite(keyTime) && now - keyTime * windowMs > windowMs * 2) {
+          memoryRateLimitStore.delete(storageKey);
+        }
+      }
+    }
+  };
+
+  const count = readCount();
   
   if (count >= maxRequests) {
     return false; // Rate limit exceeded
   }
   
-  // Increment count
-  localStorage.setItem(windowKey, (count + 1).toString());
-  
-  // Clean up old entries (basic cleanup)
-  const keys = Object.keys(localStorage);
-  keys.forEach(storageKey => {
-    if (storageKey.startsWith(key) && storageKey !== windowKey) {
-      const keyTime = parseInt(storageKey.split('_')[1], 10);
-      if (now - keyTime * windowMs > windowMs * 2) {
-        localStorage.removeItem(storageKey);
-      }
-    }
-  });
+  writeCount(count + 1);
+  cleanupOldEntries();
   
   return true; // Request allowed
 };

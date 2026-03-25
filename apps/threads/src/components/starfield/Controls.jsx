@@ -1,5 +1,5 @@
 // NavigationControls.jsx - Navigation buttons with constellation cycling
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo } from "react";
 import styles from "../styles";
 import EnhancedArtistFilterBar from "../EnhancedArtistFilterBar";
 import { friendColors } from "../utils";
@@ -11,33 +11,16 @@ export default function Controls({
   toggleFullscreen,
   snapToOrigin,
   snapToFriend,
-  snapToArtist,
   artists,
   onAddArtist,
   onRemoveArtist,
   onSelectArtist,
-  selectedArtist
+  onNavigateConstellation,
+  selectedArtist,
+  artistConstellations = {}
 }) {
   // Generate fixed avatar IDs for friends that won't change
   const friendAvatars = useMemo(() => [222, 333, 444], []);
-  
-  // Track which constellation is currently shown for each artist
-  const [artistConstellations, setArtistConstellations] = useState({});
-  
-  // Initialize constellation indices when artists change
-  useEffect(() => {
-    if (!artists || artists.length === 0) return;
-    
-    const initialIndices = {};
-    artists.forEach(artist => {
-      if (artist && artist.id) {
-        // Default to showing the first constellation (index 0)
-        initialIndices[artist.id] = artistConstellations[artist.id] || 0;
-      }
-    });
-    
-    setArtistConstellations(initialIndices);
-  }, [artists]);
   
   // Handle artist button click - cycles through constellations
   const handleArtistClick = (artist) => {
@@ -45,43 +28,10 @@ export default function Controls({
     const currentIndex = artistConstellations[artist.id] || 0;
     // Calculate next index (cycle through 0, 1, 2)
     const nextIndex = (currentIndex + 1) % 3;
-    
-    console.log(`Cycling constellation for ${artist.name} from ${currentIndex} to ${nextIndex}`);
-    
-    // Update the state
-    setArtistConstellations(prev => ({
-      ...prev,
-      [artist.id]: nextIndex
-    }));
-    
-    // Calculate position based on constellation index - with MUCH larger offsets
-    // This needs to match the offsets in ConstellationOverlay
-    const offsetX = nextIndex === 1 ? -8000 : nextIndex === 2 ? 8000 : 0;
-    const offsetY = nextIndex === 1 ? -2000 : nextIndex === 2 ? 5000 : 0;
-    
-    // Create a modified artist object with constellation offset and index
-    const artistWithOffset = {
-      ...artist,
-      coordinate: artist.coordinate || { x: 30000, y: 30000 },
-      constellationIndex: nextIndex
-    };
-    
-    // First update the state for the artist
+
     if (onSelectArtist) {
-      onSelectArtist(artistWithOffset);
+      onSelectArtist(artist, nextIndex);
     }
-    
-    // Create position for navigation
-    const navigationPosition = {
-      ...artistWithOffset,
-      coordinate: {
-        x: (artist.coordinate ? artist.coordinate.x : 30000) + offsetX,
-        y: (artist.coordinate ? artist.coordinate.y : 30000) + offsetY
-      }
-    };
-    
-    // Snap to the new constellation position
-    snapToArtist(navigationPosition);
   };
   
   // Get button background color based on constellation index
@@ -317,6 +267,8 @@ export default function Controls({
         onAddArtist={onAddArtist}
         onRemoveArtist={onRemoveArtist}
         onSelectArtist={onSelectArtist}
+        onNavigateConstellation={onNavigateConstellation}
+        selectedArtist={selectedArtist}
         activeArtists={artists}
         isFullscreen={isFullscreen}
       />

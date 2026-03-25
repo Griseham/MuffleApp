@@ -7,12 +7,12 @@ import {
   Play,
   Pause,
   Users,
-  ArrowUp,
   Music,
   BarChart3
 } from 'lucide-react';
 import InfoIconModal from '../InfoIconModal';
 import { toApiOriginUrl } from '../../utils/api';
+import { ClickableUserAvatar } from '../posts/UserHoverCard';
 
 
 function authorToAvatar(author) {
@@ -41,6 +41,26 @@ function getRandomTimestamp() {
   return timeStr;
 }
 
+function buildCommentUser(comment) {
+  const displayName = comment?.displayName || comment?.author || 'Unknown';
+  const username =
+    comment?.username ||
+    String(displayName)
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "")
+      .slice(0, 24) ||
+    'user';
+
+  return {
+    ...comment,
+    displayName,
+    name: displayName,
+    username,
+    avatar: comment?.avatar || authorToAvatar(displayName),
+  };
+}
+
 const ThreadCommentCard = ({
   comment,
   snippet,
@@ -49,10 +69,13 @@ const ThreadCommentCard = ({
   onPlayPause,
   onRate,
   onRatingPause,
+  onUserClick,
   isFirstSnippet, // Add this prop
   isNewsThread = false, // Add news thread prop
   snippetsLoading = false // NEW: Loading state for snippets
 }) => {
+  const commentUser = buildCommentUser(comment);
+
   // Random timestamp for the comment
   const [randomTime] = useState(() => getRandomTimestamp());
 
@@ -109,27 +132,12 @@ const ThreadCommentCard = ({
   // Get the properly formatted artwork URL
   const formattedArtwork = snippet ? getFormattedArtworkUrl(snippet) : null;
 
-  // DEBUG: Log snippet artwork when component renders with a snippet
-  if (snippet) {
-    console.log(`ThreadCommentCard: Rendering snippet for comment ${comment?.id}:`, {
-      snippetId: snippet.id,
-      songName: snippet.name || snippet.songName,
-      rawArtwork: snippet.artwork,
-      rawArtworkUrl: snippet.artworkUrl,
-      formattedArtwork: formattedArtwork,
-    });
-  }
-
-  if (!comment) {
-    return null;
-  }
-
   // Use consistent stats for likes and replies to prevent re-renders
   const [likeCount] = useState(() => {
-    if (comment.likes) return comment.likes;
+    if (comment?.likes) return comment.likes;
     // Generate consistent random likes based on comment ID/author
     let hash = 0;
-    const seedString = comment.id || comment.author || 'default';
+    const seedString = comment?.id || comment?.author || 'default';
     for (let i = 0; i < seedString.length; i++) {
       hash = seedString.charCodeAt(i) + ((hash << 5) - hash);
     }
@@ -137,12 +145,12 @@ const ThreadCommentCard = ({
   });
   
   const [replyCount] = useState(() => {
-    if (comment.replies) {
+    if (comment?.replies) {
       return typeof comment.replies === 'number' ? comment.replies : comment.replies.length || 0;
     }
     // Generate consistent random replies based on comment ID/author
     let hash = 0;
-    const seedString = (comment.id || comment.author || 'default') + '_replies';
+    const seedString = (comment?.id || comment?.author || 'default') + '_replies';
     for (let i = 0; i < seedString.length; i++) {
       hash = seedString.charCodeAt(i) + ((hash << 5) - hash);
     }
@@ -150,22 +158,9 @@ const ThreadCommentCard = ({
   });
 
   // Basic user/timestamp
-  const username = comment.author
-    ? comment.author.toLowerCase().replace(/\s/g, '')
-    : 'unknown';
-  const timestamp = comment.createdUtc
+  const timestamp = comment?.createdUtc
     ? new Date(comment.createdUtc * 1000).toLocaleString()
     : randomTime;
-
-  // Convert rating [0..100] → fraction [0..1]
-  function toFraction(val) {
-    return Math.max(0, Math.min(val || 0, 100)) / 100;
-  }
-
-  // Local fraction states
-  const fracUser = toFraction(
-    isHovering && !snippet?.didRate ? hoverRating : localUserRating
-  );
 
   // Initialize/sync local rating from snippet (primitive deps only)
   useEffect(() => {
@@ -288,6 +283,11 @@ const ThreadCommentCard = ({
     snippet &&
     activeSnippet.snippetId?.toString() === snippet.id?.toString() &&
     isPlaying;
+  const hasPreview = Boolean(snippet?.previewUrl);
+
+  if (!comment) {
+    return null;
+  }
 
   // Modern Side Album Art Design
   return (
@@ -328,18 +328,14 @@ const ThreadCommentCard = ({
         gap: "16px",
         marginBottom: "16px",
       }}>
-        <img
-          src={authorToAvatar(comment.author)}
-          alt={`${comment.author || 'Unknown'}'s avatar`}
-          style={{
-            width: "48px",
-            height: "48px",
-            borderRadius: "50%",
-            objectFit: "cover",
-            border: "2px solid rgba(255, 255, 255, 0.1)",
-            flexShrink: 0,
-          }}
-        />
+        <div onClick={(e) => e.stopPropagation()}>
+          <ClickableUserAvatar
+            user={commentUser}
+            avatarSrc={commentUser.avatar}
+            size={48}
+            onUserClick={onUserClick}
+          />
+        </div>
         
         <div style={{
           flex: 1,
@@ -350,13 +346,24 @@ const ThreadCommentCard = ({
             alignItems: "center",
             marginBottom: "4px",
           }}>
-            <div style={{
-              fontSize: "17px",
-              fontWeight: "600",
-              color: "#ffffff",
-            }}>
-              {comment.author || 'Unknown'}
-            </div>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onUserClick) onUserClick(commentUser);
+              }}
+              style={{
+                fontSize: "17px",
+                fontWeight: "600",
+                color: "#ffffff",
+                background: "none",
+                border: "none",
+                padding: 0,
+                cursor: "pointer",
+              }}
+            >
+              {commentUser.displayName}
+            </button>
             <div style={{
               fontSize: "14px",
               color: "#94a3b8",
@@ -582,6 +589,8 @@ const ThreadCommentCard = ({
                 <button
                   type="button"
                   onClick={handlePlayPause}
+                  disabled={!hasPreview}
+                  title={hasPreview ? "Play preview" : "Preview unavailable"}
                   style={{
                     position: "absolute",
                     top: "50%",
@@ -595,9 +604,10 @@ const ThreadCommentCard = ({
                     alignItems: "center",
                     justifyContent: "center",
                     border: "none",
-                    cursor: "pointer",
+                    cursor: hasPreview ? "pointer" : "not-allowed",
                     boxShadow: "0 4px 16px rgba(0, 0, 0, 0.4)",
                     transition: "transform 0.2s",
+                    opacity: hasPreview ? 1 : 0.55,
                   }}
                 >
                   {isThisSnippetPlaying ? (
@@ -640,6 +650,15 @@ const ThreadCommentCard = ({
                   }}>
                     {snippet.artistName || 'Unknown artist'}
                   </div>
+                  {!hasPreview && (
+                    <div style={{
+                      fontSize: "12px",
+                      color: "#94a3b8",
+                      marginBottom: "12px",
+                    }}>
+                      Preview unavailable.
+                    </div>
+                  )}
                 </div>
                 
                 {/* Progress bar */}

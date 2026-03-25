@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { FiArrowLeft, FiMessageCircle, FiHeart, FiRepeat, FiShare, FiVolume2 } from 'react-icons/fi';
-import { Music, TrendingUp, Shuffle, Mic, Search } from 'lucide-react';
+import { Music } from 'lucide-react';
 import profileData from './ProfileData.json';
 import artistData from './artistData';  // Import the artist data
 import EnhancedDiscoverySection from './EnhancedDiscoverySection';
@@ -100,41 +100,6 @@ const MusicSnippet = ({ snippet }) => {
           {snippet.artistName}
         </div>
       </div>
-    </div>
-  );
-};
-
-// Artist Circle component for the discovery tab
-const ArtistCircle = ({ artist }) => {
-  return (
-    <div style={{
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-    }}>
-      <div style={{
-        width: '48px',
-        height: '48px',
-        borderRadius: '50%',
-        border: '2px solid rgba(255, 255, 255, 0.2)',
-        overflow: 'hidden',
-        marginBottom: '0.25rem',
-        boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
-      }}>
-        <img 
-          src={artist.imageUrl} 
-          alt={artist.name}
-          style={{
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover'
-          }}
-        />
-      </div>
-      <div style={{
-        fontSize: '0.75rem',
-        color: '#a9b6fc',
-      }}>{artist.name.length > 10 ? artist.name.substring(0, 10) + '...' : artist.name}</div>
     </div>
   );
 };
@@ -546,10 +511,6 @@ export default function UserProfile({ user = profileData.userInfo, onBack }) {
       gap: '0.25rem',
       minWidth: '180px'
     },
-    statItem: {
-      fontSize: '0.8rem',
-      color: '#a9b6fc'
-    }
   };
 
   return (
@@ -875,7 +836,7 @@ export default function UserProfile({ user = profileData.userInfo, onBack }) {
       </div>
 
       {/* Add keyframes for animations */}
-      <style jsx>{`
+      <style>{`
   @keyframes fadeSlideDown {
     from {
       opacity: 0;

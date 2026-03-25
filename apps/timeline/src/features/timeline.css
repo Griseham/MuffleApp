@@ -1,0 +1,91 @@
+/* Timeline global styles */
+:root {
+  --ui-scale: 1.25;
+
+  --color-bg-primary: #080808;
+  --color-bg-secondary: #121212;
+  --color-bg-tertiary: #0a0a0a;
+  --color-border-primary: #1a1a1a;
+  --color-border-secondary: #282B29;
+  --color-border-subtle: #111111;
+  --color-text-primary: #A4A2A0;
+  --color-text-secondary: #7B7A75;
+  --color-text-muted: #554E48;
+  --color-accent: #6B8E8E;
+  
+  --corner-height: 80px;
+  --sidebar-width: 100px;
+  --user-column-width: 130px;
+  --row-height: 160px;
+  --app-max-width: 1000px;
+}
+
+.app-wrapper {
+  min-height: 100vh;
+  background: #000000;
+  display: flex;
+  justify-content: center;
+  overflow: auto;
+}
+
+.app-root {
+  width: 100%;
+  max-width: var(--app-max-width);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-bg-primary);
+  font-family: system-ui, -apple-system, sans-serif;
+  color: var(--color-text-primary);
+  border-left: 1px solid var(--color-border-primary);
+  border-right: 1px solid var(--color-border-primary);
+  transform: scale(var(--ui-scale));
+  transform-origin: top center;
+}
+
+.genre-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: nowrap;
+}
+
+.genre-chip {
+  padding: 6px 12px;
+  border: 1px solid var(--color-border-secondary);
+  border-radius: 16px;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.genre-chip:hover {
+  border-color: var(--color-text-muted);
+  color: var(--color-text-primary);
+}
+
+.genre-chip-active {
+  background: var(--color-border-secondary);
+  color: var(--color-text-primary);
+  border-color: var(--color-text-muted);
+}
+
+.info-icon-button.zone-header-info-btn {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border-primary);
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.info-icon-button.zone-header-info-btn:hover {
+  background: #121212;
+  border-color: var(--color-border-secondary);
+}

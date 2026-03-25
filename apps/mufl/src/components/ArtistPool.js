@@ -1,7 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { getAvatarForUser } from "../utils/avatarService";   // ⬅️ NEW
 
-
+  import React, { useState, useEffect } from "react";
 
 const ArtistPool = ({ 
 poolArtists = [], // Dynamic artists from room + related artists
@@ -11,7 +9,11 @@ refreshInterval = 20000, // Changed to 20 seconds
 onPoolUpdate = null, // Callback to update pool from parent
 onArtistSelect = null, // NEW: Callback when user selects an artist
 selectedArtists = {}, // NEW: Object with artistId -> array of user objects
-currentUserId = "currentUser" // NEW: Current user's ID
+currentUserId = "currentUser", // NEW: Current user's ID
+isBackgroundFetching = false,
+backgroundFetchProgress = 0,
+apiBaseUrl = '',
+disableExternalFetch = false
 }) => {
 // State for visible artists, loading, and internal countdown
 const [visibleArtists, setVisibleArtists] = useState([]);
@@ -26,15 +28,13 @@ const [userSelectionTimeouts, setUserSelectionTimeouts] = useState([]); // Track
 const countdown = externalCountdown !== null ? externalCountdown : internalCountdown;
 
 // Helper function to validate if an image URL is real
-// FIXED VERSION - Add scdn.co filter to block Spotify URLs
 const hasValidImage = (artist) => {
   return artist.image && 
          artist.image !== 'fallback.jpg' && 
          artist.image !== '/placeholder-200.png' &&
          !artist.image.includes('placeholder') &&
-         !artist.image.includes('picsum') && 
-         !artist.image.includes('scdn.co') && // ← ADD THIS LINE to block Spotify URLs
-         artist.image.startsWith('http');
+         !artist.image.includes('picsum') && // Remove any placeholder services
+         artist.image.startsWith('http'); // Ensure it's a real URL
 };
 
 // NEW: Simulate users slowly selecting artists over time
@@ -42,21 +42,16 @@ const startUserSelectionSimulation = (artists) => {
   // Clear any existing timeouts first
   userSelectionTimeouts.forEach(timeout => clearTimeout(timeout));
   
-// ArtistPool.js  – inside startUserSelectionSimulation (replace mockUsers array)
-const mockUsers = Array.from({ length: 15 }, (_, i) => {
-  const id = `user${i + 1}`;
-  const names = [
-    "Alex", "Beth", "Chris", "Dana", "Eve",
-    "Frank", "Grace", "Henry", "Isla", "Jack",
-    "Kara", "Leo", "Mira", "Noah", "Owen"
+  const mockUsers = [
+    { id: 'user1', name: 'Alex', initials: 'A', avatar: '/assets/image1.png' },
+    { id: 'user2', name: 'Beth', initials: 'B', avatar: '/assets/image2.png' },
+    { id: 'user3', name: 'Chris', initials: 'C', avatar: '/assets/image3.png' },
+    { id: 'user4', name: 'Dana', initials: 'D', avatar: '/assets/image4.png' },
+    { id: 'user5', name: 'Eve', initials: 'E', avatar: '/assets/image5.png' },
+    { id: 'user6', name: 'Frank', initials: 'F', avatar: '/assets/image6.png' },
+    { id: 'user7', name: 'Grace', initials: 'G', avatar: '/assets/image7.png' },
+    { id: 'user8', name: 'Henry', initials: 'H', avatar: '/assets/image8.png' },
   ];
-  return {
-    id,
-    name: names[i],
-    avatar: getAvatarForUser(i + 1)      // ⬅️ avatar URL
-  };
-});
-
   
   // Only ~60% of artists will get users
   const artistsToGetUsers = artists.filter(() => Math.random() < 0.6);
@@ -69,7 +64,8 @@ const mockUsers = Array.from({ length: 15 }, (_, i) => {
     const shuffledUsers = [...mockUsers].sort(() => Math.random() - 0.5);
     
     for (let i = 0; i < numUsers; i++) {
-      const delay = Math.random() * 15000 + 3000; // 3-18 seconds after refresh (within 20-second period)
+      // So avatars show up quickly after a refresh: start between 0.8s and ~8s
+      const delay = Math.random() * 7000 + 800;
       events.push({
         delay,
         artistId: artist.id || artist.name,
@@ -177,17 +173,21 @@ const generateArtistSVG = (artist, index) => {
 
 // Create a combined pool from both props, filtering for valid images only
 const getCombinedArtistPool = () => {
-
+  console.log('=== ArtistPool Debug ===');
+  console.log('poolArtists:', poolArtists.length);
+  console.log('roomArtists:', roomArtists.length);
   
   let combinedPool = [];
   
   // Add pool artists if available, but only those with valid images
   if (poolArtists.length > 0) {
     const validPoolArtists = poolArtists.filter(hasValidImage);
+    console.log(`Filtered pool artists: ${validPoolArtists.length}/${poolArtists.length} have valid images`);
     combinedPool = [...validPoolArtists];
   }
   // If no pool artists, create immediate pool from room artists with valid images
   else if (roomArtists.length > 0) {
+    console.log('Creating immediate pool from room artists');
     const validRoomArtists = roomArtists
       .filter(hasValidImage)
       .map((artist, idx) => ({
@@ -196,23 +196,32 @@ const getCombinedArtistPool = () => {
         id: artist.id || `room-${idx}`
       }));
 
+    console.log(`Valid room artists: ${validRoomArtists.length}/${roomArtists.length}`);
     combinedPool = [...validRoomArtists];
     
     // If we don't have enough artists, fetch from Apple Music API
-    if (combinedPool.length < 10) {
+    if (!disableExternalFetch && combinedPool.length < 10) {
+      console.log('Not enough artists with images, will need to fetch from Apple Music API');
       fetchAdditionalArtistsFromAppleMusic(10 - combinedPool.length);
     }
   }
   
+  console.log('Combined pool size (with valid images only):', combinedPool.length);
   return combinedPool;
 };
 
 // Function to fetch additional artists from Apple Music API
 const fetchAdditionalArtistsFromAppleMusic = async (count) => {
   try {
+    console.log(`Fetching ${count} additional artists from Apple Music...`);
     setIsRefreshing(true);
+
+    const baseUrl = apiBaseUrl ? apiBaseUrl.replace(/\/$/, '') : '';
+    const url = baseUrl 
+      ? `${baseUrl}/apple-music/random-genre-artists?count=${count * 2}`
+      : `/apple-music/random-genre-artists?count=${count * 2}`;
     
-    const response = await fetch(`/api/apple-music/random-genre-artists?count=${count * 2}`); // Get extra to filter
+    const response = await fetch(url); // Get extra to filter
     if (!response.ok) {
       throw new Error('Failed to fetch from Apple Music API');
     }
@@ -231,6 +240,7 @@ const fetchAdditionalArtistsFromAppleMusic = async (count) => {
         isRoomArtist: false
       }));
 
+    console.log(`Added ${validAppleArtists.length} artists from Apple Music`);
     
     // Update the pool via callback to parent if available
     if (onPoolUpdate && validAppleArtists.length > 0) {
@@ -238,6 +248,7 @@ const fetchAdditionalArtistsFromAppleMusic = async (count) => {
     }
     
   } catch (error) {
+    console.error('Error fetching additional artists from Apple Music:', error);
   } finally {
     setIsRefreshing(false);
   }
@@ -245,6 +256,7 @@ const fetchAdditionalArtistsFromAppleMusic = async (count) => {
 
 // Function to shuffle and select exactly 10 artists for display (only those with images)
 const refreshVisibleArtists = async () => {
+  console.log('🔄 Refreshing artist pool...');
   setIsRefreshing(true);
   
   // Clear all user selections when pool refreshes
@@ -267,6 +279,7 @@ const refreshVisibleArtists = async () => {
   const validArtists = combinedPool.filter(hasValidImage);
   
   if (validArtists.length === 0) {
+    console.log('No artists with valid images found');
     setVisibleArtists([]);
     setIsRefreshing(false);
     return;
@@ -276,6 +289,7 @@ const refreshVisibleArtists = async () => {
   const roomArtistsFromPool = validArtists.filter(artist => artist.isRoomArtist);
   const relatedArtists = validArtists.filter(artist => !artist.isRoomArtist);
 
+  console.log('Valid artists - Room:', roomArtistsFromPool.length, 'Related:', relatedArtists.length);
 
   // Shuffle both groups
   const shuffledRoomArtists = [...roomArtistsFromPool].sort(() => Math.random() - 0.5);
@@ -302,10 +316,16 @@ const refreshVisibleArtists = async () => {
 
   // Final shuffle to mix room and related artists
   const finalSelection = selected.sort(() => Math.random() - 0.5);
-
+  console.log('Final selection:', finalSelection.map(a => ({ 
+    name: a.name, 
+    hasValidImage: hasValidImage(a), 
+    isRoom: a.isRoomArtist,
+    imageUrl: a.image 
+  })));
   
   setVisibleArtists(finalSelection.slice(0, DISPLAY_COUNT));
   setIsRefreshing(false);
+  console.log('✅ Pool refresh complete!');
   
   // Start slowly adding users to artists after refresh
   setTimeout(() => {
@@ -355,7 +375,7 @@ const renderRoomIndicator = (isRoomArtist) => {
   );
 };
 
-// Helper function to render user avatars with persistent state - UPDATED TO USE SVG
+// Helper function to render user avatars with persistent state
 const renderUserAvatars = (artistId) => {
   const users = getUsersForArtist(artistId);
   if (users.length === 0) return null;
@@ -363,14 +383,24 @@ const renderUserAvatars = (artistId) => {
   return (
     <div className="floating-users">
       {users.slice(0, 4).map((user, index) => (
-        <img
-          key={user.id || index}
-          src={user.avatar || getAvatarForUser(index + 1)}
-          alt={user.name}
+        <div 
+          key={user.id || index} 
           className={`user-avatar user-${(index % 8) + 1}`}
-          style={{ animationDelay: `${index * 0.2}s` }}   // keeps the stagger
-        />
+          style={{
+            backgroundImage: user.avatar ? `url(${user.avatar})` : undefined,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            animationDelay: `${index * 0.2}s` // Stagger the animations
+          }}
+        >
+          {!user.avatar && (user.initials || user.name?.charAt(0) || '?')}
+        </div>
       ))}
+      {users.length > 4 && (
+        <div className="user-avatar user-count" style={{ animationDelay: '0.8s' }}>
+          +{users.length - 4}
+        </div>
+      )}
     </div>
   );
 };
@@ -387,6 +417,12 @@ const LoadingSpinner = () => (
 
 return (
   <div className="pool-content h-full">
+    {isBackgroundFetching && (
+      <div className="flex items-center justify-between text-xs text-gray-300 mb-2 px-1">
+        <span>Expanding artist pool…</span>
+        <span>{Math.min(100, Math.max(0, Math.round(backgroundFetchProgress)))}%</span>
+      </div>
+    )}
     {/* countdown bar - visual only, no text */}
     <div className="w-full h-1 bg-[#333] rounded overflow-hidden mb-4">
       <div
@@ -395,7 +431,7 @@ return (
         />
     </div>
     
-    <div className="overflow-y-auto h-full">
+    <div className="h-full">
       {isRefreshing ? (
         /* Refreshing state */
         <div className="flex flex-col items-center justify-center h-32 text-gray-500">
@@ -405,8 +441,8 @@ return (
           </p>
         </div>
       ) : visibleArtists.length > 0 ? (
-<div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-x-3 gap-y-5 px-1 sm:px-2 pt-1 pb-4">
-{visibleArtists.map((artist, index) => {
+        <div className="grid grid-cols-5 gap-x-4 gap-y-6 px-2 pt-1 pb-4">
+          {visibleArtists.map((artist, index) => {
             const users = getUsersForArtist(artist.id || artist.name);
             const isSelected = isSelectedByCurrentUser(artist.id);
             const hasUsers = users.length > 0;
@@ -425,7 +461,7 @@ return (
                 <div className="relative">
                   <div className={`artist-circle ${
                     artist.isRoomArtist ? 'room-artist' : ''
-                  } ${hasUsers ? 'has-users' : ''} ${
+                  } ${
                     isSelected ? 'selected-by-current-user' : ''
                   }`}>
                     
@@ -439,11 +475,13 @@ return (
                         alt={artist.name}
                         className="artist-image"
                         onError={(e) => {
+                          console.log('Image failed to load for artist:', artist.name, 'URL:', artist.image);
                           // Fallback to SVG
                           e.target.style.display = 'none';
                           e.target.nextSibling.style.display = 'block';
                         }}
                         onLoad={() => {
+                          console.log('Image loaded successfully for artist:', artist.name);
                         }}
                       />
                     ) : (
@@ -484,19 +522,19 @@ return (
     </div>
 
     {/* Design 1 Specific Styles */}
-    <style>{`
+    <style jsx>{`
       .artist-item {
         display: flex;
         flex-direction: column;
         align-items: center;
         position: relative;
         cursor: pointer;
-        padding: 15px 0; /* Reduced padding to fit better */
+        padding: 10px 0; /* Tighter vertical spacing per item */
       }
       
       .artist-circle {
-        width: 70px; /* Reduced from 80px */
-        height: 70px; /* Reduced from 80px */
+        width: 78px;
+        height: 78px;
         border-radius: 50%;
         overflow: hidden;
         position: relative;
@@ -510,17 +548,10 @@ return (
         box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
       }
       
-       .artist-circle.has-users {
-    border-color: #333;   /* same as the default circle border   */
-    box-shadow: none;
-  }
       .artist-circle.selected-by-current-user {
         border-color: #4ade80;
-        box-shadow: 0 0 25px rgba(74, 222, 128, 0.6);
-        transform: scale(1.05);
-      }
-      
-      .artist-circle:hover {
+        border-width: 4px;
+        box-shadow: 0 0 28px rgba(74, 222, 128, 0.8);
         transform: scale(1.05);
       }
       
@@ -588,13 +619,19 @@ return (
       
       .artist-name {
         font-size: 11px; /* Reduced from 12px */
-        color: #ccc;
-        margin-top: 6px; /* Reduced margin */
+        font-weight: 600;
+        letter-spacing: -0.01em;
+        color: #e2e2e2;
+        margin-top: 4px;
         text-align: center;
-        max-width: 70px; /* Adjusted to match circle size */
+        max-width: 78px;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+      }
+
+      .artist-item:hover .artist-name {
+        color: #ffffff;
       }
       
       /* User avatar color variations */
@@ -646,36 +683,6 @@ return (
           transform: rotate(360deg);
         }
       }
-
-      /* ─── mobile refinements (≤ 480 px) ───────────────────────── */
-@media (max-width:480px){
-  .artist-circle{
-    width:60px;        /* was 70 */
-    height:60px;
-  }
-  .artist-name{
-    font-size:10px;
-    max-width:60px;
-    margin-top:4px;
-  }
-  .user-avatar{
-    width:20px;        /* avatar chips shrink */
-    height:20px;
-    border-width:1.5px;
-  }
-  .room-indicator{
-    top:-3px;left:-3px;
-    width:14px;height:14px;
-    font-size:7px;
-  }
-}
-
-/* ─── ultra-small (≤ 360 px) ─────────────────────────────── */
-@media (max-width:360px){
-  .artist-circle{width:54px;height:54px;}
-  .artist-name{font-size:9px;max-width:54px;}
-}
-
     `}</style>
   </div>
 );

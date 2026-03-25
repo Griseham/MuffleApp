@@ -5,16 +5,37 @@ console.log(
 );
 
 const fs   = require('fs');
+const dns = require('dns').promises;
+const net = require('net');
+const os = require('os');
 const path = require('path');
 const axios = require('axios');
 const express = require('express');
 const cors = require('cors');
+const rateLimit = require('express-rate-limit');
 
 
 const unifiedRouter = express.Router();
-const SHARED_CACHED_MEDIA_DIR = path.resolve(__dirname, 'cached_media');
+const DEFAULT_RUNTIME_DIR = path.resolve(process.env.MUFFLE_RUNTIME_DIR || path.join(os.tmpdir(), 'muffle-runtime'));
+const SHARED_CACHED_MEDIA_DIR = path.resolve(
+  process.env.THREADS_MEDIA_CACHE_DIR || path.join(DEFAULT_RUNTIME_DIR, 'cached_media')
+);
 const THREADS_SRC_BACKEND_DIR = path.resolve(__dirname, '..', 'apps', 'threads', 'src', 'backend');
 const MEDIA_DOWNLOAD_TIMEOUT_MS = 10_000;
+const MEDIA_DOWNLOAD_MAX_BYTES = 8 * 1024 * 1024;
+const ALLOWED_REMOTE_MEDIA_HOSTS = ['itunes.apple.com', 'mzstatic.com'];
+const ALLOWED_ARTWORK_CONTENT_TYPES = new Set([
+  'image/gif',
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+]);
+const ALLOWED_PREVIEW_CONTENT_TYPES = new Set([
+  'audio/aac',
+  'audio/mp4',
+  'audio/mpeg',
+  'audio/x-m4a',
+]);
 const CONTENT_TYPE_EXTENSIONS = {
   'audio/mp4': '.m4a',
   'audio/mpeg': '.mp3',
@@ -42,6 +63,108 @@ const sanitizeCacheKeySegment = (value, fallback = 'media') => {
   return cleaned || fallback;
 };
 
+const createRouteLimiter = (max, message) => rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    error: message,
+  },
+});
+
+const searchLimiter = createRouteLimiter(60, 'Too many search requests. Please try again later.');
+const heavyLookupLimiter = createRouteLimiter(30, 'Too many expensive requests. Please try again later.');
+const mediaCacheLimiter = createRouteLimiter(20, 'Too many media cache requests. Please try again later.');
+
+const normalizeIpAddress = (address = '') => (
+  String(address || '').toLowerCase().startsWith('::ffff:')
+    ? String(address).slice(7)
+    : String(address || '')
+);
+
+const isPrivateIpAddress = (address = '') => {
+  const normalizedAddress = normalizeIpAddress(address);
+  const ipVersion = net.isIP(normalizedAddress);
+
+  if (ipVersion === 4) {
+    const octets = normalizedAddress.split('.').map((part) => Number(part));
+    if (octets.length !== 4 || octets.some((part) => Number.isNaN(part) || part < 0 || part > 255)) {
+      return true;
+    }
+
+    const [first, second] = octets;
+    return (
+      first === 10 ||
+      first === 127 ||
+      first === 0 ||
+      (first === 169 && second === 254) ||
+      (first === 172 && second >= 16 && second <= 31) ||
+      (first === 192 && second === 168)
+    );
+  }
+
+  if (ipVersion === 6) {
+    return (
+      normalizedAddress === '::' ||
+      normalizedAddress === '::1' ||
+      normalizedAddress.startsWith('fc') ||
+      normalizedAddress.startsWith('fd') ||
+      normalizedAddress.startsWith('fe80:')
+    );
+  }
+
+  return true;
+};
+
+const isAllowedRemoteMediaHostname = (hostname = '') => {
+  const normalizedHostname = String(hostname || '').trim().toLowerCase();
+  if (!normalizedHostname) {
+    return false;
+  }
+
+  return ALLOWED_REMOTE_MEDIA_HOSTS.some((allowedHost) => (
+    normalizedHostname === allowedHost || normalizedHostname.endsWith(`.${allowedHost}`)
+  ));
+};
+
+const validateRemoteMediaUrl = async (sourceUrl) => {
+  let parsedUrl;
+  try {
+    parsedUrl = new URL(sourceUrl);
+  } catch (error) {
+    throw new Error('Invalid media URL');
+  }
+
+  if (parsedUrl.protocol !== 'https:') {
+    throw new Error('Only HTTPS media URLs are allowed');
+  }
+
+  if (parsedUrl.username || parsedUrl.password) {
+    throw new Error('Media URL credentials are not allowed');
+  }
+
+  if (parsedUrl.port && parsedUrl.port !== '443') {
+    throw new Error('Unexpected media URL port');
+  }
+
+  if (!isAllowedRemoteMediaHostname(parsedUrl.hostname)) {
+    throw new Error('Media host is not allowed');
+  }
+
+  const resolvedAddresses = await dns.lookup(parsedUrl.hostname, { all: true, verbatim: true });
+  if (!resolvedAddresses.length) {
+    throw new Error('Could not resolve media host');
+  }
+
+  if (resolvedAddresses.some((entry) => isPrivateIpAddress(entry.address))) {
+    throw new Error('Media host resolves to a private address');
+  }
+
+  return parsedUrl.toString();
+};
+
 const inferCachedFileExtension = (sourceUrl, contentType, fallbackExtension) => {
   try {
     const parsedUrl = new URL(sourceUrl);
@@ -57,15 +180,38 @@ const inferCachedFileExtension = (sourceUrl, contentType, fallbackExtension) => 
   return CONTENT_TYPE_EXTENSIONS[normalizedContentType] || fallbackExtension;
 };
 
-const downloadRemoteAsset = async (sourceUrl) => {
-  const response = await axios.get(sourceUrl, {
+const downloadRemoteAsset = async (sourceUrl, allowedContentTypes) => {
+  const safeSourceUrl = await validateRemoteMediaUrl(sourceUrl);
+  const response = await axios.get(safeSourceUrl, {
     responseType: 'arraybuffer',
     timeout: MEDIA_DOWNLOAD_TIMEOUT_MS,
+    maxContentLength: MEDIA_DOWNLOAD_MAX_BYTES,
+    maxBodyLength: MEDIA_DOWNLOAD_MAX_BYTES,
+    validateStatus: (status) => status >= 200 && status < 300,
   });
 
+  const normalizedContentType = String(response.headers['content-type'] || '')
+    .split(';')[0]
+    .trim()
+    .toLowerCase();
+  const contentLength = Number(response.headers['content-length'] || 0);
+
+  if (!allowedContentTypes.has(normalizedContentType)) {
+    throw new Error(`Unsupported media content type: ${normalizedContentType || 'unknown'}`);
+  }
+
+  if (Number.isFinite(contentLength) && contentLength > MEDIA_DOWNLOAD_MAX_BYTES) {
+    throw new Error('Media file is too large to cache');
+  }
+
+  const buffer = Buffer.from(response.data);
+  if (buffer.length > MEDIA_DOWNLOAD_MAX_BYTES) {
+    throw new Error('Media download exceeded the size limit');
+  }
+
   return {
-    buffer: Buffer.from(response.data),
-    contentType: response.headers['content-type'] || '',
+    buffer,
+    contentType: normalizedContentType,
   };
 };
 
@@ -444,6 +590,368 @@ const buildPlaceholderArtworkUrl = (...parts) => {
   return `https://via.placeholder.com/300x300/1a1a1a/ffffff?text=${encodeURIComponent(label || 'Artwork')}`;
 };
 
+const THREADS_DEFAULT_ARTWORK_PATH = '/assets/default-artist.png';
+
+const sanitizeSongSearchQuery = (value = '') =>
+  String(value || '')
+    .normalize('NFKC')
+    .replace(/[^\p{L}\p{N}\s.'\-&()]/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 100);
+
+const toArtworkUrl = (url, size = 300) => {
+  if (!url || typeof url !== 'string') {
+    return THREADS_DEFAULT_ARTWORK_PATH;
+  }
+
+  return url
+    .replace('{w}', String(size))
+    .replace('{h}', String(size))
+    .replace('{f}', 'jpg');
+};
+
+const mapTrackToThreadSong = (track) => {
+  const artworkSource =
+    track?.artworkUrl100 ||
+    track?.artworkUrl60 ||
+    track?.artworkUrl30 ||
+    track?.attributes?.artwork?.url ||
+    THREADS_DEFAULT_ARTWORK_PATH;
+
+  const previewUrl =
+    typeof track?.previewUrl === 'string'
+      ? track.previewUrl
+      : track?.attributes?.previews?.[0]?.url || null;
+
+  const artworkUrl = toArtworkUrl(artworkSource, 300);
+
+  return {
+    id: String(track?.trackId || track?.id || `track_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`),
+    attributes: {
+      name: track?.trackName || track?.attributes?.name || 'Unknown Song',
+      artistName: track?.artistName || track?.attributes?.artistName || 'Unknown Artist',
+      albumName: track?.collectionName || track?.attributes?.albumName || '',
+      artwork: { url: artworkUrl },
+      previews: previewUrl ? [{ url: previewUrl }] : [],
+      durationInMillis: Number.isFinite(track?.trackTimeMillis)
+        ? track.trackTimeMillis
+        : (Number.isFinite(track?.attributes?.durationInMillis) ? track.attributes.durationInMillis : null),
+      releaseDate: track?.releaseDate || track?.attributes?.releaseDate || null,
+      url: track?.trackViewUrl || track?.attributes?.url || null,
+    },
+  };
+};
+
+const mapTrackToMuflSong = (track) => {
+  const normalizedTrack = mapTrackToThreadSong(track);
+  const attributes = normalizedTrack.attributes || {};
+
+  return {
+    id: normalizedTrack.id,
+    track: attributes.name || 'Unknown Song',
+    trackName: attributes.name || 'Unknown Song',
+    artist: attributes.artistName || 'Unknown Artist',
+    artistName: attributes.artistName || 'Unknown Artist',
+    album: attributes.albumName || '',
+    albumName: attributes.albumName || '',
+    artworkUrl: attributes.artwork?.url || THREADS_DEFAULT_ARTWORK_PATH,
+    previewUrl: attributes.previews?.[0]?.url || null,
+    duration: attributes.durationInMillis || null,
+  };
+};
+
+const dedupeMuflSongs = (songs = []) => {
+  const seen = new Set();
+
+  return songs.filter((song) => {
+    const key = `${String(song?.track || '').toLowerCase()}|||${String(song?.artist || '').toLowerCase()}`;
+    if (!song?.track || !song?.artist || seen.has(key)) {
+      return false;
+    }
+
+    seen.add(key);
+    return true;
+  });
+};
+
+const searchAppleCatalogSongs = async (query, limit = 10) => {
+  const sanitizedQuery = sanitizeSongSearchQuery(query);
+  const token = process.env.APPLE_DEVELOPER_TOKEN;
+
+  if (!sanitizedQuery || sanitizedQuery.length < 2 || !token) {
+    return [];
+  }
+
+  const url =
+    `https://api.music.apple.com/v1/catalog/us/search?term=${encodeURIComponent(sanitizedQuery)}` +
+    `&types=songs&limit=${Math.max(1, Math.min(Number(limit) || 10, 25))}`;
+
+  const { data } = await axios.get(url, {
+    headers: { Authorization: `Bearer ${token}` },
+    timeout: 7000,
+  });
+
+  return Array.isArray(data?.results?.songs?.data) ? data.results.songs.data : [];
+};
+
+const getPreviewableSongsForArtist = async (artistName, limit = 3) => {
+  const normalizedArtistName = normalizeLookupValue(artistName);
+  const tracks = await searchAppleCatalogSongs(artistName, Math.max(Number(limit) * 4, 12));
+
+  return dedupeMuflSongs(
+    tracks
+      .map(mapTrackToMuflSong)
+      .filter((song) => song.previewUrl)
+      .sort((left, right) => {
+        const leftName = normalizeLookupValue(left.artist);
+        const rightName = normalizeLookupValue(right.artist);
+        const leftRank = leftName === normalizedArtistName ? 0 : leftName.includes(normalizedArtistName) ? 1 : 2;
+        const rightRank = rightName === normalizedArtistName ? 0 : rightName.includes(normalizedArtistName) ? 1 : 2;
+
+        return leftRank - rightRank;
+      })
+  ).slice(0, Math.max(1, Math.min(Number(limit) || 3, 10)));
+};
+
+const repairedSnippetMediaCache = new Map();
+const repairedCachedPostCache = new Map();
+
+const isCachedMediaUrl = (value = '') =>
+  String(value || '').trim().includes('/cached_media/');
+
+const getSnippetSongName = (snippet = {}) =>
+  String(
+    snippet?.songName ||
+    snippet?.name ||
+    snippet?.snippetData?.attributes?.name ||
+    ''
+  ).trim();
+
+const getSnippetArtistName = (snippet = {}) =>
+  String(
+    snippet?.artistName ||
+    snippet?.snippetData?.attributes?.artistName ||
+    ''
+  ).trim();
+
+const getSnippetArtworkUrl = (snippet = {}) =>
+  String(
+    snippet?.artworkUrl ||
+    snippet?.artwork ||
+    snippet?.snippetData?.attributes?.artwork?.url ||
+    ''
+  ).trim();
+
+const getSnippetPreviewUrl = (snippet = {}) =>
+  String(
+    snippet?.previewUrl ||
+    snippet?.snippetData?.attributes?.previews?.[0]?.url ||
+    ''
+  ).trim();
+
+const searchItunesSongs = async (query, limit = 10) => {
+  const sanitizedQuery = sanitizeSongSearchQuery(query);
+  if (!sanitizedQuery || sanitizedQuery.length < 2) {
+    return [];
+  }
+
+  const { data } = await axios.get('https://itunes.apple.com/search', {
+    params: {
+      term: sanitizedQuery,
+      entity: 'song',
+      limit: Math.max(1, Math.min(Number(limit) || 10, 25)),
+      country: 'US',
+    },
+    timeout: 7000,
+  });
+
+  return Array.isArray(data?.results) ? data.results : [];
+};
+
+const scoreTrackCandidate = (track, targetSongName, targetArtistName) => {
+  const mappedTrack = mapTrackToMuflSong(track);
+  const candidateSong = normalizeTrackLookupValue(mappedTrack?.trackName || mappedTrack?.track);
+  const candidateArtist = normalizeTrackLookupValue(mappedTrack?.artistName || mappedTrack?.artist);
+  const expectedSong = normalizeTrackLookupValue(targetSongName);
+  const expectedArtist = normalizeTrackLookupValue(targetArtistName);
+
+  let score = 0;
+
+  if (expectedSong && candidateSong) {
+    if (candidateSong === expectedSong) score += 120;
+    else if (candidateSong.includes(expectedSong) || expectedSong.includes(candidateSong)) score += 70;
+  }
+
+  if (expectedArtist && candidateArtist) {
+    if (candidateArtist === expectedArtist) score += 100;
+    else if (candidateArtist.includes(expectedArtist) || expectedArtist.includes(candidateArtist)) score += 60;
+  }
+
+  if (mappedTrack?.previewUrl) score += 20;
+  if (mappedTrack?.artworkUrl) score += 10;
+
+  return score;
+};
+
+const findBestTrackMatch = (tracks, songName, artistName) => {
+  let bestTrack = null;
+  let bestScore = -1;
+
+  for (const track of tracks || []) {
+    const score = scoreTrackCandidate(track, songName, artistName);
+    if (score > bestScore) {
+      bestScore = score;
+      bestTrack = track;
+    }
+  }
+
+  return bestTrack ? mapTrackToMuflSong(bestTrack) : null;
+};
+
+const resolveSnippetMedia = async (snippet = {}) => {
+  const songName = getSnippetSongName(snippet);
+  const artistName = getSnippetArtistName(snippet);
+  const query = String(snippet?.query || '').trim();
+
+  if (!songName || !artistName) {
+    return {
+      artworkUrl: getSnippetArtworkUrl(snippet) || null,
+      previewUrl: getSnippetPreviewUrl(snippet) || null,
+      albumName: snippet?.albumName || snippet?.snippetData?.attributes?.albumName || '',
+      songName,
+      artistName,
+    };
+  }
+
+  const cacheKey = createNormalizedTrackLookupKey(songName, artistName);
+  if (repairedSnippetMediaCache.has(cacheKey)) {
+    return repairedSnippetMediaCache.get(cacheKey);
+  }
+
+  const currentArtworkUrl = getSnippetArtworkUrl(snippet);
+  const currentPreviewUrl = getSnippetPreviewUrl(snippet);
+  const diskEntry = getAlbumArtworkFromDiskCache(songName, artistName);
+
+  const resolved = {
+    artworkUrl: !isCachedMediaUrl(currentArtworkUrl) ? currentArtworkUrl : '',
+    previewUrl: !isCachedMediaUrl(currentPreviewUrl) ? currentPreviewUrl : '',
+    albumName: snippet?.albumName || snippet?.snippetData?.attributes?.albumName || diskEntry?.albumName || '',
+    songName,
+    artistName,
+  };
+
+  if (!resolved.artworkUrl && diskEntry?.artworkUrl && !isCachedMediaUrl(diskEntry.artworkUrl)) {
+    resolved.artworkUrl = diskEntry.artworkUrl;
+  }
+  if (!resolved.previewUrl && diskEntry?.previewUrl && !isCachedMediaUrl(diskEntry.previewUrl)) {
+    resolved.previewUrl = diskEntry.previewUrl;
+  }
+
+  const searchTerms = [...new Set(
+    [
+      `${songName} ${artistName}`.trim(),
+      query,
+      songName,
+    ].map((term) => sanitizeSongSearchQuery(term)).filter((term) => term.length >= 2)
+  )];
+
+  const fillFromTrack = (track) => {
+    if (!track) return false;
+    if (!resolved.artworkUrl && track.artworkUrl && !isCachedMediaUrl(track.artworkUrl)) {
+      resolved.artworkUrl = track.artworkUrl;
+    }
+    if (!resolved.previewUrl && track.previewUrl && !isCachedMediaUrl(track.previewUrl)) {
+      resolved.previewUrl = track.previewUrl;
+    }
+    if (!resolved.albumName && track.albumName) {
+      resolved.albumName = track.albumName;
+    }
+    return Boolean(resolved.artworkUrl && resolved.previewUrl);
+  };
+
+  try {
+    for (const term of searchTerms) {
+      if (resolved.artworkUrl && resolved.previewUrl) break;
+      const appleCandidates = await searchAppleCatalogSongs(term, 8);
+      if (fillFromTrack(findBestTrackMatch(appleCandidates, songName, artistName))) {
+        break;
+      }
+    }
+
+    for (const term of searchTerms) {
+      if (resolved.artworkUrl && resolved.previewUrl) break;
+      const itunesCandidates = await searchItunesSongs(term, 8);
+      if (fillFromTrack(findBestTrackMatch(itunesCandidates, songName, artistName))) {
+        break;
+      }
+    }
+  } catch (error) {
+    console.warn(`Snippet media repair failed for ${songName} - ${artistName}:`, error.message);
+  }
+
+  repairedSnippetMediaCache.set(cacheKey, resolved);
+  return resolved;
+};
+
+const repairSnippetMedia = async (snippet = {}) => {
+  const songName = getSnippetSongName(snippet);
+  const artistName = getSnippetArtistName(snippet);
+  const artworkUrl = getSnippetArtworkUrl(snippet);
+  const previewUrl = getSnippetPreviewUrl(snippet);
+
+  const shouldRepair =
+    (songName && artistName) &&
+    (
+      !artworkUrl ||
+      !previewUrl ||
+      isCachedMediaUrl(artworkUrl) ||
+      isCachedMediaUrl(previewUrl)
+    );
+
+  if (!shouldRepair) {
+    return snippet;
+  }
+
+  const resolved = await resolveSnippetMedia(snippet);
+  const nextArtworkUrl = resolved.artworkUrl || artworkUrl || null;
+  const nextPreviewUrl = resolved.previewUrl || previewUrl || null;
+
+  return {
+    ...snippet,
+    songName: songName || resolved.songName || snippet?.songName || '',
+    artistName: artistName || resolved.artistName || snippet?.artistName || '',
+    albumName: resolved.albumName || snippet?.albumName || snippet?.snippetData?.attributes?.albumName || '',
+    artworkUrl: nextArtworkUrl,
+    previewUrl: nextPreviewUrl,
+    artwork: nextArtworkUrl || snippet?.artwork || null,
+    snippetData: {
+      ...snippet?.snippetData,
+      attributes: {
+        ...snippet?.snippetData?.attributes,
+        name: songName || snippet?.snippetData?.attributes?.name || '',
+        artistName: artistName || snippet?.snippetData?.attributes?.artistName || '',
+        albumName: resolved.albumName || snippet?.albumName || snippet?.snippetData?.attributes?.albumName || '',
+        artwork: { url: nextArtworkUrl || '' },
+        previews: nextPreviewUrl ? [{ url: nextPreviewUrl }] : [],
+      },
+    },
+  };
+};
+
+const repairCachedThreadPostMedia = async (post = {}) => {
+  const snippets = Array.isArray(post?.snippets) ? post.snippets : [];
+  if (!snippets.length) {
+    return post;
+  }
+
+  const repairedSnippets = await Promise.all(snippets.map((snippet) => repairSnippetMedia(snippet)));
+  return {
+    ...post,
+    snippets: repairedSnippets,
+  };
+};
+
 const ALBUM_ARTWORK_CACHE_PATHS = [
   path.resolve(__dirname, 'cached_album_artworks.json'),
   path.resolve(THREADS_SRC_BACKEND_DIR, 'cached_album_artworks.json'),
@@ -613,12 +1121,32 @@ unifiedRouter.post('/apple-music-album-artworks', async (req, res) => {
   });
 });
 
-unifiedRouter.post('/cache-media', async (req, res) => {
+unifiedRouter.post('/cache-media', mediaCacheLimiter, async (req, res) => {
   try {
     const { artworkUrl, previewUrl, songId } = req.body || {};
 
     if (!songId) {
       return res.status(400).json({ success: false, error: 'Missing songId' });
+    }
+
+    if (!artworkUrl && !previewUrl) {
+      return res.status(400).json({ success: false, error: 'At least one media URL is required' });
+    }
+
+    if (artworkUrl) {
+      try {
+        await validateRemoteMediaUrl(artworkUrl);
+      } catch (error) {
+        return res.status(400).json({ success: false, error: `Invalid artworkUrl: ${error.message}` });
+      }
+    }
+
+    if (previewUrl) {
+      try {
+        await validateRemoteMediaUrl(previewUrl);
+      } catch (error) {
+        return res.status(400).json({ success: false, error: `Invalid previewUrl: ${error.message}` });
+      }
     }
 
     ensureDirectory(SHARED_CACHED_MEDIA_DIR);
@@ -631,7 +1159,10 @@ unifiedRouter.post('/cache-media', async (req, res) => {
 
     if (artworkUrl) {
       try {
-        const { buffer, contentType } = await downloadRemoteAsset(artworkUrl);
+        const { buffer, contentType } = await downloadRemoteAsset(
+          artworkUrl,
+          ALLOWED_ARTWORK_CONTENT_TYPES
+        );
         const extension = inferCachedFileExtension(artworkUrl, contentType, '.jpg');
         const filename = `${safeSongId}_artwork${extension}`;
         fs.writeFileSync(path.join(SHARED_CACHED_MEDIA_DIR, filename), buffer);
@@ -643,7 +1174,10 @@ unifiedRouter.post('/cache-media', async (req, res) => {
 
     if (previewUrl) {
       try {
-        const { buffer, contentType } = await downloadRemoteAsset(previewUrl);
+        const { buffer, contentType } = await downloadRemoteAsset(
+          previewUrl,
+          ALLOWED_PREVIEW_CONTENT_TYPES
+        );
         const extension = inferCachedFileExtension(previewUrl, contentType, '.m4a');
         const filename = `${safeSongId}_preview${extension}`;
         fs.writeFileSync(path.join(SHARED_CACHED_MEDIA_DIR, filename), buffer);
@@ -708,52 +1242,226 @@ const fetchImagesFor = async (artistNames) => {
   }
 };
 
+const SPOTIFY_GENRE_ALIASES = {
+  'r&b': 'r-n-b',
+  'rnb': 'r-n-b',
+  'hip hop': 'hip-hop',
+  'hiphop': 'hip-hop',
+  'kpop': 'k-pop',
+  'all': 'pop',
+};
+
+const SPOTIFY_GENRE_QUERY_CANDIDATES = {
+  pop: ['pop'],
+  'hip-hop': ['hip-hop', 'hip hop', 'hiphop', 'rap', 'trap'],
+  rock: ['rock', 'alternative rock', 'classic rock'],
+  'r-n-b': ['r-n-b', 'soul', 'neo soul'],
+  electronic: ['electronic', 'edm', 'house'],
+  country: ['country', 'modern country'],
+  indie: ['indie', 'indie-pop', 'indie rock'],
+  latin: ['latin', 'reggaeton'],
+  jazz: ['jazz', 'smooth jazz'],
+  'k-pop': ['k-pop', 'korean pop', 'pop'],
+  alternative: ['alternative', 'alt-rock', 'alternative rock'],
+};
+
+const normalizeSpotifyGenre = (genre = 'pop') => {
+  const normalized = String(genre || 'pop').trim().toLowerCase();
+  return SPOTIFY_GENRE_ALIASES[normalized] || normalized || 'pop';
+};
+
+const getSpotifyGenreSearchTerms = (genre = 'pop') => {
+  const normalizedGenre = normalizeSpotifyGenre(genre);
+  const candidates = SPOTIFY_GENRE_QUERY_CANDIDATES[normalizedGenre] || [normalizedGenre];
+
+  return Array.from(
+    new Set(
+      candidates
+        .map((candidate) => String(candidate || '').trim().toLowerCase())
+        .filter(Boolean)
+    )
+  );
+};
+
+const getPopArtists = async (genre = 'pop', minPopularity = 70, limit = 40, page = 1) => {
+  const requestedLimit = Math.max(1, Math.min(Number(limit) || 40, 50));
+  const requestedPage = Math.max(1, Number(page) || 1);
+  const requestedMinPopularity = Math.max(0, Math.min(Number(minPopularity) || 70, 100));
+  const normalizedGenre = normalizeSpotifyGenre(genre);
+
+  try {
+    const token = await getAccessToken();
+    const offset = (requestedPage - 1) * requestedLimit;
+    const searchTerms = getSpotifyGenreSearchTerms(genre);
+    const collectedArtists = new Map();
+    let lastError = null;
+
+    for (const searchTerm of searchTerms) {
+      try {
+        const response = await axios.get('https://api.spotify.com/v1/search', {
+          headers: { Authorization: `Bearer ${token}` },
+          params: {
+            q: `genre:"${searchTerm}"`,
+            type: 'artist',
+            limit: requestedLimit,
+            offset,
+          },
+          timeout: 7000,
+        });
+
+        const artists = (response.data?.artists?.items || [])
+          .map((artist) => {
+            const imageUrl = artist.images?.[0]?.url || null;
+            return {
+              id: artist.id,
+              name: artist.name,
+              image: imageUrl,
+              genres: artist.genres || [],
+              popularity: artist.popularity || 0,
+            };
+          })
+          .filter((artist) => artist.image && artist.popularity >= requestedMinPopularity);
+
+        for (const artist of artists) {
+          if (!collectedArtists.has(artist.id)) {
+            collectedArtists.set(artist.id, artist);
+          }
+
+          if (collectedArtists.size >= requestedLimit) {
+            return Array.from(collectedArtists.values()).slice(0, requestedLimit);
+          }
+        }
+      } catch (error) {
+        lastError = error;
+      }
+    }
+
+    if (collectedArtists.size > 0) {
+      return Array.from(collectedArtists.values()).slice(0, requestedLimit);
+    }
+
+    if (lastError) {
+      console.warn(`Spotify artist search failed for genre "${normalizedGenre}":`, lastError.message);
+    } else {
+      console.warn(`Spotify artist search returned no artists for genre "${normalizedGenre}"`);
+    }
+
+    return getRandomMockArtists(requestedLimit, genre);
+  } catch (error) {
+    console.warn(`Spotify artist search failed for genre "${normalizedGenre}":`, error.message);
+    return getRandomMockArtists(requestedLimit, genre);
+  }
+};
+
 //======================//
 // Last.fm Service Functions
 //======================//
 
-const fetchSimilarArtists = async (selectedArtists) => {
+// Spotify fallback: if Last.fm is unreachable/empty, try related artists
+const fetchSpotifyRelatedArtists = async (artistName, limit = 20) => {
   try {
-    const apiKey = process.env.LASTFM_API_KEY || process.env.REACT_APP_LASTFM_API_KEY;
-    if (!apiKey) {
-      throw new Error('Missing Last.fm API key');
+    const token = await getAccessToken();
+    const searchResp = await axios.get('https://api.spotify.com/v1/search', {
+      headers: { Authorization: `Bearer ${token}` },
+      params: { q: artistName, type: 'artist', limit: 1 },
+      timeout: 7000,
+    });
+
+    const seedId = searchResp.data?.artists?.items?.[0]?.id;
+    if (!seedId) {
+      return [];
     }
 
-    const allSimilar = [];
-    
-    for (const artistName of selectedArtists) {
+    const relatedResp = await axios.get(
+      `https://api.spotify.com/v1/artists/${seedId}/related-artists`,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: 7000,
+      }
+    );
+
+    return (relatedResp.data?.artists || [])
+      .slice(0, limit)
+      .map((artist) => ({
+        id: artist.id,
+        name: artist.name,
+        image: artist.images?.[0]?.url || null,
+        genres: artist.genres || [],
+        popularity: artist.popularity || 0,
+      }))
+      .filter((artist) => artist.name);
+  } catch (error) {
+    console.warn(`Spotify related-artists failed for "${artistName}":`, error.message);
+    return [];
+  }
+};
+
+const fetchSimilarArtists = async (selectedArtists) => {
+  const apiKey = process.env.LASTFM_API_KEY || process.env.REACT_APP_LASTFM_API_KEY;
+  const normalizedArtists = (selectedArtists || [])
+    .map((a) => (typeof a === 'string' ? a : a?.name))
+    .filter(Boolean);
+
+  const allSimilar = [];
+
+  for (const artistName of normalizedArtists) {
+    let addedFromLastfm = false;
+
+    if (apiKey) {
       try {
-        const response = await axios.get('http://ws.audioscrobbler.com/2.0/', {
+        const response = await axios.get('https://ws.audioscrobbler.com/2.0/', {
           params: {
             method: 'artist.getsimilar',
             artist: artistName,
             api_key: apiKey,
             format: 'json',
-            limit: 20
-          }
+            limit: 30,
+            autocorrect: 1,
+          },
+          headers: { 'User-Agent': 'MuflThreads/1.0 (+https://mufl.app)' },
+          timeout: 7000,
         });
 
         const similar = response.data?.similarartists?.artist || [];
-        allSimilar.push(...similar.map(artist => ({ name: artist.name })));
+        if (similar.length > 0) {
+          addedFromLastfm = true;
+          allSimilar.push(
+            ...similar.map((artist) => ({
+              name: artist.name,
+              match: Number(artist.match) || null,
+            }))
+          );
+        }
       } catch (artistError) {
+        console.warn(`Last.fm similar fetch failed for "${artistName}":`, artistError.message);
       }
     }
 
-    // Remove duplicates
-    const uniqueArtists = [];
-    const seen = new Set();
-    
-    for (const artist of allSimilar) {
-      if (!seen.has(artist.name.toLowerCase())) {
-        seen.add(artist.name.toLowerCase());
-        uniqueArtists.push(artist);
+    if (!addedFromLastfm) {
+      const spotifyFallback = await fetchSpotifyRelatedArtists(artistName, 20);
+      if (spotifyFallback.length > 0) {
+        allSimilar.push(...spotifyFallback);
       }
     }
-
-    return uniqueArtists;
-  } catch (error) {
-    throw error;
   }
+
+  // Remove duplicates by name (case-insensitive)
+  const uniqueArtists = [];
+  const seen = new Set();
+
+  for (const artist of allSimilar) {
+    const key = (artist.name || '').toLowerCase();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    uniqueArtists.push(artist);
+  }
+
+  if (uniqueArtists.length === 0) {
+    console.warn('Similar artist lookup returned empty; using mock fallback list');
+    return getRandomMockArtists(40);
+  }
+
+  return uniqueArtists;
 };
 
 //======================//
@@ -802,14 +1510,16 @@ unifiedRouter.get('/spotify/artists', async (req, res) => {
   const {
     genre          = 'pop',
     minPopularity  = 70,
-    limit          = 40
+    limit          = 40,
+    page           = 1,
   } = req.query;
 
   try {
     const artists = await getPopArtists(
       genre,
       Number(minPopularity),
-      Number(limit)
+      Number(limit),
+      Number(page)
     );
     res.json(artists);
   } catch (err) {
@@ -818,21 +1528,22 @@ unifiedRouter.get('/spotify/artists', async (req, res) => {
 });
 
 
-unifiedRouter.get('/spotify/search-artists', async (req, res) => {
-  const { query } = req.query;
+const spotifySearchCache = new Map();
+const appleArtistSearchCache = new Map();
+const CACHE_TTL   = 900_000;              // 15 min
 
-  const key = query.toLowerCase();
-if (searchCache.has(key) && Date.now() - searchCache.get(key).ts < CACHE_TTL) {
-  return res.json(searchCache.get(key).data);
-}
+unifiedRouter.get('/spotify/search-artists', searchLimiter, async (req, res) => {
+  const { query = '' } = req.query;
 
-searchCache.set(key, { ts: Date.now(), data: results });
-
-  
-  if (!query) {
+  if (!query.trim()) {
     return res.status(400).json({ error: 'Search query is required' });
   }
-  
+
+  const key = query.toLowerCase();
+  if (spotifySearchCache.has(key) && Date.now() - spotifySearchCache.get(key).ts < CACHE_TTL) {
+    return res.json(spotifySearchCache.get(key).data);
+  }
+
   try {
     const token = await getAccessToken();
     const response = await axios.get('https://api.spotify.com/v1/search', {
@@ -867,6 +1578,7 @@ searchCache.set(key, { ts: Date.now(), data: results });
       };
     }).filter(artist => artist.image) || []; // Only return artists with images
 
+    spotifySearchCache.set(key, { ts: Date.now(), data: artists });
     res.json(artists);
   } catch (error) {
     res.status(500).json({ 
@@ -876,7 +1588,7 @@ searchCache.set(key, { ts: Date.now(), data: results });
   }
 });
 
-unifiedRouter.post('/spotify/fetch-images', async (req, res) => {
+unifiedRouter.post('/spotify/fetch-images', heavyLookupLimiter, async (req, res) => {
   const { artistNames } = req.body;
 
   if (!artistNames || artistNames.length === 0) {
@@ -891,7 +1603,7 @@ unifiedRouter.post('/spotify/fetch-images', async (req, res) => {
   }
 });
 
-unifiedRouter.post('/spotify/artists-data', async (req, res) => {
+unifiedRouter.post('/spotify/artists-data', heavyLookupLimiter, async (req, res) => {
   const { artistNames } = req.body;
 
   if (!artistNames || artistNames.length === 0) {
@@ -907,7 +1619,7 @@ unifiedRouter.post('/spotify/artists-data', async (req, res) => {
 });
 
 // Last.fm Routes
-unifiedRouter.post('/lastfm/similar-artists', async (req, res) => {
+unifiedRouter.post('/lastfm/similar-artists', heavyLookupLimiter, async (req, res) => {
   const { selectedArtists } = req.body;
 
   if (!selectedArtists || selectedArtists.length === 0) {
@@ -925,18 +1637,15 @@ unifiedRouter.post('/lastfm/similar-artists', async (req, res) => {
 // Apple Music Routes
 // Apple Music Routes
 /* ---------------- Apple Music search artists ---------------- */
-const searchCache = new Map();            // key → { ts, data }
-const CACHE_TTL   = 900_000;              // 15 min
-
-unifiedRouter.get('/apple-music/search-artists', async (req, res) => {
+unifiedRouter.get('/apple-music/search-artists', searchLimiter, async (req, res) => {
   const { query = '' } = req.query;
   if (!query.trim()) {
     return res.status(400).json({ error: 'Search query is required' });
   }
 
   const key = query.toLowerCase();
-  if (searchCache.has(key) && Date.now() - searchCache.get(key).ts < CACHE_TTL) {
-    return res.json(searchCache.get(key).data);        // ← serve from cache
+  if (appleArtistSearchCache.has(key) && Date.now() - appleArtistSearchCache.get(key).ts < CACHE_TTL) {
+    return res.json(appleArtistSearchCache.get(key).data);        // ← serve from cache
   }
 
   try {
@@ -961,7 +1670,7 @@ unifiedRouter.get('/apple-music/search-artists', async (req, res) => {
           image: art.replace('{w}x{h}', '300x300')
         }];
       });
-    searchCache.set(key, { ts: Date.now(), data: results });   // ← save
+    appleArtistSearchCache.set(key, { ts: Date.now(), data: results });   // ← save
     return res.json(results);
   } catch (err) {
     const status = err.response?.status || 500;
@@ -1032,69 +1741,70 @@ unifiedRouter.get('/apple-music/random-genre-artists', async (req, res) => {
   }
 });
 
-unifiedRouter.post('/apple-music/artist-songs', async (req, res) => {
-  const { artist } = req.body;
-  if (!artist) return res.status(400).json({ error: 'Artist name is required' });
+unifiedRouter.post('/apple-music/artist-songs', heavyLookupLimiter, async (req, res) => {
+  const artistName = String(req.body?.artist || req.body?.artistName || '').trim();
+  const limit = Math.max(1, Math.min(Number(req.body?.limit) || 3, 10));
+
+  if (!artistName) {
+    return res.status(400).json({ error: 'Artist name is required' });
+  }
 
   try {
-    const token = process.env.APPLE_DEVELOPER_TOKEN;
-    const url   = `https://api.music.apple.com/v1/catalog/us/search` +
-                  `?term=${encodeURIComponent(artist)}` +
-                  `&types=songs&limit=10`;
+    const songs = await getPreviewableSongsForArtist(artistName, limit);
 
-    const { data } = await axios.get(url, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-
-    const pick = data.results?.songs?.data.find(
-      s => Array.isArray(s.attributes?.previews) &&
-           s.attributes.previews[0]?.url
-    );
-
-    if (!pick) {
-      return res.json({ success: false, error: 'No song with preview found' });
+    if (!songs.length) {
+      return res.json({ success: false, error: 'No song with preview found', songs: [] });
     }
 
-    const attr = pick.attributes;
     res.json({
       success: true,
-      data: {
-        id: pick.id,
-        trackName: attr.name,
-        artistName: attr.artistName,
-        albumName: attr.albumName,
-        artworkUrl: attr.artwork.url.replace('{w}x{h}', '300x300'),
-        previewUrl: attr.previews[0].url
-      }
+      data: songs[0],
+      songs,
     });
   } catch (err) {
     console.error('Artist-song lookup failed:', err.message);
 
     /* ➜ soft-fail so the front-end can pick another artist */
-    return res.json({ success: false, error: 'No preview returned' });
+    return res.json({ success: false, error: 'No preview returned', songs: [] });
+  }
+});
+
+unifiedRouter.post('/apple-music/snippets', heavyLookupLimiter, async (req, res) => {
+  const artistNames = Array.isArray(req.body?.artistNames)
+    ? req.body.artistNames.map((name) => String(name || '').trim()).filter(Boolean).slice(0, 12)
+    : [];
+
+  if (!artistNames.length) {
+    return res.status(400).json({ error: 'artistNames array is required' });
+  }
+
+  try {
+    const snippets = [];
+
+    for (const artistName of artistNames) {
+      const [firstSong] = await getPreviewableSongsForArtist(artistName, 1);
+      if (firstSong) {
+        snippets.push(firstSong);
+      }
+    }
+
+    return res.json(snippets);
+  } catch (error) {
+    console.error('Apple snippet lookup failed:', error.message);
+    return res.status(500).json({ error: 'Failed to fetch snippets' });
   }
 });
 
 
 
 // General Apple Music search
-unifiedRouter.post('/apple-music/search', async (req, res) => {
-  const { query } = req.body;
+unifiedRouter.post('/apple-music/search', searchLimiter, async (req, res) => {
+  const query = String(req.body?.query || req.body?.searchQuery || '').trim();
   if (!query) return res.status(400).json({ error: 'Query required' });
   try {
-    const token = process.env.APPLE_DEVELOPER_TOKEN;
-    const url = `https://api.music.apple.com/v1/catalog/us/search?term=${encodeURIComponent(query)}&types=songs&limit=10`;
-    const { data } = await axios.get(url, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    const results = data.results.songs.data.map(song => ({
-      id: song.id,
-      trackName: song.attributes.name,
-      artistName: song.attributes.artistName,
-      albumName: song.attributes.albumName,
-      artworkUrl: song.attributes.artwork.url.replace('{w}x{h}', '100x100'),
-      previewUrl: song.attributes.previews[0]?.url || null
-    }));
+    const results = dedupeMuflSongs(
+      (await searchAppleCatalogSongs(query, 10)).map(mapTrackToMuflSong)
+    );
     res.json({ results });
   } catch (err) {
     res.status(500).json({ error: 'Apple Music search failed', details: err.message });
@@ -1102,28 +1812,23 @@ unifiedRouter.post('/apple-music/search', async (req, res) => {
 });
 
 // Apple Music artist search endpoint
-unifiedRouter.post('/apple-music/artist-search', async (req, res) => {
-  const { query, artistName } = req.body;
+unifiedRouter.post('/apple-music/artist-search', searchLimiter, async (req, res) => {
+  const query = String(req.body?.query || req.body?.searchQuery || '').trim();
+  const artistName = String(req.body?.artistName || '').trim();
   
   if (!query || !artistName) {
     return res.status(400).json({ error: 'Query and artist name are required' });
   }
   
   try {
-    // Mock artist-specific search results
-    const mockResults = [
-      {
-        id: `artist_search_${Date.now()}_1`,
-        name: `${query} by ${artistName}`,
-        artistName: artistName,
-        albumName: `${artistName} Collection`,
-        artworkUrl: `https://via.placeholder.com/300x300/1a1a1a/ffffff?text=${encodeURIComponent(artistName)}`,
-        previewUrl: null,
-        duration: Math.floor(Math.random() * 180000) + 120000
-      }
-    ];
-    
-    res.json({ results: mockResults });
+    const combinedSongs = dedupeMuflSongs([
+      ...(await searchAppleCatalogSongs(`${artistName} ${query}`, 10)).map(mapTrackToMuflSong),
+      ...(await searchAppleCatalogSongs(query, 6))
+        .map(mapTrackToMuflSong)
+        .filter((song) => normalizeLookupValue(song.artist).includes(normalizeLookupValue(artistName))),
+    ]).slice(0, 10);
+
+    res.json({ results: combinedSongs });
   } catch (error) {
     res.status(500).json({ 
       error: 'Failed to search artist on Apple Music',
@@ -1134,7 +1839,7 @@ unifiedRouter.post('/apple-music/artist-search', async (req, res) => {
 
 
 // Then replace your existing /reddit/posts route with this updated version:
-unifiedRouter.get('/reddit/posts', async (req, res) => {
+unifiedRouter.get('/reddit/posts', heavyLookupLimiter, async (req, res) => {
   const sub   = (req.query.sub || 'music').toLowerCase();   
   const limit = Math.min(req.query.limit || 25, 100);  // Cap at 100 (Reddit's max)
   const t     = req.query.t;                                
@@ -1215,54 +1920,66 @@ unifiedRouter.get('/reddit/posts', async (req, res) => {
 
 
 // Additional routes for Threads app compatibility
-unifiedRouter.get('/spotify-token', async (req, res) => {
-  try {
-    const token = await getAccessToken();
-    res.json({ 
-      success: true, 
-      token: token 
-    });
-  } catch (error) {
-    res.status(500).json({ 
-      success: false, 
-      error: 'Failed to get Spotify token' 
-    });
-  }
-});
+unifiedRouter.get('/apple-music-search', searchLimiter, async (req, res) => {
+  const sanitizedQuery = sanitizeSongSearchQuery(req.query?.query);
+  const requestedLimit = Math.max(1, Math.min(Number(req.query?.limit) || 6, 10));
 
-unifiedRouter.get('/apple-music-search', async (req, res) => {
-  const { query } = req.query;
-  
-  if (!query || typeof query !== 'string') {
-    return res.status(400).json({ error: 'Valid search query is required' });
+  if (!sanitizedQuery || sanitizedQuery.length < 2) {
+    return res.status(400).json({
+      success: false,
+      error: 'A valid search query with at least 2 characters is required',
+    });
   }
-  
+
+  const appleDeveloperToken = process.env.APPLE_DEVELOPER_TOKEN;
+  const appleApiBaseUrl = process.env.APPLE_API_BASE_URL || 'https://api.music.apple.com/v1/catalog/us';
+
   try {
-    // Return mock song data in the format expected by PlayingScreen2.js and Widget.js
-    const mockSong = {
-      id: `search_${Date.now()}_${Math.random()}`,
-      attributes: {
-        name: `${query} - Top Result`,
-        artistName: query,
-        albumName: `${query} Collection`,
-        artwork: {
-          url: `https://via.placeholder.com/300x300/1a1a1a/ffffff?text=${encodeURIComponent(query)}`
-        },
-        previews: [{
-          url: null // No preview available for mock data
-        }]
+    if (appleDeveloperToken) {
+      const appleUrl = `${appleApiBaseUrl}/search?term=${encodeURIComponent(sanitizedQuery)}&types=songs&limit=${requestedLimit}`;
+      const { data } = await axios.get(appleUrl, {
+        headers: { Authorization: `Bearer ${appleDeveloperToken}` },
+        timeout: 7000,
+      });
+
+      const appleSongs = Array.isArray(data?.results?.songs?.data)
+        ? data.results.songs.data.map(mapTrackToThreadSong).filter(Boolean)
+        : [];
+
+      if (appleSongs.length > 0) {
+        return res.json({
+          success: true,
+          source: 'apple-music',
+          data: appleSongs,
+        });
       }
-    };
-    
-    res.json({
+    }
+
+    const { data } = await axios.get('https://itunes.apple.com/search', {
+      params: {
+        term: sanitizedQuery,
+        entity: 'song',
+        limit: requestedLimit,
+        country: 'US',
+      },
+      timeout: 7000,
+    });
+
+    const fallbackSongs = Array.isArray(data?.results)
+      ? data.results.map(mapTrackToThreadSong).filter(Boolean)
+      : [];
+
+    return res.json({
       success: true,
-      data: mockSong
+      source: 'itunes-search',
+      data: fallbackSongs,
     });
   } catch (error) {
-    res.status(500).json({ 
+    console.error('Failed to search for songs:', error?.message || error);
+    return res.status(500).json({
       success: false,
-      error: 'Failed to search for songs', 
-      message: error.message 
+      error: 'Failed to search for songs',
+      message: error?.message || 'Unknown error',
     });
   }
 });
@@ -1302,6 +2019,32 @@ const loadCachedThreadPost = (postId) => {
   }
 
   return data;
+};
+
+const loadCachedThreadPostWithRepairedMedia = async (postId) => {
+  const cacheKey = String(postId || '').trim();
+  if (!cacheKey) {
+    return null;
+  }
+
+  if (repairedCachedPostCache.has(cacheKey)) {
+    return repairedCachedPostCache.get(cacheKey);
+  }
+
+  const repairPromise = Promise.resolve().then(async () => {
+    const cachedPost = loadCachedThreadPost(cacheKey);
+    if (!cachedPost) {
+      return null;
+    }
+
+    return repairCachedThreadPostMedia(cachedPost);
+  }).catch((error) => {
+    repairedCachedPostCache.delete(cacheKey);
+    throw error;
+  });
+
+  repairedCachedPostCache.set(cacheKey, repairPromise);
+  return repairPromise;
 };
 
 const shuffleInPlace = (items = []) => {
@@ -1415,7 +2158,7 @@ const buildDiverseThreadsFeed = async ({ shuffle = false } = {}) => {
   return orderedPosts.slice(0, 40);
 };
 
-unifiedRouter.get('/diverse-posts', async (req, res) => {
+unifiedRouter.get('/diverse-posts', heavyLookupLimiter, async (req, res) => {
   try {
     const data = await buildDiverseThreadsFeed();
     return res.json({
@@ -1432,7 +2175,7 @@ unifiedRouter.get('/diverse-posts', async (req, res) => {
   }
 });
 
-unifiedRouter.get('/refresh', async (req, res) => {
+unifiedRouter.get('/refresh', heavyLookupLimiter, async (req, res) => {
   try {
     const data = await buildDiverseThreadsFeed({ shuffle: true });
     return res.json({
@@ -1453,7 +2196,7 @@ unifiedRouter.get('/cached-posts/:postId', async (req, res) => {
   const { postId } = req.params;
 
   try {
-    const data = loadCachedThreadPost(postId);
+    const data = await loadCachedThreadPostWithRepairedMedia(postId);
     if (!data) {
       return res.status(404).json({ success: false, error: 'Post not found' });
     }
@@ -1466,11 +2209,11 @@ unifiedRouter.get('/cached-posts/:postId', async (req, res) => {
 
 
 
-unifiedRouter.get('/posts/:postId/snippets', async (req, res) => {
+unifiedRouter.get('/posts/:postId/snippets', heavyLookupLimiter, async (req, res) => {
   const { postId } = req.params;
 
   try {
-    const cachedPost = loadCachedThreadPost(postId);
+    const cachedPost = await loadCachedThreadPostWithRepairedMedia(postId);
     const snippets = Array.isArray(cachedPost?.snippets) ? cachedPost.snippets : [];
     return res.json({
       success: true,
@@ -1520,7 +2263,7 @@ unifiedRouter.get('/cached-posts', (req, res) => {
   }
 });
 
-unifiedRouter.get('/posts/:id/comments', async (req, res) => {
+unifiedRouter.get('/posts/:id/comments', heavyLookupLimiter, async (req, res) => {
   const { id } = req.params;
   const cachedPost = loadCachedThreadPost(id);
   const sub = (

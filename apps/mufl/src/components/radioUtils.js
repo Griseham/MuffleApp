@@ -56,6 +56,17 @@ export const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 // Snap to nearest multiple of 5
 export const snap = (n) => Math.round(Math.round(n) / 5) * 5;
 
+// Small deterministic PRNG so tuner stations stay stable for a given band.
+export const createSeededRandom = (seed) => {
+  let state = Math.trunc(seed) % 2147483647;
+  if (state <= 0) state += 2147483646;
+
+  return () => {
+    state = (state * 16807) % 2147483647;
+    return (state - 1) / 2147483646;
+  };
+};
+
 // Calculate translation position based on active section
 export const translateFor = (active, volume, similarity) => {
   // Return a non-zero offset for proper centering
@@ -149,100 +160,96 @@ export const mapSimilarityToFrequency = (similarity) => {
   return MIN_FREQUENCY + normalizedSim * (MAX_FREQUENCY - MIN_FREQUENCY);
 };
 
-// Generate frequency points for similarity mode - ENHANCED
-// Updated generateFrequencyPoints function for radioUtils.js
-
-// Generate frequency points for similarity mode - OPTIMIZED
-export const generateFrequencyPoints = (normalizedSim, count = 12) => {
+export const generateVolumeBandPoints = (bandIndex) => {
+  const rng = createSeededRandom((bandIndex + 1) * 7919);
+  const count = 4 + Math.floor(rng() * 3);
   const points = [];
-  
-  // Track positions to avoid overcrowding
   const takenPositions = [];
-  
-  // Generate points around the normalized position
-  for (let i = 0; i < count * 2; i++) { // Try more points than needed to ensure we get enough
-    // Random absolute position inside the band - keep a little padding (5%)
-    const pointPosition = 0.05 + Math.random() * 0.90; // 0.05-0.95 range
-    
-    // Map to frequency value - ensure we get good distribution of values
-    // Use modulus to create some clustering of values in different ranges
+
+  for (let attempt = 0; attempt < count * 3; attempt++) {
+    const inBand = Math.floor(10 + rng() * (BAND_SIZE - 20));
+    if (takenPositions.some((pos) => Math.abs(pos - inBand) < 25)) continue;
+
+    takenPositions.push(inBand);
+
+    const hash = Math.abs(Math.sin((bandIndex + 1) * 997 + inBand * 12345) * 10000 % 1);
+    points.push({
+      band: bandIndex,
+      pos: inBand,
+      freq: Math.floor(hash * 1000),
+      size: 42 + Math.floor(rng() * 10),
+      verticalOffset: takenPositions.length % 2 === 0 ? 15 : -15
+    });
+
+    if (takenPositions.length >= count) break;
+  }
+
+  return points.sort((a, b) => a.pos - b.pos);
+};
+
+// Generate frequency points for similarity mode - deterministic per band.
+export const generateFrequencyPoints = (normalizedSim, count = 12, seed = 1) => {
+  const points = [];
+  const takenPositions = [];
+  const rng = createSeededRandom(Math.round(normalizedSim * 1000000) + seed * 104729);
+
+  for (let i = 0; i < count * 2; i++) {
+    const pointPosition = 0.05 + rng() * 0.90;
     let freqValue;
+
     if (i % 4 === 0) {
-      // Lower range frequencies (200-800)
       freqValue = Math.round(200 + pointPosition * 600);
     } else if (i % 4 === 1) {
-      // Mid range frequencies (800-1600)
       freqValue = Math.round(800 + pointPosition * 800);
     } else if (i % 4 === 2) {
-      // Higher range frequencies (1600-3200)
       freqValue = Math.round(1600 + pointPosition * 1600);
     } else {
-      // Full range with bias toward higher frequencies
       freqValue = Math.round(MIN_FREQUENCY + Math.pow(pointPosition, 0.8) * (MAX_FREQUENCY - MIN_FREQUENCY));
     }
-    
-    // Skip if too close to existing points (adjusted spacing for balanced density)
+
     if (takenPositions.some(pos => Math.abs(pos - pointPosition) < 0.07)) continue;
-    
-    // Add to tracking
     takenPositions.push(pointPosition);
-    
-    // Generate color based on frequency with more varied colors
-    // const freqPercent = (freqValue - MIN_FREQUENCY) / (MAX_FREQUENCY - MIN_FREQUENCY) * 100;
+
     let color;
-    
     if (freqValue < 800) {
-      // Redder for low frequencies
       color = '#FF3D5A';
     } else if (freqValue < 1600) {
-      // Cyan for mid frequencies
       color = '#00F5FF';
     } else if (freqValue < 2400) {
-      // Yellow-green for higher mid
       color = '#AAFF00';
     } else {
-      // Bright green for highest
       color = '#52FF00';
     }
-    
-    // Point is active if it's closest to current position
+
     const distance = Math.abs(pointPosition - normalizedSim);
-    
+
     points.push({
       freq: freqValue,
       position: pointPosition,
       color,
-      isActive: false, // Will be set true for closest point later
+      isActive: false,
       distance,
-      // Add size property for similarity mode - vary by frequency
-      size: Math.floor(42 + (freqValue / MAX_FREQUENCY) * 10) // 42-52 size range - more compact
+      size: Math.floor(42 + (freqValue / MAX_FREQUENCY) * 10)
     });
-    
-    // Stop once we have enough points
+
     if (takenPositions.length >= count) break;
   }
-  
-  // Sort by position
+
   points.sort((a, b) => a.position - b.position);
-  
-  // Mark the closest point to current similarity as active
+
   if (points.length > 0) {
-    // Find point with minimum distance to the current similarity
     points.forEach(p => {
       p.distance = Math.abs(p.position - normalizedSim);
     });
-    
+
     const minDistance = Math.min(...points.map(p => p.distance));
     const closestPoint = points.find(p => p.distance === minDistance);
     if (closestPoint) {
       closestPoint.isActive = true;
     }
   }
-  
-    // ─── MOBILE THROTTLE ────────────────────────────────
-    const maxBoxes = (typeof window !== 'undefined' && window.innerWidth < 500) ? 9 : 14; // 5 on phones, 8 on larger screens
-    const visiblePoints = points.slice(0, maxBoxes);
-    return visiblePoints;
+
+  return points;
 };
 
 // Hook to generate fixed window of ticks around center - originally from useTicks.js

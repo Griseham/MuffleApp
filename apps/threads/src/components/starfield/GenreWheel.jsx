@@ -5,7 +5,7 @@ import InfoIconModal from "../InfoIconModal";
 import { generateArcSets } from "../genreUtils";
 import { GENRE_CHANGE_THRESHOLD, TOTAL_WIDTH, TOTAL_HEIGHT } from "../utils";
 import { StarfieldContext } from "../context/Context";
-import { Music, Compass, Stars } from "lucide-react";
+import { Music, Stars } from "lucide-react";
 
 export default function GenreWheel({ forcedGenres = null, onVisibleGenresChange = () => {} }) {
   const { 
@@ -21,10 +21,22 @@ export default function GenreWheel({ forcedGenres = null, onVisibleGenresChange 
   
   // Generate arc sets with 20 different combinations - generated once
   const [arcSets] = useState(() => generateArcSets(20));
+
+  const getArcSetForViewportCenter = useMemo(() => {
+    return (centerX, centerY) => {
+      const screenX = Math.floor(centerX / 100);
+      const screenY = Math.floor(centerY / 100);
+      const arcIndex = Math.abs((screenX * 7 + screenY * 13) % arcSets.length);
+      return arcSets[arcIndex];
+    };
+  }, [arcSets]);
+
+  const initialForYouArcSet = useMemo(() => {
+    return getArcSetForViewportCenter(TOTAL_WIDTH / 2, TOTAL_HEIGHT / 2);
+  }, [getArcSetForViewportCenter]);
   
   // Track the current arc set and its transition
-  const [currentArcs, setCurrentArcs] = useState(arcSets[0]);
-  const [targetArcs, setTargetArcs] = useState(arcSets[0]);
+  const [targetArcs, setTargetArcs] = useState(initialForYouArcSet);
   const [arcTransition, setArcTransition] = useState(1); // 0 to 1, where 1 is fully transitioned
 
   useEffect(() => {
@@ -44,9 +56,7 @@ export default function GenreWheel({ forcedGenres = null, onVisibleGenresChange 
   useEffect(() => {
     if (!isActive) return;
     if (forcedGenres) {
-      
       // Smoothly transition to the forced genre
-      setCurrentArcs(forcedGenres);
       setTargetArcs(forcedGenres);
       setArcTransition(1);
     }
@@ -92,13 +102,11 @@ export default function GenreWheel({ forcedGenres = null, onVisibleGenresChange 
       setLastPosition({ x: scrollPos.left, y: scrollPos.top });
       
       // Pick a new set of arcs based on position
-      const screenX = Math.floor(cx / 100);
-      const screenY = Math.floor(cy / 100);
-      const arcIndex = Math.abs((screenX * 7 + screenY * 13) % arcSets.length);
+      const nextArcSet = getArcSetForViewportCenter(cx, cy);
+      if (nextArcSet === targetArcs) return;
       
       // Start a transition to the new arc set
-      setCurrentArcs(prevArcs => arcTransition === 1 ? prevArcs : targetArcs);
-      setTargetArcs(arcSets[arcIndex]);
+      setTargetArcs(nextArcSet);
       setArcTransition(0);
     }
   }, [
@@ -107,7 +115,7 @@ export default function GenreWheel({ forcedGenres = null, onVisibleGenresChange 
     isFullscreen, 
     containerDimensions, 
     lastPosition, 
-    arcSets, 
+    getArcSetForViewportCenter,
     arcTransition, 
     targetArcs,
     isInForcedMode
@@ -177,7 +185,6 @@ export default function GenreWheel({ forcedGenres = null, onVisibleGenresChange 
     }];
     
     // Update the current and target arcs
-    setCurrentArcs(singleGenreWheel);
     setTargetArcs(singleGenreWheel);
     setArcTransition(1);
   };
@@ -191,8 +198,17 @@ export default function GenreWheel({ forcedGenres = null, onVisibleGenresChange 
 
     const h = containerDimensions?.height || 800;
     // 40–90px feels right across typical window sizes
-    return -Math.round(Math.min(90, Math.max(40, h * 0.08)));
+    return -Math.round(Math.min(72, Math.max(28, h * 0.06)));
   }, [isFullscreen, isMobileDevice, containerDimensions]);
+
+  // Keep the wheel centered under the Load Feed panel in both modes.
+  const wheelXOffset = useMemo(() => {
+    if (isMobileDevice) return 0;
+    if (isFullscreen) return -52;
+    return -42;
+  }, [isFullscreen, isMobileDevice]);
+
+  const wheelTransformBase = `translate(-50%,-50%) translate(${wheelXOffset}px, ${windowedWheelYOffset}px)`;
 
   return (
     <div
@@ -201,11 +217,14 @@ export default function GenreWheel({ forcedGenres = null, onVisibleGenresChange 
         left: "50%",
         top: "50%",
         transform: arcTransition < 1
-          ? `translate(-50%,-50%) translateY(${windowedWheelYOffset}px) scale(${0.95 + Math.sin(arcTransition * Math.PI) * 0.15})`
-          : `translate(-50%,-50%) translateY(${windowedWheelYOffset}px)`,
+          ? `${wheelTransformBase} scale(${0.95 + Math.sin(arcTransition * Math.PI) * 0.15})`
+          : wheelTransformBase,
         width: wheelSize,
         height: wheelSize,
         zIndex: 9998,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
         pointerEvents: "auto",      // wheel remains clickable
         filter: "drop-shadow(0 0 30px rgba(0,0,0,0.7))",
         willChange: "transform",

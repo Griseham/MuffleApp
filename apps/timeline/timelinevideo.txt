@@ -1,0 +1,56 @@
+Timeline video
+
+
+The timeline focuses on promoting albums
+
+Part 1 lists your followed artists and plots them based on how you've rated their albums and the last time they've released one. 
+
+The volume filter compares your rating position to users of different volumes while the genre tab shows how those artists are rated in different genre communities. 
+
+The top albums toggle lets you compare the top 5 albums of a year to your 5 highest rated albums and you can add some friends.
+
+Most anticipated toggle promotes upcoming albums. 
+
+
+
+
+Second part of the timeline showcases the top albums of the month.
+
+Clicking on an artist in your timeline will list that artist's albums and how you've rated each. 
+
+Clicking on an album will show that album's rating in different genre communities and you can further filter by user volume
+
+
+
+
+
+Part C of the timeline is a calendar where each slot is taken by an album, allowing users to compare their highest rated album of that month, year or half-decade. 
+
+Users who rate the most albums will have a higher ranking on this calendar. 
+
+The Top album toggle shows the highest rated album for each month and reveals a ranking on the top right of each album to show their distance to the top album. 
+
+The volume button filters the users by their volumes and the genre button specifies users in a genre community, so you can see the top albums there.
+
+You can also add some friends and compare your favorite albums.  
+
+
+
+
+////////////
+
+Expand the personal timeline so that you can add friends under your timeline and on top of your timeline is theta albums timmmmeline with numbers showing up for me a nd the users I addd.
+
+Show old albums like around 1990 bu adding ... after 2024
+
+
+
+
+How do I give the users a reason to care about listen to older songs, I have to create a new purpose...
+
+
+Volume and genre should not be clickable when top albums is toggled
+
+Replace empty albums slots withs svg
+
+If most anticipated is toggled and I scroll back to the timeline, the timeline button should be toggled. 

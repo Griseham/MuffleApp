@@ -1,0 +1,292 @@
+# Timeline Feature - Updated Plan
+
+## Overview
+
+The timeline is a core discovery feature that displays albums of the month across users and time. It functions like a calendar but with users as columns and time (months/years) as rows.
+
+---
+
+## Layout Structure
+
+### Top Header: Users (Horizontal)
+- Users are displayed as columns, scrolling **left and right**
+- First column is **always "Top Albums"** - shows the community's #1 album for each month
+- Remaining columns show individual users
+- Users can be:
+  - Auto-populated based on ranking criteria
+  - Manually added (yourself, friends, specific users)
+- Each user column shows:
+  - Circular avatar
+  - Username
+  - "You" badge if it's the current user
+
+### Left Sidebar: Time (Vertical)
+- Months and years are displayed as rows, scrolling **up and down**
+- **Scrolling down = going back in time** (December 2025 → November 2025 → ... → January 2024 → December 2023...)
+- Year label appears prominently at year boundaries (when year changes)
+- Month names shown for each row
+
+### Body Grid: Albums
+- Each cell corresponds to a **user (column) × month (row)** intersection
+- Cells contain album cards:
+  - Large square album cover with rounded corners
+  - Artist circular avatar in bottom-right of cover
+  - Artist name next to avatar below the cover
+- **Sparse data**: Not every user has an album for every month
+  - Users who rate more albums will have more filled cells
+  - Empty cells show a subtle dash/line
+- When "Top Albums" column is visible, other user albums show **rank badges** (e.g., #12, #47)
+
+### Corner Cell
+- Where the user header and month sidebar meet
+- Contains "Timeline" label
+- Seamlessly connects both headers (Google Calendar style)
+
+---
+
+## View Modes (Navigation Tabs)
+
+Three main view modes as segmented tabs in the top bar:
+
+### 1. Most Rated (Default/Primary View)
+- **Icon**: Bar chart
+- **Purpose**: Users ranked by how many albums they've rated on the app
+- **Why it matters**: These users have the most filled cells, making endless scrolling satisfying
+- **Best for**: Deep discovery, exploring old albums, seeing what prolific raters picked
+- **No slider**: Shows all users by rating count
+
+### 2. Volume
+- **Icon**: Audio/signal waves
+- **Purpose**: Filter users by their ELO-style experience score (0-3200)
+- **Slider**: Appears when selected
+  - Range: 0 to 3200
+  - User sets a **maximum** volume level
+  - Only users at or below that volume are shown
+- **Sorting**: Even when filtered by volume, users are still arranged by albums rated
+- **Use case**: See what users at a specific experience level are picking
+
+### 3. Genre
+- **Icon**: Music note
+- **Purpose**: View top users within a specific genre community
+- **Genre chips**: Appear when selected (Indie, Hip-Hop, Pop, Rock, R&B, Electronic, Country, Jazz, Classical, Metal)
+- **Slider**: Also appears (same 0-3200 volume filter)
+- **Use case**: Compare how different musical subcultures value albums over time
+- **Example**: View August and see only what top Rap community users picked
+
+---
+
+## Top Albums Column
+
+- **Always visible** as the first column (not a toggle)
+- Shows the **community's #1 album** for each month
+- Acts as a reference point for the entire timeline
+- When visible, enables **rank badges** on other user albums
+  - Shows where each user's pick ranked compared to the top album
+  - E.g., "#5" means that album was the 5th most picked for that month
+
+---
+
+## Controls & Buttons
+
+### Add User Button
+- Dashed border button in top-right
+- Opens modal/flow to manually add users to the timeline
+- Can add:
+  - Yourself
+  - Friends
+  - Any user by search
+- Added users appear as new columns
+
+### Removed Controls
+- ~~Now button~~ (removed - not needed)
+- ~~Top Album toggle~~ (removed - always shown)
+- ~~Calendar View~~ (removed - separate feature)
+
+---
+
+## Album-of-the-Month Logic
+
+### How an album appears in a user's cell:
+1. **Explicit pick**: User manually chooses their "album of the month"
+2. **Auto-selected**: The album they rated highest that was released in that month
+
+### Placement:
+- Albums appear in the month they were **released**, not when rated
+- Example: Rating a Dominic Fike album highly in December that was released in August → it appears in August
+
+---
+
+## Visual Design
+
+### Color Palette (Dark Mode)
+- `#080808` - Primary background
+- `#121212` - Secondary background
+- `#0a0a0a` - Tertiary background
+- `#1a1a1a` - Primary border
+- `#282B29` - Secondary border, active states
+- `#554E48` - Muted text
+- `#7B7A75` - Secondary text
+- `#A4A2A0` - Primary text
+
+### Icons
+- Professional monochrome SVG icons
+- Match the color palette (no colorful emojis)
+- Consistent 16px size in tabs
+
+### Album Cards
+- Large square cover (105px)
+- 12px border radius
+- Subtle shadow
+- Artist avatar: 22px circle
+- Artist name: 11px, truncated with ellipsis
+
+### Slider
+- 4px track height
+- Fill color matches text secondary
+- Custom styled thumb (16px circle)
+- Value display: "2400 / 3200" format
+
+---
+
+## Technical Implementation
+
+### Scrolling Behavior
+- **User header**: Sticky at top, scrolls horizontally with body
+- **Month sidebar**: Sticky at left, scrolls vertically with body
+- **Corner cell**: Fixed position (sticky in both directions)
+- **Body grid**: Free scroll in both directions
+
+### Data Structure
+```javascript
+// Months (rows)
+const MONTHS_DATA = [
+  { month: "December", year: 2025 },
+  { month: "November", year: 2025 },
+  // ... going back in time
+];
+
+// Users (columns)
+const USERS = [
+  { id: "top", name: "Top Albums", isTopAlbums: true },
+  { id: 1, name: "You", isYou: true },
+  { id: 2, name: "Alex" },
+  // ...
+];
+
+// Genres
+const GENRES = ["Indie", "Hip-Hop", "Pop", "Rock", "R&B", "Electronic", "Country", "Jazz", "Classical", "Metal"];
+```
+
+### State Management
+```javascript
+const [activeView, setActiveView] = useState("albums"); // albums, volume, genre
+const [selectedGenre, setSelectedGenre] = useState(null);
+const [volumeMax, setVolumeMax] = useState(3200);
+```
+
+---
+
+Timeline Screen Prototype Spec (Top + Middle + Bottom)
+1) Top Zone — Personal Artist Timeline (scrollable by month)
+
+Goal: let users scroll through time and instantly see which followed artists released most recently (and later, upcoming).
+
+Time behavior
+
+The top timeline is horizontally scrollable by month.
+
+For the prototype:
+
+You can scroll up to 1 year into the past (12 months back).
+
+(Later this becomes “infinite” back through years.)
+
+Artist placement
+
+Each followed artist appears as a circle/avatar.
+
+X position: pinned to the artist’s most recent album release month (always the latest; no duplicate dots for deluxe/reissues).
+
+Y position: rises as you rate that artist’s albums (prototype rule: each rated album nudges the artist upward; no complex math yet).
+
+Immediate feedback loop
+
+When you rate an album (0–10), the artist dot moves up slightly immediately.
+
+2) Left Sidebar — Followed Artists + Search (prototype-scoped)
+
+Layout
+
+A vertical sidebar list of followed artists (stacked icons), like your screenshot.
+
+Search
+
+Include a search input at the top of the sidebar.
+
+For prototype simplicity:
+
+Search can filter a placeholder artist list and “Add” them.
+
+Adding an artist makes them appear in the top timeline.
+
+Prototype constraint you set
+
+For now, users only add artists from this same context (keep it simple; no global follow flow yet).
+
+3) Middle Zone — Context Panel (state machine)
+
+This section changes based on selection.
+
+State A: Default (no artist selected)
+
+Show Top albums for the currently viewed month/year (based on the bottom timeline scroll position).
+
+State B: Artist Selected
+
+Show that artist’s album list.
+
+Each album has a rating slider 0 → 10.
+
+Include a Close “X” button (top-right of the middle panel) that clears selection and returns to Default.
+
+State C: Album Selected (inside an artist)
+
+Middle panel switches to album detail:
+
+Album art on the left
+
+Tracklist on the right with 30-second preview UI (placeholder is fine)
+
+4) Bottom Zone — Timeline Grid (existing calendar)
+
+Rules
+
+Clicking artists in the top timeline does not move the bottom calendar.
+
+The bottom calendar stays as-is unless an album is selected in the middle.
+
+When an album is selected
+
+Bottom zone is replaced by:
+
+“Album ratings from other sites” row (icons + scores)
+
+Comments section for that album
+
+One Future Stub (button only)
+Compare With Friend (later)
+
+Add a Compare button now (no logic needed yet).
+
+Later it overlays a friend’s artist dots with different colors, including duplicate dots for shared artists at the same X but different Y.
+
+## Future Considerations
+
+- **Album data integration**: Replace placeholder gradients with real album covers
+- **User data integration**: Real user avatars and names
+- **Infinite scroll**: Load more months as user scrolls down
+- **Click interactions**: Tap album to view details, tap user to view profile
+- **Search**: Search for specific albums or months
+- **Sharing**: Share a specific month/year view
+- **Genre filtering logic**: API integration for genre-based user rankings
+- **Volume/ELO calculation**: Backend integration for volume scores

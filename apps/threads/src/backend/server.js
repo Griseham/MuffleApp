@@ -2,6 +2,7 @@
 import express from 'express';
 import cors from 'cors';
 import fs from "fs";
+import os from "os";
 import dotenv from 'dotenv';
 import rateLimit from 'express-rate-limit';
 import path from 'path';
@@ -68,7 +69,12 @@ const APPLE_MUSIC_QUERY_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 // Minimum snippets required for normal threads (not news/parameter)
 const MIN_SNIPPETS_PER_THREAD = 5;
-const CACHED_MEDIA_DIR = path.resolve(__dirname, './cached_media');
+const DEFAULT_RUNTIME_DIR = path.resolve(
+  process.env.MUFFLE_RUNTIME_DIR || path.join(os.tmpdir(), 'muffle-runtime', 'threads-backend')
+);
+const CACHED_MEDIA_DIR = path.resolve(
+  process.env.THREADS_LOCAL_MEDIA_CACHE_DIR || path.join(DEFAULT_RUNTIME_DIR, 'cached_media')
+);
 if (!fs.existsSync(CACHED_MEDIA_DIR)) {
   fs.mkdirSync(CACHED_MEDIA_DIR, { recursive: true });
 }
@@ -128,7 +134,7 @@ async function parseAppleResponse(response) {
   if (!bodyText) return null;
   try {
     return JSON.parse(bodyText);
-  } catch (error) {
+  } catch {
     console.warn("Apple Music returned invalid JSON:", bodyText.slice(0, 180));
     return null;
   }
@@ -286,6 +292,313 @@ function chooseBestSongMatch(songs, songName, artistName) {
 }
 
 const albumArtworkCache = loadAlbumArtworkCacheFromDisk();
+const repairedSnippetMediaCache = new Map();
+const repairedCachedPostsCache = new Map();
+
+function isCachedMediaUrl(value = "") {
+  return String(value || "").includes("/cached_media/");
+}
+
+function formatResolvedArtworkUrl(url, size = 300) {
+  const rawUrl = String(url || "").trim();
+  if (!rawUrl) return null;
+
+  if (rawUrl.includes("{w}") || rawUrl.includes("{h}") || rawUrl.includes("{f}")) {
+    return buildAppleArtworkUrl(rawUrl, size);
+  }
+
+  return rawUrl
+    .replace(/\/\d+x\d+bb\.(jpg|png)$/i, `/${size}x${size}bb.jpg`)
+    .replace(/\/\d+x\d+\.(jpg|png)$/i, `/${size}x${size}bb.jpg`);
+}
+
+function getSnippetSongName(snippet = {}) {
+  return String(
+    snippet?.songName ||
+    snippet?.name ||
+    snippet?.snippetData?.attributes?.name ||
+    ""
+  ).trim();
+}
+
+function getSnippetArtistName(snippet = {}) {
+  return String(
+    snippet?.artistName ||
+    snippet?.snippetData?.attributes?.artistName ||
+    ""
+  ).trim();
+}
+
+function getSnippetArtworkUrl(snippet = {}) {
+  return String(
+    snippet?.artworkUrl ||
+    snippet?.artwork ||
+    snippet?.snippetData?.attributes?.artwork?.url ||
+    ""
+  ).trim();
+}
+
+function getSnippetPreviewUrl(snippet = {}) {
+  return String(
+    snippet?.previewUrl ||
+    snippet?.snippetData?.attributes?.previews?.[0]?.url ||
+    ""
+  ).trim();
+}
+
+function mapAppleSongToMediaCandidate(song = {}) {
+  return {
+    songId: song?.id || null,
+    songName: song?.attributes?.name || "",
+    artistName: song?.attributes?.artistName || "",
+    albumName: song?.attributes?.albumName || "",
+    artworkUrl: formatResolvedArtworkUrl(song?.attributes?.artwork?.url, 300),
+    previewUrl: song?.attributes?.previews?.[0]?.url || null,
+    source: "apple-search",
+  };
+}
+
+function mapItunesSongToMediaCandidate(song = {}) {
+  return {
+    songId: song?.trackId || null,
+    songName: song?.trackName || "",
+    artistName: song?.artistName || "",
+    albumName: song?.collectionName || "",
+    artworkUrl: formatResolvedArtworkUrl(
+      song?.artworkUrl100 || song?.artworkUrl60 || song?.artworkUrl30 || "",
+      300
+    ),
+    previewUrl: song?.previewUrl || null,
+    source: "itunes-search",
+  };
+}
+
+function scoreMediaCandidate(candidate = {}, songName = "", artistName = "") {
+  const candidateSong = normalizeTextForMatch(candidate?.songName);
+  const candidateArtist = normalizeTextForMatch(candidate?.artistName);
+  const expectedSong = normalizeTextForMatch(songName);
+  const expectedArtist = normalizeTextForMatch(artistName);
+
+  let score = 0;
+
+  if (expectedSong && candidateSong) {
+    if (candidateSong === expectedSong) score += 120;
+    else if (candidateSong.includes(expectedSong) || expectedSong.includes(candidateSong)) score += 70;
+  }
+
+  if (expectedArtist && candidateArtist) {
+    if (candidateArtist === expectedArtist) score += 100;
+    else if (candidateArtist.includes(expectedArtist) || expectedArtist.includes(candidateArtist)) score += 60;
+  }
+
+  if (candidate?.previewUrl) score += 20;
+  if (candidate?.artworkUrl) score += 10;
+
+  return score;
+}
+
+function findBestMediaCandidate(candidates = [], songName = "", artistName = "") {
+  let bestCandidate = null;
+  let bestScore = -1;
+
+  for (const candidate of candidates) {
+    const score = scoreMediaCandidate(candidate, songName, artistName);
+    if (score > bestScore) {
+      bestScore = score;
+      bestCandidate = candidate;
+    }
+  }
+
+  return bestCandidate;
+}
+
+async function searchItunesSongs(query, limit = 8) {
+  const safeQuery = String(query || "").trim();
+  if (safeQuery.length < 2) {
+    return [];
+  }
+
+  const url =
+    `https://itunes.apple.com/search?term=${encodeURIComponent(safeQuery)}` +
+    `&entity=song&limit=${Math.max(1, Math.min(Number(limit) || 8, 12))}&country=US`;
+
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      return [];
+    }
+
+    const data = await response.json();
+    return Array.isArray(data?.results) ? data.results : [];
+  } catch (error) {
+    console.warn(`iTunes search failed for "${safeQuery}":`, error?.message || error);
+    return [];
+  }
+}
+
+async function resolveSnippetMedia(snippet = {}) {
+  const songName = getSnippetSongName(snippet);
+  const artistName = getSnippetArtistName(snippet);
+  const query = String(snippet?.query || "").trim();
+
+  if (!songName || !artistName) {
+    return {
+      songName,
+      artistName,
+      albumName: snippet?.albumName || snippet?.snippetData?.attributes?.albumName || "",
+      artworkUrl: getSnippetArtworkUrl(snippet) || null,
+      previewUrl: getSnippetPreviewUrl(snippet) || null,
+    };
+  }
+
+  const cacheKey = normalizeTrackCacheKey(songName, artistName);
+  if (repairedSnippetMediaCache.has(cacheKey)) {
+    return repairedSnippetMediaCache.get(cacheKey);
+  }
+
+  const currentArtworkUrl = getSnippetArtworkUrl(snippet);
+  const currentPreviewUrl = getSnippetPreviewUrl(snippet);
+  const cachedEntry = albumArtworkCache[cacheKey];
+
+  const resolved = {
+    songName,
+    artistName,
+    albumName: snippet?.albumName || snippet?.snippetData?.attributes?.albumName || cachedEntry?.albumName || "",
+    artworkUrl: !isCachedMediaUrl(currentArtworkUrl) ? formatResolvedArtworkUrl(currentArtworkUrl, 300) : "",
+    previewUrl: !isCachedMediaUrl(currentPreviewUrl) ? currentPreviewUrl : "",
+  };
+
+  if (!resolved.artworkUrl && cachedEntry?.artworkUrl && !isCachedMediaUrl(cachedEntry.artworkUrl)) {
+    resolved.artworkUrl = formatResolvedArtworkUrl(cachedEntry.artworkUrl, 300);
+  }
+  if (!resolved.previewUrl && cachedEntry?.previewUrl && !isCachedMediaUrl(cachedEntry.previewUrl)) {
+    resolved.previewUrl = cachedEntry.previewUrl;
+  }
+
+  const fillFromCandidate = (candidate) => {
+    if (!candidate) return false;
+
+    if (!resolved.artworkUrl && candidate.artworkUrl && !isCachedMediaUrl(candidate.artworkUrl)) {
+      resolved.artworkUrl = formatResolvedArtworkUrl(candidate.artworkUrl, 300);
+    }
+    if (!resolved.previewUrl && candidate.previewUrl && !isCachedMediaUrl(candidate.previewUrl)) {
+      resolved.previewUrl = candidate.previewUrl;
+    }
+    if (!resolved.albumName && candidate.albumName) {
+      resolved.albumName = candidate.albumName;
+    }
+
+    if (candidate.songName && candidate.artistName && (candidate.artworkUrl || candidate.previewUrl)) {
+      albumArtworkCache[cacheKey] = {
+        requestSongName: songName,
+        requestArtistName: artistName,
+        matchedSongName: candidate.songName,
+        matchedArtistName: candidate.artistName,
+        songId: candidate.songId || null,
+        albumName: candidate.albumName || "",
+        artworkUrl: candidate.artworkUrl || null,
+        previewUrl: candidate.previewUrl || null,
+        source: candidate.source || "repair",
+        updatedAt: new Date().toISOString(),
+      };
+      saveAlbumArtworkCacheToDisk(albumArtworkCache);
+    }
+
+    return Boolean(resolved.artworkUrl && resolved.previewUrl);
+  };
+
+  const searchTerms = [...new Set(
+    [
+      `${songName} ${artistName}`.trim(),
+      query,
+      songName,
+    ].map((value) => String(value || "").trim()).filter((value) => value.length >= 2)
+  )];
+
+  try {
+    for (const term of searchTerms) {
+      if (resolved.artworkUrl && resolved.previewUrl) break;
+      const appleSongs = await searchAppleMusic(term, 8);
+      const appleCandidates = appleSongs.map(mapAppleSongToMediaCandidate);
+      if (fillFromCandidate(findBestMediaCandidate(appleCandidates, songName, artistName))) {
+        break;
+      }
+    }
+
+    for (const term of searchTerms) {
+      if (resolved.artworkUrl && resolved.previewUrl) break;
+      const itunesSongs = await searchItunesSongs(term, 8);
+      const itunesCandidates = itunesSongs.map(mapItunesSongToMediaCandidate);
+      if (fillFromCandidate(findBestMediaCandidate(itunesCandidates, songName, artistName))) {
+        break;
+      }
+    }
+  } catch (error) {
+    console.warn(`Snippet media repair failed for ${songName} - ${artistName}:`, error?.message || error);
+  }
+
+  repairedSnippetMediaCache.set(cacheKey, resolved);
+  return resolved;
+}
+
+async function repairSnippetMedia(snippet = {}) {
+  const songName = getSnippetSongName(snippet);
+  const artistName = getSnippetArtistName(snippet);
+  const artworkUrl = getSnippetArtworkUrl(snippet);
+  const previewUrl = getSnippetPreviewUrl(snippet);
+
+  const shouldRepair =
+    songName &&
+    artistName &&
+    (
+      !artworkUrl ||
+      !previewUrl ||
+      isCachedMediaUrl(artworkUrl) ||
+      isCachedMediaUrl(previewUrl)
+    );
+
+  if (!shouldRepair) {
+    return snippet;
+  }
+
+  const resolved = await resolveSnippetMedia(snippet);
+  const nextArtworkUrl = resolved.artworkUrl || artworkUrl || null;
+  const nextPreviewUrl = resolved.previewUrl || previewUrl || null;
+
+  return {
+    ...snippet,
+    songName: songName || resolved.songName || "",
+    artistName: artistName || resolved.artistName || "",
+    albumName: resolved.albumName || snippet?.albumName || snippet?.snippetData?.attributes?.albumName || "",
+    artworkUrl: nextArtworkUrl,
+    artwork: nextArtworkUrl || snippet?.artwork || null,
+    previewUrl: nextPreviewUrl,
+    snippetData: {
+      ...snippet?.snippetData,
+      attributes: {
+        ...snippet?.snippetData?.attributes,
+        name: songName || snippet?.snippetData?.attributes?.name || "",
+        artistName: artistName || snippet?.snippetData?.attributes?.artistName || "",
+        albumName: resolved.albumName || snippet?.albumName || snippet?.snippetData?.attributes?.albumName || "",
+        artwork: { url: nextArtworkUrl || "" },
+        previews: nextPreviewUrl ? [{ url: nextPreviewUrl }] : [],
+      },
+    },
+  };
+}
+
+async function repairCachedPostMedia(post = {}) {
+  const snippets = Array.isArray(post?.snippets) ? post.snippets : [];
+  if (!snippets.length) {
+    return post;
+  }
+
+  const repairedSnippets = await Promise.all(snippets.map((snippet) => repairSnippetMedia(snippet)));
+  return {
+    ...post,
+    snippets: repairedSnippets,
+  };
+}
 
 async function cacheMediaForSong(songId, artworkUrl, previewUrl) {
   const safeId = String(songId || '').replace(/[^a-zA-Z0-9_-]/g, '');
@@ -344,7 +657,7 @@ async function cacheMediaForSong(songId, artworkUrl, previewUrl) {
 
 
 // A threshold for "short" comments
-const COMMENT_LENGTH_THRESHOLD = 80;
+const _COMMENT_LENGTH_THRESHOLD = 80;
 
 const postsLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -356,7 +669,53 @@ const heavyLimiter = rateLimit({
   max: 30, // tighter limit for expensive endpoints
 });
 
-function saveToJSON(posts) {
+let spotifyTokenCache = {
+  accessToken: null,
+  expiresAt: 0,
+};
+
+const stripControlCharacters = (value) =>
+  value.split('').filter((char) => {
+    const code = char.charCodeAt(0);
+    return code >= 32 && code !== 127;
+  }).join('');
+
+async function getSpotifyAccessToken() {
+  const clientId = process.env.SPOTIFY_CLIENT_ID;
+  const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
+
+  if (!clientId || !clientSecret) {
+    throw new Error("Spotify credentials not set");
+  }
+
+  if (spotifyTokenCache.accessToken && spotifyTokenCache.expiresAt > Date.now() + 30_000) {
+    return spotifyTokenCache.accessToken;
+  }
+
+  const authString = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
+  const tokenRes = await fetch("https://accounts.spotify.com/api/token", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      Authorization: `Basic ${authString}`,
+    },
+    body: "grant_type=client_credentials"
+  });
+
+  if (!tokenRes.ok) {
+    throw new Error(`Spotify token request failed with status ${tokenRes.status}`);
+  }
+
+  const data = await tokenRes.json();
+  spotifyTokenCache = {
+    accessToken: data.access_token,
+    expiresAt: Date.now() + Math.max(0, (Number(data.expires_in) || 3600) - 60) * 1000,
+  };
+
+  return spotifyTokenCache.accessToken;
+}
+
+function _saveToJSON(posts) {
   fs.writeFileSync("./db.json", JSON.stringify(posts, null, 2), "utf-8");
 }
 
@@ -389,7 +748,7 @@ function flattenRedditComments(children, maxDepth = 1, currentDepth = 0) {
 
 function removeLinks(text) {
   if (!text) return "";
-  return text.replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/gi, "$1")
+  return text.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/gi, "$1")
              .replace(/https?:\/\/\S+/gi, "");
 }
 
@@ -450,7 +809,7 @@ function shuffleArray(arr) {
   return arr;
 }
 
-function insertParameterThread(posts) {
+function _insertParameterThread(posts) {
   return posts;
 }
 
@@ -706,7 +1065,7 @@ async function searchAppleMusic(query, limit = 6) {
     let data;
     try {
       data = JSON.parse(bodyText);
-    } catch (error) {
+    } catch {
       console.error("Apple Music API returned non-JSON. First bytes:", bodyText.slice(0, 200));
       return [];
     }
@@ -749,7 +1108,7 @@ function cachePostToJson(postId, subreddit) {
     }
   }
   
-  return new Promise(async (resolve, reject) => {
+  return (async () => {
     try {
       // Fetch post details
       const postUrl = `https://www.reddit.com/r/${subreddit}/comments/${postId}.json`;
@@ -757,7 +1116,7 @@ function cachePostToJson(postId, subreddit) {
       
       if (!response.ok) {
         console.error(`Failed to fetch post ${postId}:`, response.status);
-        return resolve(false);
+        return false;
       }
       
       const json = await response.json();
@@ -765,7 +1124,7 @@ function cachePostToJson(postId, subreddit) {
       
       if (!mainPost) {
         console.error(`Invalid post data structure for ${postId}`);
-        return resolve(false);
+        return false;
       }
       
       // Extract comments
@@ -774,7 +1133,7 @@ function cachePostToJson(postId, subreddit) {
       // Check if post should be blacklisted
       if (isPostBlacklisted({ author: mainPost.author })) {
         console.log(`Skipping blacklisted post from user: ${mainPost.author}`);
-        return resolve(false);
+        return false;
       }
 
       // Format for caching
@@ -871,12 +1230,12 @@ function cachePostToJson(postId, subreddit) {
       fs.writeFileSync(filename, JSON.stringify(cachedPost, null, 2));
       
       console.log(`Successfully cached post ${postId} with ${snippetCount} snippets to ${filename}`);
-      resolve(true);
+      return true;
     } catch (error) {
       console.error(`Error caching post ${postId}:`, error);
-      resolve(false);
+      return false;
     }
-  });
+  })();
 }
 
 
@@ -1263,16 +1622,43 @@ function findCachedFilePathById(postId) {
   return null;
 }
 
+async function loadCachedPostWithRepairedMedia(postId) {
+  const cacheKey = String(postId || "").trim();
+  if (!cacheKey) {
+    return null;
+  }
+
+  if (repairedCachedPostsCache.has(cacheKey)) {
+    return repairedCachedPostsCache.get(cacheKey);
+  }
+
+  const repairPromise = Promise.resolve().then(async () => {
+    const filePath = findCachedFilePathById(cacheKey);
+    if (!filePath) {
+      return null;
+    }
+
+    const cachedPost = JSON.parse(fs.readFileSync(filePath, "utf8"));
+    return repairCachedPostMedia(cachedPost);
+  }).catch((error) => {
+    repairedCachedPostsCache.delete(cacheKey);
+    throw error;
+  });
+
+  repairedCachedPostsCache.set(cacheKey, repairPromise);
+  return repairPromise;
+}
+
 // Also update the get specific cached post endpoint
-app.get("/api/cached-posts/:postId", (req, res) => {
+app.get("/api/cached-posts/:postId", async (req, res) => {
   const { postId } = req.params;
   
   try {
-    const filePath = findCachedFilePathById(postId);
-    if (!filePath) {
+    const cachedPost = await loadCachedPostWithRepairedMedia(postId);
+    if (!cachedPost) {
       return res.status(404).json({ success: false, message: "Cached post not found" });
     }
-    const cachedPost = JSON.parse(fs.readFileSync(filePath, "utf8"));
+
     return res.json({ success: true, data: cachedPost });
   } catch (error) {
     console.error(`Error reading cached post ${postId}:`, error);
@@ -1775,6 +2161,20 @@ app.get("/api/posts/:postId/comments", async (req, res) => {
 app.get("/api/posts/:postId/snippets", async (req, res) => {
   const { postId } = req.params;
   const queryPostType = (req.query.postType || "").toString().trim();
+
+  try {
+    const cachedPost = await loadCachedPostWithRepairedMedia(postId);
+    if (cachedPost && Array.isArray(cachedPost.snippets)) {
+      snippetsCache[postId] = {
+        data: cachedPost.snippets,
+        timestamp: Date.now(),
+      };
+      return res.json({ success: true, data: cachedPost.snippets, cached: true, source: "cached-post" });
+    }
+  } catch (error) {
+    console.warn(`Failed to repair cached snippets for ${postId}:`, error?.message || error);
+  }
+
   // Allow snippets for posts that aren't in our in-memory cache (e.g. loaded via the Reddit button)
   // by resolving basic post info from Reddit on-demand.
   const post = findPostByIdWithFallback(postId) || await resolvePostForId(postId);
@@ -2079,9 +2479,8 @@ app.post("/api/cache-media", async (req, res) => {
       return res.status(400).json({ success: false, error: "Missing songId" });
     }
     
-    const cacheDir = path.resolve(__dirname, './cached_media');
-    if (!fs.existsSync(cacheDir)) {
-      fs.mkdirSync(cacheDir, { recursive: true });
+    if (!fs.existsSync(CACHED_MEDIA_DIR)) {
+      fs.mkdirSync(CACHED_MEDIA_DIR, { recursive: true });
     }
     
     const results = {
@@ -2096,7 +2495,7 @@ app.post("/api/cache-media", async (req, res) => {
         if (artworkResponse.ok) {
           const buffer = await artworkResponse.arrayBuffer();
           const ext = artworkUrl.includes('.jpg') ? '.jpg' : '.png';
-          const artworkPath = path.join(cacheDir, `${songId}_artwork${ext}`);
+          const artworkPath = path.join(CACHED_MEDIA_DIR, `${songId}_artwork${ext}`);
           fs.writeFileSync(artworkPath, Buffer.from(buffer));
           results.artworkPath = `/cached_media/${songId}_artwork${ext}`;
           console.log(`Cached artwork for ${songId}`);
@@ -2112,7 +2511,7 @@ app.post("/api/cache-media", async (req, res) => {
         const previewResponse = await fetch(previewUrl);
         if (previewResponse.ok) {
           const buffer = await previewResponse.arrayBuffer();
-          const previewPath = path.join(cacheDir, `${songId}_preview.m4a`);
+          const previewPath = path.join(CACHED_MEDIA_DIR, `${songId}_preview.m4a`);
           fs.writeFileSync(previewPath, Buffer.from(buffer));
           results.previewPath = `/cached_media/${songId}_preview.m4a`;
           console.log(`Cached preview for ${songId}`);
@@ -2133,50 +2532,61 @@ app.post("/api/cache-media", async (req, res) => {
 });
 
 // Serve cached media files
-app.use('/cached_media', express.static(path.resolve(__dirname, './cached_media')));
+app.use('/cached_media', express.static(CACHED_MEDIA_DIR));
 
 // server.js
 
-app.get('/api/spotify-token', async (req, res) => {
-  console.log("GET /api/spotify-token called...");
+app.get('/api/spotify-token', heavyLimiter, async (req, res) => {
+  try {
+    const token = await getSpotifyAccessToken();
+    res.json({ success: true, token });
+  } catch (error) {
+    console.error("Error fetching Spotify token:", error?.message || error);
+    res.status(500).json({ success: false, error: "Failed to get token" });
+  }
+});
 
-  // Log environment variables to confirm they are loaded
-  console.log("SPOTIFY_CLIENT_ID:", process.env.SPOTIFY_CLIENT_ID);
-  console.log("SPOTIFY_CLIENT_SECRET:", process.env.SPOTIFY_CLIENT_SECRET ? '*** present ***' : 'NOT SET');
+app.get('/api/spotify-artist-search', heavyLimiter, async (req, res) => {
+  const rawQuery = typeof req.query.q === "string" ? req.query.q : "";
+  const sanitizedQuery = rawQuery
+    .normalize("NFKC")
+    .split('\n').map(stripControlCharacters).join(' ')
+    .replace(/[^\p{L}\p{N}\s.'\-&()]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 80);
 
-  const clientId = process.env.SPOTIFY_CLIENT_ID;
-  const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
-  if (!clientId || !clientSecret) {
-    console.log("Missing Spotify credentials in environment!");
-    return res.status(500).json({ success: false, error: "Spotify credentials not set" });
+  if (sanitizedQuery.length < 2) {
+    return res.status(400).json({ success: false, error: "Query must be at least 2 characters" });
   }
 
-  const authString = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
   try {
-    console.log("Requesting token from Spotify...");
-    const tokenRes = await fetch('https://accounts.spotify.com/api/token', {
-      method: 'POST',
+    const token = await getSpotifyAccessToken();
+    const searchUrl = `https://api.spotify.com/v1/search?type=artist&q=${encodeURIComponent(sanitizedQuery)}&limit=5`;
+    const spotifyResponse = await fetch(searchUrl, {
       headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Authorization': `Basic ${authString}`,
-      },
-      body: 'grant_type=client_credentials'
+        Authorization: `Bearer ${token}`
+      }
     });
 
-    console.log("Spotify token endpoint response status:", tokenRes.status);
-
-    if (!tokenRes.ok) {
-      console.error("Failed to get token from Spotify:", tokenRes.status);
-      return res.status(tokenRes.status).json({ success: false, error: "Failed to get token" });
+    if (!spotifyResponse.ok) {
+      return res.status(spotifyResponse.status).json({ success: false, error: "Spotify search failed" });
     }
 
-    const data = await tokenRes.json();
-    console.log("Successfully retrieved Spotify token:", data);
+    const payload = await spotifyResponse.json();
+    const items = Array.isArray(payload?.artists?.items) ? payload.artists.items : [];
+    const artists = items.map((artist) => ({
+      id: artist.id,
+      name: typeof artist.name === "string" ? artist.name.slice(0, 200) : "Unknown Artist",
+      imageUrl: Array.isArray(artist.images) && artist.images.length > 0 ? artist.images[0].url : null,
+      genres: Array.isArray(artist.genres) ? artist.genres.slice(0, 5) : [],
+      popularity: Number.isFinite(artist.popularity) ? artist.popularity : 0,
+    }));
 
-    res.json({ success: true, token: data.access_token });
+    return res.json({ success: true, artists });
   } catch (error) {
-    console.error("Error fetching Spotify token:", error);
-    res.status(500).json({ success: false, error: error.toString() });
+    console.error("Error searching Spotify artists:", error?.message || error);
+    return res.status(500).json({ success: false, error: "Search failed" });
   }
 });
 

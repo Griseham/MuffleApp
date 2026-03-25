@@ -3,13 +3,19 @@
   "version": "1.0.0",
   "description": "A comprehensive social music platform featuring Rooms and Threads experiences, built with React and modern web technologies.",
   "main": "server.js",
+  "engines": {
+    "node": ">=22.13.1 <23"
+  },
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
+    "dev:threads:stack": "node ./scripts/dev-threads-stack.mjs",
     "dev:mufl": "cd apps/mufl && npm run start",
     "dev:threads": "cd apps/threads && npm run dev",
     "build:mufl":   "cd apps/mufl && npm install --production=false && npm run build",
     "build:threads":"cd apps/threads && npm install --production=false && npm run build",
+    "prune:generated": "node ./scripts/prune-generated-artifacts.mjs",
+    "test:threads": "cd apps/threads && npm test",
   
     "build": "npm run build:mufl && npm run build:threads",
     "test": "echo \"Error: no test specified\" && exit 1"

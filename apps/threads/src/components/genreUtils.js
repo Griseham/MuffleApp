@@ -99,7 +99,7 @@ export function getGenreColor(genreName) {
  * @param {string} subgenre - The subgenre name
  * @returns {string} - A hex color code
  */
-export function getSubgenreColor(parentGenre, subgenre) {
+export function getSubgenreColor(parentGenre, _subgenre) {
   // If we know the parent color, derive from it
   const parentColor = getGenreColor(parentGenre);
   

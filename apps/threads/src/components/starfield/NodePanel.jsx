@@ -84,7 +84,7 @@ export default function NodePanel({ node, onClose }) {
       )}
       
       <button
-        onClick={() => window.open(`https://open.spotify.com/artist/${node.artist.id}`, '_blank')}
+        onClick={() => window.open(`https://open.spotify.com/artist/${node.artist.id}`, "_blank", "noopener,noreferrer")}
         style={{
           ...styles.viewThreadButton,
           backgroundColor: "#1DB954" // Spotify green

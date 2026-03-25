@@ -3,12 +3,16 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "engines": {
+    "node": ">=22.13.1 <23"
+  },
   "scripts": {
-    "start": "vite",
-    "dev": "vite",
-    "build": "vite build",
-    "lint": "eslint .",
-    "preview": "vite preview"
+    "start": "node ./scripts/require-supported-node.mjs ./node_modules/vite/bin/vite.js",
+    "dev": "node ./scripts/require-supported-node.mjs ./node_modules/vite/bin/vite.js",
+    "build": "node ./scripts/require-supported-node.mjs ./node_modules/vite/bin/vite.js build",
+    "lint": "node ./scripts/require-supported-node.mjs ./scripts/run-eslint.mjs .",
+    "test": "node ./scripts/require-supported-node.mjs --test ./tests/parameterThreads.test.js",
+    "preview": "node ./scripts/require-supported-node.mjs ./node_modules/vite/bin/vite.js preview"
   },
   "dependencies": {
     "@tailwindcss/postcss": "^4.1.3",

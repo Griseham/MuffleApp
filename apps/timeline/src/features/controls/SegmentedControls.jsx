@@ -1,0 +1,112 @@
+import { GENRES } from "../../backend/timelineMockData";
+import { ChartIcon, VolumeIcon, GenreIcon } from "../Icons";
+
+export const FILTER_OPTIONS = [
+  { value: "yourTimeline", label: "Timeline", icon: <ChartIcon /> },
+  { value: "volume", label: "Volume", icon: <VolumeIcon /> },
+  { value: "genre", label: "Genre", icon: <GenreIcon /> },
+];
+
+// Original single-select tabs (kept for any other uses)
+export function SegmentedTabs({ value, onChange = () => {}, options = FILTER_OPTIONS }) {
+  return (
+    <div className="segmented-tabs">
+      {options.map((opt) => {
+        const isActive = value === opt.value;
+        return (
+          <button
+            key={opt.value}
+            type="button"
+            className={`segmented-tab ${isActive ? "active" : ""}`}
+            onClick={() => onChange(opt.value)}
+          >
+            {opt.icon && <span className="segmented-icon">{opt.icon}</span>}
+            <span className="segmented-label">{opt.label}</span>
+            {isActive && <span className="segmented-underline" />}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/**
+ * Multi-toggle tabs — each tab can be independently active/inactive.
+ * Props:
+ *   tabs: Array<{ id, label, icon? }>
+ *   activeIds: Set<string> | string[]  — which tab ids are currently active
+ *   onToggle: (id: string) => void     — called when a tab is clicked
+ *   exclusiveId: string (optional)     — if this id is toggled, all others are cleared
+ */
+export function MultiToggleTabs({ tabs, activeIds, onToggle, exclusiveId, disabledIds = [] }) {
+  const activeSet = new Set(activeIds);
+  const disabledSet = new Set(disabledIds);
+
+  return (
+    <div className="segmented-tabs">
+      {tabs.map((tab) => {
+        const isActive = activeSet.has(tab.id);
+        const isDisabled = disabledSet.has(tab.id) || tab.disabled;
+        return (
+          <button
+            key={tab.id}
+            type="button"
+            className={`segmented-tab ${isActive ? "active" : ""} ${isDisabled ? "disabled" : ""}`}
+            onClick={() => {
+              if (isDisabled) return;
+              onToggle(tab.id);
+            }}
+            disabled={isDisabled}
+            aria-disabled={isDisabled}
+          >
+            {tab.icon && <span className="segmented-icon">{tab.icon}</span>}
+            <span className="segmented-label">{tab.label}</span>
+            {isActive && <span className="segmented-underline" />}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+export function SegmentVolumeSlider({ value, onChange = () => {} }) {
+  const pct = Math.max(0, Math.min(100, (value / 3200) * 100));
+
+  return (
+    <div className="zone1-volume" role="group" aria-label="Volume">
+      <span className="zone1-volume-label">Vol</span>
+
+      <div className="zone1-volume-track">
+        <div className="zone1-volume-fill" style={{ width: `${pct}%` }} />
+        <div className="zone1-volume-handle" style={{ left: `${pct}%` }} />
+        <input
+          className="zone1-volume-input"
+          type="range"
+          min="0"
+          max="3200"
+          value={value}
+          onChange={(e) => onChange(Number(e.target.value))}
+        />
+      </div>
+
+      <span className="zone1-volume-value">{value}</span>
+    </div>
+  );
+}
+
+export function GenreChipSelect({ value, onChange = () => {}, options = GENRES }) {
+  return (
+    <div className="genre-chips genre-chips-inline">
+      {options.map((genre) => (
+        <button
+          key={genre}
+          type="button"
+          className={`genre-chip ${value === genre ? "genre-chip-active" : ""}`}
+          onClick={() => onChange(genre)}
+        >
+          {genre}
+        </button>
+      ))}
+    </div>
+  );
+}

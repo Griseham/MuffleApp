@@ -71,8 +71,6 @@ export async function searchAppleMusic(query) {
  * @returns {Promise<Array>} Array of results with commentId and song data
  */
 export async function batchSearchAppleMusic(queries) {
-  const results = [];
-  
   // Process in parallel but with a small delay to avoid rate limiting
   const promises = queries.map(async (item, index) => {
     // Add small delay to avoid overwhelming the API
@@ -102,9 +100,9 @@ export function extractSongQuery(commentText) {
   
   // Look for patterns like "Song Title by Artist" or "Song Title - Artist"
   const patterns = [
-    /(.+?)\s+by\s+(.+?)(?:\s|$|\.|\!|\?)/i,
-    /(.+?)\s*-\s*(.+?)(?:\s|$|\.|\!|\?)/i,
-    /(.+?)\s*–\s*(.+?)(?:\s|$|\.|\!|\?)/i, // em dash
+    /(.+?)\s+by\s+(.+?)(?:\s|$|\.|!|\?)/i,
+    /(.+?)\s*-\s*(.+?)(?:\s|$|\.|!|\?)/i,
+    /(.+?)\s*–\s*(.+?)(?:\s|$|\.|!|\?)/i, // em dash
   ];
   
   for (const pattern of patterns) {

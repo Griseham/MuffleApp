@@ -133,6 +133,39 @@ export function buildSpatialHash(stars) {
   return hash;
 }
 
+export function querySpatialHash(hash, stars, viewportLeft, viewportTop, viewportRight, viewportBottom) {
+  if (!hash || !stars?.length) return [];
+
+  const minCellX = Math.floor(viewportLeft / HASH_SIZE);
+  const maxCellX = Math.floor(viewportRight / HASH_SIZE);
+  const minCellY = Math.floor(viewportTop / HASH_SIZE);
+  const maxCellY = Math.floor(viewportBottom / HASH_SIZE);
+  const matches = [];
+
+  for (let cellY = minCellY; cellY <= maxCellY; cellY += 1) {
+    for (let cellX = minCellX; cellX <= maxCellX; cellX += 1) {
+      const bucket = hash.get(`${cellX}|${cellY}`);
+      if (!bucket) continue;
+
+      bucket.forEach((index) => {
+        const dot = stars[index];
+        if (!dot) return;
+
+        if (
+          dot.x >= viewportLeft &&
+          dot.x <= viewportRight &&
+          dot.y >= viewportTop &&
+          dot.y <= viewportBottom
+        ) {
+          matches.push(dot);
+        }
+      });
+    }
+  }
+
+  return matches;
+}
+
 /**
  * Generate cosmic dust particles
  */
