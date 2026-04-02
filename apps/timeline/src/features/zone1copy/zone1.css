@@ -1008,7 +1008,7 @@
 
 .top-artist-lane-dot:hover:not(.selected) {
   transform: none;
-  z-index: 10;
+  z-index: 12;
 }
 
 .artist-dot.selected {
@@ -1331,6 +1331,13 @@
   position: relative;
   overflow: hidden;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25), 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+
+.top-artist-album-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .top-artist-album-radial {

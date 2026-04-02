@@ -51,13 +51,13 @@ export default function UsersHeader({ users, onRemoveUser, removableIds = [] }) 
                 >
                 <div className={`user-avatar user-avatar-glass ${user.isTopAlbums ? "user-avatar-top" : ""} ${user.isYou ? "user-avatar-you" : ""} ${isPinned && !user.isYou && !user.isTopAlbums ? "user-avatar-pinned" : ""}`}
                   style={isPinned && !user.isTopAlbums ? { background: `linear-gradient(135deg, ${pinColor}, ${pinColor}88)`, borderColor: `${pinColor}66` } : undefined}>
-                  {avatarSrc ? <img src={avatarSrc} alt={user.name} className="user-avatar-img" loading="lazy" /> : null}
+                  {avatarSrc ? <img src={avatarSrc} alt={user.name} className="user-avatar-img" loading="lazy" referrerPolicy="no-referrer" /> : null}
                 </div>
                 </UserHoverTarget>
                 <div className="user-label-row">
                   <span className="user-name" style={isPinned && !user.isTopAlbums ? { color: pinColor } : undefined}>{user.name}</span>
                 </div>
-                {user.isYou && <span className="you-badge">You</span>}
+                {user.isYou && <span className="you-badge">Me</span>}
                 <div
                   className="user-volume-badge"
                   style={isPinned && !user.isTopAlbums ? {

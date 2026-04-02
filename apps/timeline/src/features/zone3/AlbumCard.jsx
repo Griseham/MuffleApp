@@ -28,6 +28,7 @@ export default function AlbumCard({
             alt={albumName || artistName || "album"}
             className="album-cover-img"
             loading="lazy"
+            referrerPolicy="no-referrer"
             onError={() => setImgFailed(true)}
           />
         ) : (
@@ -43,6 +44,7 @@ export default function AlbumCard({
               alt={artistName || "artist"}
               className="artist-avatar-img"
               loading="lazy"
+              referrerPolicy="no-referrer"
               onError={() => setAvatarFailed(true)}
             />
           ) : (

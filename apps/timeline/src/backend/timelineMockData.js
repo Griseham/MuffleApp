@@ -799,7 +799,7 @@ export const TOP_ALBUMS = [
   { id: 3, title: "Austin", artist: "Post Malone", initials: "PM", color: "#8B8B7B" },
   { id: 4, title: "One Thing at a Time", artist: "Morgan Wallen", initials: "MW", color: "#7B6B5C" },
   { id: 5, title: "Jackman.", artist: "Jack Harlow", initials: "JH", color: "#5C7B6B" },
-  { id: 6, title: "Woodland", artist: "The Smile", initials: "TS", color: "#6B7B5C" },
+  { id: 6, title: "GNX", artist: "Kendrick Lamar", initials: "KL", color: "#8B7355" },
   { id: 7, title: "Songs of...", artist: "U2", initials: "U2", color: "#5C6B7B" },
   { id: 8, title: "The Ballad...", artist: "Blur", initials: "BL", color: "#7B5C6B" },
   { id: 9, title: "Clarity", artist: "Zedd", initials: "ZD", color: "#6B5C7B" },

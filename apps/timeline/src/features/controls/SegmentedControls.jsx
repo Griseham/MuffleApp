@@ -1,5 +1,6 @@
 import { GENRES } from "../../backend/timelineMockData";
 import { ChartIcon, VolumeIcon, GenreIcon } from "../Icons";
+import InfoIconModal from "../InfoIconModal";
 
 export const FILTER_OPTIONS = [
   { value: "yourTimeline", label: "Timeline", icon: <ChartIcon /> },
@@ -47,22 +48,39 @@ export function MultiToggleTabs({ tabs, activeIds, onToggle, exclusiveId, disabl
       {tabs.map((tab) => {
         const isActive = activeSet.has(tab.id);
         const isDisabled = disabledSet.has(tab.id) || tab.disabled;
+        const infoModal = tab.infoModal;
         return (
-          <button
-            key={tab.id}
-            type="button"
-            className={`segmented-tab ${isActive ? "active" : ""} ${isDisabled ? "disabled" : ""}`}
-            onClick={() => {
-              if (isDisabled) return;
-              onToggle(tab.id);
-            }}
-            disabled={isDisabled}
-            aria-disabled={isDisabled}
-          >
-            {tab.icon && <span className="segmented-icon">{tab.icon}</span>}
-            <span className="segmented-label">{tab.label}</span>
-            {isActive && <span className="segmented-underline" />}
-          </button>
+          <div key={tab.id} className="segmented-tab-item">
+            <button
+              type="button"
+              className={`segmented-tab ${isActive ? "active" : ""} ${isDisabled ? "disabled" : ""}`}
+              onClick={() => {
+                if (isDisabled) return;
+                onToggle(tab.id);
+              }}
+              disabled={isDisabled}
+              aria-disabled={isDisabled}
+            >
+              {tab.icon && <span className="segmented-icon">{tab.icon}</span>}
+              <span className="segmented-label">{tab.label}</span>
+              {isActive && <span className="segmented-underline" />}
+            </button>
+
+            {infoModal && (
+              <InfoIconModal
+                title={infoModal.title || `${tab.label} Info`}
+                steps={infoModal.steps || []}
+                modalId={infoModal.modalId}
+                showButtonText={false}
+                iconSize={16}
+                iconColor={infoModal.iconColor || "#FFA500"}
+                buttonClassName={`zone-header-info-btn zone1-tab-info-btn ${infoModal.buttonClassName || ""}`.trim()}
+                buttonStyle={{ padding: 0, ...(infoModal.buttonStyle || {}) }}
+                sidePanel={infoModal.sidePanel ?? true}
+                ariaLabel={infoModal.ariaLabel || `${tab.label} information`}
+              />
+            )}
+          </div>
         );
       })}
     </div>

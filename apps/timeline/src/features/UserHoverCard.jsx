@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import ReactDOM from "react-dom";
+import { DEFAULT_AVATAR_SRC, getAvatarSrcFromNumber } from "./avatarAssets";
 
-const AVATAR_COUNT = 999;
 const CARD_WIDTH = 300;
 const DEFAULT_GENRES = [
   { name: "Rock", percent: 35, color: "#f56c42" },
@@ -31,17 +31,26 @@ function normalizeAvatarSource(value) {
   if (typeof value !== "string") return null;
   const trimmed = value.trim();
   if (!trimmed) return null;
-  const looksLikeImagePath =
+  const isRelativePath =
     trimmed.startsWith("/") ||
     trimmed.startsWith("./") ||
-    trimmed.startsWith("../") ||
-    trimmed.startsWith("http://") ||
-    trimmed.startsWith("https://") ||
-    trimmed.startsWith("data:") ||
-    trimmed.startsWith("blob:");
-  if (looksLikeImagePath) {
+    trimmed.startsWith("../");
+
+  if (isRelativePath) {
     return trimmed;
   }
+
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+    try {
+      const url = new URL(trimmed);
+      if (typeof window !== "undefined" && url.origin === window.location.origin) {
+        return trimmed;
+      }
+    } catch {
+      return null;
+    }
+  }
+
   return null;
 }
 
@@ -53,8 +62,8 @@ function getAvatarForUser(user) {
   if (derivedAvatar) return derivedAvatar;
 
   const seed = user?.id ?? user?.name ?? user?.username ?? "user";
-  const avatarNumber = (hashStringToInt(seed) % AVATAR_COUNT) + 1;
-  return `/assets/image${avatarNumber}.png`;
+  const avatarNumber = (hashStringToInt(seed) % 999) + 1;
+  return getAvatarSrcFromNumber(avatarNumber);
 }
 
 function deriveCreatedAt(seed) {
@@ -138,8 +147,12 @@ const UserHoverCard = ({ user, userData, className = "" }) => {
               src={cardData.avatar}
               alt={cardData.displayName}
               className="uhcAvatar"
+              referrerPolicy="no-referrer"
               onError={(e) => {
-                e.currentTarget.src = "/assets/default-avatar.png";
+                if (DEFAULT_AVATAR_SRC) {
+                  e.currentTarget.onerror = null;
+                  e.currentTarget.src = DEFAULT_AVATAR_SRC;
+                }
               }}
             />
           </div>
@@ -236,6 +249,8 @@ const UserHoverCard = ({ user, userData, className = "" }) => {
           overflow: hidden;
           transform: translateY(4px) scale(0.98);
           animation: uhcEnter 160ms ease-out forwards;
+          font-family: inherit;
+          font-size: var(--overlay-font-size-sm);
         }
 
         .uhcInner {
@@ -278,7 +293,7 @@ const UserHoverCard = ({ user, userData, className = "" }) => {
 
         .uhcName {
           margin: 0;
-          font-size: 15px;
+          font-size: var(--overlay-font-size-md);
           font-weight: 700;
           white-space: nowrap;
           overflow: hidden;
@@ -294,7 +309,7 @@ const UserHoverCard = ({ user, userData, className = "" }) => {
 
         .uhcMeta {
           margin-top: 2px;
-          font-size: 12px;
+          font-size: var(--overlay-font-size-xs);
           color: #9ca3af;
         }
 
@@ -315,6 +330,7 @@ const UserHoverCard = ({ user, userData, className = "" }) => {
           padding: 9px 10px;
           cursor: pointer;
           transition: background 140ms ease, border-color 140ms ease;
+          font-family: inherit;
         }
 
         .uhcDiscoveryButton:hover {
@@ -323,7 +339,7 @@ const UserHoverCard = ({ user, userData, className = "" }) => {
         }
 
         .uhcDiscoveryText {
-          font-size: 13px;
+          font-size: var(--overlay-font-size-sm);
           font-weight: 600;
           text-align: left;
         }
@@ -361,7 +377,7 @@ const UserHoverCard = ({ user, userData, className = "" }) => {
           display: flex;
           justify-content: space-between;
           margin-bottom: 4px;
-          font-size: 12px;
+          font-size: var(--overlay-font-size-xs);
         }
 
         .uhcGenrePercent {
@@ -395,14 +411,15 @@ const UserHoverCard = ({ user, userData, className = "" }) => {
         }
 
         .uhcCountValue {
-          font-size: 14px;
+          font-size: var(--overlay-font-size-md);
           font-weight: 700;
           line-height: 1;
           color: #ffffff;
+          font-variant-numeric: tabular-nums;
         }
 
         .uhcCountLabel {
-          font-size: 11px;
+          font-size: var(--overlay-font-size-xs);
           color: #9ca3af;
           line-height: 1;
         }
@@ -413,11 +430,12 @@ const UserHoverCard = ({ user, userData, className = "" }) => {
           border: none;
           background: #ffffff;
           color: #0f172a;
-          font-size: 12px;
+          font-size: var(--overlay-font-size-sm);
           font-weight: 700;
           cursor: pointer;
           padding: 7px 14px;
           transition: background 140ms ease;
+          font-family: inherit;
         }
 
         .uhcFollowButton:hover {
@@ -573,9 +591,13 @@ export const ClickableUserAvatar = ({
         <img
           src={resolvedAvatar}
           alt={displayName}
+          referrerPolicy="no-referrer"
           style={{ width: "100%", height: "100%", objectFit: "cover" }}
           onError={(e) => {
-            e.currentTarget.src = "/assets/default-avatar.png";
+            if (DEFAULT_AVATAR_SRC) {
+              e.currentTarget.onerror = null;
+              e.currentTarget.src = DEFAULT_AVATAR_SRC;
+            }
           }}
         />
       </button>

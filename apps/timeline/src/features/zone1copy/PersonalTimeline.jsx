@@ -3,7 +3,6 @@ import { getCacheReadyTimelineArtists } from "../../backend/cacheReadyArtists";
 import albumArtworksCache from "../../backend/cache/album_artworks.json";
 import Zone1Header from "./Zone1Header";
 import ArtistDot from "./ArtistDot";
-import { BellIcon } from "../Icons";
 import { getAvatarSrcFromNumber } from "../avatarAssets";
 import { ZONE1_TAB_INFO_MODALS } from "../infoContent";
 import {
@@ -29,9 +28,6 @@ const FUTURE_YEAR = ZONE1_FUTURE_YEAR;
 const FUTURE_ARTIST_COUNT_DEFAULT = 7;
 const FUTURE_ARTIST_COUNT_ANTICIPATED = 5;
 const TOP_ARTISTS_PER_YEAR = 5;
-const TOP_ARTISTS_POOL_PER_YEAR = 14;
-const TOP_ARTISTS_FUTURE_MIN = 1;
-const TOP_ARTISTS_FUTURE_MAX = 3;
 const MAX_FRIEND_TIMELINES = 3;
 const YOU_AVATAR_SRC = getAvatarSrcFromNumber(182);
 const AVAILABLE_ZONE1_FRIENDS = [
@@ -123,14 +119,6 @@ function hashString(str) {
   return h >>> 0;
 }
 
-function formatWaitersCount(count) {
-  if (!count) return "0";
-  if (count >= 1000) {
-    return `${(count / 1000).toFixed(1)}K`.replace(".0K", "K");
-  }
-  return String(count);
-}
-
 function makeRng(seed) {
   let t = seed >>> 0;
   return () => {
@@ -164,24 +152,6 @@ function dedupeArtistsByName(artists) {
     deduped.push(artist);
   }
   return deduped;
-}
-
-const FALLBACK_ARTIST_COLORS = [
-  "#8B7355",
-  "#6B8E8E",
-  "#7B6B8E",
-  "#8E6B7A",
-  "#5E6B5C",
-  "#5C6B5E",
-  "#7D6A4F",
-  "#6D7C8E",
-];
-
-function getArtistColor(artist, seed = "") {
-  const explicitColor = String(artist?.color || "").trim();
-  if (explicitColor) return explicitColor;
-  const key = `${normalizeName(artist?.name)}-${seed}`;
-  return FALLBACK_ARTIST_COLORS[hashString(key) % FALLBACK_ARTIST_COLORS.length];
 }
 
 function getArtistAlbumTitles(artist) {
@@ -356,134 +326,27 @@ function getTimelineUserAlbumCount(userKey, year) {
   return 1 + (hashString(`${userKey}-${year}-album-count`) % 4);
 }
 
-function selectYearArtistsForLane(
-  artists,
-  {
-    laneKey,
-    year,
-    targetCount,
-    blockedArtistNames = new Set(),
-  }
-) {
-  const blocked = blockedArtistNames;
-  const yearArtists = [...artists]
+function getTimelineUserYearArtists(artists, userKey, year) {
+  const yearArtists = getArtistsForYear(artists, year)
     .sort((a, b) => {
-      const aScore = hashString(`${a.id}-${laneKey}-${year}`);
-      const bScore = hashString(`${b.id}-${laneKey}-${year}`);
+      const aScore = hashString(`${a.id}-${userKey}-${year}`);
+      const bScore = hashString(`${b.id}-${userKey}-${year}`);
       return aScore - bScore || a.name.localeCompare(b.name);
     });
 
-  if (yearArtists.length === 0 || targetCount <= 0) return [];
-
-  const selected = [];
-  const selectedNames = new Set();
-
-  for (const artist of yearArtists) {
-    const key = normalizeName(artist.name);
-    if (!key || blocked.has(key) || selectedNames.has(key)) continue;
-    selected.push(artist);
-    selectedNames.add(key);
-    if (selected.length >= targetCount) break;
-  }
-
-  if (selected.length < targetCount) {
-    for (const artist of yearArtists) {
-      const key = normalizeName(artist.name);
-      if (!key || selectedNames.has(key)) continue;
-      selected.push(artist);
-      selectedNames.add(key);
-      if (selected.length >= targetCount) break;
-    }
-  }
-
-  return selected.sort(sortArtistsChronologically);
+  return yearArtists
+    .slice(0, getTimelineUserAlbumCount(userKey, year))
+    .sort(sortArtistsChronologically);
 }
 
-function getTimelineUserYearArtistsDiverse(artists, userKey, year, blockedArtistNames = new Set()) {
-  const blocked = blockedArtistNames;
-  const targetCount = getTimelineUserAlbumCount(userKey, year);
-  const yearArtists = getArtistsForYear(artists, year);
-  return selectYearArtistsForLane(yearArtists, {
-    laneKey: userKey,
-    year,
-    targetCount,
-    blockedArtistNames: blocked,
-  });
-}
-
-function getRandomFutureLaneArtists(artists, laneKey, targetCount, blockedArtistNames = new Set()) {
-  if (!Array.isArray(artists) || artists.length === 0 || targetCount <= 0) return [];
-  const blocked = blockedArtistNames;
-  const ranked = [...artists].sort((a, b) => {
-    const aScore = hashString(`${a.id}-${laneKey}-future`);
-    const bScore = hashString(`${b.id}-${laneKey}-future`);
-    return aScore - bScore || a.name.localeCompare(b.name);
-  });
-
-  const selected = [];
-  const selectedNames = new Set();
-  for (const artist of ranked) {
-    const key = normalizeName(artist?.name);
-    if (!key || blocked.has(key) || selectedNames.has(key)) continue;
-    selected.push(artist);
-    selectedNames.add(key);
-    if (selected.length >= targetCount) break;
-  }
-
-  if (selected.length < targetCount) {
-    for (const artist of ranked) {
-      const key = normalizeName(artist?.name);
-      if (!key || selectedNames.has(key)) continue;
-      selected.push(artist);
-      selectedNames.add(key);
-      if (selected.length >= targetCount) break;
-    }
-  }
-
-  return selected;
-}
-
-function getPreferredAlbumArtworkUrl(artist, albumName) {
-  const fromCache = getAlbumArtworkForArtistAlbum(artist?.name, albumName);
-  if (fromCache) return fromCache;
-
-  const normalizedAlbumName = normalizeName(albumName);
-  if (normalizedAlbumName) {
-    const byAlbumName = (artist?.albums || []).find(
-      (album) =>
-        normalizeName(album?.title) === normalizedAlbumName &&
-        String(album?.artworkUrl || "").trim()
-    );
-    if (byAlbumName?.artworkUrl) {
-      return String(byAlbumName.artworkUrl).trim();
-    }
-  }
-
-  const firstAlbumArtwork = (artist?.albums || []).find(
-    (album) => String(album?.artworkUrl || "").trim()
-  );
-  if (firstAlbumArtwork?.artworkUrl) {
-    return String(firstAlbumArtwork.artworkUrl).trim();
-  }
-
-  return String(artist?.artworkUrl || "").trim() || null;
-}
-
-function getTopArtistAlbumDetails(artist, year) {
+function getTopArtistAlbumName(artist, year) {
   const artistAlbumTitles = getArtistAlbumTitles(artist);
-  let albumName = null;
   if (artistAlbumTitles.length > 0) {
     const albumIndex = hashString(`${artist.name}-${year}`) % artistAlbumTitles.length;
-    albumName = artistAlbumTitles[albumIndex];
-  } else {
-    const idx = hashString(`${artist.name}-${year}`) % TOP_ALBUM_NAMES.length;
-    albumName = TOP_ALBUM_NAMES[idx];
+    return artistAlbumTitles[albumIndex];
   }
-
-  return {
-    albumName,
-    albumArtworkUrl: getPreferredAlbumArtworkUrl(artist, albumName),
-  };
+  const idx = hashString(`${artist.name}-${year}`) % TOP_ALBUM_NAMES.length;
+  return TOP_ALBUM_NAMES[idx];
 }
 
 function enrichAnticipatedArtist(artist, waitingArtistIds) {
@@ -505,10 +368,8 @@ function enrichAnticipatedArtist(artist, waitingArtistIds) {
   };
 }
 
-function TopAlbumArt({ artist, albumName, albumArtworkUrl, size, usePlaceholder = false }) {
-  const artistColor = getArtistColor(artist, albumName || "album");
-  const resolvedArtworkUrl = String(usePlaceholder ? "" : (albumArtworkUrl || artist?.artworkUrl || "")).trim();
-  if (resolvedArtworkUrl) {
+function TopAlbumArtPlaceholder({ artist, albumName, albumArtworkUrl, size }) {
+  if (albumArtworkUrl) {
     return (
       <div
         className="top-artist-album-art"
@@ -518,7 +379,7 @@ function TopAlbumArt({ artist, albumName, albumArtworkUrl, size, usePlaceholder 
         }}
       >
         <img
-          src={resolvedArtworkUrl}
+          src={albumArtworkUrl}
           alt={`${albumName || "Album"} cover`}
           className="top-artist-album-img"
           loading="lazy"
@@ -530,6 +391,7 @@ function TopAlbumArt({ artist, albumName, albumArtworkUrl, size, usePlaceholder 
 
   const h = hashString((albumName || "album") + artist.name);
   const rng = makeRng(h);
+  const c1 = artist.color;
   const r2 = Math.floor(rng() * 45 + 10);
   const g2 = Math.floor(rng() * 45 + 10);
   const b2 = Math.floor(rng() * 45 + 10);
@@ -546,7 +408,7 @@ function TopAlbumArt({ artist, albumName, albumArtworkUrl, size, usePlaceholder 
       style={{
         width: size,
         height: size,
-        background: `linear-gradient(${angle}deg, ${artistColor} 0%, ${c2} 50%, #080808 100%)`,
+        background: `linear-gradient(${angle}deg, ${c1} 0%, ${c2} 50%, #080808 100%)`,
       }}
     >
       <div
@@ -584,37 +446,31 @@ function TopArtistLaneDot({
   size,
   laneIndex = 0,
   isSelected,
-  isFutureAlbum = false,
-  waitersCount = 0,
-  isWaiting = false,
+  isHovered,
   onClick,
-  onToggleWait,
+  onHover,
+  onLeave,
 }) {
   const [imageFailed, setImageFailed] = useState(false);
-  const artistColor = getArtistColor(artist, albumName || "");
   const hasArtistImage = Boolean(artist.artworkUrl) && !imageFailed;
-  const waitButtonLabel = isWaiting ? "Stop waiting" : "Wait for release";
-  const waitCountCompact = `${formatWaitersCount(waitersCount)} waiting`;
-  const handleWaitClick = (event) => {
-    event.stopPropagation();
-    onToggleWait?.();
-  };
 
   return (
     <>
       <div
-        className={`artist-dot top-artist-lane-dot ${isSelected ? "selected" : ""}`}
+        className={`artist-dot top-artist-lane-dot ${isSelected ? "selected" : ""} ${isHovered ? "hovered" : ""}`}
         style={{
           "--lane-index": laneIndex,
           left: x,
           top: y,
           width: size,
           height: size,
-          background: `linear-gradient(135deg, ${artistColor} 0%, ${artistColor}bb 100%)`,
-          borderColor: isSelected ? "#A4A2A0" : "#282B29",
-          boxShadow: isSelected ? `0 8px 24px ${artistColor}66` : "0 2px 8px rgba(0,0,0,0.4)",
+          background: `linear-gradient(135deg, ${artist.color} 0%, ${artist.color}bb 100%)`,
+          borderColor: isSelected ? "#A4A2A0" : isHovered ? "#554E48" : "#282B29",
+          boxShadow: isSelected ? `0 8px 24px ${artist.color}66` : "0 2px 8px rgba(0,0,0,0.4)",
         }}
         onClick={onClick}
+        onMouseEnter={onHover}
+        onMouseLeave={onLeave}
       >
         {hasArtistImage ? (
           <img
@@ -638,41 +494,24 @@ function TopArtistLaneDot({
       </div>
 
       <div
-        className="top-artist-album-wrapper"
+        className={`top-artist-album-wrapper ${isHovered ? "hovered" : ""}`}
         style={{
           "--lane-index": laneIndex,
           left: x + size / 2 - TOP_ARTISTS_ALBUM_SIZE / 2,
           top: albumTop,
         }}
         onClick={onClick}
+        onMouseEnter={onHover}
+        onMouseLeave={onLeave}
       >
-        <TopAlbumArt
+        <TopAlbumArtPlaceholder
           artist={artist}
           albumName={albumName}
           albumArtworkUrl={albumArtworkUrl}
           size={TOP_ARTISTS_ALBUM_SIZE}
-          usePlaceholder={isFutureAlbum}
         />
-        {isFutureAlbum && (
-          <div className="top-artist-future-actions">
-            <span className="top-artist-future-count-pill">{waitCountCompact}</span>
-          </div>
-        )}
         <div className="top-artist-album-name">{albumName}</div>
       </div>
-
-      {isFutureAlbum && (
-        <button
-          type="button"
-          className={`wait-toggle-icon-button top-artist-future-bell ${isWaiting ? "is-active" : ""}`}
-          style={{ left: x + size - 2, top: y - 6 }}
-          aria-label={waitButtonLabel}
-          title={waitButtonLabel}
-          onClick={handleWaitClick}
-        >
-          <BellIcon checked={isWaiting} />
-        </button>
-      )}
     </>
   );
 }
@@ -683,7 +522,7 @@ export default function PersonalTimeline({
   hoveredArtist,
   setHoveredArtist,
 }) {
-  const monthWidth = 112;
+  const monthWidth = 100;
   const personalTimelineHeight = 240;
   const artistSize = 38;
   const scrollRef = useRef(null);
@@ -729,24 +568,9 @@ export default function PersonalTimeline({
   const topAlbumsArtists = useMemo(() => (
     buildUniqueZone1Artists({
       futureArtistCount: FUTURE_ARTIST_COUNT_DEFAULT,
-      pastArtistCount: TOP_ARTISTS_POOL_PER_YEAR,
+      pastArtistCount: TOP_ARTISTS_PER_YEAR,
     })
   ), []);
-
-  const anticipatedReferenceArtists = useMemo(() => (
-    buildUniqueZone1Artists({
-      futureArtistCount: FUTURE_ARTIST_COUNT_ANTICIPATED,
-      pastArtistCount: null,
-    })
-      .map((artist) => enrichAnticipatedArtist(artist, waitingArtistIds))
-      .filter((artist) => artist.isAnticipated)
-      .sort(sortArtistsChronologically)
-  ), [waitingArtistIds]);
-
-  const futureRandomArtistPool = useMemo(
-    () => dedupeArtistsByName(getCacheReadyTimelineArtists()),
-    []
-  );
 
   const volumeStepBucket = useMemo(() => Math.floor(zone1Volume / 80), [zone1Volume]);
   const showBaseline = volumeActive || genreActive;
@@ -967,187 +791,65 @@ export default function PersonalTimeline({
     monthWidth,
   ]);
 
-  const topAlbumTimelineLanes = useMemo(() => {
-    const topArtistsByYear = new Map();
-    const topArtistNamesByYear = new Map();
-    const personalArtistsByYear = new Map();
-    const personalArtistNamesByYear = new Map();
-    const friendAssignedNamesByYear = new Map();
-    const futureAssignedNames = new Set();
-
-    PAST_YEARS.forEach((year) => {
-      const yearArtists = getArtistsForYear(topAlbumsArtists, year).sort(sortArtistsByBaselineRank);
-      const topArtists = selectYearArtistsForLane(yearArtists, {
-        laneKey: "top-albums",
-        year,
-        targetCount: TOP_ARTISTS_PER_YEAR,
-      });
-      topArtistsByYear.set(year, topArtists);
-      topArtistNamesByYear.set(
-        year,
-        new Set(topArtists.map((artist) => normalizeName(artist.name)).filter(Boolean))
-      );
-
-      const personalArtists = getTimelineUserYearArtistsDiverse(
-        topAlbumsArtists,
-        "you",
-        year,
-        topArtistNamesByYear.get(year)
-      );
-      personalArtistsByYear.set(year, personalArtists);
-      personalArtistNamesByYear.set(
-        year,
-        new Set(personalArtists.map((artist) => normalizeName(artist.name)).filter(Boolean))
-      );
-    });
-
-    const topArtistsLanePlacements = [];
+  const topArtistsLanePlacements = useMemo(() => {
+    const placements = [];
     PAST_YEARS.forEach((year) => {
       const yearStart = MONTH_START_BY_YEAR.get(year);
       if (yearStart === undefined) return;
 
-      const rankedArtists = topArtistsByYear.get(year) || [];
+      const rankedArtists = getArtistsForYear(topAlbumsArtists, year)
+        .sort(sortArtistsByBaselineRank)
+        .slice(0, TOP_ARTISTS_PER_YEAR);
+
       if (!rankedArtists.length) return;
 
       const slotWidth = (12 * monthWidth) / (rankedArtists.length + 1);
       rankedArtists.forEach((artist, index) => {
         const centerX = yearStart * monthWidth + slotWidth * (index + 1);
-        const { albumName, albumArtworkUrl } = getTopArtistAlbumDetails(artist, year);
-        topArtistsLanePlacements.push({
+        const albumName = getTopArtistAlbumName(artist, year);
+        placements.push({
           artist: {
             ...artist,
             albumName,
-            albumArtworkUrl,
+            albumArtworkUrl: getAlbumArtworkForArtistAlbum(artist.name, albumName) || artist.artworkUrl || null,
           },
           x: centerX - artistSize / 2,
         });
       });
     });
 
-    const futureYearStart = MONTH_START_BY_YEAR.get(FUTURE_YEAR);
-    const futureSlotCenters = [];
-    if (futureYearStart !== undefined && anticipatedReferenceArtists.length > 0) {
-      const slotWidth = (12 * monthWidth) / (anticipatedReferenceArtists.length + 1);
-      anticipatedReferenceArtists.forEach((artist, index) => {
-        const centerX = futureYearStart * monthWidth + slotWidth * (index + 1);
-        const anticipatedId = String(artist.id);
-        topArtistsLanePlacements.push({
-          artist: {
-            ...artist,
-            id: anticipatedId,
-            color: getArtistColor(artist, `anticipated-top-${index}`),
-            albumName: artist.albumName || ANTICIPATED_ALBUM_NAMES[index % ANTICIPATED_ALBUM_NAMES.length],
-            albumArtworkUrl: null,
-            isAnticipated: true,
-            isFutureAlbum: true,
-            waitersCount: artist.waitersCount,
-            isWaiting: waitingArtistIds.has(anticipatedId),
-          },
-          x: centerX - artistSize / 2,
-        });
-        futureSlotCenters.push(centerX);
-        const topFutureName = normalizeName(artist.name);
-        if (topFutureName) futureAssignedNames.add(topFutureName);
-      });
-    }
+    return placements;
+  }, [topAlbumsArtists, monthWidth, artistSize]);
 
-    const buildFutureLanePlacements = (laneKey) => {
-      if (futureSlotCenters.length === 0) return [];
-
-      const futureCountRange = TOP_ARTISTS_FUTURE_MAX - TOP_ARTISTS_FUTURE_MIN + 1;
-      const targetCount = TOP_ARTISTS_FUTURE_MIN + (
-        hashString(`${laneKey}-${FUTURE_YEAR}-future-count`) % futureCountRange
-      );
-
-      const allSlotIndexes = futureSlotCenters.map((_, index) => index);
-      const slotIndexes = shuffleWithRng(
-        allSlotIndexes,
-        makeRng(hashString(`${laneKey}-${FUTURE_YEAR}-future-slots`))
-      )
-        .slice(0, Math.min(targetCount, allSlotIndexes.length))
-        .sort((a, b) => a - b);
-
-      const randomArtists = getRandomFutureLaneArtists(
-        futureRandomArtistPool,
-        laneKey,
-        slotIndexes.length,
-        futureAssignedNames
-      );
-
-      return slotIndexes.map((slotIndex, index) => {
-        const template = anticipatedReferenceArtists[slotIndex] || anticipatedReferenceArtists[index] || null;
-        const artist = randomArtists[index] || template || futureRandomArtistPool[index] || {
-          id: `fallback-${laneKey}-${slotIndex}`,
-          name: "Unknown Artist",
-          initials: "UA",
-          artworkUrl: null,
-        };
-        const artistNameKey = normalizeName(artist?.name);
-        if (artistNameKey) futureAssignedNames.add(artistNameKey);
-
-        const releaseMonth = template?.releaseMonth ?? (futureYearStart + slotIndex);
-        const releaseDay = template?.releaseDay ?? (1 + (hashString(`${laneKey}-${slotIndex}-day`) % 28));
-        const month = ZONE1_MONTHS[releaseMonth];
-        const releaseDate = template?.releaseDate || (
-          month ? `${month.fullName} ${releaseDay}, ${month.year}` : "Coming soon"
-        );
-        const baseWaiters = template?.waitersCount ?? (
-          700 + (hashString(`${laneKey}-${slotIndex}-base-waiters`) % 4500)
-        );
-        const waitersScaleRng = makeRng(hashString(`${laneKey}-${slotIndex}-waiters-scale`));
-        const waitersCount = Math.max(
-          80,
-          Math.round(baseWaiters * (0.42 + waitersScaleRng() * 0.18))
-        );
-        const albumName = ANTICIPATED_ALBUM_NAMES[
-          hashString(`${laneKey}-${artist?.name}-${slotIndex}`) % ANTICIPATED_ALBUM_NAMES.length
-        ];
-        const anticipatedId = `anticipated-${laneKey}-${artistNameKey || "artist"}-${FUTURE_YEAR}-${slotIndex}`;
-
-        return {
-          artist: {
-            ...artist,
-            id: anticipatedId,
-            color: getArtistColor(artist, `${laneKey}-${slotIndex}`),
-            albumName,
-            albumArtworkUrl: null,
-            isAnticipated: true,
-            isFutureAlbum: true,
-            releaseMonth,
-            releaseDay,
-            releaseDate,
-            waitersCount,
-            isWaiting: waitingArtistIds.has(anticipatedId),
-          },
-          x: futureSlotCenters[slotIndex] - artistSize / 2,
-        };
-      });
-    };
-
-    const personalTopArtistsPlacements = [];
+  const personalTopArtistsPlacements = useMemo(() => {
+    const placements = [];
     PAST_YEARS.forEach((year) => {
       const yearStart = MONTH_START_BY_YEAR.get(year);
       if (yearStart === undefined) return;
 
-      const personalArtists = personalArtistsByYear.get(year) || [];
+      const personalArtists = getTimelineUserYearArtists(topAlbumsArtists, "you", year);
+
       if (!personalArtists.length) return;
 
       const slotWidth = (12 * monthWidth) / (personalArtists.length + 1);
       personalArtists.forEach((artist, index) => {
         const centerX = yearStart * monthWidth + slotWidth * (index + 1);
-        const { albumName, albumArtworkUrl } = getTopArtistAlbumDetails(artist, `${year}-you`);
-        personalTopArtistsPlacements.push({
+        const albumName = artist.albumName || getTopArtistAlbumName(artist, year);
+        placements.push({
           artist: {
             ...artist,
             albumName,
-            albumArtworkUrl,
+            albumArtworkUrl: getAlbumArtworkForArtistAlbum(artist.name, albumName) || artist.artworkUrl || null,
           },
           x: centerX - artistSize / 2,
         });
       });
     });
-    personalTopArtistsPlacements.push(...buildFutureLanePlacements("you"));
 
+    return placements;
+  }, [topAlbumsArtists, monthWidth, artistSize]);
+
+  const topAlbumTimelineLanes = useMemo(() => {
     const lanes = [
       {
         id: "top-albums",
@@ -1171,31 +873,10 @@ export default function PersonalTimeline({
         const yearStart = MONTH_START_BY_YEAR.get(year);
         if (yearStart === undefined) return;
 
-        const blockedNames = new Set([
-          ...(topArtistNamesByYear.get(year) || new Set()),
-          ...(personalArtistNamesByYear.get(year) || new Set()),
-          ...(friendAssignedNamesByYear.get(year) || new Set()),
-        ]);
-
-        const existingFriendNamesForYear = new Set(
-          friendPlacements
-            .filter((placement) => {
-              const releaseMonth = placement?.artist?.releaseMonth;
-              if (releaseMonth === undefined) return false;
-              const month = ZONE1_MONTHS[releaseMonth];
-              return month?.year === year;
-            })
-            .map((placement) => normalizeName(placement?.artist?.name))
-            .filter(Boolean)
-        );
-
-        existingFriendNamesForYear.forEach((name) => blockedNames.add(name));
-
-        const yearArtists = getTimelineUserYearArtistsDiverse(
+        const yearArtists = getTimelineUserYearArtists(
           topAlbumsArtists,
           String(friend.id),
-          year,
-          blockedNames
+          year
         );
 
         if (!yearArtists.length) return;
@@ -1203,27 +884,17 @@ export default function PersonalTimeline({
         const slotWidth = (12 * monthWidth) / (yearArtists.length + 1);
         yearArtists.forEach((artist, index) => {
           const centerX = yearStart * monthWidth + slotWidth * (index + 1);
-          const { albumName, albumArtworkUrl } = getTopArtistAlbumDetails(artist, `${year}-${friend.id}`);
+          const albumName = getTopArtistAlbumName(artist, `${year}-${friend.id}`);
           friendPlacements.push({
             artist: {
               ...artist,
               albumName,
-              albumArtworkUrl,
+              albumArtworkUrl: getAlbumArtworkForArtistAlbum(artist.name, albumName) || artist.artworkUrl || null,
             },
             x: centerX - artistSize / 2,
           });
-
-          const normalizedName = normalizeName(artist.name);
-          if (normalizedName) {
-            if (!friendAssignedNamesByYear.has(year)) {
-              friendAssignedNamesByYear.set(year, new Set());
-            }
-            friendAssignedNamesByYear.get(year).add(normalizedName);
-          }
         });
       });
-
-      friendPlacements.push(...buildFutureLanePlacements(String(friend.id)));
 
       lanes.push({
         id: String(friend.id),
@@ -1238,11 +909,10 @@ export default function PersonalTimeline({
 
     return lanes;
   }, [
+    topArtistsLanePlacements,
+    personalTopArtistsPlacements,
     renderedFriendTimelines,
     topAlbumsArtists,
-    anticipatedReferenceArtists,
-    futureRandomArtistPool,
-    waitingArtistIds,
     monthWidth,
     artistSize,
   ]);
@@ -1461,6 +1131,7 @@ export default function PersonalTimeline({
                 const rowTop = laneIndex * (TOP_ARTISTS_LANE_HEIGHT + TOP_ARTISTS_LANE_GAP);
                 return lane.placements.map(({ artist, x }) => {
                   const isSelected = selectedArtist?.id === artist.id;
+                  const isHovered = hoveredArtist?.id === artist.id;
                   return (
                     <TopArtistLaneDot
                       key={`${lane.id}-${artist.id}-${x}`}
@@ -1473,11 +1144,10 @@ export default function PersonalTimeline({
                       size={artistSize}
                       laneIndex={laneIndex}
                       isSelected={isSelected}
-                      isFutureAlbum={artist.isFutureAlbum === true}
-                      waitersCount={artist.waitersCount}
-                      isWaiting={artist.isWaiting === true}
+                      isHovered={isHovered}
                       onClick={() => setSelectedArtist(isSelected ? null : artist)}
-                      onToggleWait={() => handleToggleWait(artist.id)}
+                      onHover={() => setHoveredArtist(artist)}
+                      onLeave={() => setHoveredArtist(null)}
                     />
                   );
                 });

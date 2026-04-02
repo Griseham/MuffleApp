@@ -78,7 +78,7 @@ function buildFollowedArtistEntries(artistImageByName) {
       isFollowedArtist: true,
       source: "mock",
     };
-  }).filter((artist) => artist.normalizedName && artist.artworkUrl);
+  }).filter((artist) => artist.normalizedName);
 }
 
 function buildCacheBackedArtistEntries(artistImageByName, discographyByName, followedNameSet) {
@@ -92,8 +92,6 @@ function buildCacheBackedArtistEntries(artistImageByName, discographyByName, fol
     const albums = getValidAlbums(profile);
 
     if (!name) continue;
-    if (!artworkUrl) continue;
-    if (albums.length === 0) continue;
     if (isLikelyCompositeArtistName(name)) continue;
 
     artists.push({

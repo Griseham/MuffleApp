@@ -2,6 +2,7 @@ import AlbumCell from "./AlbumCell";
 import { getGradient } from "./gridHelpers";
 
 const ACTIVE_GENRES = ["Hip-Hop", "Pop", "R&B"];
+const MONTH_REAL_DATA_MIN_YEAR = 2024;
 
 function hashStr(str) {
   let h = 2166136261;
@@ -45,8 +46,7 @@ export default function GridBody({ months, users, config, timeScale }) {
   const isYouView = config.zone3Filter === "you";
   const isGenreView = config.zone3Filter === "genre";
   const useAllGenres = isMostRated || isYouView || !activeGenre;
-  const isHalfDecade = timeScale === "halfDecades";
-  const usePlaceholders = timeScale !== "months";
+  const isDecadeView = timeScale === "halfDecades";
 
   // Volume-based sparsity: lower slider values produce fewer visible albums.
   const volumeDensity = config.showVolume
@@ -57,9 +57,9 @@ export default function GridBody({ months, users, config, timeScale }) {
 
   // Track used albums across rows (no album in more than one row)
   const usedAlbumKeys = new Set();
-  const gradientForCell = (userId, bucketKey) => {
+  const gradientForCell = (userId, bucketKey, useRowPlaceholders) => {
     const seed = hashStr(`${userId}-${bucketKey}-${shuffleSeed}`);
-    return usePlaceholders ? getHalfDecadeGradient(seed) : getGradient(userId, bucketKey);
+    return useRowPlaceholders ? getHalfDecadeGradient(seed) : getGradient(userId, bucketKey);
   };
 
   return (
@@ -68,6 +68,7 @@ export default function GridBody({ months, users, config, timeScale }) {
         const prevItem = months[rowIndex - 1];
         const isNewYear = rowIndex === 0 || prevItem?.year !== monthItem.year;
         const isMonths = timeScale === "months";
+        const useRowPlaceholders = timeScale !== "months" || (isMonths && monthItem.year < MONTH_REAL_DATA_MIN_YEAR);
         const calMonth = monthItem.calendarMonth ?? 1;
         const monthKey = `${monthItem.year}-${calMonth}`;
         const rankingContext = `${config.zone3Filter}-${activeGenre ?? "all"}-${config.showVolume ? config.zone3VolumeMin : "base"}-${timeScale}`;
@@ -78,21 +79,23 @@ export default function GridBody({ months, users, config, timeScale }) {
         let rowAssignments = [];
         let rowTop = null;
 
-        if (usePlaceholders) {
-          const label = isHalfDecade
-            ? (monthItem.halfDecadeLabel ?? monthItem.decadeLabel ?? `${monthItem.year}-${monthItem.year - 4}`)
-            : `${monthItem.year}`;
+        if (useRowPlaceholders) {
+          const label = isDecadeView
+            ? (monthItem.decadeLabel ?? `${monthItem.year}`)
+            : isMonths
+              ? `${monthItem.month} ${monthItem.year}`
+              : `${monthItem.year}`;
           const seed = hashStr(label) + shuffleSeed;
           const placeholderCount = 14;
           rowAssignments = Array.from({ length: placeholderCount }, (_, i) => ({
             albumId: `ph-${label}-${i}`,
             artistName: "Artist",
-            albumName: isHalfDecade ? `Half ${label} Album ${i + 1}` : `Year ${label} Album ${i + 1}`,
+            albumName: isDecadeView ? `Decade ${label} Album ${i + 1}` : `${label} Album ${i + 1}`,
             artworkUrl: null,
             artistImageUrl: null,
             __seed: seed + i,
           }));
-          rowTop = { albumId: `ph-top-${label}`, artistName: "Artist", albumName: isHalfDecade ? `Half ${label} Picks` : `Year ${label} Picks`, artworkUrl: null, artistImageUrl: null };
+          rowTop = { albumId: `ph-top-${label}`, artistName: "Artist", albumName: isDecadeView ? `Decade ${label} Picks` : `${label} Picks`, artworkUrl: null, artistImageUrl: null };
         } else {
           if (useAllGenres) {
             const all = [];
@@ -152,7 +155,7 @@ export default function GridBody({ months, users, config, timeScale }) {
             <div className="grid-month-cell">
               {isNewYear ? (
                 <div className="year-block">
-                  <span className="year-number">{isHalfDecade ? (monthItem.halfDecadeLabel ?? monthItem.decadeLabel ?? "2025-2021") : monthItem.year}</span>
+                  <span className="year-number">{isDecadeView ? (monthItem.decadeLabel ?? "2020") : monthItem.year}</span>
                   {isMonths && <span className="month-name-small">{monthItem.month}</span>}
                 </div>
               ) : (<span className="month-name">{monthItem.month}</span>)}
@@ -167,9 +170,9 @@ export default function GridBody({ months, users, config, timeScale }) {
                 return (
                   <AlbumCell key={`${user.id}-${rowIndex}`} user={user}
                     showAlbum={true} ranking={1} showRankings={showRankings}
-                    gradient={gradientForCell(user.id, monthItem.key ?? rowIndex)}
-                    artistName={isHalfDecade ? "Artist" : (rowTop?.artistName ?? "")} albumName={isHalfDecade ? (rowTop?.albumName ?? "") : (rowTop?.albumName ?? "")}
-                    artworkUrl={isHalfDecade ? null : (rowTop?.artworkUrl ?? null)} artistImageUrl={isHalfDecade ? null : (rowTop?.artistImageUrl ?? null)} />
+                    gradient={gradientForCell(user.id, monthItem.key ?? rowIndex, useRowPlaceholders)}
+                    artistName={isDecadeView ? "Artist" : (rowTop?.artistName ?? "")} albumName={isDecadeView ? (rowTop?.albumName ?? "") : (rowTop?.albumName ?? "")}
+                    artworkUrl={isDecadeView ? null : (rowTop?.artworkUrl ?? null)} artistImageUrl={isDecadeView ? null : (rowTop?.artistImageUrl ?? null)} />
                 );
               }
 
@@ -183,9 +186,9 @@ export default function GridBody({ months, users, config, timeScale }) {
                 return (
                   <AlbumCell key={`${user.id}-${rowIndex}`} user={user}
                     showAlbum={true} ranking={rowRankings.get(albumKeyFor(pick)) ?? 15} showRankings={showRankings}
-                    gradient={gradientForCell(user.id, monthItem.key ?? rowIndex)}
-                    artistName={isHalfDecade ? "Artist" : (pick?.artistName ?? "")} albumName={pick?.albumName ?? ""}
-                    artworkUrl={isHalfDecade ? null : (pick?.artworkUrl ?? null)} artistImageUrl={isHalfDecade ? null : (pick?.artistImageUrl ?? null)} />
+                    gradient={gradientForCell(user.id, monthItem.key ?? rowIndex, useRowPlaceholders)}
+                    artistName={isDecadeView ? "Artist" : (pick?.artistName ?? "")} albumName={pick?.albumName ?? ""}
+                    artworkUrl={isDecadeView ? null : (pick?.artworkUrl ?? null)} artistImageUrl={isDecadeView ? null : (pick?.artistImageUrl ?? null)} />
                 );
               }
 
@@ -211,9 +214,9 @@ export default function GridBody({ months, users, config, timeScale }) {
               return (
                 <AlbumCell key={`${user.id}-${rowIndex}`} user={user}
                   showAlbum={true} ranking={rowRankings.get(albumKeyFor(pick)) ?? 15} showRankings={showRankings}
-                  gradient={gradientForCell(user.id, monthItem.key ?? rowIndex)}
-                  artistName={isHalfDecade ? "Artist" : (pick?.artistName ?? "")} albumName={pick?.albumName ?? ""}
-                  artworkUrl={isHalfDecade ? null : (pick?.artworkUrl ?? null)} artistImageUrl={isHalfDecade ? null : (pick?.artistImageUrl ?? null)} />
+                  gradient={gradientForCell(user.id, monthItem.key ?? rowIndex, useRowPlaceholders)}
+                  artistName={isDecadeView ? "Artist" : (pick?.artistName ?? "")} albumName={pick?.albumName ?? ""}
+                  artworkUrl={isDecadeView ? null : (pick?.artworkUrl ?? null)} artistImageUrl={isDecadeView ? null : (pick?.artistImageUrl ?? null)} />
               );
             })}
           </div>

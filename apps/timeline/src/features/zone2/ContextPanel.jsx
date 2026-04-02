@@ -1,7 +1,5 @@
-import { useMemo, useState, useCallback } from "react";
-import { CloseIcon, BackIcon, SearchIcon, HeartIcon, PlusIcon } from "../Icons";
-import InfoIconModal from "../InfoIconModal";
-import { ZONE2_ALBUM_DETAIL_INFO_STEPS } from "../infoContent";
+import { useMemo, useState, useCallback, useRef, useEffect } from "react";
+import { CloseIcon, BackIcon, HeartIcon, PlusIcon } from "../Icons";
 import { TOP_ALBUMS } from "../../backend/timelineMockData";
 import {
   CACHE_READY_TIMELINE_ARTISTS,
@@ -178,10 +176,10 @@ function buildZone2Artists() {
 
 function buildZone2TopAlbums(zone2Artists) {
   return TOP_ALBUMS
+    .slice(0, 7)
     .map((album) => {
       const matchedArtist = findArtistByIdentity(zone2Artists, album);
       const matchedAlbum = findAlbumByIdentity(matchedArtist, album);
-      if (!matchedArtist || !matchedAlbum) return null;
       const artworkEntry = getLocalAlbumArtwork(album.title, album.artist);
 
       return {
@@ -194,9 +192,10 @@ function buildZone2TopAlbums(zone2Artists) {
           matchedAlbum?.title ||
           String(artworkEntry?.albumName || "").trim() ||
           album.title,
+        hasResolvedArtist: Boolean(matchedArtist),
+        hasResolvedAlbum: Boolean(matchedAlbum),
       };
-    })
-    .filter((album) => album && album.artistArtworkUrl);
+    });
 }
 
 function findArtistByIdentity(artists, artistLike) {
@@ -262,19 +261,19 @@ function ContextSidebar({ artists, selectedArtist, onSelectArtist }) {
     <div className="context-sidebar">
       <div className="context-sidebar-header">
         <span className="context-sidebar-title">Following</span>
-        <button className="search-btn" type="button">
-          <SearchIcon />
-        </button>
       </div>
 
       <div className="context-artist-list">
         {artists.map((artist) => {
           const hasArtistImage = Boolean(artist.artworkUrl) && !failedArtistImages.has(artist.id);
           return (
-            <div
+            <button
+              type="button"
               key={artist.id}
               className={`context-artist-item ${selectedArtist?.id === artist.id ? "active" : ""}`}
               onClick={() => onSelectArtist(artist)}
+              aria-label={`Open ${artist.name}`}
+              aria-pressed={selectedArtist?.id === artist.id}
             >
               <div className="context-artist-avatar" style={{ background: artist.color }}>
                 {hasArtistImage ? (
@@ -283,6 +282,7 @@ function ContextSidebar({ artists, selectedArtist, onSelectArtist }) {
                     alt={artist.name}
                     className="context-artist-avatar-img"
                     loading="lazy"
+                    referrerPolicy="no-referrer"
                     onError={() => onArtistImageError(artist.id)}
                   />
                 ) : (
@@ -290,7 +290,7 @@ function ContextSidebar({ artists, selectedArtist, onSelectArtist }) {
                 )}
               </div>
               <span className="context-artist-name">{artist.name}</span>
-            </div>
+            </button>
           );
         })}
       </div>
@@ -323,7 +323,7 @@ function TopAlbumsView({ albums, onSelectArtist, onSelectAlbum }) {
   return (
     <div className="top-albums-view">
       <div className="top-albums-header">
-        <h2 className="top-albums-title">New albums of the month</h2>
+        <h2 className="top-albums-title">Top albums of the month</h2>
       </div>
 
       <div className="top-albums-grid">
@@ -334,20 +334,14 @@ function TopAlbumsView({ albums, onSelectArtist, onSelectAlbum }) {
             <div key={album.id} className={`top-album-item ${album.featured ? "featured" : ""}`}>
               {index === 0 && <div className="rank-number">1</div>}
 
-              <div
+              <button
+                type="button"
                 className="top-album-cover"
                 style={{
                   background: `linear-gradient(135deg, ${album.color} 0%, ${album.color}88 50%, #1a1a1a 100%)`,
                 }}
                 onClick={() => onSelectAlbum(album)}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault();
-                    onSelectAlbum(album);
-                  }
-                }}
+                aria-label={`Open album ${album.title}`}
               >
                 {hasCoverImage ? (
                   <img
@@ -355,39 +349,28 @@ function TopAlbumsView({ albums, onSelectArtist, onSelectAlbum }) {
                     alt={`${album.title} cover`}
                     className="top-album-cover-img"
                     loading="lazy"
+                    referrerPolicy="no-referrer"
                     onError={() => onCoverImageError(album.id)}
                   />
                 ) : (
                   <span className="top-album-initials">{album.initials}</span>
                 )}
-              </div>
+              </button>
 
               <div className="top-album-info">
-                <div
+                <button
+                  type="button"
                   className="top-album-title-text top-album-title-trigger"
                   onClick={() => onSelectAlbum(album)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" || event.key === " ") {
-                      event.preventDefault();
-                      onSelectAlbum(album);
-                    }
-                  }}
+                  aria-label={`Open album ${album.title}`}
                 >
                   {album.title}
-                </div>
-                <div
+                </button>
+                <button
+                  type="button"
                   className="top-album-artist-row top-album-artist-trigger"
                   onClick={() => onSelectArtist(album)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" || event.key === " ") {
-                      event.preventDefault();
-                      onSelectArtist(album);
-                    }
-                  }}
+                  aria-label={`Open artist ${album.artist}`}
                 >
                   <div className="top-album-artist-avatar" style={{ background: album.color }}>
                     {hasArtistImage ? (
@@ -396,6 +379,7 @@ function TopAlbumsView({ albums, onSelectArtist, onSelectAlbum }) {
                         alt={album.artist}
                         className="top-album-artist-avatar-img"
                         loading="lazy"
+                        referrerPolicy="no-referrer"
                         onError={() => onArtistImageError(album.id)}
                       />
                     ) : (
@@ -403,7 +387,7 @@ function TopAlbumsView({ albums, onSelectArtist, onSelectAlbum }) {
                     )}
                   </div>
                   <span className="top-album-artist-name">{album.artist}</span>
-                </div>
+                </button>
               </div>
             </div>
           );
@@ -432,11 +416,13 @@ function AlbumCard({ album, artist, isHovered, onHover, onClick, isFeatured }) {
   };
 
   return (
-    <div
+    <button
+      type="button"
       className={`album-card-d ${isFeatured ? 'featured' : ''}`}
       onMouseEnter={() => onHover(album.id)}
       onMouseLeave={() => onHover(null)}
       onClick={onClick}
+      aria-label={`Open album ${album.title}`}
     >
       {/* Card Cover */}
       <div 
@@ -453,6 +439,7 @@ function AlbumCard({ album, artist, isHovered, onHover, onClick, isFeatured }) {
             alt={`${album.title} cover`}
             className="album-cover-image-d"
             loading="lazy"
+            referrerPolicy="no-referrer"
             onError={() => setFailedArtworkUrl(album.artworkUrl || "__missing__")}
           />
         ) : (
@@ -514,7 +501,7 @@ function AlbumCard({ album, artist, isHovered, onHover, onClick, isFeatured }) {
         </div>
         <div className="album-year-d">{album.year}</div>
       </div>
-    </div>
+    </button>
   );
 }
 
@@ -545,6 +532,7 @@ function AlbumsGrid({ artist, onSelectAlbum, isLoading }) {
                 alt={artist.name}
                 className="header-avatar-image-d"
                 loading="lazy"
+                referrerPolicy="no-referrer"
                 onError={() => setFailedHeaderImageUrl(artist.artworkUrl || "__missing__")}
               />
             ) : (
@@ -641,6 +629,7 @@ function SongsPanel({ songs, artist, toggleLike, likedSongs, selectedAlbum, isLo
                     alt={`${song.title} artwork`}
                     className="song-artwork-img"
                     loading="lazy"
+                    referrerPolicy="no-referrer"
                     onError={() => onSongArtworkError(song.artworkUrl)}
                   />
                 ) : (
@@ -656,6 +645,8 @@ function SongsPanel({ songs, artist, toggleLike, likedSongs, selectedAlbum, isLo
                 className={`song-like-btn ${isLiked ? "liked" : ""}`}
                 onClick={() => toggleLike(song.id)}
                 type="button"
+                aria-label={`${isLiked ? "Unlike" : "Like"} ${song.title}`}
+                aria-pressed={isLiked}
               >
                 <HeartIcon filled={isLiked} />
                 <span className="song-likes">{formatLikes(displayLikes)}</span>
@@ -676,7 +667,11 @@ export default function ContextPanel({
   selectedAlbum,
   setSelectedAlbum,
 }) {
-  const [likedSongs, setLikedSongs] = useState(new Set());
+  const ALBUM_TRANSITION_MS = 280;
+  const [likedSongs, setLikedSongs] = useState(() => new Set());
+  const [activeAlbumView, setActiveAlbumView] = useState(null);
+  const [isAlbumClosing, setIsAlbumClosing] = useState(false);
+  const albumCloseTimerRef = useRef(null);
   const zone2Artists = useMemo(() => buildZone2Artists(), []);
   const zone2TopAlbums = useMemo(() => buildZone2TopAlbums(zone2Artists), [zone2Artists]);
 
@@ -722,6 +717,13 @@ export default function ContextPanel({
 
   const isSelectedArtistLoading = false;
 
+  useEffect(() => () => {
+    if (albumCloseTimerRef.current) {
+      window.clearTimeout(albumCloseTimerRef.current);
+      albumCloseTimerRef.current = null;
+    }
+  }, []);
+
   const toggleLike = useCallback((songId) => {
     setLikedSongs((prev) => {
       const next = new Set(prev);
@@ -732,6 +734,12 @@ export default function ContextPanel({
   }, []);
 
   const handleArtistSelect = useCallback((artist) => {
+    if (albumCloseTimerRef.current) {
+      window.clearTimeout(albumCloseTimerRef.current);
+      albumCloseTimerRef.current = null;
+    }
+    setIsAlbumClosing(false);
+    setActiveAlbumView(null);
     setSelectedArtist(artist);
     setSelectedAlbum(null);
   }, [setSelectedAlbum, setSelectedArtist]);
@@ -750,32 +758,85 @@ export default function ContextPanel({
   }, [handleArtistSelect, zone2Artists]);
 
   const handleTopAlbumSelect = useCallback((album) => {
+    if (albumCloseTimerRef.current) {
+      window.clearTimeout(albumCloseTimerRef.current);
+      albumCloseTimerRef.current = null;
+    }
+
     const matchedArtist = findArtistByIdentity(zone2Artists, album);
     const fallbackArtist = getCacheReadyArtistByName(album.artist);
     const nextArtist = matchedArtist || (fallbackArtist ? hydrateArtistFromLocalCache(fallbackArtist) : null);
     if (!nextArtist) return;
     const matchedAlbum = findAlbumByIdentity(nextArtist, album);
-    if (!matchedAlbum) return;
 
-    setSelectedArtist(nextArtist);
-    setSelectedAlbum(
+    const nextAlbum =
       matchedAlbum || {
         ...album,
+        title: album.resolvedAlbumTitle || album.title,
         artworkUrl: album.artworkUrl || null,
-      }
-    );
+        color: album.color || nextArtist.color || "#6B8E8E",
+      };
+
+    const nextTracks = nextArtist.albumTracks?.[nextAlbum.id] || [];
+    setIsAlbumClosing(false);
+    setActiveAlbumView({ artist: nextArtist, album: nextAlbum, tracks: nextTracks });
+    setSelectedArtist(nextArtist);
+    setSelectedAlbum(nextAlbum);
   }, [setSelectedAlbum, setSelectedArtist, zone2Artists]);
 
-  const handleClose = () => {
-    if (selectedAlbum) setSelectedAlbum(null);
-    else {
-      setSelectedArtist(null);
-      setSelectedAlbum(null);
+  const handleAlbumSelect = useCallback((album) => {
+    if (albumCloseTimerRef.current) {
+      window.clearTimeout(albumCloseTimerRef.current);
+      albumCloseTimerRef.current = null;
     }
+    if (!selectedArtistForView) return;
+    const matchedAlbum = findAlbumByIdentity(selectedArtistForView, album) || album;
+    const nextTracks = selectedArtistForView.albumTracks?.[matchedAlbum.id] || [];
+    setIsAlbumClosing(false);
+    setActiveAlbumView({ artist: selectedArtistForView, album: matchedAlbum, tracks: nextTracks });
+    setSelectedAlbum(matchedAlbum);
+  }, [selectedArtistForView, setSelectedAlbum]);
+
+  const handleClose = () => {
+    if (selectedAlbumForView || activeAlbumView) {
+      if (albumCloseTimerRef.current) {
+        window.clearTimeout(albumCloseTimerRef.current);
+        albumCloseTimerRef.current = null;
+      }
+      setSelectedAlbum(null);
+      setIsAlbumClosing(true);
+      albumCloseTimerRef.current = window.setTimeout(() => {
+        setIsAlbumClosing(false);
+        setActiveAlbumView(null);
+        albumCloseTimerRef.current = null;
+      }, ALBUM_TRANSITION_MS);
+      return;
+    }
+
+    if (albumCloseTimerRef.current) {
+      window.clearTimeout(albumCloseTimerRef.current);
+      albumCloseTimerRef.current = null;
+    }
+    setIsAlbumClosing(false);
+    setActiveAlbumView(null);
+    setSelectedArtist(null);
+    setSelectedAlbum(null);
   };
 
+  const displayedAlbumView =
+    selectedAlbumForView && selectedArtistForView
+      ? {
+          artist: selectedArtistForView,
+          album: selectedAlbumForView,
+          tracks: tracksForAlbum,
+        }
+      : activeAlbumView;
+  const isAlbumPanelVisible = Boolean(selectedAlbumForView || isAlbumClosing);
+  const isAlbumLeaving = isAlbumClosing && !selectedAlbumForView;
+  const albumForSongsPanel = selectedAlbumForView || displayedAlbumView?.album || null;
+
   return (
-    <div className={`context-panel ${selectedAlbum ? "album-open" : ""}`}>
+    <div className={`context-panel ${isAlbumPanelVisible ? "album-open" : ""}`}>
       <div className="context-body">
         {!selectedArtist ? (
           <TopAlbumsView
@@ -786,7 +847,7 @@ export default function ContextPanel({
         ) : (
           <>
             {/* Hide the left Following sidebar ONLY while album is selected (full-bleed) */}
-            {!selectedAlbum && (
+            {!isAlbumPanelVisible && (
               <ContextSidebar
                 artists={sidebarArtists}
                 selectedArtist={selectedArtistForView}
@@ -794,44 +855,43 @@ export default function ContextPanel({
               />
             )}
 
-            <div className={`context-main ${selectedAlbum ? "album-mode" : "grid-mode"}`}>
-              {selectedAlbum ? (
-                <div className="context-toolbar">
-                  <div className="context-toolbar-left">
-                    <button className="context-back-btn" onClick={handleClose} type="button">
-                      <BackIcon />
-                      <span>Back</span>
-                    </button>
-                    <InfoIconModal
-                      title="Album Detail"
-                      steps={ZONE2_ALBUM_DETAIL_INFO_STEPS}
-                      modalId="zone2-album-detail-info"
-                      showButtonText={false}
-                      iconSize={16}
-                      iconColor="#FFA500"
-                      buttonClassName="zone-header-info-btn"
-                      ariaLabel="Album detail information"
-                    />
-                  </div>
+            <div className={`context-main ${isAlbumPanelVisible ? "album-mode" : "grid-mode"}`}>
+              <div className="context-toolbar">
+                <div className="context-toolbar-left">
+                  {isAlbumPanelVisible && (
+                    <>
+                      <button className="context-back-btn" onClick={handleClose} type="button">
+                        <BackIcon />
+                        <span>Back</span>
+                      </button>
+                    </>
+                  )}
                 </div>
-              ) : (
-                <button className="close-btn" onClick={handleClose} type="button">
+
+                <button
+                  className="close-btn"
+                  onClick={handleClose}
+                  type="button"
+                  aria-label={isAlbumPanelVisible ? "Close album detail" : "Close artist context"}
+                >
                   <CloseIcon />
                 </button>
-              )}
+              </div>
 
-              {selectedAlbum ? (
-                <AlbumDetail
-                  artist={selectedArtistForView}
-                  album={selectedAlbumForView}
-                  tracks={tracksForAlbum}
-                  toggleLike={toggleLike}
-                  likedSongs={likedSongs}
-                />
+              {isAlbumPanelVisible && displayedAlbumView ? (
+                <div className={`context-album-panel ${isAlbumLeaving ? "is-leaving" : "is-entering"}`}>
+                  <AlbumDetail
+                    artist={displayedAlbumView.artist}
+                    album={displayedAlbumView.album}
+                    tracks={displayedAlbumView.tracks}
+                    toggleLike={toggleLike}
+                    likedSongs={likedSongs}
+                  />
+                </div>
               ) : (
                 <AlbumsGrid
                   artist={selectedArtistForView}
-                  onSelectAlbum={setSelectedAlbum}
+                  onSelectAlbum={handleAlbumSelect}
                   isLoading={isSelectedArtistLoading}
                 />
               )}
@@ -840,7 +900,7 @@ export default function ContextPanel({
             <SongsPanel
               songs={topSongs}
               artist={selectedArtistForView}
-              selectedAlbum={selectedAlbum}
+              selectedAlbum={albumForSongsPanel}
               toggleLike={toggleLike}
               likedSongs={likedSongs}
               isLoading={isSelectedArtistLoading}

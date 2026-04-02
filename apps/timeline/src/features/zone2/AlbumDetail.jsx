@@ -1,7 +1,11 @@
 import { useMemo, useState, memo } from "react";
 import { HeartIcon } from "../Icons";
 import { UserHoverTarget } from "../UserHoverCard";
-const REVIEW_AVATAR_COUNT = 999;
+import { getAvatarSrcFromNumber } from "../avatarAssets";
+import InfoIconModal from "../InfoIconModal";
+
+const MAX_VOLUME = 3200;
+const MAX_TRACK_LIKES = 3000;
 
 // Genre base ratings - these will be adjusted by volume when active
 const GENRES = [
@@ -27,6 +31,29 @@ const MOCK_REVIEWS = [
   { id: 10, user: "sub_zero42", text: "Nam libero tempore, cum soluta nobis est eligendi optio cumque.", rating: 82 },
   { id: 11, user: "beat.smith", text: "Temporibus autem quibusdam et aut officiis debitis rerum necessitatibus.", rating: 60 },
   { id: 12, user: "wavPool", text: "Itaque earum rerum hic tenetur sapiente delectus ut aut reiciendis.", rating: 29 },
+];
+
+const FILTER_BY_VOLUME_INFO_STEPS = [
+  {
+    title: "Filter by volume",
+    content:
+      "Reveals average album ratings in different genre communities for users with volumes around the set value.",
+  },
+];
+
+const GENRE_COMMUNITIES_INFO_STEPS = [
+  {
+    title: "Genre communities",
+    content: "Average album ratings in different genre communities.",
+  },
+];
+
+const TRACKLIST_INFO_STEPS = [
+  {
+    title: "Tracklist",
+    content:
+      "You can't currently play these songs, but in the final app users should be able to listen to 30-second previews in this tracklist.",
+  },
 ];
 
 const formatLikes = (num) => {
@@ -58,8 +85,8 @@ const hashStringToInt = (str) => {
 
 const getReviewAvatarSrc = (review) => {
   const seed = String(review?.user || review?.id || "review-user");
-  const avatarNumber = (Math.abs(hashStringToInt(seed)) % REVIEW_AVATAR_COUNT) + 1;
-  return `/assets/image${avatarNumber}.png`;
+  const avatarNumber = (Math.abs(hashStringToInt(seed)) % 999) + 1;
+  return getAvatarSrcFromNumber(avatarNumber);
 };
 
 // Volume icon component - with muted state
@@ -129,7 +156,7 @@ function NumberPickerRating({ value, onChange }) {
 }
 
 // ==================== GENRE CARD WITH ANIMATED FILL ====================
-function GenreCard({ genre, volume, maxVolume = 3200, isVolumeMuted }) {
+function GenreCard({ genre, volume, maxVolume = MAX_VOLUME, isVolumeMuted }) {
   const mult = isVolumeMuted ? 1 : (0.5 + (volume / maxVolume) * 0.5);
   const rating = Math.min(10, genre.baseRating * mult);
   const fillHeight = (rating / 10) * 100;
@@ -145,8 +172,23 @@ function GenreCard({ genre, volume, maxVolume = 3200, isVolumeMuted }) {
       <div className="genre-card-fill" />
       <div className="genre-card-content">
         <div className="genre-card-name">{genre.name}</div>
-        <div className="genre-card-rating" style={{ color: genre.color }}>
-          {rating.toFixed(1)}
+        <div className="genre-card-rating-row">
+          <div className="genre-card-rating" style={{ color: genre.color }}>
+            {rating.toFixed(1)}
+          </div>
+          {genre.name === "Hip-Hop" && (
+            <InfoIconModal
+              title="Genre communities"
+              steps={GENRE_COMMUNITIES_INFO_STEPS}
+              modalId="zone2-genre-communities-info"
+              showButtonText={false}
+              iconSize={20}
+              iconColor="#FFA500"
+              buttonClassName="zone-header-info-btn zone2-genre-info-btn"
+              buttonStyle={{ width: "36px", height: "36px" }}
+              ariaLabel="Genre communities information"
+            />
+          )}
         </div>
         <div className="genre-card-bar">
           <div
@@ -162,7 +204,7 @@ function GenreCard({ genre, volume, maxVolume = 3200, isVolumeMuted }) {
 // ==================== TRACK WITH POPULARITY BAR ====================
 function TrackWithBar({ track, index, isPlaying, isLiked, onToggleLike }) {
   const likes = Math.round(track.likes || 0);
-  const barWidth = (likes / 3000) * 100;
+  const barWidth = Math.min(100, (likes / MAX_TRACK_LIKES) * 100);
   const barColor = likes > 2000 ? "#6BCB77" : likes > 1000 ? "#6B8E8E" : "#554E48";
   const displayLikes = isLiked ? likes + 1 : likes;
 
@@ -182,6 +224,8 @@ function TrackWithBar({ track, index, isPlaying, isLiked, onToggleLike }) {
           className={`track-bar-like ${isLiked ? "liked" : ""}`}
           onClick={() => onToggleLike?.(track.id)}
           style={{ "--like-color": barColor }}
+          aria-label={`${isLiked ? "Unlike" : "Like"} ${track.title}`}
+          aria-pressed={isLiked}
         >
           <HeartIcon filled={isLiked} />
           <span>{formatLikes(displayLikes)}</span>
@@ -215,6 +259,7 @@ function ReviewItem({ review }) {
               alt=""
               className="review-avatar-image"
               loading="lazy"
+              referrerPolicy="no-referrer"
             />
           ) : (
             <span className="review-avatar-fallback">{fallbackLabel}</span>
@@ -273,7 +318,7 @@ function AlbumDetail({ artist, album, tracks = [], toggleLike, likedSongs }) {
   const [activeTab, setActiveTab] = useState("reviews"); // Reviews is default
 
   const avgRating = useMemo(() => {
-    const mult = isVolumeMuted ? 1 : (0.5 + (volume / 3200) * 0.5);
+    const mult = isVolumeMuted ? 1 : (0.5 + (volume / MAX_VOLUME) * 0.5);
     return (
       GENRES.reduce((sum, g) => sum + Math.min(10, g.baseRating * mult), 0) /
       GENRES.length
@@ -283,9 +328,10 @@ function AlbumDetail({ artist, album, tracks = [], toggleLike, likedSongs }) {
   const accent = album?.color || "#6B8E8E";
   const trackCount = tracks?.length || 0;
   const hasAlbumArtwork = Boolean(album?.artworkUrl) && failedAlbumArtworkUrl !== album?.artworkUrl;
+  const volumeFillPercent = (volume / MAX_VOLUME) * 100;
 
   const handleVolumeToggle = () => {
-    setIsVolumeMuted(!isVolumeMuted);
+    setIsVolumeMuted((prev) => !prev);
   };
 
   return (
@@ -300,6 +346,7 @@ function AlbumDetail({ artist, album, tracks = [], toggleLike, likedSongs }) {
                 alt={`${album.title} cover`}
                 className="album-art-image-d"
                 loading="lazy"
+                referrerPolicy="no-referrer"
                 onError={() => setFailedAlbumArtworkUrl(album.artworkUrl || "__missing__")}
               />
             ) : (
@@ -335,29 +382,43 @@ function AlbumDetail({ artist, album, tracks = [], toggleLike, likedSongs }) {
       {/* Volume Control Card */}
       <div className={`volume-card-d ${isVolumeMuted ? "muted" : ""}`}>
         <div className="volume-header-d">
-          <button 
-            type="button"
-            className={`volume-toggle-btn ${isVolumeMuted ? "muted" : ""}`}
-            onClick={handleVolumeToggle}
-            aria-label={isVolumeMuted ? "Unmute volume filter" : "Mute volume filter"}
-          >
-            <VolumeIcon muted={isVolumeMuted} />
-          </button>
-          <span className="volume-value-d">{volume} / 3200</span>
+          <div className="volume-toggle-wrap-d">
+            <button 
+              type="button"
+              className={`volume-toggle-btn ${isVolumeMuted ? "muted" : ""}`}
+              onClick={handleVolumeToggle}
+              aria-label={isVolumeMuted ? "Unmute volume filter" : "Mute volume filter"}
+              aria-pressed={!isVolumeMuted}
+            >
+              <VolumeIcon muted={isVolumeMuted} />
+            </button>
+            <InfoIconModal
+              title="Filter by volume"
+              steps={FILTER_BY_VOLUME_INFO_STEPS}
+              modalId="zone2-filter-by-volume-info"
+              showButtonText={false}
+              iconSize={20}
+              iconColor="#FFA500"
+              buttonClassName="zone-header-info-btn zone2-volume-info-btn"
+              buttonStyle={{ width: "36px", height: "36px" }}
+              ariaLabel="Filter by volume information"
+            />
+          </div>
+          <span className="volume-value-d">{volume} / {MAX_VOLUME}</span>
         </div>
 
         <div className="volume-track-d">
           <div
             className="volume-fill-d"
-            style={{ width: `${(volume / 3200) * 100}%` }}
+            style={{ width: `${volumeFillPercent}%` }}
           />
           <input
             type="range"
             min="0"
-            max="3200"
+            max={MAX_VOLUME}
             value={volume}
             onChange={(e) => {
-              setVolume(parseInt(e.target.value));
+              setVolume(Number(e.target.value));
               if (isVolumeMuted) {
                 setIsVolumeMuted(false);
               }
@@ -393,8 +454,19 @@ function AlbumDetail({ artist, album, tracks = [], toggleLike, likedSongs }) {
           className={`album-tab-btn ${activeTab === "tracklist" ? "active" : ""}`}
           onClick={() => setActiveTab("tracklist")}
         >
-          Tracklist
+          Tracklist ({trackCount})
         </button>
+        <InfoIconModal
+          title="Tracklist"
+          steps={TRACKLIST_INFO_STEPS}
+          modalId="zone2-tracklist-info"
+          showButtonText={false}
+          iconSize={20}
+          iconColor="#FFA500"
+          buttonClassName="zone-header-info-btn zone2-tracklist-info-btn"
+          buttonStyle={{ width: "36px", height: "36px" }}
+          ariaLabel="Tracklist information"
+        />
       </div>
 
       {/* Tab Content */}
@@ -404,18 +476,22 @@ function AlbumDetail({ artist, album, tracks = [], toggleLike, likedSongs }) {
         </div>
       ) : (
         <div className="tracklist-card-d">
-          <div className="tracklist-items-d">
-            {tracks.map((track, i) => (
-              <TrackWithBar
-                key={track.id}
-                track={track}
-                index={i}
-                isPlaying={i === 0}
-                isLiked={likedSongs?.has(track.id)}
-                onToggleLike={toggleLike}
-              />
-            ))}
-          </div>
+          {trackCount === 0 ? (
+            <div className="zone2-empty-state">No tracks available for this album yet.</div>
+          ) : (
+            <div className="tracklist-items-d">
+              {tracks.map((track, i) => (
+                <TrackWithBar
+                  key={track.id}
+                  track={track}
+                  index={i}
+                  isPlaying={i === 0}
+                  isLiked={likedSongs?.has(track.id)}
+                  onToggleLike={toggleLike}
+                />
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -8,7 +8,7 @@
 
 /* ==================== ZONE 3 LAYOUT ==================== */
 .zone3-layout {
-  --sidebar-width: 108px;
+  --sidebar-width: 124px;
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -20,8 +20,8 @@
 .zone3-toolbar {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 14px;
+  gap: 12px;
+  padding: 10px 16px;
   border-bottom: 1px solid var(--color-border-primary);
   background: var(--color-bg-primary);
   flex-shrink: 0;
@@ -31,8 +31,8 @@
 }
 
 .toolbar-title {
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 700;
   color: var(--color-text-primary);
   margin-right: 2px;
   flex-shrink: 0;
@@ -42,19 +42,19 @@
 .toolbar-scale {
   display: flex;
   background: #0a0a0a;
-  border-radius: 6px;
-  padding: 2px;
-  gap: 1px;
+  border-radius: 8px;
+  padding: 3px;
+  gap: 2px;
   flex-shrink: 0;
 }
 
 .toolbar-scale-btn {
-  padding: 5px 10px;
+  padding: 7px 12px;
   border: none;
-  border-radius: 4px;
+  border-radius: 6px;
   background: transparent;
   color: #554e48;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   cursor: pointer;
   transition: background 0.12s ease, color 0.12s ease;
@@ -72,7 +72,7 @@
 /* ── Divider ── */
 .toolbar-divider {
   width: 1px;
-  height: 20px;
+  height: 24px;
   background: var(--color-border-primary);
   flex-shrink: 0;
 }
@@ -80,18 +80,18 @@
 /* ── Filter buttons ── */
 .toolbar-filters {
   display: flex;
-  gap: 4px;
+  gap: 6px;
   flex-shrink: 0;
 }
 
 .toolbar-filter-btn {
-  padding: 5px 12px;
+  padding: 7px 14px;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   background: transparent;
   color: #554e48;
-  font-size: 11px;
-  font-weight: 500;
+  font-size: 12px;
+  font-weight: 600;
   cursor: pointer;
   transition: background 0.12s ease, color 0.12s ease;
 }
@@ -115,18 +115,18 @@
 /* ── Genre chips ── */
 .toolbar-genres {
   display: flex;
-  gap: 4px;
+  gap: 6px;
   flex-shrink: 0;
   flex-wrap: wrap;
 }
 
 .toolbar-genre-chip {
-  padding: 4px 9px;
+  padding: 6px 12px;
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
   background: #1a1a1a;
   color: #7b7a75;
-  font-size: 10px;
+  font-size: 11px;
   cursor: pointer;
   transition: background 0.12s ease, color 0.12s ease;
 }
@@ -148,10 +148,10 @@
 
 /* ── Icon buttons (trophy, volume) ── */
 .toolbar-icon-btn {
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   border: 1px solid var(--color-border-primary);
-  border-radius: 8px;
+  border-radius: 10px;
   background: #0d0d0d;
   color: #7b7a75;
   cursor: pointer;
@@ -163,8 +163,8 @@
 }
 
 .toolbar-icon-btn svg {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
 }
 
 .toolbar-icon-btn:hover {
@@ -185,20 +185,41 @@
   pointer-events: none;
 }
 
+.info-icon-button.zone3-toolbar-info-btn {
+  background: #171209;
+  border-color: rgba(255, 194, 77, 0.65);
+  box-shadow: 0 0 10px rgba(255, 176, 43, 0.28);
+}
+
+.info-icon-button.zone3-toolbar-info-btn svg {
+  filter: drop-shadow(0 0 4px rgba(255, 190, 75, 0.75));
+}
+
+.info-icon-button.zone3-toolbar-info-btn svg circle,
+.info-icon-button.zone3-toolbar-info-btn svg path {
+  stroke: #FFC44D;
+}
+
+.info-icon-button.zone3-toolbar-info-btn:hover {
+  background: #211707;
+  border-color: rgba(255, 208, 117, 0.9);
+  box-shadow: 0 0 12px rgba(255, 195, 85, 0.44);
+}
+
 /* ── Inline Volume Slider (sits in the toolbar flex row, to the right of the icon) ── */
 .toolbar-volume-inline {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 4px 10px;
+  gap: 10px;
+  padding: 6px 12px;
   background: #0d0d0d;
   border: 1px solid var(--color-border-primary);
-  border-radius: 8px;
+  border-radius: 10px;
   flex-shrink: 0;
 }
 
 .toolbar-volume-label {
-  font-size: 9px;
+  font-size: 11px;
   color: var(--color-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -208,8 +229,8 @@
 
 .toolbar-volume-track {
   position: relative;
-  width: 120px;
-  height: 6px;
+  width: 138px;
+  height: 7px;
   background: var(--color-border-secondary);
   border-radius: 3px;
   cursor: pointer;
@@ -231,8 +252,8 @@
   position: absolute;
   top: 50%;
   transform: translate(-50%, -50%);
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
   background: #e0e0e0;
   border: 2px solid var(--color-bg-primary);
@@ -249,11 +270,11 @@
 }
 
 .toolbar-volume-value {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 650;
   color: var(--color-text-primary);
   font-variant-numeric: tabular-nums;
-  min-width: 32px;
+  min-width: 36px;
   text-align: right;
   flex-shrink: 0;
   user-select: none;
@@ -269,19 +290,19 @@
 .toolbar-add-user {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   flex-shrink: 0;
 }
 
 .toolbar-avatar {
-  width: 26px;
-  height: 26px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   border: 2px solid #282B29;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
+  font-size: 11px;
   color: #fff;
   font-weight: 600;
   flex-shrink: 0;
@@ -296,6 +317,9 @@
 }
 
 .toolbar-avatar--removable {
+  appearance: none;
+  background: transparent;
+  padding: 0;
   cursor: pointer;
   transition: transform 0.15s ease, opacity 0.15s ease;
 }
@@ -305,18 +329,23 @@
   opacity: 0.8;
 }
 
+.toolbar-avatar--removable:focus-visible {
+  outline: 2px solid #A4A2A0;
+  outline-offset: 2px;
+}
+
 .toolbar-add-btn-wrap {
   position: relative;
 }
 
 .toolbar-add-btn {
-  width: 26px;
-  height: 26px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   background: transparent;
   border: 2px dashed #554E48;
   color: #7B7A75;
-  font-size: 13px;
+  font-size: 14px;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -337,14 +366,14 @@
   right: 0;
   background: #121212;
   border: 1px solid #282B29;
-  border-radius: 8px;
-  padding: 6px;
+  border-radius: 10px;
+  padding: 7px;
   z-index: 100;
   display: flex;
   flex-direction: column;
   gap: 4px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.8);
-  min-width: 120px;
+  min-width: 136px;
   animation: toolbarDropIn 0.15s ease;
 }
 
@@ -357,7 +386,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 8px;
+  padding: 7px 9px;
   background: transparent;
   border: none;
   border-radius: 6px;
@@ -371,13 +400,13 @@
 }
 
 .toolbar-add-option-avatar {
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 9px;
+  font-size: 10px;
   color: #fff;
   font-weight: 600;
   flex-shrink: 0;
@@ -392,14 +421,14 @@
 }
 
 .toolbar-add-option-name {
-  font-size: 11px;
+  font-size: 12px;
   color: #A4A2A0;
 }
 
 .toolbar-add-empty {
-  font-size: 10px;
+  font-size: 11px;
   color: #554E48;
-  padding: 4px 8px;
+  padding: 6px 9px;
 }
 
 /* ==================== TOP BAR (User Header Row) ==================== */
@@ -503,7 +532,7 @@
   height: var(--row-height);
   display: flex;
   align-items: center;
-  padding: 0 14px;
+  padding: 0 16px;
   border-bottom: 1px solid var(--color-border-subtle);
   border-right: 1px solid var(--color-border-primary);
   background: var(--color-bg-primary);
@@ -518,7 +547,7 @@
   left: 0;
   top: 0;
   bottom: 0;
-  width: 3px;
+  width: 4px;
   background: linear-gradient(180deg, var(--color-accent), transparent);
   border-radius: 0 2px 2px 0;
 }
@@ -528,7 +557,7 @@
   height: var(--row-height);
   border-right: 1px solid var(--color-border-subtle);
   border-bottom: 1px solid var(--color-border-subtle);
-  padding: 14px 10px;
+  padding: 16px 12px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -542,13 +571,13 @@
 .year-block {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
   position: relative;
   z-index: 1;
 }
 
 .year-number {
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--color-accent);
   line-height: 1;
@@ -557,15 +586,15 @@
 }
 
 .month-name-small {
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 650;
   color: #c8c4be;
   letter-spacing: 0.01em;
 }
 
 .month-name {
-  font-size: 13px;
-  font-weight: 500;
+  font-size: 14px;
+  font-weight: 600;
   color: #5a5650;
   padding-left: 2px;
 }
@@ -579,10 +608,10 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 8px;
   border-right: 1px solid var(--color-border-subtle);
   position: relative;
-  padding: 14px 10px;
+  padding: 16px 12px;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.015) 0%, transparent 100%);
 }
 
@@ -600,15 +629,15 @@
 
 .user-close-btn {
   position: absolute;
-  top: 4px;
-  right: 4px;
-  width: 16px;
-  height: 16px;
+  top: 6px;
+  right: 6px;
+  width: 18px;
+  height: 18px;
   border: 1px solid var(--color-border-primary);
   border-radius: 5px;
   background: rgba(0, 0, 0, 0.5);
   color: #a4a2a0;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1;
   cursor: pointer;
   display: inline-flex;
@@ -625,15 +654,15 @@
 
 /* ── Circular user avatar ── */
 .user-avatar {
-  width: 40px;
-  height: 40px;
+  width: 46px;
+  height: 46px;
   border-radius: 50%;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
   border: 1px solid rgba(255, 255, 255, 0.1);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 700;
   color: #b0b0b0;
   backdrop-filter: blur(8px);
@@ -665,8 +694,8 @@
 }
 
 .user-name {
-  font-size: 11px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 650;
   color: #d0ccc6;
 }
 
@@ -679,13 +708,13 @@
 /* ── Floating rank tag (top-right of user column) ── */
 .user-rank-tag {
   position: absolute;
-  top: 8px;
-  right: 8px;
+  top: 10px;
+  right: 10px;
   background: rgba(107, 142, 142, 0.18);
   border: 1px solid rgba(107, 142, 142, 0.35);
   border-radius: 6px;
-  padding: 3px 7px;
-  font-size: 10px;
+  padding: 4px 8px;
+  font-size: 11px;
   font-weight: 800;
   color: #a8dede;
   font-variant-numeric: tabular-nums;
@@ -700,7 +729,7 @@
 }
 
 .you-badge {
-  font-size: 7px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--color-text-muted);
   text-transform: uppercase;
@@ -711,9 +740,9 @@
 .user-volume-badge {
   display: flex;
   align-items: center;
-  gap: 5px;
-  margin-top: 3px;
-  padding: 4px 10px;
+  gap: 6px;
+  margin-top: 4px;
+  padding: 5px 12px;
   background: rgba(107, 142, 142, 0.14);
   border: 1px solid rgba(125, 177, 177, 0.3);
   border-radius: 20px;
@@ -721,15 +750,15 @@
 }
 
 .user-volume-badge svg {
-  width: 13px;
-  height: 13px;
+  width: 14px;
+  height: 14px;
   color: #c8eded;
   flex-shrink: 0;
   filter: drop-shadow(0 0 5px rgba(107, 142, 142, 0.5));
 }
 
 .user-volume-badge span {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
   color: #e4f6f6;
   font-variant-numeric: tabular-nums;
@@ -743,11 +772,11 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   background: transparent;
   border: none;
   cursor: pointer;
-  padding: 8px;
+  padding: 10px;
   border-radius: 8px;
   transition: background 0.15s ease;
 }
@@ -757,8 +786,8 @@
 }
 
 .add-user-avatar {
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   border: 2px dashed var(--color-text-muted);
   display: flex;
@@ -774,8 +803,8 @@
 }
 
 .add-user-text {
-  font-size: 10px;
-  font-weight: 500;
+  font-size: 11px;
+  font-weight: 600;
   color: var(--color-text-muted);
 }
 
@@ -785,9 +814,9 @@
 
 /* ==================== EMPTY CELL ==================== */
 .empty-cell {
-  width: 110px;
-  height: 110px;
-  border-radius: 10px;
+  width: 118px;
+  height: 118px;
+  border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.04);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.015) 0%, rgba(255, 255, 255, 0.005) 100%);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.015);
@@ -799,7 +828,7 @@
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 34px;
+  width: 38px;
   height: 2px;
   background: rgba(255, 255, 255, 0.08);
   border-radius: 999px;
@@ -811,13 +840,13 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 }
 
 .album-cover {
-  width: 110px;
-  height: 110px;
-  border-radius: 10px;
+  width: 118px;
+  height: 118px;
+  border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
   position: relative;
@@ -837,13 +866,13 @@
 
 .rank-badge {
   position: absolute;
-  top: 5px;
-  right: 5px;
+  top: 6px;
+  right: 6px;
   background: rgba(8, 8, 8, 0.9);
   color: var(--color-text-primary);
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 700;
-  padding: 2px 5px;
+  padding: 3px 6px;
   border-radius: 4px;
   border: 1px solid var(--color-border-secondary);
 }
@@ -851,12 +880,12 @@
 .artist-row {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
 }
 
 .artist-avatar {
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   background: var(--color-border-secondary);
   overflow: hidden;
@@ -873,17 +902,17 @@
 }
 
 .artist-avatar-fallback {
-  font-size: 9px;
+  font-size: 10px;
   line-height: 1;
   color: #111;
   font-weight: 700;
 }
 
 .artist-name {
-  font-size: 11px;
-  font-weight: 500;
+  font-size: 12px;
+  font-weight: 550;
   color: var(--color-text-primary);
-  max-width: 75px;
+  max-width: 92px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

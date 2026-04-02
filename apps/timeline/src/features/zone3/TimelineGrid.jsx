@@ -5,42 +5,71 @@ import UsersHeader from "./UsersHeader";
 import GridBody from "./GridBody";
 import { TrophyIcon, VolumeIcon } from "../Icons";
 import InfoIconModal from "../InfoIconModal";
-import { ZONE3_TIMELINE_INFO_STEPS } from "../infoContent";
 import { UserHoverTarget } from "../UserHoverCard";
+import { getAvatarSrcFromNumber } from "../avatarAssets";
 
 const ACTIVE_GENRES = ["Hip-Hop", "Pop", "R&B"];
 const DISABLED_GENRES = ["Rock"];
 const GENRES = [...ACTIVE_GENRES, ...DISABLED_GENRES];
 const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const ZONE3_INFO_ICON_SIZE = 20;
+const ZONE3_TIMELINE_INFO_STEPS = [
+  {
+    title: "Month, Year, Decade",
+    content: "Use these buttons to switch views between top albums of the month, year and decade.",
+  },
+  {
+    title: "Me Tab",
+    content:
+      "The Me tab reveals the albums that we've rated, and our highest rated album in a particular month, takes that month slot. Rating more albums will grant you a higher ranking so the other users in the Me tab are close to you in ranking because they've rated about the same number of albums as you.",
+  },
+  {
+    title: "Most Rated",
+    content:
+      "The most rated tab reveals users at the top of the rankings who have rated the most albums, having at least one album of the month for many years.",
+  },
+  {
+    title: "Genre Tab",
+    content:
+      "The genre tab reveals users of different genre communites and their top albums of the month. How do we tell which users are in which genre communities?\n\n" +
+      "As users discover, listen and like song previews througout the app, they will accumulate points based on the genre tags that come with the songs. That way we know if a user listens to more rock or rap music because they interact more with that genre. There will be more genres in the final app.",
+  },
+  {
+    title: "Trophy",
+    content:
+      "Click to reveal the top albums for each month, year or decade, overall rated by users on this app.\n\n" +
+      "Also reveals a ranking at the top right of each album showing how far those albums are from the number 1 spot.",
+  },
+  {
+    title: "Add Friends",
+    content: "Add friends to compare albums in different time ranges.",
+  },
+  {
+    title: "Why add this?",
+    content:
+      "The average user probably wouldn't care about rating a bunch of albums just to fill this calendar or for a higher ranking.\n\n" +
+      "We plan for the user to passively add to the calendar as they are listening to music while rating and comparing albums.\n\nThat is the objective for the Zone 1 Top albums tab, giving users something to work on, complete and be proud of.",
+  },
+];
 const AVAILABLE_FRIENDS = [
-  { id: "you", name: "You", avatar: "Y", color: "#E8A87C", isYouFriend: true },
+  { id: "you", name: "Me", avatar: "M", color: "#E8A87C", isYouFriend: true },
   { id: "friend_alex", name: "Alex", avatar: "A", color: "#85C1E9" },
   { id: "friend_jordan", name: "Jordan", avatar: "J", color: "#C9B1FF" },
   { id: "friend_sam", name: "Sam", avatar: "S", color: "#7DD3C0" },
   { id: "friend_riley", name: "Riley", avatar: "R", color: "#F1948A" },
 ];
-const MONTH_START_YEAR = 2025, MONTH_END_YEAR = 2024, YEAR_VIEW_END_YEAR = 2000, RAW_END_YEAR = 1980;
+const MONTH_START_YEAR = 2025;
+const MONTH_END_YEAR = 2022;
+const YEAR_VIEW_END_YEAR = 1980;
+const RAW_END_YEAR = 1920;
 const YOU_TARGET_RANK = 3532;
 const YOU_VIEW_COUNT = 25;
 const GENRE_RANK_BASE = 2001;
-const USER_AVATAR_SOURCES = Object.entries(
-  import.meta.glob("../../../../../assets/image*.png", { eager: true, import: "default" })
-)
-  .sort((a, b) => {
-    const aNum = Number(a[0].match(/image(\d+)\.png$/)?.[1] ?? 0);
-    const bNum = Number(b[0].match(/image(\d+)\.png$/)?.[1] ?? 0);
-    return aNum - bNum;
-  })
-  .map(([, src]) => src);
-
 function clamp(n, min, max) { return Math.max(min, Math.min(max, n)); }
 function hashStringToInt(str) { let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
 function mulberry32(a) { return function () { let t = (a += 0x6d2b79f5); t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 function rand01(seed) { const n = typeof seed === "number" ? seed : hashStringToInt(String(seed)); return mulberry32(n)(); }
 function getUserAvatarSrc(userId) {
-  const avatarCount = USER_AVATAR_SOURCES.length;
-  if (!avatarCount) return null;
-
   let imageNumber = null;
   if (typeof userId === "number" && Number.isFinite(userId)) {
     imageNumber = Math.trunc(Math.abs(userId));
@@ -52,10 +81,10 @@ function getUserAvatarSrc(userId) {
   }
 
   if (!imageNumber || imageNumber < 1) {
-    imageNumber = (hashStringToInt(String(userId ?? "")) % avatarCount) + 1;
+    imageNumber = (hashStringToInt(String(userId ?? "")) % 999) + 1;
   }
 
-  return USER_AVATAR_SOURCES[(imageNumber - 1) % avatarCount] ?? null;
+  return getAvatarSrcFromNumber(imageNumber);
 }
 function withDisplayRankName(user) {
   if (!user || typeof user.__rank !== "number") return user;
@@ -176,17 +205,14 @@ function buildBuckets(rawMonths, timeScale) {
     const m = new Map();
     for (const mo of rawMonths) {
       const decadeStart = Math.floor(mo.year / 10) * 10;
-      const isSecondHalf = (mo.year % 10) >= 5;
-      const halfStart = isSecondHalf ? decadeStart + 5 : decadeStart;
-      if (halfStart < 1990) continue; // start buckets at 1990 as requested
-      const halfEnd = halfStart + 4;
-      const key = `${halfStart}-${halfEnd}`;
+      if (decadeStart < 1920) continue;
+      const key = `${decadeStart}s`;
       if (!m.has(key)) m.set(key, {
         key,
-        year: halfStart,
-        month: "Half-Decade",
+        year: decadeStart,
+        month: "Decade",
         bucketIndices: [],
-        halfDecadeLabel: `${halfStart}`,
+        decadeLabel: `${decadeStart}`,
       });
       m.get(key).bucketIndices.push(mo.monthIndex);
     }
@@ -226,8 +252,9 @@ function decorateUsers(users, selectedGenre, pinnedFriendData, shuffleSeed) {
     const friendData = pinnedFriendData.get(String(u.id));
     return {
       ...u,
+      name: u.isYou ? "Me" : u.name,
       __stats: { volume, albumsRatedCount, genrePoints },
-      __avatarSrc: getUserAvatarSrc(u.id),
+      __avatarSrc: u.isYou ? getAvatarSrcFromNumber(182) : getUserAvatarSrc(u.id),
       __pinColor: friendData?.color || (u.isYou ? "#E8A87C" : null),
       __pinAvatar: friendData?.avatar || null,
     };
@@ -276,7 +303,15 @@ export default function TimelineGrid() {
 
   const headerScrollRef = useRef(null);
   const bodyScrollRef = useRef(null);
+  const volumeCommitTimeoutRef = useRef(null);
   const rawMonths = useMemo(() => buildMonthsDescending(MONTH_START_YEAR, RAW_END_YEAR), []);
+
+  const clearPendingVolumeCommit = useCallback(() => {
+    if (volumeCommitTimeoutRef.current !== null) {
+      window.clearTimeout(volumeCommitTimeoutRef.current);
+      volumeCommitTimeoutRef.current = null;
+    }
+  }, []);
 
   const monthBuckets = useMemo(() => {
     const f = timeScale === "months" ? rawMonths.filter((m) => m.year >= MONTH_END_YEAR) : timeScale === "years" ? rawMonths.filter((m) => m.year >= YEAR_VIEW_END_YEAR) : rawMonths;
@@ -288,7 +323,7 @@ export default function TimelineGrid() {
   const decoratedUsers = useMemo(() => decorateUsers(allUsers, zone3Genre, pinnedFriendData, shuffleSeed), [allUsers, zone3Genre, pinnedFriendData, shuffleSeed]);
   const topAlbumsUser = decoratedUsers.find((u) => u.isTopAlbums);
   const youUser = decoratedUsers.find((u) => u.isYou) || decoratedUsers[0];
-  const youAvatarSrc = youUser?.__avatarSrc ?? getUserAvatarSrc(1);
+  const youAvatarSrc = youUser?.__avatarSrc ?? getAvatarSrcFromNumber(182);
   const rankMap = useMemo(
     () => buildRankMap(decoratedUsers, zone3Filter, zone3Genre, zone3VolumeMin, showVolume, youUser),
     [decoratedUsers, zone3Filter, zone3Genre, zone3VolumeMin, showVolume, youUser]
@@ -374,29 +409,47 @@ export default function TimelineGrid() {
   );
 
   const commitVolume = useCallback((val) => {
-    const v = Math.round(val); setVolumeDraft(v); setIsReloading(true);
-    setTimeout(() => { setZone3VolumeMin(v); setShuffleSeed((p) => p + 1); setIsReloading(false); }, 600);
-  }, []);
+    const v = Math.round(val);
+    clearPendingVolumeCommit();
+    setVolumeDraft(v);
+    setIsReloading(true);
+    volumeCommitTimeoutRef.current = window.setTimeout(() => {
+      setZone3VolumeMin(v);
+      setShuffleSeed((p) => p + 1);
+      setIsReloading(false);
+      volumeCommitTimeoutRef.current = null;
+    }, 600);
+  }, [clearPendingVolumeCommit]);
 
   const handleFilterClick = useCallback((filterId) => {
-    if (filterId === zone3Filter) return;
+    const shouldToggleBackToYou = filterId === zone3Filter && (filterId === "mostRated" || filterId === "genre");
+    const nextFilter = shouldToggleBackToYou ? "you" : filterId;
+    if (nextFilter === zone3Filter) return;
+    clearPendingVolumeCommit();
+    setIsReloading(false);
     setPinnedFriends([]);
     setYouPinnedManually(false);
     setShowAddMenu(false);
-    setZone3Filter(filterId);
-    if (filterId === "you") {
+    setZone3Filter(nextFilter);
+    if (nextFilter === "you") {
       setShowVolume(false);
       setShowYou(true);
       return;
     }
     setShowYou(false);
-    if (filterId === "genre") { setShowVolume(false); }
-  }, [zone3Filter]);
+    if (nextFilter === "genre") { setShowVolume(false); }
+  }, [clearPendingVolumeCommit, zone3Filter]);
 
   const handleVolumeToggle = useCallback(() => {
     if (zone3Filter !== "mostRated") return;
-    setShowVolume((prev) => !prev);
-  }, [zone3Filter]);
+    setShowVolume((prev) => {
+      if (prev) {
+        clearPendingVolumeCommit();
+        setIsReloading(false);
+      }
+      return !prev;
+    });
+  }, [clearPendingVolumeCommit, zone3Filter]);
 
   const youColor = "#E8A87C";
   const volumeDisabled = zone3Filter !== "mostRated";
@@ -426,13 +479,21 @@ export default function TimelineGrid() {
     };
   }, []);
 
+  useEffect(() => {
+    return () => {
+      clearPendingVolumeCommit();
+    };
+  }, [clearPendingVolumeCommit]);
+
   // Smoothly scroll to You column when in You view; reset when back to Most Rated
   useEffect(() => {
     const bodyEl = bodyScrollRef.current;
     const headerEl = headerScrollRef.current;
     if (!bodyEl || !headerEl) return;
     if (zone3Filter === "you") {
-      const colWidth = 130;
+      const colWidth = parseFloat(
+        window.getComputedStyle(document.documentElement).getPropertyValue("--user-column-width")
+      ) || 140;
       const youColIndex = Math.max(0, youDisplayIndex);
       const target = Math.max(0, youColIndex * colWidth - bodyEl.clientWidth / 2 + colWidth / 2);
       bodyEl.scrollTo({ left: target, behavior: "smooth" });
@@ -447,16 +508,6 @@ export default function TimelineGrid() {
     <div className="main-content">
       <div className="zone3-layout">
         <div className="zone3-toolbar">
-          <InfoIconModal
-            title="Zone 3 Timeline"
-            steps={ZONE3_TIMELINE_INFO_STEPS}
-            modalId="zone3-timeline-info"
-            showButtonText={false}
-            iconSize={16}
-            iconColor="#FFA500"
-            buttonClassName="zone-header-info-btn"
-            ariaLabel="Zone 3 timeline information"
-          />
           <div className="toolbar-scale">
             {[{ id: "months", label: "M" }, { id: "years", label: "Y" }, { id: "halfDecades", label: "D" }].map((s) => (
               <button key={s.id} type="button" onClick={() => setTimeScale(s.id)} className={`toolbar-scale-btn ${timeScale === s.id ? "is-active" : ""}`}>{s.label}</button>
@@ -464,7 +515,7 @@ export default function TimelineGrid() {
           </div>
           <div className="toolbar-divider" />
           <div className="toolbar-filters">
-            {[{ id: "you", label: "You" }, { id: "mostRated", label: "Most Rated" }, { id: "genre", label: "Genre" }].map((f) => (
+            {[{ id: "you", label: "Me" }, { id: "mostRated", label: "Most Rated" }, { id: "genre", label: "Genre" }].map((f) => (
               <button key={f.id} type="button" onClick={() => handleFilterClick(f.id)} className={`toolbar-filter-btn ${isFilterActive(f.id) ? "is-active" : ""}`}>{f.label}</button>
             ))}
           </div>
@@ -480,6 +531,16 @@ export default function TimelineGrid() {
           <div className="toolbar-divider" />
           <button type="button" className={`toolbar-icon-btn ${showTopAlbums ? "is-active" : ""}`} onClick={() => setShowTopAlbums(!showTopAlbums)} title="Top Albums"><TrophyIcon /></button>
           <button type="button" className={`toolbar-icon-btn ${showVolume ? "is-active" : ""} ${volumeDisabled ? "is-disabled" : ""}`} onClick={handleVolumeToggle} disabled={volumeDisabled} title={volumeDisabled ? "Volume only available in Most Rated" : "Volume filter"}><VolumeIcon /></button>
+          <InfoIconModal
+            title="Zone 3 Timeline"
+            steps={ZONE3_TIMELINE_INFO_STEPS}
+            modalId="zone3-timeline-info"
+            showButtonText={false}
+            iconSize={ZONE3_INFO_ICON_SIZE}
+            iconColor="#FFA500"
+            buttonClassName="zone-header-info-btn zone3-toolbar-info-btn"
+            ariaLabel="Zone 3 timeline information"
+          />
           {showVolume && <InlineVolumeSlider value={volumeDraft} onChange={setVolumeDraft} onCommit={commitVolume} />}
           <div className="toolbar-spacer" />
           <div className="toolbar-add-user">
@@ -488,8 +549,8 @@ export default function TimelineGrid() {
                 user={{ ...youUser, avatar: youAvatarSrc }}
                 style={{ display: "inline-block" }}
               >
-                <div className="toolbar-avatar" style={{ background: `linear-gradient(135deg, ${youColor}, ${youColor}88)`, boxShadow: `0 0 8px ${youColor}44` }} title="You">
-                  {youAvatarSrc ? <img src={youAvatarSrc} alt="You" className="toolbar-avatar-img" loading="lazy" /> : "Y"}
+                <div className="toolbar-avatar" style={{ background: `linear-gradient(135deg, ${youColor}, ${youColor}88)`, boxShadow: `0 0 8px ${youColor}44` }} title="Me">
+                  {youAvatarSrc ? <img src={youAvatarSrc} alt="Me" className="toolbar-avatar-img" loading="lazy" referrerPolicy="no-referrer" /> : "M"}
                 </div>
               </UserHoverTarget>
             )}
@@ -501,9 +562,16 @@ export default function TimelineGrid() {
                   user={{ ...f, avatar: friendAvatarSrc, __avatarSrc: friendAvatarSrc, isPinnedFriend: true }}
                   style={{ display: "inline-block" }}
                 >
-                  <div className="toolbar-avatar toolbar-avatar--removable" style={{ background: `linear-gradient(135deg, ${f.color}, ${f.color}88)`, boxShadow: `0 0 8px ${f.color}44` }} onClick={() => onRemoveFriend(f.id)} title={`Remove ${f.name}`}>
-                    {friendAvatarSrc ? <img src={friendAvatarSrc} alt={f.name} className="toolbar-avatar-img" loading="lazy" /> : f.avatar}
-                  </div>
+                  <button
+                    type="button"
+                    className="toolbar-avatar toolbar-avatar--removable"
+                    style={{ background: `linear-gradient(135deg, ${f.color}, ${f.color}88)`, boxShadow: `0 0 8px ${f.color}44` }}
+                    onClick={() => onRemoveFriend(f.id)}
+                    title={`Remove ${f.name}`}
+                    aria-label={`Remove ${f.name}`}
+                  >
+                    {friendAvatarSrc ? <img src={friendAvatarSrc} alt={f.name} className="toolbar-avatar-img" loading="lazy" referrerPolicy="no-referrer" /> : f.avatar}
+                  </button>
                 </UserHoverTarget>
               );
             })}
@@ -519,7 +587,7 @@ export default function TimelineGrid() {
                           style={{ display: "inline-block" }}
                         >
                           <div className="toolbar-add-option-avatar" style={{ background: `linear-gradient(135deg, ${f.color}, ${f.color}88)` }}>
-                            {f.__avatarSrc ? <img src={f.__avatarSrc} alt={f.name} className="toolbar-add-option-avatar-img" loading="lazy" /> : f.avatar}
+                            {f.__avatarSrc ? <img src={f.__avatarSrc} alt={f.name} className="toolbar-add-option-avatar-img" loading="lazy" referrerPolicy="no-referrer" /> : f.avatar}
                           </div>
                         </UserHoverTarget>
                         <span className="toolbar-add-option-name">{f.name}</span>

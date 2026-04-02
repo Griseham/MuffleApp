@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 const INFO_MODAL_EVENT = "info-modal-change";
+const CLOSE_ANIMATION_MS = 260;
 
 export const InfoIcon = ({ size = 18, color = "#ffffff" }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -72,6 +73,7 @@ function StepCard({ step, isOpen, onToggle, iconColor }) {
                 color: "#FFA500",
                 cursor: "pointer",
                 fontSize: "0.95rem",
+                padding: 0,
               }}
             >
               {showAll ? "Show less" : "Show more"}
@@ -99,6 +101,9 @@ export default function InfoIconModal({
   const [openIndex, setOpenIndex] = useState(0);
   const [portalContainer, setPortalContainer] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
+  const [shouldRenderModal, setShouldRenderModal] = useState(false);
+  const closeTimerRef = useRef(null);
   const [uniqueModalId] = useState(
     () =>
       modalId ||
@@ -123,6 +128,9 @@ export default function InfoIconModal({
     setPortalContainer(container);
 
     return () => {
+      if (closeTimerRef.current) {
+        clearTimeout(closeTimerRef.current);
+      }
       if (document.body.contains(container)) {
         document.body.removeChild(container);
       }
@@ -146,18 +154,42 @@ export default function InfoIconModal({
 
   useEffect(() => {
     const handleModalChange = (event) => {
-      setIsModalOpen(event.detail === uniqueModalId);
+      const shouldOpen = event.detail === uniqueModalId;
+
+      if (closeTimerRef.current) {
+        clearTimeout(closeTimerRef.current);
+        closeTimerRef.current = null;
+      }
+
+      if (shouldOpen) {
+        setIsClosing(false);
+        setShouldRenderModal(true);
+        setIsModalOpen(true);
+      } else {
+        if (!isModalOpen && !shouldRenderModal) return;
+        setIsModalOpen(false);
+        setIsClosing(true);
+        closeTimerRef.current = setTimeout(() => {
+          setIsClosing(false);
+          setShouldRenderModal(false);
+          closeTimerRef.current = null;
+        }, CLOSE_ANIMATION_MS);
+      }
     };
 
     window.addEventListener(INFO_MODAL_EVENT, handleModalChange);
     return () => {
       window.removeEventListener(INFO_MODAL_EVENT, handleModalChange);
     };
-  }, [uniqueModalId]);
+  }, [uniqueModalId, isModalOpen, shouldRenderModal]);
 
   const handleOpenModal = (event) => {
     event.stopPropagation();
-    window.dispatchEvent(new CustomEvent(INFO_MODAL_EVENT, { detail: uniqueModalId }));
+    window.dispatchEvent(
+      new CustomEvent(INFO_MODAL_EVENT, {
+        detail: isModalOpen ? null : uniqueModalId,
+      })
+    );
   };
 
   const handleCloseModal = () => {
@@ -235,6 +267,7 @@ export default function InfoIconModal({
         onClick={handleOpenModal}
         className={`info-icon-button ${buttonClassName}`.trim()}
         aria-label={ariaLabel}
+        aria-expanded={isModalOpen}
         style={{
           display: "inline-flex",
           alignItems: "center",
@@ -261,7 +294,7 @@ export default function InfoIconModal({
       </button>
 
       {portalContainer &&
-        isModalOpen &&
+        shouldRenderModal &&
         createPortal(
           sidePanel ? (
             <div
@@ -277,7 +310,7 @@ export default function InfoIconModal({
                 overflowY: "auto",
                 backdropFilter: "blur(8px)",
                 zIndex: 15000,
-                animation: "slideInRight 0.3s ease-out",
+                animation: isClosing ? "slideOutRight 0.26s ease-in forwards" : "slideInRight 0.3s ease-out",
                 color: "white",
               }}
               onClick={(event) => event.stopPropagation()}
@@ -296,6 +329,7 @@ export default function InfoIconModal({
                 justifyContent: "center",
                 alignItems: "center",
                 zIndex: 11000,
+                animation: isClosing ? "backdropFadeOut 0.2s ease-in forwards" : "backdropFadeIn 0.2s ease-out",
               }}
               onClick={handleCloseModal}
             >
@@ -311,7 +345,7 @@ export default function InfoIconModal({
                   border: "1px solid rgba(255, 255, 255, 0.3)",
                   position: "relative",
                   color: "white",
-                  animation: "modalFadeIn 0.3s ease-out",
+                  animation: isClosing ? "modalFadeOut 0.2s ease-in forwards" : "modalFadeIn 0.3s ease-out",
                 }}
                 onClick={(event) => event.stopPropagation()}
               >
@@ -338,9 +372,29 @@ export default function InfoIconModal({
           to { opacity: 1; transform: translateY(0); }
         }
 
+        @keyframes modalFadeOut {
+          from { opacity: 1; transform: translateY(0); }
+          to { opacity: 0; transform: translateY(20px); }
+        }
+
+        @keyframes backdropFadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+
+        @keyframes backdropFadeOut {
+          from { opacity: 1; }
+          to { opacity: 0; }
+        }
+
         @keyframes slideInRight {
           from { transform: translateX(100%); opacity: 0; }
           to { transform: translateX(0); opacity: 1; }
+        }
+
+        @keyframes slideOutRight {
+          from { transform: translateX(0); opacity: 1; }
+          to { transform: translateX(100%); opacity: 0; }
         }
       `}</style>
     </>
