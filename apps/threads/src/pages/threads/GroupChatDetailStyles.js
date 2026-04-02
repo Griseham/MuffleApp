@@ -73,9 +73,9 @@ const GroupChatDetailStyles = {
   },
 
   volumeNumber: {
-    color: '#ff69b4',
+    color: '#10b981',
     fontWeight: 700,
-    fontSize: '18px',
+    fontSize: '16px',
   },
 
   // =========================
@@ -179,9 +179,9 @@ const GroupChatDetailStyles = {
 
   volumeChange: {
     marginLeft: 'auto',
-    color: '#00ff88',
-    fontSize: '12px',
-    fontWeight: 500,
+    color: '#10b981',
+    fontSize: '15px',
+    fontWeight: 700,
   },
 
   genreSection: {
@@ -199,15 +199,15 @@ const GroupChatDetailStyles = {
   genreTag: {
     padding: '4px 10px',
     borderRadius: '6px',
-    fontSize: '11px',
+    fontSize: '13px',
     fontWeight: 600,
-    color: '#000',
+    color: '#fff',
   },
 
   genreChange: {
-    color: '#00ff88',
-    fontSize: '12px',
-    fontWeight: 500,
+    color: '#10b981',
+    fontSize: '13px',
+    fontWeight: 700,
   },
 
   // =========================

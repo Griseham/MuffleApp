@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import { FiArrowLeft, FiHeart, FiMessageCircle, FiBookmark, FiShare, FiPlay, FiPause } from "react-icons/fi";
 import { getAvatarSrc } from '../posts/postCardUtils';
 import { Music, Users, ChevronUp, ChevronDown } from 'lucide-react';
+import InfoIconModal from '../../components/InfoIconModal';
 import { toApiOriginUrl } from "../../utils/api";
 
 function normalizeMediaUrl(url = "") {
@@ -36,23 +37,44 @@ export default function TikTokModal({
   startIndex = 0, 
   isInitialLoading = false,
   threadTitle = "Thread",
-  onNavigateToThread
+  onNavigateToThread,
+  titleInfoModalTitle = "",
+  titleInfoSteps = []
 }) {
+  const hasTitleInfo = Array.isArray(titleInfoSteps) && titleInfoSteps.length > 0;
+
+  const getStableHash = (value) => {
+    if (!value) return 0;
+    let hash = 0;
+    const str = String(value);
+    for (let i = 0; i < str.length; i++) {
+      hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return hash;
+  };
+
   // Generate consistent engagement values based on snippet ID
   const getEngagementValues = (snippetId) => {
     if (!snippetId) return { likes: 50, comments: 2, bookmarks: 14 };
-    
-    let hash = 0;
-    const idStr = snippetId.toString();
-    for (let i = 0; i < idStr.length; i++) {
-      hash = idStr.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    
+
+    const hash = getStableHash(snippetId);
     const likes = Math.abs(hash % 200) + 50;
     const commentsCount = Math.abs(hash % 20) + 2;
     const bookmarks = Math.abs(hash % 20) + 14;
     
     return { likes, comments: commentsCount, bookmarks };
+  };
+
+  // Keep side-panel rating stats stable before real values exist.
+  const getStableRatingFallbacks = (snippetId) => {
+    if (!snippetId) {
+      return { totalRated: 120, avgRating: 64 };
+    }
+
+    const hash = Math.abs(getStableHash(`rating:${snippetId}`));
+    const totalRated = (hash % 500) + 50; // 50-549
+    const avgRating = ((Math.floor(hash / 11) % 71) + 20); // 20-90
+    return { totalRated, avgRating };
   };
 
   const [currentIndex, setCurrentIndex] = useState(startIndex);
@@ -294,9 +316,15 @@ export default function TikTokModal({
     const currentSnippet = snippets[currentIndex];
     if (!currentSnippet || !audioRef.current) return;
 
+    const currentCommentId = currentSnippet?.commentId || currentSnippet?.id;
+    const relatedComment = comments.find((comment) => comment?.id === currentCommentId);
+    const relatedCommentSnippet = relatedComment?.snippet || {};
+
     const previewUrl = normalizeMediaUrl(
       currentSnippet.snippetData?.attributes?.previews?.[0]?.url ||
       currentSnippet.previewUrl ||
+      relatedCommentSnippet?.snippetData?.attributes?.previews?.[0]?.url ||
+      relatedCommentSnippet?.previewUrl ||
       ""
     );
 
@@ -354,8 +382,9 @@ export default function TikTokModal({
       } else if (e.key === 'Escape') {
         handleClose();
       } else if (e.key === ' ') {
-        if (currentSnippet?.commentId) {
-          togglePlay(currentSnippet.commentId);
+        const snippetId = currentSnippet?.commentId || currentSnippet?.id;
+        if (snippetId) {
+          togglePlay(snippetId);
         }
         e.preventDefault();
       }
@@ -367,10 +396,32 @@ export default function TikTokModal({
   
   // Get current snippet
   const currentSnippet = snippets[currentIndex] || null;
+  const currentSnippetCommentId = currentSnippet?.commentId || currentSnippet?.id || null;
+  const currentRelatedComment = currentSnippetCommentId
+    ? comments.find((comment) => comment?.id === currentSnippetCommentId)
+    : null;
+  const currentRelatedCommentSnippet = currentRelatedComment?.snippet || null;
+  const currentSnippetTrackTitle =
+    currentSnippet?.snippetData?.attributes?.name ||
+    currentSnippet?.songName ||
+    currentSnippet?.name ||
+    currentRelatedCommentSnippet?.snippetData?.attributes?.name ||
+    currentRelatedCommentSnippet?.songName ||
+    currentRelatedCommentSnippet?.name ||
+    "Unknown Track";
+  const currentSnippetArtistName =
+    currentSnippet?.snippetData?.attributes?.artistName ||
+    currentSnippet?.artistName ||
+    currentRelatedCommentSnippet?.snippetData?.attributes?.artistName ||
+    currentRelatedCommentSnippet?.artistName ||
+    "Unknown Artist";
   const currentArtworkUrl = formatArtworkUrl(
     currentSnippet?.snippetData?.attributes?.artwork?.url ||
     currentSnippet?.artworkUrl ||
     currentSnippet?.artwork ||
+    currentRelatedCommentSnippet?.snippetData?.attributes?.artwork?.url ||
+    currentRelatedCommentSnippet?.artworkUrl ||
+    currentRelatedCommentSnippet?.artwork ||
     "",
     400
   );
@@ -468,9 +519,16 @@ export default function TikTokModal({
     const displayedUserRating = Math.round(
       isHovering && !currentSnippet.didRate ? hoverRating : (currentSnippet.userRating || 0)
     );
-    
-    const totalRated = currentSnippet?.totalRatings || Math.floor(Math.random() * 500) + 50;
-    const avgRating = Math.round(currentSnippet.avgRating || Math.floor(Math.random() * 85) + 15);
+    const snippetId = currentSnippet?.commentId || currentSnippet?.id;
+    const fallbackRatings = getStableRatingFallbacks(snippetId);
+    const totalRated =
+      Number.isFinite(currentSnippet?.totalRatings) && currentSnippet.totalRatings > 0
+        ? Math.round(currentSnippet.totalRatings)
+        : fallbackRatings.totalRated;
+    const avgRating =
+      Number.isFinite(currentSnippet?.avgRating) && currentSnippet.avgRating > 0
+        ? Math.round(currentSnippet.avgRating)
+        : fallbackRatings.avgRating;
     
     return (
       <div style={styles.sidePanel}>
@@ -601,7 +659,18 @@ export default function TikTokModal({
               <span style={styles.headerText}>
                 {isInitialLoading ? "Loading songs..." : "No snippets available"}
               </span>
-              <div style={{ width: '36px' }} />
+              <div style={styles.headerRightSlot}>
+                {hasTitleInfo ? (
+                  <InfoIconModal
+                    title={titleInfoModalTitle || "Information"}
+                    iconSize={14}
+                    showButtonText={false}
+                    steps={titleInfoSteps}
+                  />
+                ) : (
+                  <div style={styles.headerRightSpacer} />
+                )}
+              </div>
             </div>
             <div style={styles.emptyState}>
               {isInitialLoading ? (
@@ -665,7 +734,18 @@ export default function TikTokModal({
                 {currentSnippet?.threadTitle || threadTitle || "TikTok View"}
               </span>
             </div>
-            <div style={{ width: '36px' }} />
+            <div style={styles.headerRightSlot}>
+              {hasTitleInfo ? (
+                <InfoIconModal
+                  title={titleInfoModalTitle || "Information"}
+                  iconSize={14}
+                  showButtonText={false}
+                  steps={titleInfoSteps}
+                />
+              ) : (
+                <div style={styles.headerRightSpacer} />
+              )}
+            </div>
           </div>
 
           {loading ? (
@@ -692,7 +772,7 @@ export default function TikTokModal({
               {/* Album Art Container */}
               <div 
                 style={styles.albumArtContainer}
-                onClick={() => togglePlay(currentSnippet?.commentId)}
+                onClick={() => togglePlay(currentSnippet?.commentId || currentSnippet?.id)}
               >
                 {/* Gradient Background Effect */}
                 <div style={styles.albumArtGradient} />
@@ -728,10 +808,10 @@ export default function TikTokModal({
                   {currentSnippet?.genre || "#music"}
                 </div>
                 <h2 style={styles.trackTitle}>
-                  {currentSnippet?.snippetData?.attributes?.name || "Unknown Track"}
+                  {currentSnippetTrackTitle}
                 </h2>
                 <p style={styles.artistName}>
-                  {currentSnippet?.snippetData?.attributes?.artistName || "Unknown Artist"}
+                  {currentSnippetArtistName}
                 </p>
               </div>
               
@@ -891,6 +971,17 @@ const styles = {
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
+  },
+  headerRightSlot: {
+    width: '36px',
+    minWidth: '36px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+  },
+  headerRightSpacer: {
+    width: '36px',
+    height: '36px',
   },
 
   // Content Container

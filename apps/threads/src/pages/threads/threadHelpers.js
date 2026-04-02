@@ -31,8 +31,9 @@ export const createExampleData = () => {
     id: 'example_comment_001',
     author: 'Demo Example',
     body: 'Example content',
-    likeCount: 15,
-    commentCount: 3,
+    likeCount: 542,
+    commentCount: 68,
+    interactionCount: 914,
     createdUtc: Date.now() / 1000 - 3600,
     replies: []
   };
@@ -51,6 +52,96 @@ export const createExampleData = () => {
   };
 
   return { exampleComment, exampleSnippet };
+};
+
+const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+
+const deterministicRange = (seedInput, min, max) => {
+  const seed = Math.abs(generateHash(seedInput));
+  const span = max - min + 1;
+  return min + (seed % span);
+};
+
+export const getCommunitySnippetStats = (snippetId = "", hintAverage = null) => {
+  const normalizedId = String(snippetId || "snippet");
+  const totalRatings = deterministicRange(`${normalizedId}:ratings`, 180, 1250);
+  const fallbackAverage = deterministicRange(`${normalizedId}:average`, 54, 84);
+  const avgRating = Number.isFinite(hintAverage)
+    ? clamp(Math.round(hintAverage), 25, 98)
+    : fallbackAverage;
+
+  return { totalRatings, avgRating };
+};
+
+export const getCommentMetrics = (comment = {}, hasSnippet = false) => {
+  const seedBase =
+    `${comment?.id || "comment"}:${comment?.author || "unknown"}:${(comment?.body || "").slice(0, 48)}`;
+
+  const fallbackLikes = hasSnippet
+    ? deterministicRange(`${seedBase}:likes:snippet`, 320, 860)
+    : deterministicRange(`${seedBase}:likes:plain`, 70, 230);
+  const fallbackReplies = hasSnippet
+    ? deterministicRange(`${seedBase}:replies:snippet`, 22, 140)
+    : deterministicRange(`${seedBase}:replies:plain`, 6, 45);
+
+  const likeCount = Number.isFinite(comment?.likeCount) && comment.likeCount > 0
+    ? Math.round(comment.likeCount)
+    : fallbackLikes;
+
+  const commentCount = Number.isFinite(comment?.commentCount) && comment.commentCount > 0
+    ? Math.round(comment.commentCount)
+    : fallbackReplies;
+
+  const interactionFallback = Math.round((likeCount * 0.65) + (commentCount * 2.6) + (hasSnippet ? 180 : 45));
+  const interactionCount = Number.isFinite(comment?.interactionCount) && comment.interactionCount > 0
+    ? Math.round(comment.interactionCount)
+    : interactionFallback;
+
+  return {
+    ...comment,
+    likeCount,
+    commentCount,
+    interactionCount,
+  };
+};
+
+export const spreadScatterPoints = (points = []) => {
+  const MIN_RATING_COUNT_GAP = 42;
+  const MIN_AVERAGE_GAP = 4;
+  const placed = [];
+
+  return points.map((point, index) => {
+    let ratingCount = Number.isFinite(point?.ratingCount) ? Math.max(1, Math.round(point.ratingCount)) : 1;
+    let average = Number.isFinite(point?.average) ? clamp(Math.round(point.average), 20, 98) : 50;
+    let attempts = 0;
+
+    while (
+      placed.some(
+        (candidate) =>
+          Math.abs(candidate.ratingCount - ratingCount) < MIN_RATING_COUNT_GAP &&
+          Math.abs(candidate.average - average) < MIN_AVERAGE_GAP
+      ) &&
+      attempts < 16
+    ) {
+      const direction = attempts % 2 === 0 ? 1 : -1;
+      const step = Math.floor(attempts / 2) + 1;
+      ratingCount += direction * (16 + (step * 9));
+      average += direction * ((step % 3) + 1);
+      average = clamp(average, 20, 98);
+      ratingCount = Math.max(1, ratingCount);
+      attempts += 1;
+    }
+
+    const nextPoint = {
+      ...point,
+      ratingCount: Math.round(ratingCount),
+      average: Math.round(average),
+      _scatterOrder: index,
+    };
+
+    placed.push(nextPoint);
+    return nextPoint;
+  });
 };
 
 export const formatSnippetData = (snippet, _relatedComment, _comments) => {
@@ -84,25 +175,28 @@ export const processScatterData = (snippets, comments, getSnippetId) => {
   const ratedSnippets = snippets.filter(
     snippet => snippet.userRating != null || snippet.avgRating != null
   );
-  
-  return ratedSnippets.map((snippet) => {
+
+  const scatter = ratedSnippets.map((snippet) => {
     const snippetId = getSnippetId(snippet);
     const relatedComment = comments.find(c => c.id === snippetId);
     const commentAuthor = relatedComment?.author || snippet.author || "Unknown";
-    
-    const randomRatingCount = getRandomRatingCount(snippetId);
+    const communityStats = getCommunitySnippetStats(snippetId, snippet.avgRating);
     
     return {
       snippetId,
       username: commentAuthor,
       userAvatar: `/assets/image${(Math.abs(generateHash(commentAuthor)) % 1000) + 1}.png`,
-      ratingCount: snippet.totalRatings || randomRatingCount,
-      // FIXED: Use avgRating to match the vertical graph's average marker
-      average: snippet.avgRating ?? 50,
-      // Also include userRating for reference if needed
+      ratingCount: Number.isFinite(snippet.totalRatings) && snippet.totalRatings > 0
+        ? Math.round(snippet.totalRatings)
+        : communityStats.totalRatings,
+      average: Number.isFinite(snippet.avgRating)
+        ? Math.round(snippet.avgRating)
+        : (Number.isFinite(snippet.userRating) ? Math.round(snippet.userRating) : communityStats.avgRating),
       userRating: snippet.userRating ?? null,
     };
   });
+
+  return spreadScatterPoints(scatter);
 };
 
 /**
@@ -137,14 +231,12 @@ export const processParameterScatterData = (snippets, comments, parameters, getS
     const commentAuthor = relatedComment?.author || snippet.author || "Unknown";
     const parameter = relatedComment?.parameter || snippet.parameter || null;
     
-    const randomRatingCount = getRandomRatingCount(snippetId);
-    
     return {
       snippetId,
       username: commentAuthor,
       userAvatar: `/assets/image${(Math.abs(generateHash(commentAuthor)) % 1000) + 1}.png`,
-      ratingCount: snippet.totalRatings || randomRatingCount,
-      average: snippet.avgRating ?? 50,
+      ratingCount: Number.isFinite(snippet.totalRatings) ? snippet.totalRatings : 0,
+      average: snippet.avgRating ?? snippet.userRating ?? 0,
       userRating: snippet.userRating ?? null,
       parameter: parameter,
       color: parameter ? colorMap[parameter] : '#8b5cf6',

@@ -1,6 +1,5 @@
 // Custom hook for audio playback and rating management
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { getAverageRating, getRandomRatingCount } from './threadHelpers';
 
 export const useAudioRating = (snippetRecs, setSnippetRecs, getSnippetId) => {
   // Audio state
@@ -32,19 +31,26 @@ export const useAudioRating = (snippetRecs, setSnippetRecs, getSnippetId) => {
   const handleUserRate = useCallback((snippetObj, ratingVal) => {
     const realId = getSnippetId(snippetObj);
     if (!realId) return;
-  
-    const randomAvg = getAverageRating(realId);
-    const totalRatingsCount = getRandomRatingCount(realId);
+
+    let nextAvg = ratingVal;
+    let nextTotalRatings = 1;
     
     setSnippetRecs(prev => {
       const updatedRecs = prev.map(s => {
         const sId = getSnippetId(s);
         if (sId === realId) {
+          const currentTotalRatings = Number.isFinite(s.totalRatings) ? s.totalRatings : 0;
+          const currentAvgRating = Number.isFinite(s.avgRating) ? s.avgRating : null;
+          nextTotalRatings = currentTotalRatings + 1;
+          nextAvg = currentAvgRating != null && currentTotalRatings > 0
+            ? Math.round(((currentAvgRating * currentTotalRatings) + ratingVal) / nextTotalRatings)
+            : ratingVal;
+
           return {
             ...s,
             userRating: ratingVal,
-            avgRating: randomAvg,
-            totalRatings: totalRatingsCount,
+            avgRating: nextAvg,
+            totalRatings: nextTotalRatings,
             didRate: true
           };
         }
@@ -57,8 +63,8 @@ export const useAudioRating = (snippetRecs, setSnippetRecs, getSnippetId) => {
     setActiveSnippet(prev => ({
       ...prev,
       userRating: ratingVal,
-      avgRating: randomAvg,
-      totalRatings: totalRatingsCount,
+      avgRating: nextAvg,
+      totalRatings: nextTotalRatings,
       didRate: true
     }));
   }, [setSnippetRecs, getSnippetId]);

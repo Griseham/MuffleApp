@@ -6,6 +6,162 @@
   scrollbar-width: none;
 }
 
+:root {
+  --threads-home-sidebar-width: 360px;
+}
+
+.threads-home-layout {
+  display: flex;
+  justify-content: center;
+  min-height: 100vh;
+  position: relative;
+  padding: 20px 0 32px;
+}
+
+.threads-home-shell {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0;
+  width: 100%;
+  max-width: 1800px;
+  padding: 0 16px;
+  padding-left: 0;
+}
+
+.threads-home-sidebar {
+  width: var(--threads-home-sidebar-width);
+  min-width: var(--threads-home-sidebar-width);
+  max-width: var(--threads-home-sidebar-width);
+  min-height: calc(100vh - 40px);
+  position: sticky;
+  top: 20px;
+  height: calc(100vh - 40px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 28px 0;
+  background: transparent;
+  backdrop-filter: none;
+  border-right: none;
+  z-index: 2;
+  border-radius: 0;
+}
+
+.threads-home-sidebar__logo {
+  align-items: center;
+  display: flex;
+  padding: 0 20px 8px;
+  border-bottom: 0.5px solid rgba(255, 255, 255, 0.04);
+  margin-bottom: 28px;
+  justify-content: flex-start;
+}
+
+.threads-home-sidebar__logo-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.threads-home-sidebar__logo-circle {
+  width: 130px;
+  height: 130px;
+  background-image: url('/assets/MuflLogo.png');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  border-radius: 50%;
+  margin-right: 0;
+  margin-bottom: 8px;
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.1),
+    0 8px 16px rgba(0, 0, 0, 0.1);
+}
+
+.threads-home-sidebar__nav-section {
+  margin-bottom: 32px;
+}
+
+.threads-home-sidebar__nav-header {
+  padding: 8px 32px;
+  font-size: 24px;
+  font-weight: 700;
+  color: #f5f5f7;
+  margin-bottom: 12px;
+  letter-spacing: -0.2px;
+}
+
+.threads-home-sidebar__nav-item,
+.threads-home-sidebar__nav-sub-item {
+  appearance: none;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  padding: 18px 32px;
+  justify-content: flex-start;
+  border: none;
+  background: transparent;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', sans-serif;
+  font-weight: 600;
+  color: #e0e0e5;
+  font-size: 22px;
+  letter-spacing: -0.2px;
+  text-align: left;
+  cursor: pointer;
+  transition: color 0.15s ease;
+  border-radius: 0;
+}
+
+.threads-home-sidebar__nav-sub-item {
+  padding: 18px 32px 18px 64px;
+  color: #a0a0a8;
+}
+
+.threads-home-sidebar__nav-item:hover:not(:disabled),
+.threads-home-sidebar__nav-sub-item:hover:not(:disabled) {
+  color: #ffffff;
+}
+
+.threads-home-sidebar__nav-item.active,
+.threads-home-sidebar__nav-sub-item.active {
+  color: #ffffff;
+  background: radial-gradient(
+    ellipse 100% 100% at 50% 50%,
+    rgba(255, 255, 255, 0.08) 0%,
+    transparent 70%
+  );
+}
+
+.threads-home-sidebar__nav-sub-item.muted,
+.threads-home-sidebar__nav-sub-item[data-content="park"] {
+  color: #6d6d70 !important;
+  cursor: default !important;
+}
+
+.threads-home-sidebar__nav-sub-item.muted:hover,
+.threads-home-sidebar__nav-sub-item[data-content="park"]:hover {
+  color: #6d6d70 !important;
+}
+
+.threads-home-sidebar__nav-item:disabled,
+.threads-home-sidebar__nav-sub-item:disabled {
+  cursor: not-allowed;
+  opacity: 1;
+}
+
+.threads-home-main {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 1000px;
+}
+
+.threads-home-rightpanel {
+  position: sticky;
+  top: 20px;
+  align-self: flex-start;
+  flex-shrink: 0;
+  z-index: 20;
+}
+
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
@@ -43,7 +199,7 @@
 }
 
 .feed-content-overlay {
-  margin-top: -400px;  /* Increased negative margin to pull content up */
+  margin-top: -400px;
   position: relative;
   z-index: 10;
   border-top-left-radius: 30px;
@@ -57,7 +213,6 @@
 }
 
 .cosmic-gradient {
-  /* Removed the opacity gradient to keep stars fully visible */
   background: none; 
   position: absolute;
   bottom: 0;
@@ -101,7 +256,7 @@
   color: white;
   margin: 0;
   text-align: center;
-  padding: 0;  /* Removed top padding */
+  padding: 0;
   text-shadow: 0 2px 20px rgba(58, 91, 160, 0.5);
 }
 
@@ -119,27 +274,57 @@
   padding: 0 20px;
 }
 
+.feed-content-body {
+  position: relative;
+  min-height: 260px;
+}
+
+.feed-content-main {
+  transition: opacity 220ms ease, filter 220ms ease;
+}
+
+.feed-content-body--loading .feed-content-main {
+  opacity: 0.35;
+  filter: grayscale(0.35);
+  pointer-events: none;
+}
+
+.feed-loading-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 1rem;
+  background: rgba(103, 114, 129, 0.34);
+  backdrop-filter: blur(3px);
+}
+
 /* Loading spinner */
 .loading-container {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 40px 0;
+  justify-content: center;
+  min-height: 220px;
+  color: #d0d7de;
 }
 
 .spinner {
-  width: 40px;
-  height: 40px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
-  border: 3px solid rgba(58, 91, 160, 0.2);
-  border-top-color: #3a5ba0;
-  animation: spin 1s linear infinite;
+  border: 4px solid rgba(208, 215, 222, 0.22);
+  border-top-color: #d0d7de;
+  animation: spin 0.9s linear infinite;
 }
 
 .spinner-text {
-  color: #a0aec0;
-  margin-top: 16px;
-  font-size: 16px;
+  color: #e6edf3;
+  margin-top: 14px;
+  font-size: 1rem;
+  font-weight: 600;
 }
 
 /* Empty state */
@@ -209,4 +394,32 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
+}
+
+@media (max-width: 1360px) {
+  .threads-home-sidebar {
+    display: none;
+  }
+
+  .threads-home-shell {
+    max-width: 1480px;
+    padding-left: 16px;
+  }
+}
+
+@media (max-width: 1180px) {
+  .threads-home-shell {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .threads-home-main {
+    max-width: none;
+  }
+
+  .threads-home-rightpanel {
+    position: relative;
+    top: 0;
+    width: 100%;
+  }
 }

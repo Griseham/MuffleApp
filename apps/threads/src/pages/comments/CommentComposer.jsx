@@ -1,9 +1,13 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Play, Music, Pause, X, Search, Send, Disc } from 'lucide-react';
 import InfoIconModal from "../InfoIconModal";
 import { validateAndSanitizeInput, sanitizeSearchQuery, checkRateLimit } from '../../utils/security';
-import { getAvatarForUser } from '../../utils/avatarService';
 import { buildApiUrl } from '../../utils/api';
+import {
+  CURRENT_USER_AVATAR,
+  CURRENT_USER_DISPLAY_NAME,
+  CURRENT_USER_USERNAME,
+} from '../../utils/currentUser';
 
 const DEFAULT_ARTWORK = '/assets/default-artist.png';
 
@@ -63,11 +67,57 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
   const [selectedSong, setSelectedSong] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [previewingSongId, setPreviewingSongId] = useState(null);
-  const [audioElement, setAudioElement] = useState(null);
   
   // Refs
   const textareaRef = useRef(null);
   const searchInputRef = useRef(null);
+  const audioRef = useRef(null);
+  const searchAbortControllerRef = useRef(null);
+  const latestSearchRequestRef = useRef(0);
+
+  const handleAudioEnded = useCallback(() => {
+    setIsPlaying(false);
+    setPreviewingSongId(null);
+  }, []);
+
+  const getAudioElement = useCallback(() => {
+    let audio = audioRef.current;
+    if (!audio) {
+      audio = new Audio();
+      audio.addEventListener('ended', handleAudioEnded);
+      audioRef.current = audio;
+    }
+
+    return audio;
+  }, [handleAudioEnded]);
+
+  const stopAudioPlayback = useCallback((resetPreviewState = false) => {
+    const audio = audioRef.current;
+    if (audio) {
+      audio.pause();
+      audio.currentTime = 0;
+    }
+
+    if (resetPreviewState) {
+      setIsPlaying(false);
+      setPreviewingSongId(null);
+    }
+  }, []);
+
+  const abortPendingSearch = useCallback(() => {
+    latestSearchRequestRef.current += 1;
+
+    const controller = searchAbortControllerRef.current;
+    if (controller) {
+      controller.abort();
+      searchAbortControllerRef.current = null;
+    }
+  }, []);
+
+  const cancelPendingSearch = useCallback(() => {
+    abortPendingSearch();
+    setIsSearching(false);
+  }, [abortPendingSearch]);
   
   // Function to handle TikTok modal toggle
   const handleOpenTikTokModal = () => {
@@ -80,6 +130,7 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
   const handleMusicSearchToggle = () => {
     setShowSongSearch(!showSongSearch);
     if (!showSongSearch) {
+      cancelPendingSearch();
       setSearchQuery('');
       setSearchResults([]);
       // Focus the search input when opening
@@ -90,10 +141,8 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
       }, 100);
     } else {
       // Stop audio if playing when closing
-      if (audioElement && isPlaying) {
-        audioElement.pause();
-        setIsPlaying(false);
-      }
+      cancelPendingSearch();
+      stopAudioPlayback(true);
     }
   };
 
@@ -104,10 +153,8 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
     setPreviewingSongId(null);
     
     // Stop audio if playing when song is selected
-    if (audioElement && isPlaying) {
-      audioElement.pause();
-      setIsPlaying(false);
-    }
+    cancelPendingSearch();
+    stopAudioPlayback(true);
   };
 
   // Function to handle song preview
@@ -115,26 +162,17 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
     const previewUrl = song?.attributes?.previews?.[0]?.url;
     if (!previewUrl) return;
     
+    const audio = getAudioElement();
+
     // If already playing this song, pause it
-    if (isPlaying && audioElement && song.id === previewingSongId) {
-      audioElement.pause();
-      setIsPlaying(false);
-      setPreviewingSongId(null);
+    if (isPlaying && song.id === previewingSongId) {
+      stopAudioPlayback(true);
       return;
     }
     
-    // Create or update audio element
-    let audio = audioElement;
-    if (!audio) {
-      audio = new Audio(previewUrl);
-      audio.addEventListener('ended', () => {
-        setIsPlaying(false);
-        setPreviewingSongId(null);
-      });
-      setAudioElement(audio);
-    } else {
-      audio.src = previewUrl;
-    }
+    audio.pause();
+    audio.currentTime = 0;
+    audio.src = previewUrl;
     
     // Play the audio
     audio.play().then(() => {
@@ -149,68 +187,102 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
   // Clear selected song
   const clearSelectedSong = () => {
     // Stop audio if playing
-    if (audioElement && isPlaying) {
-      audioElement.pause();
-      setIsPlaying(false);
-    }
-    setPreviewingSongId(null);
+    stopAudioPlayback(true);
     setSelectedSong(null);
   };
 
   // Function to handle search
-  const handleSearch = async () => {
-    if (!searchQuery.trim()) return;
-    
+  const handleSearch = useCallback(async (query) => {
+    if (!query.trim()) {
+      cancelPendingSearch();
+      setSearchResults([]);
+      return;
+    }
+
+    abortPendingSearch();
+    const requestId = latestSearchRequestRef.current + 1;
+    latestSearchRequestRef.current = requestId;
+
     // Rate limiting check
     if (!checkRateLimit('music_search', 20, 60000)) {
+      setIsSearching(false);
       return;
     }
     
     // Sanitize search query
-    const sanitizedQuery = sanitizeSearchQuery(searchQuery);
+    const sanitizedQuery = sanitizeSearchQuery(query);
     if (!sanitizedQuery) {
+      setSearchResults([]);
+      setIsSearching(false);
       return;
     }
-    
+
+    const controller = new AbortController();
+    searchAbortControllerRef.current = controller;
+
     setIsSearching(true);
     try {
-      const resp = await fetch(`${buildApiUrl("/apple-music-search")}?query=${encodeURIComponent(sanitizedQuery)}`);
+      const resp = await fetch(`${buildApiUrl("/apple-music-search")}?query=${encodeURIComponent(sanitizedQuery)}`, {
+        signal: controller.signal,
+      });
       const data = await resp.json();
-      
+
+      if (controller.signal.aborted || latestSearchRequestRef.current !== requestId) {
+        return;
+      }
+
       if (data.success && data.data) {
         const items = Array.isArray(data.data) ? data.data : [data.data];
         setSearchResults(items);
       } else {
         setSearchResults([]);
       }
-    } catch {
-      setSearchResults([]);
+    } catch (error) {
+      if (error?.name === 'AbortError') {
+        return;
+      }
+      if (latestSearchRequestRef.current === requestId) {
+        setSearchResults([]);
+      }
     } finally {
-      setIsSearching(false);
+      if (searchAbortControllerRef.current === controller) {
+        searchAbortControllerRef.current = null;
+      }
+      if (!controller.signal.aborted && latestSearchRequestRef.current === requestId) {
+        setIsSearching(false);
+      }
     }
-  };
+  }, [abortPendingSearch, cancelPendingSearch]);
   
   // Debounced search as user types
   useEffect(() => {
     if (!searchQuery.trim()) {
+      cancelPendingSearch();
       setSearchResults([]);
       return;
     }
     
     const debounceTimer = setTimeout(() => {
-      handleSearch();
+      handleSearch(searchQuery);
     }, 300); // Reduced to 300ms for faster response
     
     return () => clearTimeout(debounceTimer);
-  }, [searchQuery]);
+  }, [searchQuery, handleSearch, cancelPendingSearch]);
 
   useEffect(() => {
     return () => {
-      if (audioElement) {
-        audioElement.pause();
+      abortPendingSearch();
+
+      const audio = audioRef.current;
+      if (audio) {
+        audio.pause();
+        audio.removeEventListener('ended', handleAudioEnded);
+        audio.src = '';
+        audio.load();
+        audioRef.current = null;
       }
     };
-  }, [audioElement]);
+  }, [abortPendingSearch, handleAudioEnded]);
 
   // Auto-resize the textarea as user types
   const handleInput = (e) => {
@@ -270,7 +342,10 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
     // Create a new comment object
     const newComment = {
       id: `temp_${Date.now()}`,
-      author: 'You',
+      author: CURRENT_USER_DISPLAY_NAME,
+      displayName: CURRENT_USER_DISPLAY_NAME,
+      username: CURRENT_USER_USERNAME,
+      avatar: CURRENT_USER_AVATAR,
       body: validation.sanitized,
       createdUtc: Date.now() / 1000,
       likes: 0,
@@ -289,12 +364,13 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
     }
     
     // Reset the input and search state
+    cancelPendingSearch();
+    stopAudioPlayback(true);
     setComment('');
     setSelectedSong(null);
     setSearchQuery('');
     setSearchResults([]);
     setShowSongSearch(false);
-    setPreviewingSongId(null);
     
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
@@ -308,8 +384,8 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
         {/* User Avatar */}
         <div style={styles.avatarContainer}>
           <img
-            src={getAvatarForUser('You')}
-            alt="Your avatar"
+            src={CURRENT_USER_AVATAR}
+            alt="Me avatar"
             style={styles.avatar}
           />
         </div>
@@ -378,19 +454,15 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
       <Disc size={18} color="#fff" />
     </button>
     <InfoIconModal
-      title="TikTok Modal"
+      modalId="home-comment-composer-snippets-info"
+      title="Snippets"
       iconSize={14}
       showButtonText={false}
       steps={[
         {
           icon: <Disc size={18} color="#a9b6fc" />,
-          title: "TikTok Style Interface",
-          content: "TikTok style interface where users can scroll through music recommendations from all the active threads throughout the entire app"
-        },
-        {
-          icon: <Search size={18} color="#a9b6fc" />,
-          title: "Join Threads",
-          content: "Title of the thread where this song recommendations came from, click it to join the thread"
+          title: "Snippets",
+          content: "Quickly scroll through recommended songs in threads throughout the app"
         }
       ]}
     />
@@ -409,14 +481,15 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
       <Music size={18} color={showSongSearch ? "#fff" : "#5b6fe8"} />
     </button>
     <InfoIconModal
-      title="Add a Song"
+      modalId="home-comment-composer-music-info"
+      title="Add music"
       iconSize={14}
       showButtonText={false}
       steps={[
         {
           icon: <Music size={18} color="#a9b6fc" />,
-          title: "Apple Music API",
-          content: "Add a song to your post by using the Apple Music API"
+          title: "Add music",
+          content: "Add songs using Apple music API or downloaded content from your device."
         }
       ]}
     />

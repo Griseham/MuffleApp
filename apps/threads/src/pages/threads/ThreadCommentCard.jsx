@@ -7,17 +7,27 @@ import {
   Play,
   Pause,
   Users,
+  Activity,
   Music,
   BarChart3
 } from 'lucide-react';
-import InfoIconModal from '../InfoIconModal';
+import InfoIconModal from '../../components/InfoIconModal';
 import { toApiOriginUrl } from '../../utils/api';
 import { ClickableUserAvatar } from '../posts/UserHoverCard';
+import {
+  CURRENT_USER_AVATAR,
+  CURRENT_USER_DISPLAY_NAME,
+  CURRENT_USER_USERNAME,
+  isCurrentUserAuthor,
+} from '../../utils/currentUser';
 
 
 function authorToAvatar(author) {
-  if (!author || author === 'You') {
-    return '/assets/user.png';
+  if (!author) {
+    return '/assets/default-avatar.png';
+  }
+  if (isCurrentUserAuthor(author)) {
+    return CURRENT_USER_AVATAR;
   }
   let hash = 0;
   for (let i = 0; i < author.length; i++) {
@@ -25,39 +35,30 @@ function authorToAvatar(author) {
   }
   return `/assets/image${(Math.abs(hash) % 1000) + 1}.png`;
 }
-
-function getRandomTimestamp() {
-  const randomHours = Math.floor(Math.random() * 24);
-  const randomMinutes = Math.floor(Math.random() * 60);
-  
-  let timeStr = '';
-  if (randomHours > 0) {
-    timeStr += `${randomHours}h`;
-  }
-  if (randomMinutes > 0 || timeStr === '') {
-    if (timeStr !== '') timeStr += ' ';
-    timeStr += `${randomMinutes}m`;
-  }
-  return timeStr;
-}
-
 function buildCommentUser(comment) {
-  const displayName = comment?.displayName || comment?.author || 'Unknown';
+  const isCurrentUser = isCurrentUserAuthor(comment);
+  const displayName = isCurrentUser
+    ? CURRENT_USER_DISPLAY_NAME
+    : (comment?.displayName || comment?.author || 'Unknown');
   const username =
-    comment?.username ||
-    String(displayName)
-      .trim()
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "")
-      .slice(0, 24) ||
-    'user';
+    isCurrentUser
+      ? CURRENT_USER_USERNAME
+      : (
+        comment?.username ||
+        String(displayName)
+          .trim()
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "")
+          .slice(0, 24) ||
+        'user'
+      );
 
   return {
     ...comment,
     displayName,
     name: displayName,
     username,
-    avatar: comment?.avatar || authorToAvatar(displayName),
+    avatar: isCurrentUser ? CURRENT_USER_AVATAR : (comment?.avatar || authorToAvatar(displayName)),
   };
 }
 
@@ -75,9 +76,7 @@ const ThreadCommentCard = ({
   snippetsLoading = false // NEW: Loading state for snippets
 }) => {
   const commentUser = buildCommentUser(comment);
-
-  // Random timestamp for the comment
-  const [randomTime] = useState(() => getRandomTimestamp());
+  const isOwnComment = isCurrentUserAuthor(comment);
 
   // State for interaction
   const [hoveredAction, setHoveredAction] = useState(null);
@@ -132,35 +131,17 @@ const ThreadCommentCard = ({
   // Get the properly formatted artwork URL
   const formattedArtwork = snippet ? getFormattedArtworkUrl(snippet) : null;
 
-  // Use consistent stats for likes and replies to prevent re-renders
-  const [likeCount] = useState(() => {
-    if (comment?.likes) return comment.likes;
-    // Generate consistent random likes based on comment ID/author
-    let hash = 0;
-    const seedString = comment?.id || comment?.author || 'default';
-    for (let i = 0; i < seedString.length; i++) {
-      hash = seedString.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    return Math.floor((Math.abs(hash) % 150) + 5); // 5-154 likes
-  });
-  
-  const [replyCount] = useState(() => {
-    if (comment?.replies) {
-      return typeof comment.replies === 'number' ? comment.replies : comment.replies.length || 0;
-    }
-    // Generate consistent random replies based on comment ID/author
-    let hash = 0;
-    const seedString = (comment?.id || comment?.author || 'default') + '_replies';
-    for (let i = 0; i < seedString.length; i++) {
-      hash = seedString.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    return Math.floor((Math.abs(hash) % 25) + 1); // 1-25 replies
-  });
+  const likeCount = Number.isFinite(comment?.likeCount)
+    ? comment.likeCount
+    : (Number.isFinite(comment?.likes) ? comment.likes : 0);
+  const replyCount = Array.isArray(comment?.replies)
+    ? comment.replies.length
+    : (Number.isFinite(comment?.commentCount) ? comment.commentCount : (Number.isFinite(comment?.replies) ? comment.replies : 0));
 
   // Basic user/timestamp
   const timestamp = comment?.createdUtc
     ? new Date(comment.createdUtc * 1000).toLocaleString()
-    : randomTime;
+    : "";
 
   // Initialize/sync local rating from snippet (primitive deps only)
   useEffect(() => {
@@ -223,7 +204,7 @@ const ThreadCommentCard = ({
   function handleRatingClick(e) {
     e.stopPropagation();
     // Disable rating for user-inputted songs or already rated songs
-    if (!snippet || snippet.didRate || comment.author === 'You') return;
+    if (!snippet || snippet.didRate || isOwnComment) return;
 
     const rect = e.currentTarget.getBoundingClientRect();
     const y = e.clientY - rect.top;
@@ -246,7 +227,7 @@ const ThreadCommentCard = ({
   // Handle rating hover
   function handleRatingHover(e) {
     // Disable rating hover for user-inputted songs or already rated songs
-    if (!snippet || snippet.didRate || comment.author === 'You') return;
+    if (!snippet || snippet.didRate || isOwnComment) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const y = e.clientY - rect.top;
     const fraction = 1 - y / rect.height;
@@ -259,7 +240,12 @@ const ThreadCommentCard = ({
   const displayedUserRating = Math.round(
     isHovering && !snippet?.didRate ? hoverRating : localUserRating
   );
-  const displayedAvgRating = Math.round(snippet?.avgRating || 0);
+  const hasAverageRating = Number.isFinite(snippet?.avgRating);
+  const displayedAvgRating = hasAverageRating ? Math.round(snippet.avgRating) : null;
+  const totalRatings = Number.isFinite(snippet?.totalRatings) ? snippet.totalRatings : 0;
+  const interactionCount = Number.isFinite(comment?.interactionCount) && comment.interactionCount > 0
+    ? Math.round(comment.interactionCount)
+    : Math.max(0, Math.round((likeCount * 0.7) + (replyCount * 2.5) + (totalRatings * 0.45)));
 
   // Play/pause button
   function handlePlayPause(e) {
@@ -289,36 +275,38 @@ const ThreadCommentCard = ({
     return null;
   }
 
-  // Modern Side Album Art Design
+  // Glassmorphic Editorial Design
   return (
     <div 
       className="thread-comment-card"
       style={{
       padding: "24px",
-      backgroundColor: "rgba(15, 23, 42, 0.8)",
-      backgroundImage: "linear-gradient(135deg, rgba(15, 23, 42, 0.8), rgba(30, 41, 59, 0.8))",
-      borderRadius: "16px",
+      backgroundColor: "rgba(255, 255, 255, 0.03)",
+      backgroundImage: "none",
+      borderRadius: "20px",
       marginBottom: "16px",
-      border: "1px solid rgba(255, 255, 255, 0.08)",
-      boxShadow: "0 8px 32px rgba(0, 0, 0, 0.2)",
+      border: "1px solid rgba(255, 255, 255, 0.07)",
+      boxShadow: "0 4px 24px rgba(0, 0, 0, 0.15)",
+      backdropFilter: "blur(12px)",
       width: "100%",
       maxWidth: "100%",
       boxSizing: "border-box",
       position: "relative",
       overflow: "hidden",
-      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+      fontFamily: "'DM Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
     }}>
-      {/* Subtle gradient accent at top */}
+      {/* Subtle gradient accent at top — indigo to pink glassmorphic */}
       <div style={{
         position: "absolute",
         top: 0,
         left: 0,
         right: 0,
-        height: "4px",
-        background: "linear-gradient(90deg, #1d4ed8, #3b82f6, #60a5fa)",
+        height: "3px",
+        background: "linear-gradient(90deg, #6366f1, #8b5cf6, #ec4899)",
         zIndex: 1,
-        borderTopLeftRadius: "16px",
-        borderTopRightRadius: "16px"
+        borderTopLeftRadius: "20px",
+        borderTopRightRadius: "20px",
+        opacity: 0.7,
       }} />
 
       {/* Header with user info */}
@@ -355,7 +343,7 @@ const ThreadCommentCard = ({
               style={{
                 fontSize: "17px",
                 fontWeight: "600",
-                color: "#ffffff",
+                color: "#f1f5f9",
                 background: "none",
                 border: "none",
                 padding: 0,
@@ -368,7 +356,7 @@ const ThreadCommentCard = ({
               fontSize: "14px",
               color: "#94a3b8",
             }}>
-              {timestamp}
+              {timestamp || "Unknown time"}
             </div>
           </div>
           
@@ -386,19 +374,19 @@ const ThreadCommentCard = ({
           {!isNewsThread && snippetsLoading && !snippet && (
             <div style={{
               display: "flex",
-              backgroundColor: "rgba(15, 23, 42, 0.5)",
-              borderRadius: "12px",
+              backgroundColor: "rgba(255, 255, 255, 0.02)",
+              borderRadius: "16px",
               overflow: "hidden",
-              border: "1px solid rgba(255, 255, 255, 0.08)",
+              border: "1px solid rgba(255, 255, 255, 0.06)",
               marginBottom: "16px",
-              boxShadow: "0 4px 16px rgba(0, 0, 0, 0.2)",
+              boxShadow: "0 4px 16px rgba(0, 0, 0, 0.1)",
               animation: "pulse 1.5s ease-in-out infinite",
             }}>
               {/* Skeleton album art */}
               <div style={{
                 width: "140px",
                 height: "140px",
-                backgroundColor: "rgba(59, 130, 246, 0.1)",
+                backgroundColor: "rgba(99, 102, 241, 0.08)",
                 position: "relative",
                 flexShrink: 0,
                 display: "flex",
@@ -409,12 +397,12 @@ const ThreadCommentCard = ({
                   width: "54px",
                   height: "54px",
                   borderRadius: "50%",
-                  backgroundColor: "rgba(59, 130, 246, 0.2)",
+                  backgroundColor: "rgba(99, 102, 241, 0.15)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                 }}>
-                  <Music size={24} color="rgba(59, 130, 246, 0.5)" />
+                  <Music size={24} color="rgba(99, 102, 241, 0.5)" />
                 </div>
               </div>
               
@@ -520,7 +508,7 @@ const ThreadCommentCard = ({
                 <div style={{
                   width: "16px",
                   height: "80px",
-                  backgroundColor: "rgba(59, 130, 246, 0.1)",
+                  backgroundColor: "rgba(99, 102, 241, 0.08)",
                   borderRadius: "8px",
                 }} />
               </div>
@@ -539,18 +527,18 @@ const ThreadCommentCard = ({
           {!isNewsThread && snippet && (
             <div style={{
               display: "flex",
-              backgroundColor: "rgba(15, 23, 42, 0.5)",
-              borderRadius: "12px",
+              backgroundColor: "rgba(255, 255, 255, 0.02)",
+              borderRadius: "16px",
               overflow: "hidden",
-              border: "1px solid rgba(255, 255, 255, 0.08)",
+              border: "1px solid rgba(255, 255, 255, 0.06)",
               marginBottom: "16px",
-              boxShadow: "0 4px 16px rgba(0, 0, 0, 0.2)"
+              boxShadow: "0 4px 16px rgba(0, 0, 0, 0.12)"
             }}>
               {/* Large album art on left */}
               <div style={{
                 width: "140px",
                 height: "140px",
-                backgroundColor: "#0f172a",
+                backgroundColor: "#0a0e1a",
                 position: "relative",
                 flexShrink: 0
               }}>
@@ -582,7 +570,7 @@ const ThreadCommentCard = ({
                     backgroundColor: "rgba(15, 23, 42, 0.8)",
                     border: "1px solid rgba(255, 255, 255, 0.1)",
                   }}>
-                    <Music size={40} color="#3b82f6" />
+                    <Music size={40} color="#6366f1" />
                   </div>
                 )}
                 
@@ -599,7 +587,7 @@ const ThreadCommentCard = ({
                     width: "54px",
                     height: "54px",
                     borderRadius: "50%",
-                    backgroundColor: "rgba(59, 130, 246, 0.8)",
+                    backgroundColor: "rgba(99, 102, 241, 0.85)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -634,7 +622,7 @@ const ThreadCommentCard = ({
                     gap: "8px",
                     marginBottom: "4px"
                   }}>
-                    <Music size={14} color="#3b82f6" />
+                    <Music size={14} color="#6366f1" />
                     <div style={{
                       fontSize: "17px",
                       fontWeight: "600",
@@ -680,7 +668,7 @@ const ThreadCommentCard = ({
                         top: 0,
                         height: "100%",
                         width: `${getProgressPercent()}%`,
-                        background: "linear-gradient(to right, #1d4ed8, #3b82f6)",
+                        background: "linear-gradient(to right, #6366f1, #8b5cf6)",
                         borderRadius: "2px",
                       }}
                     />
@@ -709,44 +697,33 @@ const ThreadCommentCard = ({
   <div style={{
     display: "flex",
     alignItems: "center",
-    gap: "10px",
-    backgroundColor: "rgba(15, 23, 42, 0.4)",
-    padding: "6px 10px",
-    borderRadius: "20px",
+    gap: "8px",
   }}>
-    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-      <Users size={14} color="#3b82f6" />
+    <div style={{
+      display: "flex",
+      alignItems: "center",
+      gap: "6px",
+      backgroundColor: "rgba(255, 255, 255, 0.04)",
+      padding: "6px 10px",
+      borderRadius: "20px",
+    }}>
+      <Users size={14} color="#6366f1" />
       <span style={{ fontSize: "13px", color: "#e2e8f0" }}>
-        {snippet.totalRatings || (() => {
-          // Generate consistent random user count for this snippet
-          let hash = 0;
-          const seedString = snippet.id || snippet.commentId || 'default';
-          for (let i = 0; i < seedString.length; i++) {
-            hash = seedString.charCodeAt(i) + ((hash << 5) - hash);
-          }
-          return 10 + Math.floor((Math.abs(hash) % 31)); // 10-40 users
-        })()} users
+        {totalRatings > 0 ? `${totalRatings} users` : "No ratings yet"}
       </span>
     </div>
     <div style={{
-      width: "1px",
-      height: "14px",
-      backgroundColor: "rgba(226, 232, 240, 0.2)",
-    }} />
-    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-      <BarChart3 size={16} color="#94a3b8" />
+      display: "flex",
+      alignItems: "center",
+      gap: "6px",
+      backgroundColor: "rgba(255, 255, 255, 0.04)",
+      padding: "6px 10px",
+      borderRadius: "20px",
+    }}>
+      <Activity size={14} color="#38bdf8" />
       <span style={{ fontSize: "13px", color: "#e2e8f0" }}>
-        {(() => {
-          // Generate consistent random view count for this snippet (20-500)
-          let hash = 0;
-          const seedString = `${snippet.id || snippet.commentId || 'default'}_views`;
-          for (let i = 0; i < seedString.length; i++) {
-            hash = seedString.charCodeAt(i) + ((hash << 5) - hash);
-          }
-          return 20 + Math.floor((Math.abs(hash) % 481));
-        })()}
+        {interactionCount} interactions
       </span>
-      <span style={{ fontSize: "12px", color: "#94a3b8" }}>interactions</span>
     </div>
   </div>
 
@@ -765,9 +742,9 @@ const ThreadCommentCard = ({
       <div style={{
         fontSize: "22px",
         fontWeight: "600",
-        color: "#3b82f6",
+        color: "#6366f1",
       }}>
-        {displayedAvgRating}
+        {displayedAvgRating ?? "—"}
       </div>
       <div style={{
         fontSize: "12px",
@@ -786,7 +763,7 @@ const ThreadCommentCard = ({
       <div style={{
         fontSize: "22px",
         fontWeight: "600",
-        color: "#3b82f6",
+        color: "#6366f1",
       }}>
         {displayedUserRating}
       </div>
@@ -813,7 +790,7 @@ const ThreadCommentCard = ({
   flexDirection: "column",
   alignItems: "center",
   justifyContent: "center",
-  backgroundColor: "rgba(15, 23, 42, 0.4)",
+  backgroundColor: "rgba(255, 255, 255, 0.02)",
   padding: "8px 0",
 }}>
   {/* info icon */}
@@ -825,6 +802,7 @@ const ThreadCommentCard = ({
   }}>
 {isFirstSnippet && (
       <InfoIconModal
+        modalId={`thread-comment-rating-bar-info-${comment?.id || 'unknown'}`}
         title="Vertical Rating Bar"
         iconSize={28}
         showButtonText={false}
@@ -860,12 +838,12 @@ const ThreadCommentCard = ({
       style={{
         width: "16px",
         height: "80%",
-        backgroundColor: "rgba(59, 130, 246, 0.2)",
+        backgroundColor: "rgba(99, 102, 241, 0.15)",
         borderRadius: "8px",
         position: "relative",
         overflow: "hidden",
-        cursor: (snippet?.didRate || comment.author === 'You') ? "default" : "pointer",
-        border: "1px solid rgba(255, 255, 255, 0.1)",
+        cursor: (snippet?.didRate || isOwnComment) ? "default" : "pointer",
+        border: "1px solid rgba(255, 255, 255, 0.08)",
       }}
       onClick={handleRatingClick}
       onMouseMove={handleRatingHover}
@@ -878,7 +856,7 @@ const ThreadCommentCard = ({
           bottom: 0,
           width: "100%",
           height: `${(isHovering && !snippet.didRate ? hoverRating : localUserRating)}%`,
-          backgroundImage: "linear-gradient(to top, #1d4ed8, #3b82f6)",
+          backgroundImage: "linear-gradient(to top, #6366f1, #8b5cf6)",
           borderRadius: "7px",
         }}
       />
@@ -903,7 +881,7 @@ const ThreadCommentCard = ({
           <div style={{
             display: "flex",
             justifyContent: "space-between",
-            borderTop: "1px solid rgba(255, 255, 255, 0.08)",
+            borderTop: "1px solid rgba(255, 255, 255, 0.06)",
             paddingTop: "14px",
           }}>
             <button
@@ -974,7 +952,7 @@ const ThreadCommentCard = ({
                 display: "flex",
                 alignItems: "center",
                 gap: "6px",
-                color: isSaved || hoveredAction === 'bookmark' ? '#3b82f6' : '#94a3b8',
+                color: isSaved || hoveredAction === 'bookmark' ? '#6366f1' : '#94a3b8',
                 backgroundColor: "transparent",
                 border: "none",
                 cursor: "pointer",
@@ -988,7 +966,7 @@ const ThreadCommentCard = ({
             >
               <Bookmark
                 size={18}
-                fill={isSaved ? "#3b82f6" : "none"}
+                fill={isSaved ? "#6366f1" : "none"}
               />
             </button>
           </div>

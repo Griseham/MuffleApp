@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Music, Search, Users, Send, Volume2, X } from "lucide-react";
 import styles from "./GroupChatDetailStyles";
-import { validateAndSanitizeInput, checkRateLimit, sanitizeComment } from "../../utils/security";
+import { sanitizeComment } from "../../utils/security";
 import { buildApiUrl, toApiOriginUrl } from "../../utils/api";
 
 const DEFAULT_ARTWORK = "/assets/default-artist.png";
@@ -52,39 +52,6 @@ function needsSnippetMediaRecovery(url) {
   return !url || url.startsWith("/cached_media/");
 }
 
-const PLACEHOLDER_NAMES = [
-  "Echo",
-  "Nova",
-  "Atlas",
-  "Sage",
-  "Lyric",
-  "Drift",
-  "Rift",
-  "Pulse",
-  "Raven",
-  "Indigo",
-  "Juno",
-  "Zen",
-  "Vega",
-  "Sol",
-  "Moss",
-  "Piper",
-  "Slate",
-  "Cove",
-  "Rune",
-  "Quill",
-  "Ash",
-  "Vale",
-  "Mira",
-  "Halo",
-  "Haze",
-  "Fable",
-  "Lumen",
-  "Orion",
-  "Onyx",
-  "Blaze",
-];
-
 // Helper function to format timestamps
 function formatTimestamp(timestamp) {
   const date = new Date(timestamp * 1000);
@@ -117,28 +84,48 @@ function cleanMessageBody(text) {
     .trim();
 }
 
-// Generate random volume for the room
-function generateRoomVolume() {
-  return Math.floor(Math.random() * 5000) + 500;
+function normalizeGenrePointChange(change, fallback = "+0.0%") {
+  if (typeof change === "string" && change.trim()) {
+    return change.trim();
+  }
+  if (Number.isFinite(change)) {
+    return `+${change.toFixed(1)}%`;
+  }
+  return fallback;
 }
 
-// Generate genre stats
-function generateGenreStats() {
-  const genres = ['Electronic', 'Pop', 'Rock', 'Hip-Hop', 'Trap', 'R&B', 'Indie', 'Metal'];
-  const shuffled = genres.sort(() => 0.5 - Math.random());
-  const selected = shuffled.slice(0, 3);
-  
-  return selected.map((genre, i) => ({
-    name: genre,
-    change: `+${(Math.random() * 2 + 0.1).toFixed(1)}%`,
-    color: ['#00d4aa', '#ff6b9d', '#a855f7', '#f59e0b', '#3b82f6'][i % 5]
+function buildStableGroupChatFallback(post = {}) {
+  const seed = hashStringToNumber(String(post?.id || post?.title || ""));
+  const roomVolume = 500 + (seed % 4500);
+  const volumePoints = 5 + (seed % 30);
+  const palette = ["#00d4aa", "#ff6b9d", "#a855f7", "#f59e0b", "#3b82f6"];
+  const genres = ["Metal", "Hip-Hop", "R&B", "Electronic", "Pop", "Rock", "Indie", "Jazz"];
+
+  const pickedSet = new Set([
+    genres[seed % genres.length],
+    genres[(seed * 7) % genres.length],
+    genres[(seed * 13) % genres.length],
+  ]);
+  let cursor = seed;
+  while (pickedSet.size < 2) {
+    pickedSet.add(genres[cursor % genres.length]);
+    cursor += 1;
+  }
+
+  const picked = Array.from(pickedSet).slice(0, 3);
+  const genreStats = picked.map((name, i) => ({
+    name,
+    change: `+${(((seed % 17) + 3 + i) / 10).toFixed(1)}%`,
+    color: palette[i % palette.length],
   }));
+
+  return { roomVolume, volumePoints, genreStats };
 }
 
 export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
   // Core state
   const [messages, setMessages] = useState([]);
-  const [_allMessages, setAllMessages] = useState([]);
+  const [allMessages, setAllMessages] = useState([]);
   const [_messageIndex, setMessageIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   
@@ -156,14 +143,66 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [uniqueUsers, setUniqueUsers] = useState([]);
   const [onlineUsers, setOnlineUsers] = useState([]);
-  const [onlineCount, setOnlineCount] = useState(() => 23 + Math.floor(Math.random() * 21));
   const [isVisible, setIsVisible] = useState(false);
   const [panelNotice, setPanelNotice] = useState(null);
-  
-  // Room stats
-  const [roomVolume] = useState(() => post?.roomVolume ?? generateRoomVolume());
-  const [genreStats] = useState(() => post?.genreStats ?? generateGenreStats());
-  const [volumeChange] = useState(() => post?.volumeChange ?? (Math.floor(Math.random() * 30) + 5));
+
+  const replaySummary = useMemo(() => {
+    const snippetMessages = allMessages.filter((message) => Boolean(message?.snippet)).length;
+    const replyMessages = allMessages.filter((message) => Boolean(message?.isReply)).length;
+
+    return {
+      totalMessages: allMessages.length,
+      snippetMessages,
+      replyMessages,
+      participantCount: uniqueUsers.length,
+    };
+  }, [allMessages, uniqueUsers.length]);
+
+  const groupChatFallbackStats = useMemo(
+    () => buildStableGroupChatFallback(post),
+    [post]
+  );
+
+  const rightPanelStats = useMemo(() => {
+    const parsedVolumePoints = Number(post?.volumeChange);
+    const volumePoints = Number.isFinite(parsedVolumePoints)
+      ? Math.max(0, Math.round(parsedVolumePoints))
+      : groupChatFallbackStats.volumePoints;
+
+    const fallbackGenres = groupChatFallbackStats.genreStats;
+    const postGenreStats = Array.isArray(post?.genreStats) ? post.genreStats : [];
+
+    const normalizedGenres = [];
+    const pushGenre = (genreStat, index) => {
+      if (!genreStat || normalizedGenres.length >= 3) return;
+      const genreName = String(genreStat?.name || "").trim();
+      if (!genreName || normalizedGenres.some((item) => item.name === genreName)) return;
+      normalizedGenres.push({
+        name: genreName,
+        change: normalizeGenrePointChange(
+          genreStat?.change,
+          fallbackGenres[index]?.change || "+0.0%"
+        ),
+        color: genreStat?.color || fallbackGenres[index]?.color || "#64748b",
+      });
+    };
+
+    postGenreStats.forEach(pushGenre);
+    fallbackGenres.forEach(pushGenre);
+
+    return {
+      volumePoints,
+      genres: normalizedGenres.slice(0, 3),
+    };
+  }, [groupChatFallbackStats.genreStats, groupChatFallbackStats.volumePoints, post?.genreStats, post?.volumeChange]);
+
+  const headerRoomVolume = useMemo(() => {
+    const parsedRoomVolume = Number(post?.roomVolume);
+    if (Number.isFinite(parsedRoomVolume)) {
+      return Math.max(0, Math.round(parsedRoomVolume));
+    }
+    return groupChatFallbackStats.roomVolume;
+  }, [groupChatFallbackStats.roomVolume, post?.roomVolume]);
 
   // Audio playback state
   const audioRef = useRef(null);
@@ -238,21 +277,6 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
     return () => clearTimeout(timer);
   }, []);
 
-  useEffect(() => {
-    setOnlineCount(23 + Math.floor(Math.random() * 21));
-
-    const interval = setInterval(() => {
-      setOnlineCount((prev) => {
-        const roll = Math.random();
-        const delta = roll < 0.55 ? 0 : roll < 0.9 ? 1 : 2;
-        const next = prev + delta;
-        return Math.min(next, 120);
-      });
-    }, 4500);
-
-    return () => clearInterval(interval);
-  }, [post?.id]);
-
   // Auto-scroll function
   const scrollToBottom = useCallback(() => {
     if (chatRef.current) {
@@ -262,6 +286,46 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
       });
     }
   }, []);
+
+  // Simplified message streaming
+  const startMessageSequence = useCallback((allMsgs) => {
+    if (!allMsgs || allMsgs.length === 0) return;
+    
+    if (messageIntervalRef.current) {
+      clearInterval(messageIntervalRef.current);
+    }
+
+    const initialCount = Math.min(2, allMsgs.length);
+    setMessages(allMsgs.slice(0, initialCount));
+    setMessageIndex(initialCount);
+    
+    setTimeout(() => scrollToBottom(), 100);
+
+    if (allMsgs.length > initialCount) {
+      let currentIndex = initialCount;
+      
+      messageIntervalRef.current = setInterval(() => {
+        if (currentIndex < allMsgs.length) {
+          const nextMessage = allMsgs[currentIndex];
+          
+          setRandomTypingUser(nextMessage.author);
+          setIsTyping(true);
+          
+          typingTimeoutRef.current = setTimeout(() => {
+            setIsTyping(false);
+            setMessages(prev => [...prev, nextMessage]);
+            setMessageIndex(currentIndex + 1);
+            currentIndex++;
+            scrollToBottom();
+          }, 1000 + Math.random() * 1000);
+          
+        } else {
+          clearInterval(messageIntervalRef.current);
+          messageIntervalRef.current = null;
+        }
+      }, 3000);
+    }
+  }, [scrollToBottom]);
 
   // Load messages from API - simplified
   useEffect(() => {
@@ -518,52 +582,12 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
         audioElement.pause();
       }
     };
-  }, [post?.id, recoverSnippetMedia]);
+  }, [post?.comments, post?.id, post?.postType, post?.subreddit, recoverSnippetMedia, startMessageSequence]);
 
-  // Simplified message streaming
-  const startMessageSequence = useCallback((allMsgs) => {
-    if (!allMsgs || allMsgs.length === 0) return;
-    
-    if (messageIntervalRef.current) {
-      clearInterval(messageIntervalRef.current);
-    }
-
-    const initialCount = Math.min(2, allMsgs.length);
-    setMessages(allMsgs.slice(0, initialCount));
-    setMessageIndex(initialCount);
-    
-    setTimeout(() => scrollToBottom(), 100);
-
-    if (allMsgs.length > initialCount) {
-      let currentIndex = initialCount;
-      
-      messageIntervalRef.current = setInterval(() => {
-        if (currentIndex < allMsgs.length) {
-          const nextMessage = allMsgs[currentIndex];
-          
-          setRandomTypingUser(nextMessage.author);
-          setIsTyping(true);
-          
-          typingTimeoutRef.current = setTimeout(() => {
-            setIsTyping(false);
-            setMessages(prev => [...prev, nextMessage]);
-            setMessageIndex(currentIndex + 1);
-            currentIndex++;
-            scrollToBottom();
-          }, 1000 + Math.random() * 1000);
-          
-        } else {
-          clearInterval(messageIntervalRef.current);
-          messageIntervalRef.current = null;
-        }
-      }, 3000);
-    }
-  }, [scrollToBottom]);
-
-  // Update unique users when messages change
+  // Update participant list from the full replay payload
   useEffect(() => {
     const userSet = new Set();
-    messages.forEach(msg => {
+    allMessages.forEach(msg => {
       if (msg.author && msg.author !== "System" && msg.author !== "You") {
         userSet.add(msg.author);
       }
@@ -576,52 +600,11 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
     }));
     
     setUniqueUsers(userArray);
-  }, [messages]);
-
-  const placeholderSeed = useMemo(
-    () => hashStringToNumber(String(post?.id ?? "room")),
-    [post?.id]
-  );
-
-  const buildOnlineUsers = useCallback((targetCount, knownUsers, seed) => {
-    const users = [];
-    const seen = new Set();
-
-    knownUsers.forEach((user) => {
-      if (!seen.has(user.name)) {
-        users.push(user);
-        seen.add(user.name);
-      }
-    });
-
-    const base = seed % PLACEHOLDER_NAMES.length;
-    let i = 0;
-    while (users.length < targetCount) {
-      const nameBase = PLACEHOLDER_NAMES[(base + i) % PLACEHOLDER_NAMES.length];
-      const suffix = Math.floor((base + i) / PLACEHOLDER_NAMES.length) + 1;
-      const name = `${nameBase}_${suffix}`;
-
-      if (!seen.has(name)) {
-        users.push({
-          name,
-          avatar: authorToAvatar(name),
-          isActive: ((seed + i * 7) % 10) < 9,
-        });
-        seen.add(name);
-      }
-
-      i += 1;
-      if (i > targetCount * 3) {
-        break;
-      }
-    }
-
-    return users.slice(0, targetCount);
-  }, []);
+  }, [allMessages]);
 
   useEffect(() => {
-    setOnlineUsers(buildOnlineUsers(onlineCount, uniqueUsers, placeholderSeed));
-  }, [onlineCount, uniqueUsers, placeholderSeed, buildOnlineUsers]);
+    setOnlineUsers(uniqueUsers);
+  }, [uniqueUsers]);
 
   useEffect(() => {
     if (onUserListUpdate) {
@@ -648,49 +631,11 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
 
   // Handle user message submission with security validation
   const handleSubmitComment = useCallback(() => {
-    if (!newComment.trim() && !attachedSnippet) return;
-    
-    const userId = "user_local";
-    if (!checkRateLimit(`comment_${userId}`, 5, 60000)) {
-      setPanelNotice({
-        type: "warning",
-        text: "You’re sending messages too quickly. Please wait a moment."
-      });
-      return;
-    }
-    
-    const validation = validateAndSanitizeInput(newComment, {
-      type: 'comment',
-      maxLength: 500,
-      minLength: 1
+    setPanelNotice({
+      type: "info",
+      text: "Chat replay is read-only. Messaging is disabled in this prototype view."
     });
-    
-    if (!validation.isValid && newComment.trim()) {
-      setPanelNotice({
-        type: "warning",
-        text: `Invalid message: ${validation.error}`
-      });
-      return;
-    }
-    
-    const newMessage = {
-      id: `user_${Date.now()}`,
-      author: "You",
-      body: validation.sanitized || '',
-      snippet: attachedSnippet,
-      timestamp: Date.now() / 1000,
-      isReply: false
-    };
-    
-    setMessages(prev => [...prev, newMessage]);
-    setNewComment("");
-    setAttachedSnippet(null);
-    setSearchedSnippet(null);
-    setIsSongSearchVisible(false);
-    setPanelNotice(null);
-    
-    setTimeout(() => scrollToBottom(), 100);
-  }, [newComment, attachedSnippet, scrollToBottom]);
+  }, []);
 
   // Handle audio playback
   const handlePlayInChat = useCallback((snippet) => {
@@ -738,7 +683,7 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
     setSearchResults([]);
     setPanelNotice({
       type: "info",
-      text: "Music search is disabled in the group chat prototype."
+      text: "Music search is disabled in the group chat replay prototype."
     });
   }, []);
 
@@ -763,7 +708,7 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
       if (next) {
         setPanelNotice({
           type: "info",
-          text: "Music search is disabled in the group chat prototype."
+          text: "Music search is disabled in the group chat replay prototype."
         });
       } else {
         setPanelNotice(null);
@@ -866,7 +811,7 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
     return (
       <div style={styles.loadingContainer}>
         <div style={styles.loadingSpinner}></div>
-        <div style={styles.loadingText}>Loading group chat...</div>
+        <div style={styles.loadingText}>Loading chat replay...</div>
         <style>
           {`
             @keyframes spin {
@@ -910,22 +855,22 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
       
       <audio ref={audioRef} style={{ display: "none" }} />
 
-      {/* Header with Volume Badge */}
+      {/* Header */}
       <div style={styles.header}>
         <div style={styles.headerLeft}>
           <button onClick={onBack} style={styles.backButton}>←</button>
           <div>
             <h1 style={styles.headerTitle}>
-              Group <span style={{ color: '#ff69b4' }}>Chat</span>
+              Group <span style={{ color: '#ff69b4' }}>Chat Replay</span>
             </h1>
-            <p style={styles.headerSubtitle}>{onlineCount} participants</p>
+            <p style={styles.headerSubtitle}>{replaySummary.participantCount} Users</p>
           </div>
         </div>
         
-        {/* Volume Badge */}
+        {/* Room Volume Badge */}
         <div style={styles.volumeBadge}>
           <Volume2 size={18} color="#ff69b4" />
-          <span style={styles.volumeNumber}>{roomVolume.toLocaleString()}</span>
+          <span style={styles.volumeNumber}>{headerRoomVolume.toLocaleString()}</span>
         </div>
       </div>
 
@@ -955,28 +900,26 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
           )}
         </div>
 
-        {/* Volume & Genre Stats Card */}
+        {/* Replay Stats Card */}
         <div style={styles.statsCard} className="float-card">
-          {/* Volume Section */}
           <div style={styles.volumeSection}>
             <div style={styles.volumeHeader}>
               <Volume2 size={16} color="#ff69b4" />
               <span style={styles.volumeLabel}>Vol</span>
-              <span style={styles.volumeChange}>+{volumeChange}</span>
+              <span style={styles.volumeChange}>+{rightPanelStats.volumePoints}</span>
             </div>
           </div>
 
-          {/* Genre Stats */}
           <div style={styles.genreSection}>
-            {genreStats.map((genre, i) => (
-              <div key={i} style={styles.genreRow}>
+            {rightPanelStats.genres.map((item) => (
+              <div key={item.name} style={styles.genreRow}>
                 <span style={{
                   ...styles.genreTag,
-                  backgroundColor: genre.color,
+                  backgroundColor: item.color,
                 }}>
-                  {genre.name}
+                  {item.name}
                 </span>
-                <span style={styles.genreChange}>{genre.change}</span>
+                <span style={styles.genreChange}>{item.change}</span>
               </div>
             ))}
           </div>
@@ -987,7 +930,7 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
       <div style={styles.chatContainer}>
         {/* Chat Header with Tool Buttons */}
         <div style={styles.chatHeader}>
-          <span style={styles.chatHeaderText}>Live Chat</span>
+          <span style={styles.chatHeaderText}>Chat Replay</span>
           <div style={styles.toolButtons}>
             <button 
               onClick={toggleMusicPanel}
@@ -1009,7 +952,7 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
               className="btn-glow"
             >
               <Users size={14} />
-              <span>{onlineCount} Online</span>
+              <span>{replaySummary.participantCount} Users</span>
             </button>
           </div>
         </div>
@@ -1053,7 +996,7 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
                     }
                   }
                 }}
-                placeholder={GROUPCHAT_MUSIC_SEARCH_ENABLED ? "Search Apple Music..." : "Music search disabled in prototype"}
+                placeholder={GROUPCHAT_MUSIC_SEARCH_ENABLED ? "Search Apple Music..." : "Music search disabled in replay prototype"}
                 style={{
                   ...styles.searchInput,
                   ...(GROUPCHAT_MUSIC_SEARCH_ENABLED ? null : styles.searchInputDisabled)
@@ -1124,7 +1067,7 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
 
         {/* Messages Area */}
         <div ref={chatRef} style={styles.messagesArea}>
-          <div style={styles.joinMessage}>— You joined the chat —</div>
+          <div style={styles.joinMessage}>— Replay started —</div>
           
           {renderMessages()}
 
@@ -1144,7 +1087,7 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
                   style={{ width: '100%', height: '100%', borderRadius: '50%' }}
                 />
               </div>
-              <span>{randomTypingUser} is typing</span>
+              <span>Next replay message: {randomTypingUser}</span>
               <div style={styles.typingDots}>
                 <span className="typing-dot" style={styles.typingDot} />
                 <span className="typing-dot" style={styles.typingDot} />
@@ -1199,8 +1142,9 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
                 }
               }
             }}
-            placeholder="Type a message..."
+            placeholder="Replay view only"
             style={styles.messageInput}
+            disabled
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
@@ -1210,7 +1154,7 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
           />
           <button
             onClick={handleSubmitComment}
-            disabled={!newComment.trim() && !attachedSnippet}
+            disabled
             style={styles.sendButton}
           >
             <Send size={16} />

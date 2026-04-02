@@ -335,7 +335,7 @@ const handleAddArtist = useCallback((artist) => {
           icon: <Info size={18} color="#a9b6fc" />,
           title: "Thread Connections",
           content:
-            "The Threads containing the searched artists will connect like constellations"
+            "The Threads containing the searched artists will connect like constellations. This demo makes a weak attempt but you get the idea"
         }
       ]}
     />

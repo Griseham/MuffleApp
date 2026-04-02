@@ -150,7 +150,7 @@ const InfoIconModal = ({
     borderLeft: '1px solid rgba(255, 255, 255, 0.3)',
     overflowY: 'auto',
     backdropFilter: 'blur(8px)',
-    zIndex: 15000,           // ← raise above every button
+    zIndex: 30000,           // Keep side panel visible above fullscreen overlays/modals
     animation: 'slideInRight 0.3s ease-out',
     color: 'white'
   };

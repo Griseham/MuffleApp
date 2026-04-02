@@ -1,11 +1,12 @@
 const threadCommentCardStyles = {
   container: {
     padding: "20px",
-    backgroundColor: "#101010",
-    borderRadius: "8px",
+    backgroundColor: "rgba(255, 255, 255, 0.03)",
+    borderRadius: "16px",
     marginBottom: "16px",
-    border: "1px solid #2a2a2a",
-    boxShadow: "0 2px 8px rgba(0, 0, 0, 0.2)",
+    border: "1px solid rgba(255, 255, 255, 0.07)",
+    boxShadow: "0 4px 16px rgba(0, 0, 0, 0.15)",
+    backdropFilter: "blur(12px)",
     width: "100%",
     maxWidth: "100%",
     boxSizing: "border-box",
@@ -24,7 +25,7 @@ const threadCommentCardStyles = {
     height: "40px",
     borderRadius: "50%",
     objectFit: "cover",
-    border: "2px solid #2a2a2a",
+    border: "2px solid rgba(99, 102, 241, 0.3)",
     flexShrink: 0,
   },
   
@@ -44,7 +45,7 @@ const threadCommentCardStyles = {
   authorName: {
     fontSize: "16px",
     fontWeight: "600",
-    color: "#ffffff",
+    color: "#f1f5f9",
     marginRight: "auto",
     textOverflow: "ellipsis",
     overflow: "hidden",
@@ -54,7 +55,7 @@ const threadCommentCardStyles = {
   
   timestampRow: {
     display: "flex",
-    color: "#666666",
+    color: "#64748b",
     fontSize: "14px",
     marginBottom: "12px",
   },
@@ -62,7 +63,7 @@ const threadCommentCardStyles = {
   commentBody: {
     fontSize: "15px",
     lineHeight: "1.5",
-    color: "#dddddd",
+    color: "#cbd5e1",
     marginBottom: "16px",
     wordBreak: "break-word",
     overflowWrap: "break-word",
@@ -72,10 +73,10 @@ const threadCommentCardStyles = {
     display: "flex",
     flexDirection: "column",
     padding: "12px",
-    backgroundColor: "#1a1a1a",
-    borderRadius: "6px",
+    backgroundColor: "rgba(255, 255, 255, 0.02)",
+    borderRadius: "12px",
     marginBottom: "16px",
-    border: "1px solid #333333",
+    border: "1px solid rgba(255, 255, 255, 0.06)",
     width: "100%",
     boxSizing: "border-box",
   },
@@ -98,8 +99,9 @@ const threadCommentCardStyles = {
   albumArt: {
     width: "48px",
     height: "48px",
-    backgroundColor: "#000000",
-    border: "1px solid #333333",
+    backgroundColor: "#0a0e1a",
+    border: "1px solid rgba(255, 255, 255, 0.08)",
+    borderRadius: "8px",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
@@ -116,7 +118,7 @@ const threadCommentCardStyles = {
   songTitle: {
     fontSize: "16px",
     fontWeight: "600",
-    color: "#ffffff",
+    color: "#f1f5f9",
     marginBottom: "2px",
     textOverflow: "ellipsis",
     overflow: "hidden",
@@ -125,7 +127,7 @@ const threadCommentCardStyles = {
   
   artistName: {
     fontSize: "14px",
-    color: "#999999",
+    color: "#64748b",
     textOverflow: "ellipsis",
     overflow: "hidden",
     whiteSpace: "nowrap",
@@ -136,7 +138,7 @@ const threadCommentCardStyles = {
     justifyContent: "space-between",
     alignItems: "center",
     marginTop: "10px",
-    borderTop: "1px solid #333333",
+    borderTop: "1px solid rgba(255, 255, 255, 0.06)",
     paddingTop: "10px",
     flexWrap: "wrap",
     gap: "16px",
@@ -147,7 +149,7 @@ const threadCommentCardStyles = {
     justifyContent: "space-between",
     marginTop: "16px",
     paddingTop: "12px",
-    borderTop: "1px solid #333333",
+    borderTop: "1px solid rgba(255, 255, 255, 0.06)",
     width: "100%",
     flexWrap: "wrap",
     gap: "10px",
@@ -173,7 +175,7 @@ const threadCommentCardStyles = {
     display: "flex",
     alignItems: "center",
     gap: "6px",
-    color: "#999999",
+    color: "#94a3b8",
     cursor: "pointer",
     transition: "color 0.2s ease, transform 0.2s ease",
     backgroundColor: "transparent",
@@ -185,8 +187,8 @@ const threadCommentCardStyles = {
   playButton: {
     width: "36px",
     height: "36px",
-    backgroundColor: "#ffffff",
-    color: "#000000",
+    backgroundColor: "#f1f5f9",
+    color: "#0a0e1a",
     border: "none",
     borderRadius: "50%",
     display: "flex",
@@ -194,11 +196,12 @@ const threadCommentCardStyles = {
     justifyContent: "center",
     cursor: "pointer",
     flexShrink: 0,
+    boxShadow: "0 2px 8px rgba(0, 0, 0, 0.2)",
   },
   
   timeDisplay: {
     fontSize: "14px",
-    color: "#999999",
+    color: "#64748b",
     whiteSpace: "nowrap",
   },
   
@@ -210,7 +213,7 @@ const threadCommentCardStyles = {
   progressBar: {
     width: "100%",
     height: "4px",
-    backgroundColor: "#333333",
+    backgroundColor: "rgba(255, 255, 255, 0.06)",
     borderRadius: "2px",
     overflow: "hidden",
     position: "relative",
@@ -221,7 +224,7 @@ const threadCommentCardStyles = {
     left: 0,
     top: 0,
     height: "100%",
-    backgroundColor: "#ffffff",
+    backgroundColor: "#6366f1",
     borderRadius: "2px",
     transition: "width 0.2s linear",
   },
@@ -229,7 +232,7 @@ const threadCommentCardStyles = {
   ratingValue: {
     fontSize: "18px",
     fontWeight: "600",
-    color: "#ffffff",
+    color: "#f1f5f9",
     textAlign: "center",
     marginTop: "6px",
   },
@@ -237,11 +240,11 @@ const threadCommentCardStyles = {
   ratingBar: {
     width: "12px",
     height: "100px",
-    backgroundColor: "#333333",
+    backgroundColor: "rgba(255, 255, 255, 0.06)",
     borderRadius: "6px",
     position: "relative",
     overflow: "hidden",
-    border: "1px solid #444444",
+    border: "1px solid rgba(255, 255, 255, 0.08)",
     flexShrink: 0,
   },
   
@@ -250,7 +253,7 @@ const threadCommentCardStyles = {
     bottom: 0,
     left: 0,
     width: "100%",
-    backgroundColor: "#ffffff",
+    backgroundColor: "#6366f1",
     transition: "height 0.3s ease-out",
   },
 };

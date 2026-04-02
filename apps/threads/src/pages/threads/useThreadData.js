@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { authorToAvatar } from "../utils/utils";
 import { buildApiUrl, toApiOriginUrl } from "../../utils/api";
+import { getCommunitySnippetStats } from "./threadHelpers";
 
 export default function useThreadData(postId, postData = null) {
   const [post, setPost] = useState(null);
@@ -51,6 +52,8 @@ export default function useThreadData(postId, postData = null) {
     if (url.startsWith("/cached_media/")) return toApiOriginUrl(url);
     return url;
   };
+
+  const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
   // Helper function to process cached snippets
   const processCachedSnippets = useCallback((snippets, commentsData) => {
@@ -113,9 +116,23 @@ export default function useThreadData(postId, postData = null) {
         ""
       );
 
+      const snippetId = snippet.commentId || snippet.id;
+      const seededCommunityStats = getCommunitySnippetStats(snippetId, snippet.avgRating);
+      const seededTotalRatings =
+        Number.isFinite(snippet.totalRatings) && snippet.totalRatings > 0
+          ? Math.round(snippet.totalRatings)
+          : seededCommunityStats.totalRatings;
+      const seededAvgRating = Number.isFinite(snippet.avgRating)
+        ? clamp(Math.round(snippet.avgRating), 20, 98)
+        : seededCommunityStats.avgRating;
+      const seededUserRating = Number.isFinite(snippet.userRating)
+        ? clamp(Math.round(snippet.userRating), 0, 100)
+        : null;
+      const seededDidRate = Boolean(snippet.didRate) || seededUserRating != null;
+
       return {
-        id: snippet.commentId || snippet.id,
-        commentId: snippet.commentId || snippet.id,
+        id: snippetId,
+        commentId: snippetId,
         query: snippet.query,
         name: songName,
         songName,
@@ -139,10 +156,10 @@ export default function useThreadData(postId, postData = null) {
         timestamp: Date.now(),
         artistImage: artworkUrl,
         snippetAuthorAvatar: authorToAvatar(snippet.author || snippetAuthor),
-        userRating: null,
-        avgRating: Math.floor(Math.random() * 50) + 50,
-        totalRatings: Math.floor(Math.random() * 200) + 50,
-        didRate: false
+        userRating: seededUserRating,
+        avgRating: seededAvgRating,
+        totalRatings: seededTotalRatings,
+        didRate: seededDidRate
       };
     });
   }, []);
@@ -296,8 +313,8 @@ export default function useThreadData(postId, postData = null) {
               if (foundPost && !cancelled) {
                 setPost(ensureValidDate({
                   ...foundPost,
-                  ups: foundPost.ups || (postId.charCodeAt(0) % 10) * 100 + 50,
-                  num_comments: foundPost.num_comments || Math.floor(Math.random() * 20) + 5,
+                  ups: foundPost.ups ?? 0,
+                  num_comments: foundPost.num_comments ?? 0,
                 }));
                 setUsedCache(false);
                 setCommentsLoaded(true);
@@ -324,8 +341,8 @@ export default function useThreadData(postId, postData = null) {
                 console.log("useThreadData: Found post in diverse-posts API");
                 setPost(ensureValidDate({
                   ...diversePost,
-                  ups: diversePost.ups || (postId.charCodeAt(0) % 10) * 100 + 50,
-                  num_comments: diversePost.num_comments || Math.floor(Math.random() * 20) + 5,
+                  ups: diversePost.ups ?? 0,
+                  num_comments: diversePost.num_comments ?? 0,
                 }));
                 setUsedCache(false);
                 setCommentsLoaded(true);
@@ -462,52 +479,6 @@ export default function useThreadData(postId, postData = null) {
       cancelled = true; 
     };
   }, [postId, post, usedCache, processCachedSnippets, isLocalOnlyPost]); // FIXED: Removed comments, snippetRecs, commentsLoaded from deps
-
-  // Load snippets when needed (for non-cached posts)
-  useEffect(() => {
-    if (!post || !postId || usedCache) return;
-    if (post.postType === "news" || post.postType === "parameter" || isLocalOnlyPost(post)) return;
-    if (!commentsLoaded) return;
-    if (!didFetchLiveRef.current) return;
-    if (snippetRecs.length > 0) return;
-    
-    const generateFallbackSnippets = async () => {
-      // Generate fallback snippets for API posts
-      const fallbackSnippets = [
-        {
-          id: `fallback_1_${postId}`,
-          commentId: `fallback_1_${postId}`,
-          query: "Example content",
-          name: "Example snippet",
-          songName: "Example snippet",
-          artistName: "Prototype audio unavailable",
-          artwork: `/assets/default-artist.png`,
-          artworkUrl: `/assets/default-artist.png`,
-          previewUrl: null,
-          snippetData: {
-            attributes: {
-              name: "Example snippet",
-              artistName: "Prototype audio unavailable",
-              previews: [],
-              artwork: { url: `/assets/default-artist.png` }
-            }
-          },
-          author: "Demo Example",
-          timestamp: Date.now() / 1000 - 86400,
-          artistImage: `/assets/default-artist.png`,
-          snippetAuthorAvatar: authorToAvatar("Demo Example"),
-          userRating: null,
-          avgRating: Math.floor(Math.random() * 50) + 50,
-          totalRatings: Math.floor(Math.random() * 200) + 50,
-          didRate: false
-        }
-      ];
-      
-      setSnippetRecs(fallbackSnippets);
-    };
-    
-    generateFallbackSnippets();
-  }, [post, postId, usedCache, commentsLoaded, snippetRecs.length, isLocalOnlyPost]);
 
   // Update unique users when comments change
   useEffect(() => {

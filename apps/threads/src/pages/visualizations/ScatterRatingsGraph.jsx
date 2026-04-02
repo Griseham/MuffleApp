@@ -1,5 +1,5 @@
 // ScatterRatingsGraph.jsx
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 
 export default function ScatterRatingsGraph({ scatter = [], isEnlarged = false }) {
   const [hoveredUser, setHoveredUser] = useState(null);
@@ -10,10 +10,36 @@ export default function ScatterRatingsGraph({ scatter = [], isEnlarged = false }
 
   // Get the maximum rating count from data
   const maxRatings = Math.max(...scatter.map((item) => item?.ratingCount || 0), 100);
-  
-  // Scale functions - position as percentage
-  const getX = (count) => ((count || 0) / maxRatings) * 100;
-  const getY = (avg) => 100 - (avg || 0);
+  const positionedScatter = useMemo(() => {
+    const placed = [];
+
+    return scatter.map((user, idx) => {
+      let x = ((user.ratingCount || 0) / maxRatings) * 100;
+      let y = 100 - (user.average || 0);
+      let attempts = 0;
+
+      while (
+        placed.some((point) => Math.abs(point.x - x) < 3.2 && Math.abs(point.y - y) < 4.5) &&
+        attempts < 20
+      ) {
+        const ring = Math.floor(attempts / 6) + 1;
+        const angleDeg = ((attempts * 59) + (idx * 23)) % 360;
+        const angleRad = (angleDeg * Math.PI) / 180;
+        x = x + (Math.cos(angleRad) * (1.8 * ring));
+        y = y + (Math.sin(angleRad) * (2.2 * ring));
+        x = Math.max(1, Math.min(99, x));
+        y = Math.max(1, Math.min(99, y));
+        attempts += 1;
+      }
+
+      placed.push({ x, y });
+      return {
+        ...user,
+        _plotX: x,
+        _plotY: y,
+      };
+    });
+  }, [scatter, maxRatings]);
 
   return (
     <div
@@ -106,9 +132,7 @@ export default function ScatterRatingsGraph({ scatter = [], isEnlarged = false }
         ))}
 
         {/* Data points */}
-        {scatter.map((user, idx) => {
-          const x = getX(user.ratingCount);
-          const y = getY(user.average);
+        {positionedScatter.map((user, idx) => {
           const isHovered = hoveredUser === idx;
           const size = isEnlarged ? 32 : 26;
 
@@ -119,8 +143,8 @@ export default function ScatterRatingsGraph({ scatter = [], isEnlarged = false }
               onMouseLeave={() => setHoveredUser(null)}
               style={{
                 position: "absolute",
-                left: `${x}%`,
-                top: `${y}%`,
+                left: `${user._plotX}%`,
+                top: `${user._plotY}%`,
                 transform: "translate(-50%, -50%)",
                 cursor: "pointer",
                 zIndex: isHovered ? 10 : 1,

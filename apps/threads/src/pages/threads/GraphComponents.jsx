@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { BarChart3, GitBranch } from 'lucide-react';
-import InfoIconModal from '../InfoIconModal';
+import InfoIconModal from '../../components/InfoIconModal';
 
 // Design 4: Bullet Chart Style for Vertical Ratings Graph
 export const VerticalRatingsGraph = ({ graphRatings, onOpenModal }) => {
@@ -267,8 +267,36 @@ export const ScatterRatingsGraph = ({ scatterData, onOpenModal }) => {
   const [hoveredUser, setHoveredUser] = useState(null);
 
   const maxRatings = Math.max(...scatterData.map(d => d.ratingCount), 100);
-  const getX = (count) => 10 + (count / maxRatings) * 80;
-  const getY = (avg) => 88 - (avg * 0.76);
+  const positionedScatterData = useMemo(() => {
+    const placed = [];
+
+    return scatterData.map((user, idx) => {
+      let x = 10 + (((user.ratingCount || 0) / maxRatings) * 80);
+      let y = 88 - ((user.average || 0) * 0.76);
+      let attempts = 0;
+
+      while (
+        placed.some((point) => Math.abs(point.x - x) < 3.2 && Math.abs(point.y - y) < 4.5) &&
+        attempts < 20
+      ) {
+        const ring = Math.floor(attempts / 6) + 1;
+        const angleDeg = ((attempts * 59) + (idx * 23)) % 360;
+        const angleRad = (angleDeg * Math.PI) / 180;
+        x = x + (Math.cos(angleRad) * (1.8 * ring));
+        y = y + (Math.sin(angleRad) * (2.2 * ring));
+        x = Math.max(2, Math.min(98, x));
+        y = Math.max(3, Math.min(97, y));
+        attempts += 1;
+      }
+
+      placed.push({ x, y });
+      return {
+        ...user,
+        _plotX: x,
+        _plotY: y,
+      };
+    });
+  }, [scatterData, maxRatings]);
 
   return (
     <div 
@@ -361,9 +389,7 @@ export const ScatterRatingsGraph = ({ scatterData, onOpenModal }) => {
         }} />
 
         {/* Data points with names */}
-        {scatterData.map((user, idx) => {
-          const x = getX(user.ratingCount);
-          const y = getY(user.average);
+        {positionedScatterData.map((user, idx) => {
           const isHovered = hoveredUser === idx;
           
           return (
@@ -376,8 +402,8 @@ export const ScatterRatingsGraph = ({ scatterData, onOpenModal }) => {
               onMouseLeave={() => setHoveredUser(null)}
               style={{
                 position: 'absolute',
-                left: `${x}%`,
-                top: `${y}%`,
+                left: `${user._plotX}%`,
+                top: `${user._plotY}%`,
                 transform: 'translate(-50%, -50%)',
                 zIndex: isHovered ? 10 : 1,
                 display: 'flex',
@@ -540,6 +566,7 @@ export const GraphSection = ({
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <h2 style={{ fontSize: '24px', margin: 0, fontWeight: '700' }}>Graph 1</h2>
           <InfoIconModal
+            modalId="thread-graph-vertical-info"
             title="Vertical Rating Graph"
             iconSize={16}
             showButtonText={false}
@@ -593,6 +620,7 @@ export const GraphSection = ({
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <h2 style={{ fontSize: '24px', margin: 0, fontWeight: '700' }}>Graph 2</h2>
           <InfoIconModal
+            modalId="thread-graph-scatter-info"
             title="Scatter Plot Graph"
             iconSize={16}
             showButtonText={false}

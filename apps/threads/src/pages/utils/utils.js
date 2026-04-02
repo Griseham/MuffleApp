@@ -1,3 +1,5 @@
+import { CURRENT_USER_AVATAR, isCurrentUserAuthor } from "../../utils/currentUser";
+
 export function hashString(str) {
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
@@ -8,6 +10,7 @@ export function hashString(str) {
   
   export function authorToAvatar(author) {
     if (!author) return "/assets/default-avatar.png";
+    if (isCurrentUserAuthor(author)) return CURRENT_USER_AVATAR;
     let hash = 0;
     for (let i = 0; i < author.length; i++) {
       hash = author.charCodeAt(i) + ((hash << 5) - hash);
@@ -25,7 +28,8 @@ export function removeLinks(text) {
   
 
 export function getAvatarSrc(post) {
-    const idStr = post.id.toString();
+    if (isCurrentUserAuthor(post)) return CURRENT_USER_AVATAR;
+    const idStr = post?.id?.toString?.() || post?.author || "default";
     const num = hashString(idStr);
     return `/assets/image${(num % 1000) + 1}.png`;
   }

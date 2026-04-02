@@ -1,6 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import ReactDOM from "react-dom";
 import { getAvatarForUser } from "../utils/avatarService";
+import {
+  CURRENT_USER_AVATAR,
+  CURRENT_USER_DISPLAY_NAME,
+  isCurrentUserAuthor,
+} from "../../utils/currentUser";
 
 const UserHoverCard = ({ user, userData, className = "" }) => {
   const [genresExpanded, setGenresExpanded] = useState(false);
@@ -12,13 +17,15 @@ const UserHoverCard = ({ user, userData, className = "" }) => {
     { name: "Other", percent: 25, color: "#9ca3af" },
   ];
 
-  const displayName = userData?.displayName || user?.name || "User";
+  const rawDisplayName = userData?.displayName || user?.displayName || user?.name || "User";
+  const isCurrentUser = isCurrentUserAuthor(user) || isCurrentUserAuthor(userData) || isCurrentUserAuthor(rawDisplayName);
+  const displayName = isCurrentUser ? CURRENT_USER_DISPLAY_NAME : rawDisplayName;
   const verified = userData?.verified || false;
   const createdAt = userData?.createdAt || "Jan 2023";
   const following = userData?.following || 250;
   const followers = userData?.followers || 120;
   const discoveryPercent = userData?.discoveryPercent || 8;
-  const avatar = user?.avatar || userData?.avatar || getAvatarForUser(1);
+  const avatar = user?.avatar || userData?.avatar || (isCurrentUser ? CURRENT_USER_AVATAR : getAvatarForUser(1));
   const genres =
     Array.isArray(userData?.genres) && userData.genres.length > 0
       ? userData.genres
@@ -353,8 +360,10 @@ export const ClickableUserAvatar = ({
   const btnRef = useRef(null);
   const hideTimer = useRef(null);
 
-  const displayName = user?.displayName || user?.name || "User";
-  const resolvedAvatar = avatarSrc || user?.avatar || getAvatarForUser(user);
+  const rawDisplayName = user?.displayName || user?.name || "User";
+  const isCurrentUser = isCurrentUserAuthor(user) || isCurrentUserAuthor(rawDisplayName);
+  const displayName = isCurrentUser ? CURRENT_USER_DISPLAY_NAME : rawDisplayName;
+  const resolvedAvatar = avatarSrc || user?.avatar || (isCurrentUser ? CURRENT_USER_AVATAR : getAvatarForUser(user));
 
   const showCard = useCallback(() => {
     if (!btnRef.current) return;

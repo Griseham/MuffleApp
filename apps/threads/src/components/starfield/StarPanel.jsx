@@ -294,7 +294,7 @@ export default function StarPanel({ star, onClose, onViewThread }) {
               marginTop: '5px'
             }}
           >
-            {star.post.postType === 'groupchat' ? 'Join Group Chat' :
+            {star.post.postType === 'groupchat' ? 'Open Chat Replay' :
              star.post.postType === 'news' ? 'View News' :
              star.post.postType === 'parameter' ? 'View Parameter Thread' :
              'View Thread'}

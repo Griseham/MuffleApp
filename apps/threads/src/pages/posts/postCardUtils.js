@@ -1,3 +1,9 @@
+import {
+  CURRENT_USER_AVATAR,
+  CURRENT_USER_DISPLAY_NAME,
+  isCurrentUserAuthor,
+} from "../../utils/currentUser";
+
 // Helper functions for PostCard components
 export const getRandomNumber = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
 export const getRandomPercentage = () => (Math.random() * 0.02).toFixed(4);
@@ -88,7 +94,7 @@ export function hashString(str) {
 
 // Get avatar source based on post
 export function getAvatarSrc(post) {
-  if (post.author === 'You') return '/assets/user.png';
+  if (isCurrentUserAuthor(post)) return CURRENT_USER_AVATAR;
   
   // Handle cases where post.id might be undefined
   const idStr = post.id ? post.id.toString() : post.author || 'default';
@@ -98,6 +104,7 @@ export function getAvatarSrc(post) {
 // Generate username based on author
 export function generateUsername(author) {
   if (!author) return `user${getRandomNumber(1000, 9999)}`;
+  if (isCurrentUserAuthor(author)) return CURRENT_USER_DISPLAY_NAME;
   // Strip any spaces from the author name
   return `${author?.replace(/\s+/g, '')}${getRandomNumber(10, 999)}`;
 }

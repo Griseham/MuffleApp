@@ -1,22 +1,24 @@
 // src/pages/threads/ParameterThreadDetail.jsx
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo, useContext } from "react";
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, 
   Tooltip, ResponsiveContainer
 } from 'recharts'; 
 import { 
   Heart, MessageCircle, Share2, Bookmark, 
-  BarChart3, Users
+  BarChart3
 } from 'lucide-react';
-import InfoIconModal from '../InfoIconModal';
+import InfoIconModal from '../../components/InfoIconModal';
 
 // Import components
 import GraphModal from "../modals/GraphModal";
 import TikTokModal from "../modals/TikTokModal";
 import ThreadCommentCard from './ThreadCommentCard';
 import ThreadCommentComposer from './ThreadCommentComposer';
-import ScatterRatingsGraph from '../visualizations/ScatterRatingsGraph';
+import { ScatterRatingsGraph as ThreadDetailScatterRatingsGraph } from './GraphComponents';
+import { generateHash, getCommentMetrics, getCommunitySnippetStats } from './threadHelpers';
 import { buildApiUrl } from '../../utils/api';
+import GlobalModalContext from '../../components/context/GlobalModalContext';
 
 // Import utilities and styles
 import { authorToAvatar, getAvatarSrc } from "../utils/utils";
@@ -24,13 +26,109 @@ import { FiArrowLeft } from "react-icons/fi";
 import ThreadDetailStyles from "./ThreadDetailStyles";
 import './../../styles/threadDetailStyles.css';
 
-// Parameter-specific color scheme
-const PARAMETER_COLORS = {
-  'Imagine Dragons': '#FF6B35',
-  'Green Day': '#4ECDC4', 
-  'OneRepublic': '#45B7D1',
-  'Maroon 5': '#96CEB4'
-};
+const THREAD_THEME_COLOR = '#00C4B4';
+const PARAMETER_PALETTE = [
+  '#CC5427',
+  '#3A9B93',
+  '#3686A3',
+  '#7BA387',
+  '#DDA0DD',
+  '#F7DC6F',
+  '#BB8FCE',
+  '#85C1E9',
+];
+
+function rangeFromSeed(seedInput, min, max) {
+  const seed = Math.abs(generateHash(seedInput));
+  const span = Math.max(1, max - min + 1);
+  return min + (seed % span);
+}
+
+function normalizeMetricCount(value, fallback, minimumValid = 1) {
+  if (Number.isFinite(value) && value >= minimumValid) {
+    return Math.round(value);
+  }
+  return Math.round(fallback);
+}
+
+function getRealisticParameterCommentMetrics(comment = {}, hasSnippet = false) {
+  const baseMetrics = getCommentMetrics(comment, hasSnippet);
+  const seedBase = `${comment?.id || "comment"}:${comment?.author || "unknown"}:${(comment?.body || "").slice(0, 48)}`;
+
+  const fallbackLikeCount = hasSnippet
+    ? rangeFromSeed(`${seedBase}:parameter:likes:snippet`, 360, 980)
+    : rangeFromSeed(`${seedBase}:parameter:likes:plain`, 90, 280);
+  const fallbackCommentCount = hasSnippet
+    ? rangeFromSeed(`${seedBase}:parameter:comments:snippet`, 24, 160)
+    : rangeFromSeed(`${seedBase}:parameter:comments:plain`, 8, 52);
+
+  const likeCount = normalizeMetricCount(
+    baseMetrics.likeCount,
+    fallbackLikeCount,
+    hasSnippet ? 180 : 60
+  );
+  const commentCount = normalizeMetricCount(
+    baseMetrics.commentCount,
+    fallbackCommentCount,
+    hasSnippet ? 14 : 5
+  );
+
+  const interactionFallback = Math.round(
+    (likeCount * 0.7) + (commentCount * 2.7) + (hasSnippet ? 190 : 55)
+  );
+  const interactionCount = normalizeMetricCount(
+    baseMetrics.interactionCount,
+    interactionFallback,
+    hasSnippet ? 220 : 75
+  );
+
+  return {
+    ...baseMetrics,
+    likeCount,
+    commentCount,
+    interactionCount,
+  };
+}
+
+function normalizeParameterKey(value = "") {
+  return String(value).trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function formatArtworkUrl(url, size = 300) {
+  if (!url || typeof url !== "string") {
+    return "/assets/default-artist.png";
+  }
+
+  return url
+    .replace('{w}', String(size))
+    .replace('{h}', String(size))
+    .replace('{f}', 'jpg');
+}
+
+function normalizeParameterSnippet(snippet = {}) {
+  const attrs = snippet?.snippetData?.attributes || {};
+  const snippetId = snippet.commentId || snippet.id;
+
+  return {
+    ...snippet,
+    id: snippetId,
+    commentId: snippetId,
+    name: snippet.songName || snippet.name || attrs.name || "Unknown Song",
+    artistName: snippet.artistName || attrs.artistName || "Unknown Artist",
+    artwork: formatArtworkUrl(
+      snippet.artworkUrl ||
+      snippet.artwork ||
+      attrs.artwork?.url ||
+      snippet.artistImage ||
+      "/assets/default-artist.png"
+    ),
+    previewUrl: snippet.previewUrl || attrs.previews?.[0]?.url || null,
+    userRating: Number.isFinite(snippet.userRating) ? snippet.userRating : null,
+    avgRating: Number.isFinite(snippet.avgRating) ? snippet.avgRating : null,
+    totalRatings: Number.isFinite(snippet.totalRatings) ? snippet.totalRatings : 0,
+    didRate: Boolean(snippet.didRate),
+  };
+}
 
 // Mock data for parameter thread
 const parameterThreadMockData = {
@@ -275,42 +373,44 @@ const parameterThreadMockData = {
       commentId: 'param_comment_001',
       id: 'param_comment_001',
       parameter: 'Imagine Dragons',
-      userRating: 85,
-      avgRating: 78,
-      totalRatings: 342,
-      didRate: true
+      userRating: null,
+      avgRating: null,
+      totalRatings: 0,
+      didRate: false
     },
     {
       commentId: 'param_comment_002',
       id: 'param_comment_002',
       parameter: 'Green Day',
-      userRating: 92,
-      avgRating: 88,
-      totalRatings: 456,
-      didRate: true
+      userRating: null,
+      avgRating: null,
+      totalRatings: 0,
+      didRate: false
     },
     {
       commentId: 'param_comment_003',
       id: 'param_comment_003',
       parameter: 'OneRepublic',
-      userRating: 78,
-      avgRating: 82,
-      totalRatings: 298,
-      didRate: true
+      userRating: null,
+      avgRating: null,
+      totalRatings: 0,
+      didRate: false
     },
     {
       commentId: 'param_comment_004',
       id: 'param_comment_004',
       parameter: 'Maroon 5',
-      userRating: 88,
-      avgRating: 85,
-      totalRatings: 378,
-      didRate: true
+      userRating: null,
+      avgRating: null,
+      totalRatings: 0,
+      didRate: false
     }
   ]
 };
 
 export default function ParameterThreadDetail({ postId, onBack, _onSelectUser }) {
+  const { closeModal: closeGlobalModal } = useContext(GlobalModalContext);
+
   // Transition state
   const [isVisible, setIsVisible] = useState(false);
   
@@ -325,7 +425,114 @@ export default function ParameterThreadDetail({ postId, onBack, _onSelectUser })
   const [parameterScatterData, setParameterScatterData] = useState([]);
   const [isGraphModalOpen, setIsGraphModalOpen] = useState(false);
   const [activeGraphType, setActiveGraphType] = useState('vertical');
+  const [isGraphsOpen, setIsGraphsOpen] = useState(false);
   const [isTikTokOpen, setIsTikTokOpen] = useState(false);
+  const seededInitialRatingsRef = useRef(false);
+
+  // Always enter parameter thread detail with info sidebar closed.
+  useEffect(() => {
+    closeGlobalModal();
+  }, [postId, closeGlobalModal]);
+
+  const fallbackParameter =
+    post?.parameters?.[0] ||
+    comments.find((comment) => comment?.parameter)?.parameter ||
+    null;
+  const displayComments = comments;
+  const snippetIds = useMemo(
+    () => new Set(snippetRecs.map((snippet) => snippet?.commentId || snippet?.id).filter(Boolean)),
+    [snippetRecs]
+  );
+  const displayCommentsWithMetrics = useMemo(
+    () =>
+      displayComments.map((comment) => {
+        const hasSnippet = Boolean(comment?.snippet) || snippetIds.has(comment?.id);
+        return getRealisticParameterCommentMetrics(comment, hasSnippet);
+      }),
+    [displayComments, snippetIds]
+  );
+  const displayedPostStats = useMemo(() => ({
+    num_comments: 0,
+    ups: 0,
+    bookmarks: 0,
+  }), []);
+  const displayedPostStatsWithFallback = useMemo(() => {
+    const totalLikes = displayCommentsWithMetrics.reduce(
+      (sum, comment) => sum + (Number.isFinite(comment.likeCount) ? comment.likeCount : 0),
+      0
+    );
+    const totalReplies = displayCommentsWithMetrics.reduce(
+      (sum, comment) => sum + (Number.isFinite(comment.commentCount) ? comment.commentCount : 0),
+      0
+    );
+    const snippetCommentCount = displayCommentsWithMetrics.reduce((sum, comment) => {
+      const hasSnippet = Boolean(comment?.snippet) || snippetIds.has(comment?.id);
+      return sum + (hasSnippet ? 1 : 0);
+    }, 0);
+
+    const derivedUps = Math.max(
+      420,
+      Math.round((totalLikes * 0.36) + (totalReplies * 2.2))
+    );
+    const derivedBookmarks = Math.max(
+      90,
+      Math.round((derivedUps * 0.22) + (snippetCommentCount * 18))
+    );
+    const derivedCommentCount = Math.max(comments.length, totalReplies);
+
+    const resolvedNumComments =
+      Number.isFinite(post?.num_comments) && post.num_comments >= 120
+        ? post.num_comments
+        : derivedCommentCount;
+    const resolvedUps =
+      Number.isFinite(post?.ups) && post.ups >= 320
+        ? post.ups
+        : derivedUps;
+    const resolvedBookmarks =
+      Number.isFinite(post?.bookmarks) && post.bookmarks >= 70
+        ? post.bookmarks
+        : derivedBookmarks;
+
+    return {
+      ...displayedPostStats,
+      num_comments: resolvedNumComments,
+      ups: resolvedUps,
+      bookmarks: resolvedBookmarks,
+    };
+  }, [comments.length, displayCommentsWithMetrics, displayedPostStats, post, snippetIds]);
+
+  const parameterColorMap = useMemo(() => {
+    const map = new Map();
+    const orderedKeys = [];
+    const seen = new Set();
+
+    const addParameter = (parameterName) => {
+      const key = normalizeParameterKey(parameterName);
+      if (!key || seen.has(key)) return;
+      seen.add(key);
+      orderedKeys.push(key);
+    };
+
+    if (Array.isArray(post?.parameters)) {
+      post.parameters.forEach(addParameter);
+    }
+
+    comments.forEach((comment) => addParameter(comment?.parameter));
+
+    orderedKeys.forEach((key, index) => {
+      map.set(key, PARAMETER_PALETTE[index % PARAMETER_PALETTE.length]);
+    });
+
+    return map;
+  }, [comments, post?.parameters]);
+
+  const getParameterColor = useCallback((parameterName, fallbackIndex = 0) => {
+    const key = normalizeParameterKey(parameterName);
+    if (key && parameterColorMap.has(key)) {
+      return parameterColorMap.get(key);
+    }
+    return PARAMETER_PALETTE[fallbackIndex % PARAMETER_PALETTE.length];
+  }, [parameterColorMap]);
   
   // Audio states
   const audioRef = useRef(null);
@@ -348,17 +555,7 @@ export default function ParameterThreadDetail({ postId, onBack, _onSelectUser })
   useEffect(() => {
     async function loadParameterThread() {
       setIsLoading(true);
-      
-      // Use mock data for parameter thread
-      if (postId === 'parameter_thread_001') {
-        setPost(parameterThreadMockData.post);
-        setComments(parameterThreadMockData.comments);
-        setSnippetRecs(parameterThreadMockData.snippetRecs);
-        setIsLoading(false);
-        return;
-      }
-      
-      // For other parameter threads, try to load from API (future implementation)
+
       try {
         const cacheResp = await fetch(buildApiUrl(`/cached-posts/${postId}`));
         
@@ -368,12 +565,20 @@ export default function ParameterThreadDetail({ postId, onBack, _onSelectUser })
           if (cachedData && cachedData.postType === 'parameter') {
             setPost(cachedData);
             setComments(cachedData.comments || []);
-            setSnippetRecs(cachedData.snippetRecs || []);
+            setSnippetRecs((cachedData.snippets || []).map(normalizeParameterSnippet));
             setIsLoading(false);
             return;
           }
         }
-        
+
+        if (postId === 'parameter_thread_001') {
+          setPost(parameterThreadMockData.post);
+          setComments(parameterThreadMockData.comments);
+          setSnippetRecs(parameterThreadMockData.snippetRecs);
+          setIsLoading(false);
+          return;
+        }
+
         console.log("Parameter thread not found in cache");
         setIsLoading(false);
         
@@ -400,7 +605,7 @@ export default function ParameterThreadDetail({ postId, onBack, _onSelectUser })
     if (ratedSnippets.length > 0) {
       const verticalData = ratedSnippets.map(snippet => {
         const snippetId = snippet.id || snippet.commentId;
-        const relatedComment = comments.find(c => c.id === snippetId);
+        const relatedComment = displayComments.find(c => c.id === snippetId);
         const commentAuthor = relatedComment?.author || "Unknown";
         
         return {
@@ -418,7 +623,7 @@ export default function ParameterThreadDetail({ postId, onBack, _onSelectUser })
     // Process parameter scatter data - group users by artist/parameter
     const userParameterMap = new Map();
     
-    comments.forEach(comment => {
+    displayComments.forEach(comment => {
       if (comment.parameter && comment.author) {
         if (!userParameterMap.has(comment.author)) {
           userParameterMap.set(comment.author, {
@@ -432,9 +637,10 @@ export default function ParameterThreadDetail({ postId, onBack, _onSelectUser })
         
         // Find snippet for this comment
         const snippet = snippetRecs.find(s => s.commentId === comment.id);
-        if (snippet && snippet.userRating) {
+        if (snippet && (Number.isFinite(snippet.userRating) || Number.isFinite(snippet.avgRating))) {
           const userData = userParameterMap.get(comment.author);
-          userData.ratings.push(snippet.userRating);
+          const score = Number.isFinite(snippet.userRating) ? snippet.userRating : snippet.avgRating;
+          userData.ratings.push(score);
           userData.totalRatings = userData.ratings.length;
           userData.avgRating = userData.ratings.reduce((sum, rating) => sum + rating, 0) / userData.ratings.length;
         }
@@ -447,14 +653,124 @@ export default function ParameterThreadDetail({ postId, onBack, _onSelectUser })
       .map(user => ({
         username: user.username,
         userAvatar: authorToAvatar(user.username),
-        ratingCount: user.totalRatings * 10 + Math.floor(Math.random() * 50), // Simulate more ratings
+        ratingCount: user.totalRatings,
         average: Math.round(user.avgRating),
         parameter: user.parameter,
-        color: PARAMETER_COLORS[user.parameter] || '#64748b'
+        color: getParameterColor(user.parameter)
       }));
     
     setParameterScatterData(scatterData);
-  }, [snippetRecs, comments, post]);
+  }, [snippetRecs, displayComments, post, getParameterColor]);
+
+  // Build TikTok modal snippets from real thread comments and snippet rec state.
+  // Exclude seeded example IDs and include all songs attached to comments.
+  const tikTokSnippets = useMemo(() => {
+    const EXAMPLE_COMMENT_ID = "example_comment_001";
+    const snippetsById = new Map();
+
+    snippetRecs.forEach((snippet) => {
+      const snippetId = snippet?.commentId || snippet?.id;
+      if (!snippetId) return;
+      snippetsById.set(snippetId, snippet);
+    });
+
+    const mergedSnippets = [];
+    const seenIds = new Set();
+
+    const mergeSnippet = (comment, commentSnippet, snippetFromState) => {
+      const snippetId =
+        comment?.id ||
+        snippetFromState?.commentId ||
+        snippetFromState?.id ||
+        commentSnippet?.commentId ||
+        commentSnippet?.id;
+      if (!snippetId || snippetId === EXAMPLE_COMMENT_ID) return null;
+
+      const commentAttrs = commentSnippet?.snippetData?.attributes || {};
+      const stateAttrs = snippetFromState?.snippetData?.attributes || {};
+      const songName =
+        commentSnippet?.name ||
+        commentSnippet?.songName ||
+        commentAttrs?.name ||
+        snippetFromState?.name ||
+        snippetFromState?.songName ||
+        stateAttrs?.name ||
+        "Unknown Song";
+      const artistName =
+        commentSnippet?.artistName ||
+        commentAttrs?.artistName ||
+        snippetFromState?.artistName ||
+        stateAttrs?.artistName ||
+        "Unknown Artist";
+      const rawArtwork =
+        snippetFromState?.artworkUrl ||
+        snippetFromState?.artwork ||
+        stateAttrs?.artwork?.url ||
+        commentSnippet?.artworkUrl ||
+        commentSnippet?.artwork ||
+        commentAttrs?.artwork?.url ||
+        "/assets/default-artist.png";
+      const artworkUrl = formatArtworkUrl(rawArtwork, 300);
+      const previewUrl =
+        snippetFromState?.previewUrl ||
+        stateAttrs?.previews?.[0]?.url ||
+        commentSnippet?.previewUrl ||
+        commentAttrs?.previews?.[0]?.url ||
+        null;
+
+      return {
+        ...(commentSnippet || {}),
+        ...(snippetFromState || {}),
+        id: snippetId,
+        commentId: snippetId,
+        name: songName,
+        songName,
+        artistName,
+        artwork: artworkUrl,
+        artworkUrl,
+        previewUrl,
+        author:
+          snippetFromState?.author ||
+          commentSnippet?.author ||
+          comment?.author ||
+          "Unknown",
+        parameter:
+          snippetFromState?.parameter ||
+          commentSnippet?.parameter ||
+          comment?.parameter ||
+          fallbackParameter ||
+          null,
+      };
+    };
+
+    comments.forEach((comment) => {
+      const commentId = comment?.id;
+      if (!commentId || commentId === EXAMPLE_COMMENT_ID) return;
+
+      const commentSnippet = comment?.snippet || null;
+      const snippetFromState = snippetsById.get(commentId) || null;
+      if (!commentSnippet && !snippetFromState) return;
+
+      const merged = mergeSnippet(comment, commentSnippet, snippetFromState);
+      if (!merged) return;
+
+      const mergedId = merged.commentId || merged.id;
+      if (!mergedId || seenIds.has(mergedId)) return;
+      seenIds.add(mergedId);
+      mergedSnippets.push(merged);
+    });
+
+    snippetsById.forEach((snippet, snippetId) => {
+      if (!snippetId || snippetId === EXAMPLE_COMMENT_ID || seenIds.has(snippetId)) return;
+      const relatedComment = comments.find((comment) => comment?.id === snippetId) || null;
+      const merged = mergeSnippet(relatedComment, relatedComment?.snippet || null, snippet);
+      if (!merged) return;
+      seenIds.add(snippetId);
+      mergedSnippets.push(merged);
+    });
+
+    return mergedSnippets;
+  }, [comments, fallbackParameter, snippetRecs]);
 
   // Count songs per parameter
   const getParameterCounts = useCallback(() => {
@@ -462,14 +778,28 @@ export default function ParameterThreadDetail({ postId, onBack, _onSelectUser })
     
     const counts = {};
     post.parameters.forEach(param => {
-      counts[param] = comments.filter(comment => comment.parameter === param && comment.snippet).length;
+      const normalizedParameter = normalizeParameterKey(param);
+      counts[param] = comments.filter((comment) => {
+        if (normalizeParameterKey(comment.parameter) !== normalizedParameter) {
+          return false;
+        }
+
+        return snippetRecs.some((snippet) => snippet.commentId === comment.id);
+      }).length;
     });
     return counts;
-  }, [post, comments]);
+  }, [comments, post, snippetRecs]);
 
   // Audio and rating handlers
   const getSnippetId = useCallback((snippet) => {
     return snippet?.id || snippet?.commentId;
+  }, []);
+
+  const hasSnippetRating = useCallback((snippet) => {
+    return (
+      Number.isFinite(snippet?.userRating) ||
+      Boolean(snippet?.didRate)
+    );
   }, []);
 
   const stopAudio = useCallback(() => {
@@ -528,19 +858,29 @@ export default function ParameterThreadDetail({ postId, onBack, _onSelectUser })
   const handleUserRate = useCallback((snippetObj, ratingVal) => {
     const realId = getSnippetId(snippetObj);
     if (!realId) return;
-  
-    const randomAvg = ratingVal + ((Math.random() - 0.5) * 20);
-    const clampedAvg = Math.max(0, Math.min(100, randomAvg));
     
     setSnippetRecs(prev => {
       return prev.map(s => {
         const sId = getSnippetId(s);
         if (sId === realId) {
+          const communityStats = getCommunitySnippetStats(realId, s.avgRating);
+          const currentTotalRatings =
+            Number.isFinite(s.totalRatings) && s.totalRatings > 0
+              ? Math.round(s.totalRatings)
+              : communityStats.totalRatings;
+          const currentAvgRating = Number.isFinite(s.avgRating)
+            ? Math.round(s.avgRating)
+            : communityStats.avgRating;
+          const nextTotalRatings = currentTotalRatings + 1;
+          const nextAvgRating = Math.round(
+            ((currentAvgRating * currentTotalRatings) + ratingVal) / nextTotalRatings
+          );
+
           return {
             ...s,
             userRating: ratingVal,
-            avgRating: clampedAvg,
-            totalRatings: 200 + Math.floor(Math.random() * 300),
+            avgRating: nextAvgRating,
+            totalRatings: nextTotalRatings,
             didRate: true
           };
         }
@@ -551,6 +891,7 @@ export default function ParameterThreadDetail({ postId, onBack, _onSelectUser })
     setActiveSnippet(prev => ({
       ...prev,
       userRating: ratingVal,
+      avgRating: ratingVal,
       didRate: true
     }));
   }, [getSnippetId]);
@@ -561,6 +902,18 @@ export default function ParameterThreadDetail({ postId, onBack, _onSelectUser })
 
   const handleSubmitComment = useCallback((newComment) => {
     if (!newComment) return;
+
+    if (newComment.snippet) {
+      setSnippetRecs(prevSnippets => [
+        ...prevSnippets,
+        normalizeParameterSnippet({
+          ...newComment.snippet,
+          commentId: newComment.id,
+          parameter: newComment.parameter || newComment.snippet.parameter || null,
+        }),
+      ]);
+    }
+
     setComments(prevComments => [...prevComments, newComment]);
   }, []);
 
@@ -568,6 +921,137 @@ export default function ParameterThreadDetail({ postId, onBack, _onSelectUser })
   useEffect(() => {
     return () => stopAudio();
   }, [stopAudio]);
+
+  useEffect(() => {
+    setIsGraphsOpen(false);
+    seededInitialRatingsRef.current = false;
+  }, [postId]);
+
+  useEffect(() => {
+    if (!post || post.id !== postId || seededInitialRatingsRef.current) return;
+
+    seededInitialRatingsRef.current = true;
+
+    setSnippetRecs((prevSnippets) => {
+      const getId = (snippet) => snippet?.commentId || snippet?.id;
+      const nextSnippets = [...prevSnippets];
+
+      const upsertSnippetWithRating = (baseSnippet, ratingSeed) => {
+        const snippetId = getId(baseSnippet);
+        if (!snippetId) return;
+
+        const existingIndex = nextSnippets.findIndex((snippet) => getId(snippet) === snippetId);
+        const existingSnippet = existingIndex >= 0 ? nextSnippets[existingIndex] : null;
+        const mergedSnippet = existingSnippet ? { ...baseSnippet, ...existingSnippet } : baseSnippet;
+        const snippetWithRating = hasSnippetRating(mergedSnippet)
+          ? mergedSnippet
+          : {
+              ...mergedSnippet,
+              userRating: ratingSeed.userRating,
+              avgRating: ratingSeed.avgRating,
+              totalRatings: ratingSeed.totalRatings,
+              didRate: true,
+            };
+
+        if (existingIndex >= 0) {
+          nextSnippets[existingIndex] = snippetWithRating;
+        } else {
+          nextSnippets.push(snippetWithRating);
+        }
+      };
+
+      const firstRealCommentWithSnippet = comments.find((comment) => {
+        if (!comment?.id) return false;
+        if (comment.snippet) return true;
+        return nextSnippets.some((snippet) => getId(snippet) === comment.id);
+      });
+
+      const priorityIds = [];
+
+      if (firstRealCommentWithSnippet) {
+        const firstRealId = firstRealCommentWithSnippet.id;
+        const snippetFromState = nextSnippets.find((snippet) => getId(snippet) === firstRealId) || {};
+        const commentSnippet = firstRealCommentWithSnippet.snippet || {};
+        const snippetSource = {
+          ...commentSnippet,
+          ...snippetFromState,
+        };
+
+        upsertSnippetWithRating(
+          {
+            ...snippetSource,
+            id: snippetSource.id || snippetSource.commentId || firstRealId,
+            commentId: snippetSource.commentId || snippetSource.id || firstRealId,
+            name:
+              snippetSource.name ||
+              snippetSource.songName ||
+              snippetSource.snippetData?.attributes?.name ||
+              "Unknown Song",
+            songName:
+              snippetSource.songName ||
+              snippetSource.name ||
+              snippetSource.snippetData?.attributes?.name ||
+              "Unknown Song",
+            artistName:
+              snippetSource.artistName ||
+              snippetSource.snippetData?.attributes?.artistName ||
+              "Unknown Artist",
+            artwork:
+              snippetSource.artwork ||
+              snippetSource.artworkUrl ||
+              snippetSource.snippetData?.attributes?.artwork?.url ||
+              snippetSource.artistImage ||
+              "/assets/default-artist.png",
+            artworkUrl:
+              snippetSource.artworkUrl ||
+              snippetSource.artwork ||
+              snippetSource.snippetData?.attributes?.artwork?.url ||
+              snippetSource.artistImage ||
+              "/assets/default-artist.png",
+            previewUrl:
+              snippetSource.previewUrl ||
+              snippetSource.snippetData?.attributes?.previews?.[0]?.url ||
+              null,
+            author: snippetSource.author || firstRealCommentWithSnippet.author,
+            parameter: snippetSource.parameter || firstRealCommentWithSnippet.parameter || fallbackParameter,
+          },
+          {
+            userRating: 86,
+            avgRating: 74,
+            totalRatings: 31,
+          }
+        );
+
+        priorityIds.push(firstRealId);
+      }
+
+      const orderedSnippets = [];
+      const seenIds = new Set();
+
+      priorityIds.forEach((id) => {
+        const match = nextSnippets.find((snippet) => getId(snippet) === id);
+        if (match && !seenIds.has(id)) {
+          orderedSnippets.push(match);
+          seenIds.add(id);
+        }
+      });
+
+      nextSnippets.forEach((snippet) => {
+        const snippetId = getId(snippet);
+        if (!snippetId || seenIds.has(snippetId)) return;
+        orderedSnippets.push(snippet);
+        seenIds.add(snippetId);
+      });
+
+      return orderedSnippets;
+    });
+  }, [
+    comments,
+    fallbackParameter,
+    hasSnippetRating,
+    post,
+    postId,
+  ]);
 
   // Modal handlers
   const openVerticalGraphModal = useCallback(() => {
@@ -592,8 +1076,13 @@ export default function ParameterThreadDetail({ postId, onBack, _onSelectUser })
     setIsTikTokOpen(false);
   }, []);
 
+  const handleGraphsTabClick = useCallback(() => {
+    setIsGraphsOpen((prevOpen) => !prevOpen);
+  }, []);
+
   const styles = ThreadDetailStyles;
   const parameterCounts = getParameterCounts();
+  const graphsCount = graphRatings?.length || 0;
 
   return (
     <div 
@@ -609,13 +1098,14 @@ export default function ParameterThreadDetail({ postId, onBack, _onSelectUser })
         <source type="audio/mpeg" />
       </audio>
       
-      {/* Header */}
+      {/* Header — Glassmorphic */}
       <div style={{
         display: "flex",
         alignItems: "center",
-        padding: "16px",
-        backgroundColor: "#0f172a",
-        borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
+        padding: "18px 20px",
+        backgroundColor: "rgba(10, 14, 26, 0.6)",
+        backdropFilter: "blur(24px) saturate(1.4)",
+        borderBottom: "1px solid rgba(0, 196, 180, 0.12)",
         position: "sticky",
         top: 0,
         zIndex: 10,
@@ -624,61 +1114,104 @@ export default function ParameterThreadDetail({ postId, onBack, _onSelectUser })
         <button 
           onClick={onBack} 
           style={{
-            width: "40px",
-            height: "40px",
+            width: "38px",
+            height: "38px",
             borderRadius: "50%",
-            backgroundColor: "#1e293b",
+            background: "rgba(255, 255, 255, 0.06)",
+            border: "1px solid rgba(255, 255, 255, 0.08)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             cursor: "pointer",
-            border: "none",
-            color: "#fff",
+            color: "#e2e8f0",
             marginRight: "16px",
+            backdropFilter: "blur(8px)",
+            padding: 0,
           }}
         >
-          <FiArrowLeft size={24} />
+          <FiArrowLeft size={20} />
         </button>
-        <h2 style={{
-          margin: 0,
-          fontSize: "24px",
-          fontWeight: "700",
-          color: "#22c55e",
+        <span style={{
+          fontSize: "13px",
+          fontWeight: "600",
+          letterSpacing: "3px",
+          textTransform: "uppercase",
+          color: "#94a3b8",
         }}>
-          Parameter Thread
-        </h2>
+          Parameter
+        </span>
+        <div style={{
+          marginLeft: "auto",
+          width: "32px",
+          height: "32px",
+          borderRadius: "50%",
+          background: "linear-gradient(135deg, #00C4B4, #0d9488)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          color: "#fff",
+          boxShadow: "0 2px 12px rgba(0, 196, 180, 0.3)",
+        }}>
+          <BarChart3 size={16} />
+        </div>
       </div>
       
-      {/* Main Post */}
+      {/* Main Post — Glassmorphic */}
       {post ? (
         <div style={{
-          padding: "24px",
-          backgroundColor: "rgba(15, 23, 42, 0.8)",
-          borderRadius: "16px",
-          margin: "16px auto",
-          border: "1px solid rgba(34, 197, 94, 0.3)",
+          padding: "0",
+          backgroundColor: "rgba(255, 255, 255, 0.03)",
+          borderRadius: "20px",
+          margin: "20px auto",
+          border: "1px solid rgba(0, 196, 180, 0.12)",
           position: "relative",
-          boxShadow: "0 8px 32px rgba(34, 197, 94, 0.2)",
+          boxShadow: "0 8px 32px rgba(0, 0, 0, 0.25)",
+          backdropFilter: "blur(20px)",
           width: "calc(100% - 32px)",
           maxWidth: "100%",
           boxSizing: "border-box",
+          overflow: "hidden",
         }}>
+          {/* Ambient glow orbs — green tinted */}
+          <div style={{
+            position: "absolute",
+            top: "-120px",
+            right: "-80px",
+            width: "340px",
+            height: "340px",
+            background: "radial-gradient(circle, rgba(0, 196, 180, 0.12) 0%, transparent 70%)",
+            pointerEvents: "none",
+            zIndex: 0,
+          }}/>
+          <div style={{
+            position: "absolute",
+            bottom: "-60px",
+            left: "-60px",
+            width: "260px",
+            height: "260px",
+            background: "radial-gradient(circle, rgba(13, 148, 136, 0.08) 0%, transparent 70%)",
+            pointerEvents: "none",
+            zIndex: 0,
+          }}/>
           {/* User info */}
           <div style={{
             display: "flex",
             alignItems: "center",
-            marginBottom: "16px",
+            gap: "12px",
+            padding: "18px 20px 14px",
+            position: "relative",
+            zIndex: 1,
           }}>
             <img
               src={getAvatarSrc(post)}
               alt="User avatar"
               style={{
-                width: "48px",
-                height: "48px",
+                width: "44px",
+                height: "44px",
                 borderRadius: "50%",
                 objectFit: "cover",
-                marginRight: "12px",
-                border: "2px solid rgba(34, 197, 94, 0.3)",
+                border: "2px solid rgba(0, 196, 180, 0.4)",
+                background: "#1e293b",
               }}
             />
             <div style={{
@@ -687,12 +1220,13 @@ export default function ParameterThreadDetail({ postId, onBack, _onSelectUser })
             }}>
               <div style={{
                 fontWeight: "700",
-                fontSize: "18px",
-                color: "#fff",
+                fontSize: "15px",
+                color: "#f1f5f9",
               }}>{post.author}</div>
               <div style={{
-                fontSize: "14px",
+                fontSize: "12px",
                 color: "#64748b",
+                marginTop: "2px",
               }}>
                 {new Date(post.createdUtc * 1000).toLocaleDateString()}
               </div>
@@ -701,211 +1235,271 @@ export default function ParameterThreadDetail({ postId, onBack, _onSelectUser })
             {/* Parameter thread icon */}
             <div style={{
               position: "absolute",
-              right: "24px",
-              top: "24px",
-              width: "40px",
-              height: "40px",
+              right: "20px",
+              top: "18px",
+              width: "36px",
+              height: "36px",
               borderRadius: "50%",
-              backgroundColor: "rgba(34, 197, 94, 0.2)",
+              background: "linear-gradient(135deg, rgba(0, 196, 180, 0.25), rgba(13, 148, 136, 0.15))",
+              border: "1px solid rgba(0, 196, 180, 0.3)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              color: "#22c55e",
+              color: THREAD_THEME_COLOR,
             }}>
-              <BarChart3 size={20} />
+              <BarChart3 size={18} />
             </div>
           </div>
           
-          {/* Post title and content */}
-          <h2 style={{
-            fontSize: "22px",
-            fontWeight: "700",
-            marginBottom: "16px",
-            color: "#fff",
-          }}>
-            {post.title}
-          </h2>
+          {/* Post title and content — gradient text */}
+          <div style={{ padding: "0 20px 16px", position: "relative", zIndex: 1 }}>
+            <h2 style={{
+              margin: 0,
+              fontSize: "26px",
+              fontWeight: "800",
+              letterSpacing: "-0.5px",
+              lineHeight: "1.2",
+              background: "linear-gradient(135deg, #f8fafc 30%, #94a3b8)",
+              backgroundClip: "text",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+            }}>
+              {post.title}
+            </h2>
+          </div>
           
           {post.selftext && (
             <p style={{
               fontSize: "16px",
               lineHeight: 1.6,
-              color: "#e2e8f0",
-              marginBottom: "20px",
+              color: "#cbd5e1",
+              margin: 0,
+              padding: "0 20px 16px",
+              position: "relative",
+              zIndex: 1,
             }}>
               {post.selftext}
             </p>
           )}
           
-          {/* Parameter count display */}
+          {/* Parameter count display — glassmorphic */}
           {post.parameters && (
             <div style={{
               display: "flex",
               flexWrap: "wrap",
               gap: "12px",
-              marginBottom: "20px",
+              margin: "0 20px 20px",
               padding: "16px",
-              backgroundColor: "rgba(34, 197, 94, 0.05)",
-              borderRadius: "12px",
-              border: "1px solid rgba(34, 197, 94, 0.2)",
+              backgroundColor: "rgba(0, 196, 180, 0.04)",
+              borderRadius: "16px",
+              border: "1px solid rgba(0, 196, 180, 0.1)",
+              backdropFilter: "blur(8px)",
+              position: "relative",
+              zIndex: 1,
             }}>
-              {post.parameters.map(param => (
-                <div key={param} style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  padding: "8px 16px",
-                  backgroundColor: "rgba(34, 197, 94, 0.15)",
-                  borderRadius: "20px",
-                  border: `2px solid ${PARAMETER_COLORS[param] || '#22c55e'}`,
-                }}>
-                  <div style={{
-                    width: "12px",
-                    height: "12px",
-                    borderRadius: "50%",
-                    backgroundColor: PARAMETER_COLORS[param] || '#22c55e',
-                  }} />
-                  <span style={{
-                    color: "#fff",
-                    fontWeight: "600",
-                    fontSize: "14px",
+              {post.parameters.map((param, index) => {
+                const parameterColor = getParameterColor(param, index);
+
+                return (
+                  <div key={param} style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    padding: "8px 16px",
+                    backgroundColor: "rgba(255, 255, 255, 0.04)",
+                    borderRadius: "999px",
+                    border: `1.5px solid ${parameterColor}88`,
+                    backdropFilter: "blur(4px)",
                   }}>
-                    {param}
-                  </span>
-                  <span style={{
-                    color: "#94a3b8",
-                    fontSize: "13px",
-                  }}>
-                    {parameterCounts[param] || 0} songs
-                  </span>
-                </div>
-              ))}
+                    <div style={{
+                      width: "12px",
+                      height: "12px",
+                      borderRadius: "50%",
+                      backgroundColor: parameterColor,
+                    }} />
+                    <span style={{
+                      color: "#fff",
+                      fontWeight: "600",
+                      fontSize: "14px",
+                    }}>
+                      {param}
+                    </span>
+                    <span style={{
+                      color: "#94a3b8",
+                      fontSize: "13px",
+                    }}>
+                      {parameterCounts[param] || 0} songs
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           )}
           
-          {/* Post image placeholder */}
+          {/* Post image */}
           {post.imageUrl && (
-            <img
-              src={post.imageUrl}
-              alt="Post visual"
-              style={styles.postImage}
-            />
+            <div style={{ padding: "0 20px 20px", position: "relative", zIndex: 1 }}>
+              <div style={{
+                borderRadius: "14px",
+                overflow: "hidden",
+                border: "1px solid rgba(255, 255, 255, 0.06)",
+                background: "#0a0e1a",
+              }}>
+                <img
+                  src={post.imageUrl}
+                  alt="Post visual"
+                  style={{
+                    width: "100%",
+                    maxHeight: "500px",
+                    objectFit: "contain",
+                    display: "block",
+                  }}
+                />
+              </div>
+            </div>
           )}
           
-         {/* Stats row */}
+         {/* Stats row — pill badges */}
          <div style={{
             display: "flex",
-            justifyContent: "space-between",
             alignItems: "center",
+            justifyContent: "space-around",
             width: "100%",
-            paddingTop: "16px",
-            paddingBottom: "12px",
-            marginTop: "16px",
-            color: "#22c55e",
-            borderTop: "1px solid rgba(255, 255, 255, 0.08)",
+            padding: "14px 20px 18px",
+            borderTop: "1px solid rgba(0, 196, 180, 0.08)",
+            position: "relative",
+            zIndex: 1,
           }}>
-            <div style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              cursor: "pointer",
-              fontSize: "15px",
-              fontWeight: "500",
-              padding: "8px 12px",
-              borderRadius: "8px",
-            }}>
-              <MessageCircle size={20} />
-              <span>{post.num_comments}</span>
-            </div>
-            <div style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              cursor: "pointer",
-              fontSize: "15px",
-              fontWeight: "500",
-              padding: "8px 12px",
-              borderRadius: "8px",
-            }}>
-              <Heart size={20} />
-              <span>{post.ups}</span>
-            </div>
-            <div style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              cursor: "pointer",
-              fontSize: "15px",
-              fontWeight: "500",
-              padding: "8px 12px",
-              borderRadius: "8px",
-            }}>
-              <Share2 size={20} />
-            </div>
-            <div style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              cursor: "pointer",
-              fontSize: "15px",
-              fontWeight: "500",
-              padding: "8px 12px",
-              borderRadius: "8px",
-            }}>
-              <Bookmark size={20} />
-            </div>
+            {[
+              { icon: <MessageCircle size={16} />, val: displayedPostStatsWithFallback.num_comments },
+              { icon: <Heart size={16} />, val: displayedPostStatsWithFallback.ups },
+              { icon: <Share2 size={16} />, val: null },
+              { icon: <Bookmark size={16} />, val: displayedPostStatsWithFallback.bookmarks },
+            ].map((stat, i) => (
+              <button key={i} style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                background: "rgba(255, 255, 255, 0.04)",
+                border: "1px solid rgba(255, 255, 255, 0.06)",
+                borderRadius: "999px",
+                padding: "8px 14px",
+                color: "#94a3b8",
+                cursor: "pointer",
+                fontSize: "13px",
+                fontWeight: "600",
+                transition: "all 0.2s ease",
+              }}>
+                {stat.icon}
+                {stat.val !== null && <span>{stat.val}</span>}
+              </button>
+            ))}
           </div>
           
-          {/* Only Graphs Tab for Parameter Threads */}
+          {/* Graphs Tab — glassmorphic capsule */}
           <div style={{
-            display: "flex",
-            borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
-            marginTop: "24px",
-            width: "100%",
+            padding: "0 20px 20px",
+            position: "relative",
+            zIndex: 1,
           }}>
             <div style={{
-              padding: "16px 0",
               width: "100%",
-              textAlign: "center",
-              color: "#22c55e",
-              fontWeight: "600",
-              borderBottom: "3px solid #22c55e",
-              backgroundColor: "rgba(34, 197, 94, 0.05)",
               display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "8px"
+              gap: "8px",
+              padding: "6px",
+              borderRadius: "999px",
+              background: "rgba(255, 255, 255, 0.03)",
+              border: "1px solid rgba(255, 255, 255, 0.06)",
             }}>
-              <h4 style={{ margin: 0, fontSize: "15px" }}>Parameter Analysis</h4>
-              <InfoIconModal
-                title="Parameter Analysis"
-                iconSize={14}
-                showButtonText={false}
-                steps={[
-                  {
-                    icon: <BarChart3 size={18} color="#a9b6fc" />,
-                    title: "Compare Parameters",
-                    content: "View ratings and engagement data across all 4 artists in this parameter thread"
-                  },
-                  {
-                    icon: <Users size={18} color="#a9b6fc" />,
-                    title: "Artist Distribution", 
-                    content: "See which users recommended songs from which artists and how they performed"
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={handleGraphsTabClick}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    handleGraphsTabClick();
                   }
-                ]}
-              />
+                }}
+                style={{
+                flex: 1,
+                background: isGraphsOpen
+                  ? `linear-gradient(135deg, ${THREAD_THEME_COLOR}40, ${THREAD_THEME_COLOR}20)`
+                  : "transparent",
+                color: isGraphsOpen ? "#e0e7ff" : "#64748b",
+                borderRadius: "999px",
+                padding: "12px 14px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "10px",
+                fontWeight: 700,
+                letterSpacing: "0.2px",
+                boxShadow: isGraphsOpen
+                  ? `0 0 0 1px ${THREAD_THEME_COLOR}55, 0 8px 20px rgba(0,0,0,0.2)`
+                  : "none",
+                border: "none",
+                cursor: "pointer",
+                transition: "all 0.2s ease",
+                outline: "none",
+              }}>
+                <BarChart3 size={18} color={isGraphsOpen ? THREAD_THEME_COLOR : "#64748b"} />
+                <span style={{ fontSize: "15px" }}>Graphs</span>
+
+                <span style={{
+                  minWidth: "28px",
+                  height: "22px",
+                  padding: "0 8px",
+                  borderRadius: "999px",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "12px",
+                  fontWeight: 800,
+                  background: isGraphsOpen ? `${THREAD_THEME_COLOR}33` : "rgba(255,255,255,0.06)",
+                  color: isGraphsOpen ? "#fff" : "#cbd5e1",
+                  border: isGraphsOpen ? `1px solid ${THREAD_THEME_COLOR}55` : "1px solid rgba(255,255,255,0.06)",
+                }}>
+                  {graphsCount}
+                </span>
+
+                <span
+                  onClick={(e) => e.stopPropagation()}
+                  onKeyDown={(e) => e.stopPropagation()}
+                  style={{ display: "inline-flex", opacity: isGraphsOpen ? 1 : 0.75 }}
+                >
+                  <InfoIconModal
+                    modalId="parameter-thread-graphs-tab-info"
+                    title="Graphs"
+                    iconSize={14}
+                    showButtonText={false}
+                    steps={[
+                      {
+                        icon: <BarChart3 size={18} color="#a9b6fc" />,
+                        title: "Use Graphs for Insights",
+                        content: "Use these graphs to glean more info on each thread",
+                      },
+                    ]}
+                  />
+                </span>
+              </div>
             </div>
           </div>
-          
-          {/* Parameter Graphs */}
-          <div style={{
-            width: "calc(100% - 32px)",
-            margin: "16px auto",
-            backgroundImage: 'radial-gradient(circle at top right, rgba(34, 197, 94, 0.1), transparent 70%)',
-            padding: '24px',
-            position: 'relative',
-            overflow: 'hidden'
-          }}>
+
+          {isGraphsOpen && (
+            /* Parameter Graphs — glassmorphic */
+            <div style={{
+              width: "calc(100% - 32px)",
+              margin: "16px auto",
+              backgroundImage: 'radial-gradient(circle at top right, rgba(0, 196, 180, 0.08), transparent 70%)',
+              padding: '24px',
+              position: 'relative',
+              overflow: 'hidden',
+              backgroundColor: 'rgba(255, 255, 255, 0.02)',
+              borderRadius: '16px',
+              border: '1px solid rgba(0, 196, 180, 0.08)',
+              backdropFilter: 'blur(8px)',
+            }}>
             {/* Vertical Rating Graph */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
               <h2 style={{ 
@@ -921,12 +1515,12 @@ export default function ParameterThreadDetail({ postId, onBack, _onSelectUser })
             <div style={{ 
               height: '220px', 
               marginBottom: '40px',
-              backgroundColor: 'rgba(15, 23, 42, 0.5)',
+              backgroundColor: 'rgba(255, 255, 255, 0.02)',
               backdropFilter: 'blur(10px)',
-              borderRadius: '12px',
+              borderRadius: '16px',
               padding: '16px',
-              border: '1px solid rgba(34, 197, 94, 0.3)',
-              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.2)',
+              border: '1px solid rgba(0, 196, 180, 0.12)',
+              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.15)',
               cursor: 'pointer',
             }}
             onClick={openVerticalGraphModal}
@@ -973,18 +1567,19 @@ export default function ParameterThreadDetail({ postId, onBack, _onSelectUser })
                     tickLine={false}
                   />
                   <Tooltip 
-                    cursor={{ fill: 'rgba(34, 197, 94, 0.1)' }}
+                    cursor={{ fill: 'rgba(0, 196, 180, 0.08)' }}
                     content={(props) => {
                       const { active, payload, label } = props;
                       if (active && payload && payload.length) {
                         const item = graphRatings.find(d => d.snippetId === label);
                         return (
                           <div style={{
-                            backgroundColor: '#0f172a',
+                            backgroundColor: 'rgba(10, 14, 26, 0.95)',
                             padding: '12px',
-                            border: '1px solid rgba(34, 197, 94, 0.3)',
-                            borderRadius: '8px',
-                            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.3)'
+                            border: '1px solid rgba(0, 196, 180, 0.2)',
+                            borderRadius: '12px',
+                            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.3)',
+                            backdropFilter: 'blur(12px)',
                           }}>
                             <div style={{ marginBottom: '8px', fontWeight: 'bold', color: '#fff' }}>
                               {item ? item.parameter : label}
@@ -993,13 +1588,13 @@ export default function ParameterThreadDetail({ postId, onBack, _onSelectUser })
                               <div key={`tooltip-${index}`} style={{ 
                                 display: 'flex', 
                                 alignItems: 'center', 
-                                color: entry.name === 'userRating' ? '#22c55e' : '#3b82f6',
+                                color: entry.name === 'userRating' ? '#5eead4' : '#00C4B4',
                                 margin: '4px 0'
                               }}>
                                 <div style={{ 
                                   width: '10px', 
                                   height: '10px', 
-                                  backgroundColor: entry.name === 'userRating' ? '#22c55e' : '#3b82f6', 
+                                  backgroundColor: entry.name === 'userRating' ? '#5eead4' : '#00C4B4', 
                                   marginRight: '8px',
                                   borderRadius: '2px'
                                 }} />
@@ -1016,14 +1611,14 @@ export default function ParameterThreadDetail({ postId, onBack, _onSelectUser })
                     dataKey="avgRating" 
                     name="avgRating" 
                     barSize={16}
-                    fill="#3b82f6"
+                    fill="#00C4B4"
                     radius={[0, 4, 4, 0]}
                   />
                   <Bar 
                     dataKey="userRating" 
                     name="userRating" 
                     barSize={16}
-                    fill="#22c55e"
+                    fill="#5eead4"
                     radius={[0, 4, 4, 0]}
                   />
                 </BarChart>
@@ -1042,17 +1637,12 @@ export default function ParameterThreadDetail({ postId, onBack, _onSelectUser })
               </h2>
             </div>
             
-            <div 
-              onClick={openScatterGraphModal}
-              style={{ cursor: 'pointer' }}
-              title="Click to enlarge"
-            >
-              <ScatterRatingsGraph 
-                scatter={parameterScatterData}
-                isEnlarged={false}
-              />
+            <ThreadDetailScatterRatingsGraph 
+              scatterData={parameterScatterData}
+              onOpenModal={openScatterGraphModal}
+            />
             </div>
-            </div>
+          )}
         </div>
     ) : (
         <div style={{
@@ -1084,7 +1674,7 @@ export default function ParameterThreadDetail({ postId, onBack, _onSelectUser })
         margin: "0 auto",
       }}>
         <h3 style={styles.commentsHeader}>
-          Responses ({comments.length})
+          Responses ({displayComments.length})
         </h3>
         
         <div style={{
@@ -1093,28 +1683,43 @@ export default function ParameterThreadDetail({ postId, onBack, _onSelectUser })
           flexDirection: "column",
           alignItems: "stretch",
         }}>
-          {comments.map((c, index) => {
-            let snippetObj = c.snippet;
-            
-            if (!snippetObj) {
-              // Try to find snippet in snippetRecs
-              const snippetRec = snippetRecs.find((s) => s.commentId === c.id);
-              if (snippetRec) {
-                snippetObj = {
-                  id: c.id,
-                  commentId: c.id,
-                  name: snippetRec.name || c.snippet?.name,
-                  artistName: snippetRec.artistName || c.snippet?.artistName,
-                  artwork: snippetRec.artwork || c.snippet?.artwork,
-                  previewUrl: snippetRec.previewUrl || c.snippet?.previewUrl,
-                  userRating: snippetRec.userRating,
-                  avgRating: snippetRec.avgRating,
-                  totalRatings: snippetRec.totalRatings,
-                  didRate: snippetRec.didRate,
-                };
-              }
+          {displayCommentsWithMetrics.map((c) => {
+            let snippetObj = c.snippet
+              ? {
+                  ...c.snippet,
+                  id: c.snippet.id || c.id,
+                  commentId: c.snippet.commentId || c.id,
+                }
+              : null;
+
+            const snippetRec = snippetRecs.find((s) => s.commentId === c.id || s.id === c.id);
+            if (snippetObj && snippetRec) {
+              snippetObj = {
+                ...snippetObj,
+                name: snippetObj.name || snippetObj.songName || snippetRec.name,
+                artistName: snippetObj.artistName || snippetRec.artistName,
+                artwork: snippetObj.artwork || snippetRec.artwork || "/assets/default-artist.png",
+                previewUrl: snippetObj.previewUrl || snippetRec.previewUrl || null,
+                userRating: Number.isFinite(snippetRec.userRating) ? snippetRec.userRating : snippetObj.userRating,
+                avgRating: Number.isFinite(snippetRec.avgRating) ? snippetRec.avgRating : snippetObj.avgRating,
+                totalRatings: Number.isFinite(snippetRec.totalRatings) ? snippetRec.totalRatings : snippetObj.totalRatings,
+                didRate: snippetRec.didRate ?? snippetObj.didRate,
+              };
+            } else if (!snippetObj && snippetRec) {
+              snippetObj = {
+                id: c.id,
+                commentId: c.id,
+                name: snippetRec.name || c.snippet?.name || "Unknown Song",
+                artistName: snippetRec.artistName || c.snippet?.artistName || "Unknown Artist",
+                artwork: snippetRec.artwork || c.snippet?.artwork || "/assets/default-artist.png",
+                previewUrl: snippetRec.previewUrl || c.snippet?.previewUrl || null,
+                userRating: snippetRec.userRating,
+                avgRating: snippetRec.avgRating,
+                totalRatings: snippetRec.totalRatings,
+                didRate: snippetRec.didRate,
+              };
             }
-            
+
             const isThisSnippetPlaying = 
               activeSnippet && 
               activeSnippet.snippetId === getSnippetId(snippetObj) && 
@@ -1132,7 +1737,7 @@ export default function ParameterThreadDetail({ postId, onBack, _onSelectUser })
                 onPlayPause={() => playSnippetInComment(snippetObj)}
                 onRate={handleUserRate}
                 onRatingPause={handleRatingPause}
-                isFirstSnippet={index === 0 && snippetObj}
+                isFirstSnippet={false}
               />
             );
           })}
@@ -1151,7 +1756,7 @@ export default function ParameterThreadDetail({ postId, onBack, _onSelectUser })
       {/* TikTok Modal */}
       {isTikTokOpen && (
         <TikTokModal
-          snippets={snippetRecs}
+          snippets={tikTokSnippets}
           comments={comments}
           onClose={closeTikTokView}
           audioRef={audioRef}

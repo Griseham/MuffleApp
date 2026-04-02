@@ -1,3 +1,5 @@
+import { CURRENT_USER_AVATAR, isCurrentUserAuthor } from "../../utils/currentUser";
+
 export function hashString(str) {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
@@ -9,6 +11,7 @@ export function hashString(str) {
 // Return a deterministic avatar URL based on a user identifier.
 export function getAvatarForUser(userOrId) {
   if (!userOrId) return "/assets/default-avatar.png";
+  if (isCurrentUserAuthor(userOrId)) return CURRENT_USER_AVATAR;
 
   const seed =
     typeof userOrId === "object"

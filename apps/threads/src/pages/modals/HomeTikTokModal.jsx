@@ -388,6 +388,13 @@ export default function HomeTikTokModal({ onClose, cachedPosts = [], onNavigateT
         onUserRate={handleUserRate}
         isInitialLoading={isLoadingSnippets}
         threadTitle="For You"
+        titleInfoModalTitle="Threads Title"
+        titleInfoSteps={[
+          {
+            title: "Threads Title",
+            content: "The title of the snippet is the thread that it was recommended in. Click on it to go to that thread.",
+          },
+        ]}
         onNavigateToThread={(postId, snippet) => {
           console.log("HomeTikTokModal: onNavigateToThread called with postId:", postId, "snippet:", snippet);
           

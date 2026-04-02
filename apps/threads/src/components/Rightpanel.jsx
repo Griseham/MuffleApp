@@ -3,6 +3,7 @@ import { getAppleMusicAlbumArtworks } from "../services/appleMusic";
 import { ClickableUserAvatar } from "../pages/posts/UserHoverCard";
 import { getAvatarSrc, hashString } from "../pages/posts/postCardUtils";
 import InfoIconModal from "./InfoIconModal";
+import cachedArtistImages from "../backend/cached_artist_images.json";
 
 /* =========================
    Icons
@@ -77,6 +78,14 @@ const PlayIcon = ({ size = 14 }) => (
 const TRACK_KEY_SEP = "|||";
 const _trackKey = (song, artist) =>
   `${String(song || "").trim()}${TRACK_KEY_SEP}${String(artist || "").trim()}`;
+const normalizeArtistName = (name = "") => String(name || "").trim().toLowerCase();
+const hasUsableArtistImage = (imageUrl = "") => {
+  const raw = String(imageUrl || "").trim();
+  if (!raw) return false;
+  const lower = raw.toLowerCase();
+  return (raw.startsWith("http://") || raw.startsWith("https://") || raw.startsWith("/")) &&
+    !lower.includes("placeholder");
+};
 
 const ARTIST_SONG_POOL = {
   "SZA":                [{ song: "Kill Bill", accent: "#818CF8", albumColor: "#1a1030" }, { song: "Good Days", accent: "#818CF8", albumColor: "#130a2a" }],
@@ -170,6 +179,7 @@ const getRightPanelUsername = (name, id) =>
 const buildRightPanelUser = (user) => {
   const safeName = String(user?.name || "User");
   const safeId = user?.id ?? safeName;
+  const seed = hashString(`${safeName}-${safeId}`);
   const avatar = getAvatarSrc({
     id: `right-panel-${safeId}`,
     author: safeName,
@@ -180,6 +190,8 @@ const buildRightPanelUser = (user) => {
     username: getRightPanelUsername(safeName, safeId),
     name: safeName,
     avatar,
+    following: 100 + (seed % 700),
+    followers: 200 + ((seed * 7) % 4800),
   };
 };
 
@@ -437,12 +449,13 @@ const SongCarousel = ({ songs, onNavigateToThread, albumArtworks = {} }) => {
 ========================= */
 export default function RightPanel({
   feedLoaded = false,
-  coordinates = { x: 0, y: 1 },
+  coordinates = { x: 50, y: 50 },
   genres = [],
   artists = [],
   onLoadGenreFeed,
   cachedPosts = [],
   onNavigateToThread,
+  onUserClick,
 }) {
   const PANEL_WIDTH = 420;
   const COLLAPSED_USER_COUNT = 10;
@@ -493,6 +506,73 @@ export default function RightPanel({
 
   const safeGenres = (genres && genres.length ? genres : defaultGenres).slice(0, 6);
   const safeArtists = (artists && artists.length ? artists : defaultArtists).slice(0, 8);
+  const cachedArtistsWithImages = useMemo(() => {
+    const sourceList = cachedArtistImages && typeof cachedArtistImages === "object"
+      ? Object.values(cachedArtistImages)
+      : [];
+
+    return sourceList
+      .map((entry) => ({
+        name: String(entry?.artistName || entry?.requestName || "").trim(),
+        imageUrl: String(entry?.imageUrl || "").trim(),
+      }))
+      .filter((entry) => entry.name && hasUsableArtistImage(entry.imageUrl));
+  }, []);
+
+  const cachedArtistByName = useMemo(() => {
+    const lookup = new Map();
+    cachedArtistsWithImages.forEach((entry) => {
+      lookup.set(normalizeArtistName(entry.name), entry);
+    });
+    return lookup;
+  }, [cachedArtistsWithImages]);
+
+  const topArtistsWithImages = useMemo(() => {
+    const usedCachedArtistNames = new Set();
+    let fallbackIndex = 0;
+
+    const takeFallbackArtist = () => {
+      while (fallbackIndex < cachedArtistsWithImages.length) {
+        const candidate = cachedArtistsWithImages[fallbackIndex++];
+        const normalizedCandidateName = normalizeArtistName(candidate.name);
+        if (usedCachedArtistNames.has(normalizedCandidateName)) continue;
+        usedCachedArtistNames.add(normalizedCandidateName);
+        return candidate;
+      }
+      return null;
+    };
+
+    return safeArtists.map((artist) => {
+      const normalizedSourceName = normalizeArtistName(artist?.name);
+      const exactCachedMatch = cachedArtistByName.get(normalizedSourceName);
+      const fallbackCachedMatch = exactCachedMatch ? null : takeFallbackArtist();
+      const chosenCachedArtist = exactCachedMatch || fallbackCachedMatch;
+
+      if (exactCachedMatch) {
+        usedCachedArtistNames.add(normalizedSourceName);
+      }
+
+      if (!chosenCachedArtist) {
+        if (cachedArtistsWithImages.length > 0) {
+          const recycled = cachedArtistsWithImages[fallbackIndex % cachedArtistsWithImages.length];
+          fallbackIndex += 1;
+          return {
+            ...artist,
+            name: recycled.name,
+            imageUrl: recycled.imageUrl,
+          };
+        }
+        return { ...artist, imageUrl: "" };
+      }
+
+      return {
+        ...artist,
+        name: chosenCachedArtist.name,
+        imageUrl: chosenCachedArtist.imageUrl,
+      };
+    });
+  }, [safeArtists, cachedArtistByName, cachedArtistsWithImages]);
+
   const totalPct = safeGenres.reduce((acc, g) => acc + (Number(g.percentage) || 0), 0) || 1;
 
   const handleGenreClick = (genreName) => {
@@ -538,7 +618,7 @@ export default function RightPanel({
         }}
       >
         <div style={{ fontSize: 20, fontWeight: 800, color: "#fff", letterSpacing: "0.2px" }}>
-          Feed stats at ({coordinates?.x ?? 0},{coordinates?.y ?? 1})
+          Feed stats at ({coordinates?.x ?? 50},{coordinates?.y ?? 50})
         </div>
       </div>
 
@@ -668,7 +748,7 @@ export default function RightPanel({
                       {
                         title: "Top Picks",
                         content:
-                          "Placeholder content for Top Picks info. Replace this text when final copy is ready.",
+                          "As users add song previews within threads in this feed, if one of their recommendations does really well, they gain a star and show up in the top picks.\n\nThis way after we land on a feed, we can listen to the best recommended songs in this location.\n\nThis also puts users in the limelight, gaining them more followers, volume and genre points.",
                       },
                     ]}
                   />
@@ -741,6 +821,7 @@ export default function RightPanel({
                             user={rightPanelUser}
                             avatarSrc={rightPanelUser.avatar}
                             size={40}
+                            onUserClick={onUserClick}
                           />
                         </div>
 
@@ -939,7 +1020,7 @@ export default function RightPanel({
               Top Artists
             </div>
 
-            {safeArtists.map((a, i) => (
+            {topArtistsWithImages.map((a, i) => (
               <div
                 key={`${a.name}-${i}`}
                 style={{
@@ -947,18 +1028,34 @@ export default function RightPanel({
                   alignItems: "center",
                   justifyContent: "space-between",
                   padding: "10px 0",
-                  borderBottom: i < safeArtists.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none",
+                  borderBottom: i < topArtistsWithImages.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none",
                 }}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <div
-                    style={{
-                      width: 36,
-                      height: 36,
-                      borderRadius: 10,
-                      background: `linear-gradient(135deg, hsl(${(i * 45 + 200) % 360}, 60%, 50%), hsl(${(i * 45 + 240) % 360}, 60%, 40%))`,
-                    }}
-                  />
+                  {a.imageUrl ? (
+                    <img
+                      src={a.imageUrl}
+                      alt={`${a.name} profile`}
+                      loading="lazy"
+                      referrerPolicy="no-referrer"
+                      style={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: 10,
+                        objectFit: "cover",
+                        display: "block",
+                      }}
+                    />
+                  ) : (
+                    <div
+                      style={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: 10,
+                        background: `linear-gradient(135deg, hsl(${(i * 45 + 200) % 360}, 60%, 50%), hsl(${(i * 45 + 240) % 360}, 60%, 40%))`,
+                      }}
+                    />
+                  )}
                   <div>
                     <div style={{ fontSize: 15, fontWeight: 700, color: "#fff" }}>{a.name}</div>
                     <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)" }}>{a.genre}</div>

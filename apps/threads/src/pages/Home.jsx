@@ -1,4 +1,6 @@
 import React, {
+  Suspense,
+  lazy,
   startTransition,
   useCallback,
   useDeferredValue,
@@ -6,21 +8,28 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import { Headphones, Disc, Music, TrendingUp, Shuffle, Mic, Info } from 'lucide-react';
+import { Headphones, Disc, Music, TrendingUp, Mic, Info } from 'lucide-react';
 import Starfield from '../components/Starfield';
-import ThreadDetail from './threads/ThreadDetail';
-import GroupChatDetail from './threads/GroupChatDetail';
 import UserProfile from './user/UserProfile'; 
-import HomeTikTokModal from './modals/HomeTikTokModal';
-import ThreadCommentComposer from './threads/ThreadCommentComposer';
+import CommentComposer from './comments/CommentComposer';
 import PostCard from './posts/PostCard';
 import InfoIconModal from '../components/InfoIconModal';
 import RightPanel from '../components/Rightpanel';
 import { buildApiUrl } from '../utils/api';
+import {
+  CURRENT_USER_AVATAR,
+  CURRENT_USER_DISPLAY_NAME,
+  CURRENT_USER_USERNAME,
+} from '../utils/currentUser';
+
+const ThreadDetail = lazy(() => import('./threads/ThreadDetail'));
+const GroupChatDetail = lazy(() => import('./threads/GroupChatDetail'));
+const ParameterThreadDetail = lazy(() => import('./threads/ParameterThreadDetail'));
+const HomeTikTokModal = lazy(() => import('./modals/HomeTikTokModal'));
 
 const POST_TYPE_INDICATORS = {
   thread: { color: "#1d9bf0", label: "Thread" },
-  news: { color: "#FF9500", label: "News" },
+  news: { color: "#f8ed62", label: "News" },
   groupchat: { color: "#FF69B4", label: "GroupChat" },
   parameter: { color: "#00C4B4", label: "Parameter" },
   tweet: { color: "#FFB6C1", label: "Tweet" }
@@ -44,7 +53,7 @@ const FILTER_INFO_STEPS = {
     {
       icon: <Headphones size={18} color="#a9b6fc" />,
       title: "Sharing Music",
-      content: "Users can use Apple Music API or upload their content"
+      content: "Users can use Apple Music API or upload media from their device "
     }
   ],
   news: [
@@ -58,12 +67,7 @@ const FILTER_INFO_STEPS = {
     {
       icon: <Mic size={18} color="#a9b6fc" />,
       title: "What is Group Chat?",
-      content: "A live alternative of a thread, where users can chat and share song recommendations in real time"
-    },
-    {
-      icon: <Shuffle size={18} color="#a9b6fc" />,
-      title: "Time Limit",
-      content: "Group chats will have a time limit"
+      content: "A live version of a normal thread with a time limit"
     }
   ],
   parameter: [
@@ -83,11 +87,6 @@ const FILTER_INFO_STEPS = {
 const FOR_YOU_INFO_STEPS = [
   {
     icon: <Info size={18} color="#a9b6fc" />,
-    title: "For You",
-    content: "Your curated feed shows cached threads from Reddit music communities",
-  },
-  {
-    icon: <Info size={18} color="#a9b6fc" />,
     title: "Cached Content",
     content: "All posts are pre-cached from subreddits like r/musicrecommendations, r/musicsuggestions and r/music",
   },
@@ -97,10 +96,12 @@ const MemoStarfield = React.memo(Starfield);
 const MemoPostCard = React.memo(PostCard);
 const MemoInfoIconModal = React.memo(InfoIconModal);
 const MemoRightPanel = React.memo(RightPanel);
-const MemoThreadCommentComposer = React.memo(ThreadCommentComposer);
+const MemoHomeCommentComposer = React.memo(CommentComposer);
 
 const PINNED_HOME_THREAD_IDS = ['1hc9b9g', '1h41sz5', '1gzncch'];
 const PINNED_HOME_PARAMETER_ID = 'parameter_thread_002';
+const CACHED_POSTS_FEED_SUMMARY_ENDPOINT = '/cached-posts/feed-summary';
+const EMPTY_STATE_DELAY_MS = 1000;
 
 function normalizePostType(postType = '') {
   return String(postType).trim().toLowerCase();
@@ -110,6 +111,21 @@ function hashStringToInt(str = "") {
   let h = 0;
   for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0;
   return h;
+}
+
+function ensureMinimumGenreStats(genreStats = [], fallbackGenreStats = [], minCount = 2) {
+  const normalized = [];
+  const pushUnique = (stat) => {
+    if (!stat) return;
+    const name = String(stat?.name || '').trim();
+    if (!name || normalized.some((item) => item.name === name)) return;
+    normalized.push(stat);
+  };
+
+  genreStats.forEach(pushUnique);
+  fallbackGenreStats.forEach(pushUnique);
+
+  return normalized.slice(0, Math.max(2, minCount));
 }
 
 function buildStableRoomStats(post) {
@@ -123,7 +139,13 @@ function buildStableRoomStats(post) {
   const g1 = genres[seed % genres.length];
   const g2 = genres[(seed * 7) % genres.length];
   const g3 = genres[(seed * 13) % genres.length];
-  const picked = Array.from(new Set([g1, g2, g3])).slice(0, 3);
+  const pickedSet = new Set([g1, g2, g3]);
+  let cursor = seed;
+  while (pickedSet.size < 2) {
+    pickedSet.add(genres[cursor % genres.length]);
+    cursor += 1;
+  }
+  const picked = Array.from(pickedSet).slice(0, 3);
 
   const genreStats = picked.map((name, i) => ({
     name,
@@ -140,8 +162,26 @@ function enrichPost(post) {
     ...post,
     postType: normalizePostType(post?.postType),
   };
-  if (normalizedPost.roomVolume && normalizedPost.genreStats) return normalizedPost;
   const stats = buildStableRoomStats(post);
+
+  if (normalizedPost.roomVolume && normalizedPost.genreStats) {
+    if (normalizedPost.postType === 'groupchat') {
+      return {
+        ...normalizedPost,
+        volumeChange: Number.isFinite(Number(normalizedPost?.volumeChange))
+          ? normalizedPost.volumeChange
+          : stats.volumeChange,
+        genreStats: ensureMinimumGenreStats(
+          Array.isArray(normalizedPost.genreStats) ? normalizedPost.genreStats : [],
+          stats.genreStats,
+          2
+        ),
+      };
+    }
+
+    return normalizedPost;
+  }
+
   return { ...normalizedPost, ...stats };
 }
 
@@ -156,13 +196,13 @@ function tagCachedPosts(postList) {
     }));
 }
 
-function buildCachedFeedPosts(cachedPostList, examplePost) {
+function buildCachedFeedPosts(cachedPostList) {
   const sortedPosts = [...(cachedPostList || [])]
     .sort((a, b) => (b.createdUtc || 0) - (a.createdUtc || 0))
     .map(enrichPost);
 
   if (!sortedPosts.length) {
-    return [examplePost];
+    return [createExamplePost()];
   }
 
   const remainingPosts = [...sortedPosts];
@@ -189,7 +229,7 @@ function buildCachedFeedPosts(cachedPostList, examplePost) {
     pinnedPosts.push(pinnedParameterPost);
   }
 
-  return [...pinnedPosts, ...remainingPosts, examplePost];
+  return [createExamplePost(), ...pinnedPosts, ...remainingPosts];
 }
 
 function generateFeedData(x, y, wheelGenres = []) {
@@ -305,6 +345,45 @@ function generateFeedData(x, y, wheelGenres = []) {
   return { genres: selectedGenres, artists };
 }
 
+function HomeViewFallback({ label = 'Loading view...' }) {
+  return (
+    <div
+      style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'radial-gradient(circle at top, rgba(29,155,240,0.18), rgba(5,8,18,0.96) 52%)',
+        color: 'rgba(226,232,240,0.92)',
+        fontSize: '0.98rem',
+        letterSpacing: '0.02em',
+      }}
+    >
+      {label}
+    </div>
+  );
+}
+
+function HomeModalFallback() {
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'rgba(2, 6, 23, 0.72)',
+        backdropFilter: 'blur(8px)',
+        color: 'rgba(226,232,240,0.92)',
+        zIndex: 1000,
+      }}
+    >
+      Loading snippets...
+    </div>
+  );
+}
+
 // Create example post function
 const createExamplePost = () => ({
   id: 'example_post_001',
@@ -321,12 +400,78 @@ const createExamplePost = () => ({
   avatar: null // Let the getAvatarSrc function generate a random avatar
 });
 
-const MusicHome = () => {
-  const examplePost = useMemo(() => createExamplePost(), []);
+function ThreadsHomeSidebar() {
+  const handlePlaceholderNav = () => {};
 
+  const subNavItems = [
+    {
+      key: 'rooms',
+      label: 'Rooms',
+      dataContent: 'rooms',
+    },
+    {
+      key: 'threads',
+      label: 'Threads',
+      dataContent: 'threads',
+    },
+    {
+      key: 'timeline',
+      label: 'Timeline',
+      dataContent: 'timeline',
+    },
+  ];
+
+  return (
+    <aside className="threads-home-sidebar" aria-label="Threads navigation">
+      <div className="threads-home-sidebar__logo">
+        <div className="threads-home-sidebar__logo-wrapper">
+          <div className="threads-home-sidebar__logo-circle" />
+        </div>
+      </div>
+
+      <div className="threads-home-sidebar__nav-section">
+        <div className="threads-home-sidebar__nav-header">Mufl</div>
+        {subNavItems.map(({ key, label, dataContent }) => {
+          return (
+            <button
+              key={key}
+              type="button"
+              className="threads-home-sidebar__nav-sub-item"
+              data-content={dataContent}
+              onClick={handlePlaceholderNav}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
+
+      <button
+        type="button"
+        className="threads-home-sidebar__nav-item"
+        data-content="pitch"
+        onClick={handlePlaceholderNav}
+      >
+        Pitch Deck
+      </button>
+
+      <button
+        type="button"
+        className="threads-home-sidebar__nav-item"
+        data-content="old-videos"
+        onClick={handlePlaceholderNav}
+      >
+        Old Videos
+      </button>
+    </aside>
+  );
+}
+
+const MusicHome = () => {
   // Core state
   const [posts, setPosts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [canShowEmptyState, setCanShowEmptyState] = useState(false);
   const [currentFilter, setCurrentFilter] = useState('all');
   
   // Navigation state
@@ -339,7 +484,7 @@ const MusicHome = () => {
   const [isStarfieldOpen, setIsStarfieldOpen] = useState(false);
   
   // Starfield state
-  const [feedCoordinate, setFeedCoordinate] = useState({ x: 0, y: 1 });
+  const [feedCoordinate, setFeedCoordinate] = useState({ x: 50, y: 50 });
   const [feedLoaded, setFeedLoaded] = useState(false);
   const [feedData, setFeedData] = useState({ genres: [], artists: [] });
   
@@ -359,14 +504,29 @@ const MusicHome = () => {
   }, [currentFilter, posts]);
 
   const deferredFilteredPosts = useDeferredValue(filteredPosts);
+  const isSettlingEmptyState = !isLoading && filteredPosts.length === 0 && !canShowEmptyState;
+  const showFeedLoadingOverlay = isLoading || isSettlingEmptyState;
 
   const cachedFeedPosts = useMemo(
-    () => buildCachedFeedPosts(cachedPosts, examplePost),
-    [cachedPosts, examplePost]
+    () => buildCachedFeedPosts(cachedPosts),
+    [cachedPosts]
   );
 
+  useEffect(() => {
+    if (isLoading || filteredPosts.length > 0) {
+      setCanShowEmptyState(false);
+      return;
+    }
+
+    const emptyStateTimeout = setTimeout(() => {
+      setCanShowEmptyState(true);
+    }, EMPTY_STATE_DELAY_MS);
+
+    return () => clearTimeout(emptyStateTimeout);
+  }, [filteredPosts.length, isLoading]);
+
   const starfieldPosts = useMemo(
-    () => posts.filter(p => p.id !== 'example_post_001'),
+    () => posts,
     [posts]
   );
 
@@ -442,6 +602,9 @@ const MusicHome = () => {
   }, []);
 
   const handleCommentSubmit = useCallback((newComment) => {
+    const authorName = newComment?.author || CURRENT_USER_DISPLAY_NAME;
+    const authorUsername = newComment?.username || CURRENT_USER_USERNAME;
+    const authorAvatar = newComment?.avatar || CURRENT_USER_AVATAR;
     const commentId = newComment?.id || `temp_${Date.now()}`;
     const attachedSnippet = newComment?.snippet
       ? {
@@ -455,7 +618,10 @@ const MusicHome = () => {
 
     const newPost = {
       id: `user_post_${Date.now()}`,
-      author: 'You',
+      author: authorName,
+      displayName: authorName,
+      username: authorUsername,
+      avatar: authorAvatar,
       title: newComment.body?.trim() || fallbackSnippetTitle,
       selftext: '',
       createdUtc: Date.now() / 1000,
@@ -468,6 +634,10 @@ const MusicHome = () => {
       comments: [
         {
           ...newComment,
+          author: authorName,
+          displayName: authorName,
+          username: authorUsername,
+          avatar: authorAvatar,
           id: commentId,
           replies: Array.isArray(newComment?.replies) ? newComment.replies : [],
           snippet: attachedSnippet,
@@ -490,7 +660,7 @@ const MusicHome = () => {
 
     const handleCachedPostsRefresh = async () => {
       try {
-        const response = await fetch(buildApiUrl("/cached-posts"));
+        const response = await fetch(buildApiUrl(`${CACHED_POSTS_FEED_SUMMARY_ENDPOINT}?refresh=1`));
         
         if (response.ok) {
           const result = await response.json();
@@ -498,7 +668,7 @@ const MusicHome = () => {
             const taggedCached = tagCachedPosts(result.data);
             setCachedPosts(taggedCached);
             startTransition(() => {
-              setPosts(buildCachedFeedPosts(taggedCached, examplePost));
+              setPosts(buildCachedFeedPosts(taggedCached));
             });
           }
         }
@@ -513,7 +683,7 @@ const MusicHome = () => {
       isMounted = false;
       window.removeEventListener('refreshCachedPosts', handleCachedPostsRefresh);
     };
-  }, [examplePost]);
+  }, []);
 
   // Load only cached posts on page load — runs once on mount only
   useEffect(() => {
@@ -522,7 +692,7 @@ const MusicHome = () => {
     async function loadCachedPosts() {
       setIsLoading(true);
       try {
-        const response = await fetch(buildApiUrl("/cached-posts"));
+        const response = await fetch(buildApiUrl(CACHED_POSTS_FEED_SUMMARY_ENDPOINT));
         
         if (response.ok) {
           const result = await response.json();
@@ -534,23 +704,16 @@ const MusicHome = () => {
 
           if (result.success && cachedData.length > 0) {
             setCachedPosts(cachedData);
-
-            startTransition(() => {
-              setPosts(buildCachedFeedPosts(cachedData, examplePost));
-            });
+            setPosts(buildCachedFeedPosts(cachedData));
           } else {
-            startTransition(() => {
-              setPosts([examplePost]);
-            });
+            setPosts([createExamplePost()]);
           }
         } else {
           if (!isMounted) {
             return;
           }
 
-          startTransition(() => {
-            setPosts([examplePost]);
-          });
+          setPosts([createExamplePost()]);
           console.error("Failed to fetch cached posts");
         }
         
@@ -560,9 +723,7 @@ const MusicHome = () => {
           return;
         }
 
-        startTransition(() => {
-          setPosts([examplePost]);
-        });
+        setPosts([createExamplePost()]);
       } finally {
         if (isMounted) {
           setIsLoading(false);
@@ -575,7 +736,7 @@ const MusicHome = () => {
     return () => {
       isMounted = false;
     };
-  }, [examplePost]);
+  }, []);
 
   const handleFilterChange = useCallback((filter) => {
     startTransition(() => {
@@ -629,39 +790,36 @@ const MusicHome = () => {
           onBack={handleUserProfileBack}
         />
       ) : selectedThread ? (
-        selectedThread.postType === "groupchat" ? (
-          <GroupChatDetail
-            post={selectedThread}
-            onBack={handleThreadBack}
-            onUserListUpdate={() => {}}
-          />
-        ) : (
-          <ThreadDetail 
-            postId={selectedThread.id}
-            postData={selectedThread}
-            onSelectUser={(user) => {
-              setNavigationHistory(prev => [...prev, 'thread']);
-              setSelectedUser(user);
-            }}
-            onBack={handleThreadBack} 
-          />
-        )
+        <Suspense fallback={<HomeViewFallback label="Loading thread..." />}>
+          {selectedThread.postType === "groupchat" ? (
+            <GroupChatDetail
+              post={selectedThread}
+              onBack={handleThreadBack}
+              onUserListUpdate={() => {}}
+            />
+          ) : selectedThread.postType === "parameter" ? (
+            <ParameterThreadDetail
+              postId={selectedThread.id}
+              onBack={handleThreadBack}
+            />
+          ) : (
+            <ThreadDetail 
+              postId={selectedThread.id}
+              postData={selectedThread}
+              onSelectUser={(user) => {
+                setNavigationHistory(prev => [...prev, 'thread']);
+                setSelectedUser(user);
+              }}
+              onBack={handleThreadBack} 
+            />
+          )}
+        </Suspense>
       ) : (
-        <div className="music-home" style={{ display: 'flex', justifyContent: 'center', minHeight: '100vh', position: 'relative' }}>
-          {/* Main Content + Right Panel wrapper - centered together */}
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'flex-start',
-              justifyContent: 'center',
-              gap: 20,
-              width: '100%',
-              maxWidth: '1800px',
-              padding: '0 16px',
-            }}
-          >
-            {/* Main Content Area */}
-            <div style={{ flex: '1 1 0', minWidth: 0, maxWidth: 1000 }}>
+        <div className="music-home threads-home-layout">
+          <div className="threads-home-shell">
+            <ThreadsHomeSidebar />
+
+            <div className="threads-home-main">
               <div
                 style={{
                   maxWidth: '1000px',
@@ -929,8 +1087,11 @@ const MusicHome = () => {
                 overflowY: 'visible',
                 width: '100%',
                 maxWidth: '100%',
-                margin: '0 auto'
+                margin: '0 auto',
+                position: 'relative'
               }}>
+                <div className={`feed-content-body ${showFeedLoadingOverlay ? 'feed-content-body--loading' : ''}`}>
+                  <div className="feed-content-main">
 
                 <div className="pill-container" style={{
                   display: 'flex',
@@ -979,37 +1140,12 @@ const MusicHome = () => {
                     })}
                   </div>
                 
-                <MemoThreadCommentComposer
+                <MemoHomeCommentComposer
                   onSubmit={handleCommentSubmit}
                   onOpenTikTokModal={toggleTikTokModal}
                 />
                 
-                {isLoading && (
-                  <div className="loading-container" style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    padding: '3rem 0',
-                    color: '#a9b6fc'
-                  }}>
-                    <div className="spinner" style={{
-                      width: '3rem',
-                      height: '3rem',
-                      border: '4px solid rgba(169, 182, 252, 0.2)',
-                      borderTop: '4px solid #a9b6fc',
-                      borderRadius: '50%',
-                      animation: 'spin 1s linear infinite'
-                    }}></div>
-                    <p className="spinner-text" style={{
-                      marginTop: '1rem',
-                      fontSize: '1.125rem',
-                      fontWeight: '500'
-                    }}>Exploring the music universe...</p>
-                  </div>
-                )}
-                
-                {!isLoading && filteredPosts.length === 0 && (
+                {!isLoading && canShowEmptyState && filteredPosts.length === 0 && (
                   <div className="empty-state" style={{
                     display: 'flex',
                     flexDirection: 'column',
@@ -1058,36 +1194,44 @@ const MusicHome = () => {
                 }}>
                   {renderedPosts}
                 </div>
+                  </div>
+
+                  {showFeedLoadingOverlay && (
+                    <div className="feed-loading-overlay">
+                      <div className="loading-container">
+                        <div className="spinner"></div>
+                        <p className="spinner-text">
+                          {isLoading ? 'Loading your feed...' : 'Checking for posts...'}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
 
                 {showTikTokModal && (
-                  <HomeTikTokModal 
-                    onClose={() => setShowTikTokModal(false)} 
-                    cachedPosts={cachedPosts}
-                    onNavigateToThread={handleViewThread}
-                  />
+                  <Suspense fallback={<HomeModalFallback />}>
+                    <HomeTikTokModal 
+                      onClose={() => setShowTikTokModal(false)} 
+                      cachedPosts={cachedPosts}
+                      onNavigateToThread={handleViewThread}
+                    />
+                  </Suspense>
                 )}
               </div>
             </div>
           </div>
-          
-          {/* Right Panel (sticky, scrolls with page but stays in view) */}
-          <div style={{ 
-            position: 'sticky', 
-            top: 20, 
-            alignSelf: 'flex-start',
-            flexShrink: 0,
-            zIndex: 20,
-          }}>
-            <MemoRightPanel
-              feedLoaded={feedLoaded}
-              coordinates={feedCoordinate}
-              genres={feedData.genres}
-              artists={feedData.artists}
-              onLoadGenreFeed={handleLoadGenreFeed}
-              cachedPosts={cachedPosts}
-              onNavigateToThread={handleViewThread}
-            />
-          </div>
+            <div className="threads-home-rightpanel">
+              <MemoRightPanel
+                feedLoaded={feedLoaded}
+                coordinates={feedCoordinate}
+                genres={feedData.genres}
+                artists={feedData.artists}
+                onLoadGenreFeed={handleLoadGenreFeed}
+                cachedPosts={cachedPosts}
+                onNavigateToThread={handleViewThread}
+                onUserClick={handleViewUserProfile}
+              />
+            </div>
           </div>
         </div>
       )}

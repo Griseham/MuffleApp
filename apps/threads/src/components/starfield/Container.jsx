@@ -623,7 +623,7 @@ useEffect(() => {
         icon: <Info size={20} color="#a9b6fc" />,
         title: "How to ‘Discover’",
         content:
-          "To discover an artist, you must have heard at least 2 of their songs while using the app."
+          "To discover an artist, you must have heard at least 2 of their song snippet previews while using the app."
       }
     ]}
   />

@@ -183,6 +183,114 @@ const _EXPAND_ALL_TRACKS = (() => {
 const EMPTY_ARRAY = [];
 const EMPTY_OBJECT = {};
 
+const _clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+const _rangeFromSeed = (seed, min, max) => {
+  const span = Math.max(1, max - min + 1);
+  return min + (Math.abs(seed) % span);
+};
+const _normalizeCounter = (value, fallback, minimumValid = 1) => {
+  if (Number.isFinite(value) && value >= minimumValid) {
+    return Math.round(value);
+  }
+  return Math.round(fallback);
+};
+
+const _parseVolumePoints = (value, fallback) => {
+  const parsed = Number(value);
+  if (Number.isFinite(parsed)) {
+    return Math.max(0, Math.round(parsed));
+  }
+  return fallback;
+};
+
+const _normalizeGenrePointChange = (change, fallbackPercent) => {
+  if (typeof change === 'string' && change.trim()) {
+    return change.trim();
+  }
+  if (Number.isFinite(change)) {
+    return `+${change.toFixed(1)}%`;
+  }
+  return `+${(fallbackPercent * 100).toFixed(1)}%`;
+};
+
+const _groupChatHash = (str = "") => {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0;
+  return h;
+};
+
+const _buildStableGroupChatFallback = (post = {}) => {
+  const seed = _groupChatHash(String(post?.id || post?.title || ""));
+  const roomVolume = 500 + (seed % 4500);
+  const volumePoints = 5 + (seed % 30);
+  const palette = ["#00d4aa", "#ff6b9d", "#a855f7", "#f59e0b", "#3b82f6"];
+  const genres = ["Metal", "Hip-Hop", "R&B", "Electronic", "Pop", "Rock", "Indie", "Jazz"];
+
+  const pickedSet = new Set([
+    genres[seed % genres.length],
+    genres[(seed * 7) % genres.length],
+    genres[(seed * 13) % genres.length],
+  ]);
+
+  let cursor = seed;
+  while (pickedSet.size < 2) {
+    pickedSet.add(genres[cursor % genres.length]);
+    cursor += 1;
+  }
+
+  const picked = Array.from(pickedSet).slice(0, 3);
+  const genreStats = picked.map((name, i) => ({
+    name,
+    change: `+${(((seed % 17) + 3 + i) / 10).toFixed(1)}%`,
+    color: palette[i % palette.length],
+  }));
+
+  return { roomVolume, volumePoints, genreStats };
+};
+
+function _buildRealisticPostCounters(post = {}) {
+  const postType = String(post?.postType || "thread").toLowerCase();
+  const idSeed = hashString(`${post?.id || post?.title || post?.author || "post"}:${postType}`);
+  const mixSeed = hashString(`${post?.author || "author"}:${post?.createdUtc || 0}:${post?.selftext || ""}`);
+
+  let likesRange = [220, 5200];
+  let commentsRange = [55, 1300];
+  let bookmarksRange = [40, 980];
+  let minimums = { likes: 80, comments: 20, bookmarks: 12 };
+
+  if (postType === "news") {
+    likesRange = [480, 9600];
+    commentsRange = [110, 2800];
+    bookmarksRange = [95, 1900];
+    minimums = { likes: 180, comments: 40, bookmarks: 28 };
+  } else if (postType === "groupchat") {
+    likesRange = [300, 6800];
+    commentsRange = [90, 3400];
+    bookmarksRange = [70, 1500];
+    minimums = { likes: 120, comments: 35, bookmarks: 22 };
+  } else if (postType === "parameter") {
+    likesRange = [260, 6200];
+    commentsRange = [85, 2100];
+    bookmarksRange = [55, 1400];
+    minimums = { likes: 100, comments: 30, bookmarks: 18 };
+  }
+
+  const fallbackLikes = _rangeFromSeed(idSeed + 17, likesRange[0], likesRange[1]);
+  const fallbackComments = _rangeFromSeed((idSeed * 3) + 29, commentsRange[0], commentsRange[1]);
+  const derivedBookmarks = Math.round((fallbackLikes * 0.18) + (fallbackComments * 0.24) + _rangeFromSeed(mixSeed, 8, 110));
+  const fallbackBookmarks = _clamp(derivedBookmarks, bookmarksRange[0], bookmarksRange[1]);
+
+  const likes = _normalizeCounter(post?.ups, fallbackLikes, minimums.likes);
+  const comments = _normalizeCounter(post?.num_comments, fallbackComments, minimums.comments);
+  const bookmarks = _normalizeCounter(post?.bookmarks, fallbackBookmarks, minimums.bookmarks);
+
+  return {
+    likes,
+    comments,
+    bookmarks: _clamp(bookmarks, 8, Math.max(80, Math.round(likes * 0.82))),
+  };
+}
+
 // Artist pool — multi-select, Design B pill rows
 const EXPAND_ARTIST_SECS = [
   { key: 'top', label: 'TOP',          artists: EXPAND_TOP_ARTISTS,      accent: '#1d9bf0', badgeType: 'none'  },
@@ -639,8 +747,10 @@ const PostCard = ({ post, onClick, onUserClick, POST_TYPE_INDICATORS, _isCached 
   const [artistsDiscovered] = useState(() => getRandomNumber(15, 100));
   const [_totalArtists] = useState(() => getRandomNumber(artistsDiscovered + 20, 300));
 
-  const likesCount = post.ups ?? 0;
-  const bookmarksCount = post.bookmarks ?? 0;
+  const feedCounters = useMemo(() => _buildRealisticPostCounters(post), [post]);
+  const likesCount = feedCounters.likes;
+  const commentsCount = feedCounters.comments;
+  const bookmarksCount = feedCounters.bookmarks;
 
   const [isLiked, setIsLiked] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
@@ -739,7 +849,7 @@ const PostCard = ({ post, onClick, onUserClick, POST_TYPE_INDICATORS, _isCached 
   }, [shouldLoadExpandAssets, expandAllTracks, expandAlbumArtworks]);
 
   const getThemeColor = (postType) => {
-    if (postType === 'news') return '#FF9500';
+    if (postType === 'news') return '#f8ed62';
     if (postType === 'parameter') return '#00C4B4';
     return POST_TYPE_INDICATORS[postType]?.color || '#1d9bf0';
   };
@@ -747,6 +857,62 @@ const PostCard = ({ post, onClick, onUserClick, POST_TYPE_INDICATORS, _isCached 
   const themeColor = getThemeColor(post.postType);
   const postLabel = POST_TYPE_INDICATORS[post.postType]?.label || 'Thread';
   const isNews = post.postType === 'news';
+  const isGroupChat = post.postType === 'groupchat';
+
+  const groupChatFallbackStats = useMemo(
+    () => _buildStableGroupChatFallback(post),
+    [post]
+  );
+
+  const groupChatVolumePoints = useMemo(
+    () => _parseVolumePoints(post?.volumeChange, groupChatFallbackStats.volumePoints),
+    [groupChatFallbackStats.volumePoints, post?.volumeChange]
+  );
+
+  const groupChatRoomVolume = useMemo(() => {
+    const parsed = Number(post?.roomVolume);
+    if (Number.isFinite(parsed)) {
+      return Math.max(0, Math.round(parsed));
+    }
+    return groupChatFallbackStats.roomVolume;
+  }, [groupChatFallbackStats.roomVolume, post?.roomVolume]);
+
+  const groupChatGenreStats = useMemo(() => {
+    const minimumGenres = 2;
+    const normalized = [];
+    const pushUniqueGenre = (genreStat, index) => {
+      if (!genreStat || normalized.length >= 3) return;
+      const name = String(genreStat?.name || '').trim();
+      if (!name || normalized.some((item) => item.name === name)) return;
+      normalized.push({
+        name,
+        color: genreStat?.color || genres[index]?.color || '#64748b',
+        change: _normalizeGenrePointChange(genreStat?.change, genres[index]?.percentage || 0),
+      });
+    };
+
+    const postGenreStats = Array.isArray(post?.genreStats) ? post.genreStats : [];
+    postGenreStats.forEach(pushUniqueGenre);
+
+    groupChatFallbackStats.genreStats.forEach(pushUniqueGenre);
+
+    if (normalized.length < minimumGenres) {
+      const fallbackPalette = ['#00d4aa', '#ff6b9d', '#a855f7', '#f59e0b', '#3b82f6'];
+      const fallbackNames = ['Electronic', 'Hip-Hop', 'R&B', 'Pop', 'Rock', 'Indie', 'Jazz', 'Metal'];
+      let cursor = Math.abs(hashString(String(post?.id || post?.title || 'groupchat')));
+      while (normalized.length < minimumGenres) {
+        const name = fallbackNames[cursor % fallbackNames.length];
+        pushUniqueGenre({
+          name,
+          color: fallbackPalette[normalized.length % fallbackPalette.length],
+          change: `+${(((cursor % 17) + 3 + normalized.length) / 10).toFixed(1)}%`,
+        }, normalized.length);
+        cursor += 1;
+      }
+    }
+
+    return normalized.slice(0, 3);
+  }, [genres, groupChatFallbackStats.genreStats, post?.genreStats, post?.id, post?.title]);
 
   const handleLike = (e) => {
     e.stopPropagation();
@@ -1037,7 +1203,7 @@ const PostCard = ({ post, onClick, onUserClick, POST_TYPE_INDICATORS, _isCached 
                   fontSize: '18px',
                   color: '#10b981' 
                 }}>
-                  {headerVolume}
+                  {isGroupChat ? groupChatRoomVolume : headerVolume}
                 </span>
                 {/* INFO ICON 1: Main volume info - Only show for example post */}
                 {post.id === 'example_post_001' && (
@@ -1138,7 +1304,7 @@ const PostCard = ({ post, onClick, onUserClick, POST_TYPE_INDICATORS, _isCached 
               >
                 <MessageCircle size={22} />
                 <span style={{ marginLeft: '6px', fontSize: '15px', fontWeight: '500', color: 'white' }}>
-                  {formatCompactNumber(post.num_comments ?? 0)}
+                  {formatCompactNumber(commentsCount)}
                 </span>
               </button>
 
@@ -1275,7 +1441,7 @@ const PostCard = ({ post, onClick, onUserClick, POST_TYPE_INDICATORS, _isCached 
                   >
                     <MessageCircle size={22} />
                     <span style={{ marginLeft: '6px', fontSize: '15px', fontWeight: '500', color: 'white' }}>
-                      {formatCompactNumber(post.num_comments || 512)}
+                      {formatCompactNumber(commentsCount)}
                     </span>
                   </button>
                   
@@ -1354,7 +1520,7 @@ const PostCard = ({ post, onClick, onUserClick, POST_TYPE_INDICATORS, _isCached 
                   fontWeight: '700',
                   fontSize: '15px'
                 }}>
-                  +{sideVolume}
+                  +{isGroupChat ? groupChatVolumePoints : sideVolume}
                 </div>
                 {/* INFO ICON 2: Post genres info - Only show for example post */}
                 {post.id === 'example_post_001' && (
@@ -1443,34 +1609,55 @@ const PostCard = ({ post, onClick, onUserClick, POST_TYPE_INDICATORS, _isCached 
                       gap: '8px',
                       marginTop: '8px'
                     }}>
-                      {(post.id.includes('parameter_thread_002') ? [
-                        { name: 'Tyla', count: 9, color: '#FF6B35' },
-                        { name: 'Tate McRae', count: 15, color: '#4ECDC4' },
-                        { name: 'Olivia Rodrigo', count: 6, color: '#45B7D1' },
-                        { name: 'Sabrina Carpenter', count: 11, color: '#96CEB4' }
-                      ] : [
-                        { name: 'Imagine Dragons', count: 7, color: '#FF6B35' },
-                        { name: 'Green Day', count: 12, color: '#4ECDC4' },
-                        { name: 'OneRepublic', count: 5, color: '#45B7D1' },
-                        { name: 'Maroon 5', count: 8, color: '#96CEB4' }
-                      ]).map((param, i) => (
+                      {(Array.isArray(post.parameters) ? post.parameters : []).map((parameterName, i) => (
                         <div key={i} style={{
                           display: 'flex',
                           justifyContent: 'space-between',
                           alignItems: 'center',
                           padding: '6px 16px',
                           borderRadius: '8px',
-                          backgroundColor: param.color,
+                          backgroundColor: ['#FF6B35', '#4ECDC4', '#45B7D1', '#96CEB4'][i % 4],
                           color: 'white',
                           fontSize: '15px',
                           fontWeight: '600'
                         }}>
-                          <span>{param.name}</span>
-                          <span>{param.count}</span>
+                          <span>{parameterName}</span>
+                          <span>{post.parameterCounts?.[parameterName] ?? 0}</span>
                         </div>
                       ))}
                     </div>
                   </>
+                ) : isGroupChat ? (
+                  groupChatGenreStats.map((genre, i) => (
+                    <div key={`${genre.name}-${i}`} style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      marginBottom: '2px',
+                      width: '100%'
+                    }}>
+                      <div style={{
+                        padding: '4px 10px',
+                        borderRadius: '6px',
+                        backgroundColor: genre.color,
+                        color: 'white',
+                        fontWeight: '600',
+                        fontSize: '13px',
+                        display: 'inline-block',
+                        textAlign: 'center'
+                      }}>
+                        {genre.name}
+                      </div>
+                      <div style={{
+                        color: '#10b981',
+                        fontWeight: '700',
+                        fontSize: '13px',
+                        whiteSpace: 'nowrap'
+                      }}>
+                        {genre.change}
+                      </div>
+                    </div>
+                  ))
                 ) : (
                   // Regular thread - show genres only
                   genres.slice(0, 3).map((genre, i) => (
@@ -1555,15 +1742,15 @@ const PostCard = ({ post, onClick, onUserClick, POST_TYPE_INDICATORS, _isCached 
                 onClick={(e) => e.stopPropagation()}
               >
                 <InfoIconModal
-                  title="Example Post Expand"
+                  title="Expanded Thread"
                   modalId={`example-expand-info-${post.id}`}
                   iconSize={14}
                   showButtonText={false}
                   steps={[
                     {
                       icon: <Info size={18} color="#a9b6fc" />,
-                      title: "Example Expand Section",
-                      content: "This example expand panel uses placeholder artists and placeholder songs to demonstrate how expandable thread content works.",
+                      title: "Expanded Thread",
+                      content: "Reveals the top 3 songs recommended in this thread as well as a list of the top artist, recommended artists from the algorithm and artists you follow that show up in this thread, recommended by other users.\n\nSo you can make your own mini playlist as you scroll.",
                     },
                   ]}
                 />

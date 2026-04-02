@@ -1,7 +1,13 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Play, Music, Pause, X, Search, Disc, Send } from 'lucide-react';
+import InfoIconModal from '../../components/InfoIconModal';
 import { validateAndSanitizeInput, sanitizeSearchQuery, checkRateLimit } from '../../utils/security';
 import { buildApiUrl } from '../../utils/api';
+import {
+  CURRENT_USER_AVATAR,
+  CURRENT_USER_DISPLAY_NAME,
+  CURRENT_USER_USERNAME,
+} from '../../utils/currentUser';
 
 const DEFAULT_ARTWORK = '/assets/default-artist.png';
 
@@ -61,11 +67,57 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
   const [selectedSong, setSelectedSong] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [previewingSongId, setPreviewingSongId] = useState(null);
-  const [audioElement, setAudioElement] = useState(null);
   
   // Refs
   const textareaRef = useRef(null);
   const searchInputRef = useRef(null);
+  const audioRef = useRef(null);
+  const searchAbortControllerRef = useRef(null);
+  const latestSearchRequestRef = useRef(0);
+
+  const handleAudioEnded = useCallback(() => {
+    setIsPlaying(false);
+    setPreviewingSongId(null);
+  }, []);
+
+  const getAudioElement = useCallback(() => {
+    let audio = audioRef.current;
+    if (!audio) {
+      audio = new Audio();
+      audio.addEventListener('ended', handleAudioEnded);
+      audioRef.current = audio;
+    }
+
+    return audio;
+  }, [handleAudioEnded]);
+
+  const stopAudioPlayback = useCallback((resetPreviewState = false) => {
+    const audio = audioRef.current;
+    if (audio) {
+      audio.pause();
+      audio.currentTime = 0;
+    }
+
+    if (resetPreviewState) {
+      setIsPlaying(false);
+      setPreviewingSongId(null);
+    }
+  }, []);
+
+  const abortPendingSearch = useCallback(() => {
+    latestSearchRequestRef.current += 1;
+
+    const controller = searchAbortControllerRef.current;
+    if (controller) {
+      controller.abort();
+      searchAbortControllerRef.current = null;
+    }
+  }, []);
+
+  const cancelPendingSearch = useCallback(() => {
+    abortPendingSearch();
+    setIsSearching(false);
+  }, [abortPendingSearch]);
   
   // Function to handle TikTok modal toggle
   const handleOpenTikTokModal = () => {
@@ -78,6 +130,7 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
   const handleMusicSearchToggle = () => {
     setShowSongSearch(!showSongSearch);
     if (!showSongSearch) {
+      cancelPendingSearch();
       setSearchQuery('');
       setSearchResults([]);
       setTimeout(() => {
@@ -86,11 +139,8 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
         }
       }, 100);
     } else {
-      if (audioElement && isPlaying) {
-        audioElement.pause();
-        setIsPlaying(false);
-      }
-      setPreviewingSongId(null);
+      cancelPendingSearch();
+      stopAudioPlayback(true);
     }
   };
 
@@ -100,10 +150,8 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
     setShowSongSearch(false);
     setPreviewingSongId(null);
     
-    if (audioElement && isPlaying) {
-      audioElement.pause();
-      setIsPlaying(false);
-    }
+    cancelPendingSearch();
+    stopAudioPlayback(true);
   };
 
   // Function to handle song preview
@@ -111,24 +159,16 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
     const previewUrl = song?.attributes?.previews?.[0]?.url;
     if (!previewUrl) return;
     
-    if (isPlaying && audioElement && song.id === previewingSongId) {
-      audioElement.pause();
-      setIsPlaying(false);
-      setPreviewingSongId(null);
+    const audio = getAudioElement();
+
+    if (isPlaying && song.id === previewingSongId) {
+      stopAudioPlayback(true);
       return;
     }
     
-    let audio = audioElement;
-    if (!audio) {
-      audio = new Audio(previewUrl);
-      audio.addEventListener('ended', () => {
-        setIsPlaying(false);
-        setPreviewingSongId(null);
-      });
-      setAudioElement(audio);
-    } else {
-      audio.src = previewUrl;
-    }
+    audio.pause();
+    audio.currentTime = 0;
+    audio.src = previewUrl;
     
     audio.play().then(() => {
       setIsPlaying(true);
@@ -140,34 +180,50 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
 
   // Clear selected song
   const clearSelectedSong = () => {
-    if (audioElement && isPlaying) {
-      audioElement.pause();
-      setIsPlaying(false);
-    }
-    setPreviewingSongId(null);
+    stopAudioPlayback(true);
     setSelectedSong(null);
   };
 
   // Function to handle search
-  const handleSearch = async () => {
-    if (!searchQuery.trim()) return;
-    
+  const handleSearch = useCallback(async (query) => {
+    if (!query.trim()) {
+      cancelPendingSearch();
+      setSearchResults([]);
+      return;
+    }
+
+    abortPendingSearch();
+    const requestId = latestSearchRequestRef.current + 1;
+    latestSearchRequestRef.current = requestId;
+
     if (!checkRateLimit('music_search', 20, 60000)) {
       console.warn('Search rate limit exceeded');
+      setIsSearching(false);
       return;
     }
     
-    const sanitizedQuery = sanitizeSearchQuery(searchQuery);
+    const sanitizedQuery = sanitizeSearchQuery(query);
     if (!sanitizedQuery) {
       console.warn('Invalid search query');
+      setSearchResults([]);
+      setIsSearching(false);
       return;
     }
-    
+
+    const controller = new AbortController();
+    searchAbortControllerRef.current = controller;
+
     setIsSearching(true);
     try {
-      const resp = await fetch(`${buildApiUrl("/apple-music-search")}?query=${encodeURIComponent(sanitizedQuery)}`);
+      const resp = await fetch(`${buildApiUrl("/apple-music-search")}?query=${encodeURIComponent(sanitizedQuery)}`, {
+        signal: controller.signal,
+      });
       const data = await resp.json();
-      
+
+      if (controller.signal.aborted || latestSearchRequestRef.current !== requestId) {
+        return;
+      }
+
       if (data.success && data.data) {
         const items = Array.isArray(data.data) ? data.data : [data.data];
         setSearchResults(items);
@@ -175,34 +231,52 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
         setSearchResults([]);
       }
     } catch (error) {
+      if (error?.name === 'AbortError') {
+        return;
+      }
       console.error("Error searching for music:", error);
-      setSearchResults([]);
+      if (latestSearchRequestRef.current === requestId) {
+        setSearchResults([]);
+      }
     } finally {
-      setIsSearching(false);
+      if (searchAbortControllerRef.current === controller) {
+        searchAbortControllerRef.current = null;
+      }
+      if (!controller.signal.aborted && latestSearchRequestRef.current === requestId) {
+        setIsSearching(false);
+      }
     }
-  };
+  }, [abortPendingSearch, cancelPendingSearch]);
   
   // Debounced search as user types
   useEffect(() => {
     if (!searchQuery.trim()) {
+      cancelPendingSearch();
       setSearchResults([]);
       return;
     }
     
     const debounceTimer = setTimeout(() => {
-      handleSearch();
+      handleSearch(searchQuery);
     }, 300);
     
     return () => clearTimeout(debounceTimer);
-  }, [searchQuery]);
+  }, [searchQuery, handleSearch, cancelPendingSearch]);
 
   useEffect(() => {
     return () => {
-      if (audioElement) {
-        audioElement.pause();
+      abortPendingSearch();
+
+      const audio = audioRef.current;
+      if (audio) {
+        audio.pause();
+        audio.removeEventListener('ended', handleAudioEnded);
+        audio.src = '';
+        audio.load();
+        audioRef.current = null;
       }
     };
-  }, [audioElement]);
+  }, [abortPendingSearch, handleAudioEnded]);
 
   // Auto-resize the textarea as user types
   const handleInput = (e) => {
@@ -255,7 +329,10 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
     
     const newComment = {
       id: `temp_${Date.now()}`,
-      author: 'You',
+      author: CURRENT_USER_DISPLAY_NAME,
+      displayName: CURRENT_USER_DISPLAY_NAME,
+      username: CURRENT_USER_USERNAME,
+      avatar: CURRENT_USER_AVATAR,
       body: validation.sanitized,
       createdUtc: Date.now() / 1000,
       likes: 0,
@@ -271,17 +348,14 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
       onSubmit(newComment);
     }
 
-    if (audioElement && isPlaying) {
-      audioElement.pause();
-      setIsPlaying(false);
-    }
+    cancelPendingSearch();
+    stopAudioPlayback(true);
     
     setComment('');
     setSelectedSong(null);
     setSearchQuery('');
     setSearchResults([]);
     setShowSongSearch(false);
-    setPreviewingSongId(null);
     
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
@@ -300,8 +374,8 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
         {/* User Avatar */}
         <div style={styles.avatarContainer}>
           <img 
-            src="/assets/user.png" 
-            alt="Your avatar" 
+            src={CURRENT_USER_AVATAR}
+            alt="Me avatar"
             style={styles.avatar}
           />
         </div>
@@ -366,35 +440,69 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
           {/* Action Row with Prominent Buttons */}
           <div style={styles.actionsRow}>
             <div style={styles.actionButtonsContainer}>
-              {/* TikTok/Snippets Browser Button */}
-              <button 
-                style={styles.snippetButton}
-                onClick={handleOpenTikTokModal}
-                title="Browse Snippets"
-              >
-                <div style={styles.buttonIconWrapper}>
-                  <Disc size={16} color="#fff" />
+              <div style={styles.actionButtonWithInfo}>
+                {/* TikTok/Snippets Browser Button */}
+                <button 
+                  style={styles.snippetButton}
+                  onClick={handleOpenTikTokModal}
+                  title="Browse Snippets"
+                >
+                  <div style={styles.buttonIconWrapper}>
+                    <Disc size={16} color="#fff" />
+                  </div>
+                  <span style={styles.buttonLabel}>Snippets</span>
+                </button>
+                <div style={styles.actionInfoIcon}>
+                  <InfoIconModal
+                    modalId="thread-comment-composer-snippets-info"
+                    title="Snippets"
+                    iconSize={14}
+                    showButtonText={false}
+                    steps={[
+                      {
+                        icon: <Disc size={18} color="#a9b6fc" />,
+                        title: "Snippets",
+                        content: "Quickly scroll through recommended songs in threads throughout the app",
+                      },
+                    ]}
+                  />
                 </div>
-                <span style={styles.buttonLabel}>Snippets</span>
-              </button>
+              </div>
               
-              {/* Apple Music / Add Music Button */}
-              <button 
-                style={{
-                  ...styles.musicButton,
-                  ...(showSongSearch && styles.musicButtonActive)
-                }}
-                onClick={handleMusicSearchToggle}
-                title={showSongSearch ? "Close music search" : "Add music"}
-              >
-                <div style={{
-                  ...styles.buttonIconWrapper,
-                  ...(showSongSearch && styles.buttonIconWrapperActive)
-                }}>
-                  <Music size={16} color="#fff" />
+              <div style={styles.actionButtonWithInfo}>
+                {/* Apple Music / Add Music Button */}
+                <button 
+                  style={{
+                    ...styles.musicButton,
+                    ...(showSongSearch && styles.musicButtonActive)
+                  }}
+                  onClick={handleMusicSearchToggle}
+                  title={showSongSearch ? "Close music search" : "Add music"}
+                >
+                  <div style={{
+                    ...styles.buttonIconWrapper,
+                    ...(showSongSearch && styles.buttonIconWrapperActive)
+                  }}>
+                    <Music size={16} color="#fff" />
+                  </div>
+                  <span style={styles.buttonLabel}>Music</span>
+                </button>
+                <div style={styles.actionInfoIcon}>
+                  <InfoIconModal
+                    modalId="thread-comment-composer-music-info"
+                    title="Add music"
+                    iconSize={14}
+                    showButtonText={false}
+                    steps={[
+                      {
+                        icon: <Music size={18} color="#a9b6fc" />,
+                        title: "Add music",
+                        content: "Add songs using Apple music APi or your own downloaded content from your device",
+                      },
+                    ]}
+                  />
                 </div>
-                <span style={styles.buttonLabel}>Music</span>
-              </button>
+              </div>
             </div>
 
             <button
@@ -426,7 +534,7 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       e.preventDefault();
-                      handleSearch();
+                      handleSearch(searchQuery);
                     }
                   }}
                   placeholder="Search for artists, songs, or albums..."
@@ -528,12 +636,13 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
 const styles = {
   container: {
     padding: '20px',
-    backgroundColor: '#0f172a',
-    borderRadius: '16px',
-    border: '1px solid rgba(255, 255, 255, 0.08)',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: '20px',
+    border: '1px solid rgba(255, 255, 255, 0.07)',
     width: '100%',
     maxWidth: '100%',
     boxSizing: 'border-box',
+    backdropFilter: 'blur(12px)',
   },
   sectionLabel: {
     display: 'flex',
@@ -552,7 +661,7 @@ const styles = {
     width: '6px',
     height: '6px',
     borderRadius: '50%',
-    backgroundColor: '#1d9bf0',
+    background: 'linear-gradient(135deg, #6366f1, #ec4899)',
   },
   innerContainer: {
     display: 'flex',
@@ -567,7 +676,7 @@ const styles = {
     height: '44px',
     borderRadius: '50%',
     objectFit: 'cover',
-    border: '2px solid rgba(29, 155, 240, 0.3)',
+    border: '2px solid rgba(99, 102, 241, 0.3)',
   },
   inputContainer: {
     flex: 1,
@@ -580,9 +689,9 @@ const styles = {
     maxWidth: '100%',
     boxSizing: 'border-box',
     display: 'block',
-    backgroundColor: 'rgba(15, 23, 42, 0.6)',
-    border: '1px solid rgba(255, 255, 255, 0.08)',
-    borderRadius: '12px',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    border: '1px solid rgba(255, 255, 255, 0.06)',
+    borderRadius: '14px',
     padding: '14px 16px',
     color: '#e2e8f0',
     fontSize: '15px',
@@ -591,11 +700,11 @@ const styles = {
     outline: 'none',
     minHeight: '56px',
     overflow: 'hidden',
-    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+    fontFamily: "'DM Sans', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
     transition: 'border-color 0.2s ease',
   },
   
-  // Action row with prominent buttons
+  // Action row
   actionsRow: {
     display: 'flex',
     alignItems: 'center',
@@ -609,51 +718,62 @@ const styles = {
     gap: '10px',
     flexWrap: 'wrap',
   },
+  actionButtonWithInfo: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: '6px',
+  },
+  actionInfoIcon: {
+    marginTop: '2px',
+    flexShrink: 0,
+  },
   
-  // Snippet/TikTok Button - More prominent
+  // Snippet/TikTok Button — glassmorphic
   snippetButton: {
     display: 'flex',
     alignItems: 'center',
     gap: '8px',
     padding: '10px 16px',
-    backgroundColor: '#1e293b',
-    border: '1px solid rgba(29, 155, 240, 0.4)',
-    borderRadius: '10px',
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    border: '1px solid rgba(99, 102, 241, 0.3)',
+    borderRadius: '12px',
     cursor: 'pointer',
     transition: 'all 0.2s ease',
+    backdropFilter: 'blur(4px)',
   },
   
-  // Music Button - More prominent
+  // Music Button
   musicButton: {
     display: 'flex',
     alignItems: 'center',
     gap: '8px',
     padding: '10px 16px',
-    backgroundColor: '#1e293b',
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
     borderWidth: '1px',
     borderStyle: 'solid',
-    borderColor: 'rgba(250, 45, 85, 0.4)',
-    borderRadius: '10px',
+    borderColor: 'rgba(236, 72, 153, 0.3)',
+    borderRadius: '12px',
     cursor: 'pointer',
     transition: 'all 0.2s ease',
+    backdropFilter: 'blur(4px)',
   },
   musicButtonActive: {
-    backgroundColor: 'rgba(250, 45, 85, 0.15)',
-    borderColor: 'rgba(250, 45, 85, 0.6)',
+    backgroundColor: 'rgba(236, 72, 153, 0.12)',
+    borderColor: 'rgba(236, 72, 153, 0.5)',
   },
   
   buttonIconWrapper: {
     width: '28px',
     height: '28px',
     borderRadius: '8px',
-    backgroundColor: '#1d9bf0',
+    background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
   },
   buttonIconWrapperActive: {
-    backgroundColor: '#fa2d55',
+    background: 'linear-gradient(135deg, #ec4899, #f43f5e)',
   },
   buttonLabel: {
     fontSize: '13px',
@@ -667,14 +787,14 @@ const styles = {
     border: 'none',
     borderRadius: '9999px',
     padding: '10px 16px',
-    background: 'linear-gradient(135deg, #1d9bf0 0%, #2563eb 100%)',
+    background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
     color: '#fff',
     cursor: 'pointer',
     fontSize: '13px',
     fontWeight: '700',
     whiteSpace: 'nowrap',
     flexShrink: 0,
-    boxShadow: '0 10px 24px rgba(29, 155, 240, 0.24)',
+    boxShadow: '0 10px 24px rgba(99, 102, 241, 0.24)',
   },
   submitButtonDisabled: {
     display: 'flex',
@@ -683,8 +803,8 @@ const styles = {
     border: 'none',
     borderRadius: '9999px',
     padding: '10px 16px',
-    backgroundColor: 'rgba(51, 65, 85, 0.9)',
-    color: 'rgba(226, 232, 240, 0.6)',
+    backgroundColor: 'rgba(51, 65, 85, 0.6)',
+    color: 'rgba(226, 232, 240, 0.4)',
     cursor: 'not-allowed',
     fontSize: '13px',
     fontWeight: '700',
@@ -695,14 +815,15 @@ const styles = {
     lineHeight: 1,
   },
   
-  // Attached snippet preview
+  // Attached snippet preview — glassmorphic
   attachedSnippetContainer: {
     marginTop: '12px',
     marginBottom: '4px',
-    borderRadius: '10px',
-    border: '1px solid rgba(29, 155, 240, 0.3)',
-    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    borderRadius: '14px',
+    border: '1px solid rgba(99, 102, 241, 0.2)',
+    backgroundColor: 'rgba(255, 255, 255, 0.02)',
     overflow: 'hidden',
+    backdropFilter: 'blur(8px)',
   },
   attachedSnippetInner: {
     display: 'flex',
@@ -713,10 +834,10 @@ const styles = {
   snippetImageContainer: {
     width: '44px',
     height: '44px',
-    borderRadius: '8px',
+    borderRadius: '10px',
     overflow: 'hidden',
     flexShrink: 0,
-    border: '1px solid rgba(255, 255, 255, 0.1)',
+    border: '1px solid rgba(255, 255, 255, 0.08)',
   },
   snippetImage: {
     width: '100%',
@@ -730,7 +851,7 @@ const styles = {
   snippetTitle: {
     fontSize: '14px',
     fontWeight: '600',
-    color: '#fff',
+    color: '#f1f5f9',
     marginBottom: '2px',
     whiteSpace: 'nowrap',
     overflow: 'hidden',
@@ -738,7 +859,7 @@ const styles = {
   },
   snippetArtist: {
     fontSize: '12px',
-    color: '#94a3b8',
+    color: '#64748b',
     whiteSpace: 'nowrap',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
@@ -752,7 +873,7 @@ const styles = {
   previewButtonSmall: {
     width: '32px',
     height: '32px',
-    backgroundColor: '#1d9bf0',
+    background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
     border: 'none',
     borderRadius: '50%',
     display: 'flex',
@@ -764,8 +885,8 @@ const styles = {
   removeButton: {
     width: '32px',
     height: '32px',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    border: '1px solid rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    border: '1px solid rgba(255, 255, 255, 0.08)',
     borderRadius: '50%',
     display: 'flex',
     alignItems: 'center',
@@ -774,15 +895,16 @@ const styles = {
     transition: 'background-color 0.2s',
   },
   
-  // Song search styles
+  // Song search styles — glassmorphic
   songSearchContainer: {
     marginTop: '14px',
     padding: '16px',
-    backgroundColor: 'rgba(15, 23, 42, 0.8)',
-    borderRadius: '12px',
-    border: '1px solid rgba(255, 255, 255, 0.08)',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: '16px',
+    border: '1px solid rgba(255, 255, 255, 0.07)',
     maxHeight: '280px',
     overflowY: 'auto',
+    backdropFilter: 'blur(12px)',
   },
   searchInputRow: {
     display: 'flex',
@@ -800,10 +922,10 @@ const styles = {
   searchInput: {
     width: '100%',
     padding: '12px 14px 12px 42px',
-    backgroundColor: 'rgba(30, 41, 59, 0.8)',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
     color: '#e2e8f0',
-    border: '1px solid rgba(255, 255, 255, 0.1)',
-    borderRadius: '10px',
+    border: '1px solid rgba(255, 255, 255, 0.08)',
+    borderRadius: '12px',
     fontSize: '14px',
     outline: 'none',
     fontFamily: 'inherit',
@@ -821,7 +943,7 @@ const styles = {
     margin: 0,
   },
   
-  // Search results
+  // Search results — glassmorphic
   searchResultsList: {
     display: 'flex',
     flexDirection: 'column',
@@ -832,8 +954,8 @@ const styles = {
     alignItems: 'center',
     gap: '12px',
     padding: '10px 12px',
-    backgroundColor: 'rgba(30, 41, 59, 0.6)',
-    borderRadius: '10px',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: '12px',
     transition: 'background-color 0.2s',
     border: '1px solid rgba(255, 255, 255, 0.06)',
     cursor: 'pointer',
@@ -841,10 +963,10 @@ const styles = {
   resultImageContainer: {
     width: '48px',
     height: '48px',
-    borderRadius: '8px',
+    borderRadius: '10px',
     overflow: 'hidden',
     flexShrink: 0,
-    border: '1px solid rgba(255, 255, 255, 0.1)',
+    border: '1px solid rgba(255, 255, 255, 0.08)',
   },
   resultImage: {
     width: '100%',
@@ -858,7 +980,7 @@ const styles = {
   songTitle: {
     fontSize: '14px',
     fontWeight: '600',
-    color: '#fff',
+    color: '#f1f5f9',
     marginBottom: '2px',
     whiteSpace: 'nowrap',
     overflow: 'hidden',
@@ -866,7 +988,7 @@ const styles = {
   },
   artistName: {
     fontSize: '12px',
-    color: '#94a3b8',
+    color: '#64748b',
     whiteSpace: 'nowrap',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
@@ -880,7 +1002,7 @@ const styles = {
   previewButton: {
     width: '36px',
     height: '36px',
-    backgroundColor: '#1d9bf0',
+    background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
     border: 'none',
     borderRadius: '50%',
     display: 'flex',
@@ -890,10 +1012,10 @@ const styles = {
     transition: 'opacity 0.2s',
   },
   addButton: {
-    backgroundColor: '#1e293b',
-    color: '#fff',
-    border: '1px solid rgba(29, 155, 240, 0.4)',
-    borderRadius: '8px',
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    color: '#e2e8f0',
+    border: '1px solid rgba(99, 102, 241, 0.3)',
+    borderRadius: '10px',
     padding: '8px 14px',
     fontSize: '13px',
     fontWeight: '600',
@@ -918,7 +1040,7 @@ const styles = {
     margin: 0,
   },
   
-  // Loading spinner
+  // Loading spinner — glassmorphic
   loadingContainer: {
     display: 'flex',
     flexDirection: 'column',
@@ -930,8 +1052,8 @@ const styles = {
   loadingSpinner: {
     width: '24px',
     height: '24px',
-    border: '2px solid rgba(29, 155, 240, 0.2)',
-    borderTop: '2px solid #1d9bf0',
+    border: '2px solid rgba(99, 102, 241, 0.2)',
+    borderTop: '2px solid #6366f1',
     borderRadius: '50%',
     animation: 'spin 1s linear infinite',
   },

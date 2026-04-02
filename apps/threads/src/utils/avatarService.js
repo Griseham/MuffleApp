@@ -1,4 +1,6 @@
 /* apps/threads/src/utils/avatarService.js  (overwrite the file) */
+import { CURRENT_USER_AVATAR, isCurrentUserAuthor } from "./currentUser";
+
 const avatarCache = new Map();
 
 /** '' in dev, '/threads' after you build with  base:'/threads/' */
@@ -10,6 +12,7 @@ const buildAvatarPath = (n) =>
 
 /** deterministic avatar for a user */
 export const getAvatarForUser = (userId) => {
+  if (isCurrentUserAuthor(userId)) return CURRENT_USER_AVATAR;
   if (avatarCache.has(userId)) return avatarCache.get(userId);
   const img = Math.abs(hashCode(String(userId)) % 200) + 1;   // 1-200
   const url = buildAvatarPath(img);

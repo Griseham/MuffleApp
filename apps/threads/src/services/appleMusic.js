@@ -1,6 +1,4 @@
 import { buildApiUrl } from "../utils/api";
-import cachedAlbumArtworks from "../backend/cached_album_artworks.json";
-import cachedArtistImages from "../backend/cached_artist_images.json";
 
 // Apple Music API service for parameter threads
 const APPLE_MUSIC_API_BASE = buildApiUrl("/apple-music-search");
@@ -9,11 +7,11 @@ const APPLE_MUSIC_ALBUM_ARTWORKS_API_BASE = buildApiUrl("/apple-music-album-artw
 const LEGACY_APPLE_MUSIC_ARTIST_IMAGES_API_BASE = buildApiUrl("/apple-music/artist-images");
 const artistImagesRequestCache = new Map();
 const albumArtworksRequestCache = new Map();
+const artistImagesValueCache = new Map();
+const albumArtworksValueCache = new Map();
 const TRACK_KEY_SEPARATOR = "|||";
 let artistImagesEndpointAvailable = true;
 let albumArtworksEndpointAvailable = true;
-const artistImageDiskCache = cachedArtistImages && typeof cachedArtistImages === "object" ? cachedArtistImages : {};
-const albumArtworkDiskCache = cachedAlbumArtworks && typeof cachedAlbumArtworks === "object" ? cachedAlbumArtworks : {};
 
 async function tryParseJson(response) {
   const contentType = response.headers.get("content-type") || "";
@@ -200,22 +198,22 @@ function createTracksCacheKey(tracks) {
     .join("|");
 }
 
-function getArtistImagesFromDiskCache(artistNames) {
+function getArtistImagesFallback(artistNames) {
   return Object.fromEntries(
     artistNames.map((name) => {
-      const cacheEntry = artistImageDiskCache[normalizeArtistCacheKey(name)];
-      return [name, cacheEntry?.imageUrl || null];
+      const cacheEntry = artistImagesValueCache.get(normalizeArtistCacheKey(name));
+      return [name, cacheEntry ?? null];
     })
   );
 }
 
-function getAlbumArtworksFromDiskCache(tracks) {
+function getAlbumArtworksFallback(tracks) {
   return Object.fromEntries(
     tracks.map((track) => {
       const requestKey = createTrackLookupKey(track.songName, track.artistName);
-      const cacheEntry = albumArtworkDiskCache[
+      const cacheEntry = albumArtworksValueCache.get(
         createNormalizedTrackLookupKey(track.songName, track.artistName)
-      ];
+      );
 
       return [requestKey, {
         songName: track.songName,
@@ -223,7 +221,7 @@ function getAlbumArtworksFromDiskCache(tracks) {
         artworkUrl: cacheEntry?.artworkUrl || null,
         albumName: cacheEntry?.albumName || "",
         previewUrl: cacheEntry?.previewUrl || null,
-        source: cacheEntry?.source || "disk-cache",
+        source: cacheEntry?.source || "memory-cache",
       }];
     })
   );
@@ -247,7 +245,7 @@ export async function getAppleMusicArtistImages(artistNames, options = {}) {
 
   const refresh = Boolean(options.refresh);
   const key = createArtistNamesCacheKey(names);
-  const fallback = getArtistImagesFromDiskCache(names);
+  const fallback = getArtistImagesFallback(names);
 
   if (!refresh && artistImagesRequestCache.has(key)) {
     const cachedData = await artistImagesRequestCache.get(key);
@@ -299,6 +297,9 @@ export async function getAppleMusicArtistImages(artistNames, options = {}) {
       }
 
       if (response.ok && result.success && result.data && typeof result.data === "object") {
+        names.forEach((name) => {
+          artistImagesValueCache.set(normalizeArtistCacheKey(name), result.data[name] ?? null);
+        });
         return Object.fromEntries(
           names.map((name) => [name, result.data[name] ?? fallback[name] ?? null])
         );
@@ -352,7 +353,7 @@ export async function getAppleMusicAlbumArtworks(tracks, options = {}) {
 
   const refresh = Boolean(options.refresh);
   const cacheKey = createTracksCacheKey(normalizedTracks);
-  const fallback = getAlbumArtworksFromDiskCache(normalizedTracks);
+  const fallback = getAlbumArtworksFallback(normalizedTracks);
 
   if (!refresh && albumArtworksRequestCache.has(cacheKey)) {
     const cachedData = await albumArtworksRequestCache.get(cacheKey);
@@ -383,6 +384,11 @@ export async function getAppleMusicAlbumArtworks(tracks, options = {}) {
       const result = await tryParseJson(response);
 
       if (response.ok && result.success && result.data && typeof result.data === "object") {
+        normalizedTracks.forEach((track) => {
+          const requestKey = createTrackLookupKey(track.songName, track.artistName);
+          const normalizedKey = createNormalizedTrackLookupKey(track.songName, track.artistName);
+          albumArtworksValueCache.set(normalizedKey, result.data[requestKey] || fallback[requestKey]);
+        });
         return Object.fromEntries(
           normalizedTracks.map((track) => {
             const requestKey = createTrackLookupKey(track.songName, track.artistName);

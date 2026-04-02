@@ -63,15 +63,21 @@ const EnhancedDiscoverySection = ({ artistData, styles }) => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
       {discoveryDays.map((day, idx) => {
-        // Get artist objects from IDs (first 4 only) and filter out undefined artists
-        const visibleArtists = day.artistIds.slice(0, 4).map(id => 
+        const visibleLimit = Number.isFinite(day.visibleCount)
+          ? Math.min(6, Math.max(4, Number(day.visibleCount)))
+          : Math.min(6, Math.max(4, day.artistIds.length > 6 ? 6 : day.artistIds.length));
+
+        // Get artist objects from IDs and filter out undefined artists
+        const visibleArtists = day.artistIds.slice(0, visibleLimit).map(id => 
           artistData.getArtist(id)
         ).filter(artist => artist && artist.id && artist.name);
         
         // Calculate remaining artist count
-        const remainingCount = day.artistIds.length > 4 
-          ? day.plusCount || Math.min(Math.max(2, day.artistIds.length - 4), 12) 
-          : 0;
+        const explicitPlusCount = Number.isFinite(day.plusCount)
+          ? Math.max(0, Number(day.plusCount))
+          : null;
+        const computedRemaining = Math.max(0, day.artistIds.length - visibleLimit);
+        const remainingCount = explicitPlusCount ?? computedRemaining;
           
         return (
           <div key={idx} style={{

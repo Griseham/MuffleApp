@@ -275,7 +275,7 @@ export default function GenreWheel({ forcedGenres = null, onVisibleGenresChange 
             {
               icon: <Stars size={isMobileDevice ? 18 : 20} color="#a9b6fc" />,
               title: "Discovery Threshold",
-              content: "To discover an artist, you must have heard at least 2 of their songs while using the app.",
+              content: "To discover an artist, you must have heard at least 2 of their song snippet previews while using the app.",
             },
             {
               icon: <Stars size={isMobileDevice ? 18 : 20} color="#a9b6fc" />,

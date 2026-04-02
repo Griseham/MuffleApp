@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { FiArrowLeft, FiMessageCircle, FiHeart, FiRepeat, FiShare, FiVolume2 } from 'react-icons/fi';
 import { Music } from 'lucide-react';
 import profileData from './ProfileData.json';
@@ -45,15 +45,17 @@ const MultiArcCircle = ({ arcsData, size = 70, ringWidth = 9, onClick, isSelecte
   );
 };
 
+const DEFAULT_AVATAR = "/assets/default-avatar.png";
+
 // Component for music snippets
 const MusicSnippet = ({ snippet }) => {
   return (
     <div style={{
-      width: "220px",
+      width: "min(220px, 100%)",
       height: "220px",
       backgroundImage: "linear-gradient(135deg, #303f9f 0%, #7b1fa2 100%)",
       borderRadius: "8px",
-      marginLeft: "3rem",
+      marginLeft: 0,
       marginTop: "0.5rem",
       position: "relative",
       overflow: "hidden"
@@ -104,14 +106,71 @@ const MusicSnippet = ({ snippet }) => {
   );
 };
 
+const toFiniteNumber = (value) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const hashToInt = (value = "") => {
+  const source = String(value);
+  let hash = 0;
+  for (let i = 0; i < source.length; i += 1) {
+    hash = (hash * 31 + source.charCodeAt(i)) >>> 0;
+  }
+  return hash;
+};
+
 export default function UserProfile({ user = profileData.userInfo, onBack }) {
   const [activeTab, setActiveTab] = useState("Recents");
   const [selectedGenre, setSelectedGenre] = useState(null);
   const [isVisible, setIsVisible] = useState(false);
+  const [avatarSrc, setAvatarSrc] = useState(DEFAULT_AVATAR);
   
   // Use data from ProfileData.json
   const genreCompletionData = profileData.genreData.genreCompletionData;
   const userPosts = profileData.userPosts;
+  const numberFormatter = useMemo(() => new Intl.NumberFormat("en-US"), []);
+  const profileTabs = ["Recents", "Discovery", "Timeline"];
+  const resolvedUser = useMemo(() => {
+    const incoming = user && typeof user === "object" ? user : {};
+    const fallbackUser = profileData.userInfo || {};
+    const hasIncomingIdentity = Boolean(
+      incoming.displayName || incoming.name || incoming.username || incoming.id
+    );
+
+    if (!hasIncomingIdentity) {
+      return {
+        ...fallbackUser,
+        username: String(fallbackUser.username || "").replace(/^@+/, ""),
+      };
+    }
+
+    const displayName = String(
+      incoming.displayName || incoming.name || fallbackUser.displayName || "User"
+    ).trim();
+    const username = String(
+      incoming.username ||
+      displayName.replace(/\s+/g, "").toLowerCase()
+    ).replace(/^@+/, "");
+    const seed = hashToInt(`${incoming.id || ""}|${displayName}|${username}`);
+    const fallbackFollowing = 100 + (seed % 700);
+    const fallbackFollowers = 200 + ((seed * 7) % 4800);
+
+    return {
+      ...fallbackUser,
+      ...incoming,
+      displayName,
+      username,
+      bio: String(incoming.bio || "").trim(),
+      avatar: incoming.avatar || fallbackUser.avatar || DEFAULT_AVATAR,
+      following: toFiniteNumber(incoming.following) ?? fallbackFollowing,
+      followers: toFiniteNumber(incoming.followers) ?? fallbackFollowers,
+    };
+  }, [user]);
+
+  useEffect(() => {
+    setAvatarSrc(resolvedUser.avatar || DEFAULT_AVATAR);
+  }, [resolvedUser.avatar]);
 
   
   // Handle entrance transition
@@ -343,6 +402,7 @@ export default function UserProfile({ user = profileData.userInfo, onBack }) {
       display: "flex",
       borderBottom: "1px solid rgba(255, 255, 255, 0.1)",
       marginTop: "1rem",
+      overflowX: "auto",
     },
     tabItem: {
       flex: 1,
@@ -351,8 +411,12 @@ export default function UserProfile({ user = profileData.userInfo, onBack }) {
       cursor: "pointer",
       fontWeight: "bold",
       color: "#a9b6fc",
+      border: "none",
       borderBottom: "2px solid transparent",
       transition: "all 0.2s ease",
+      background: "none",
+      fontSize: "0.95rem",
+      whiteSpace: "nowrap",
     },
     tabItemActive: {
       color: "#fff",
@@ -407,16 +471,18 @@ export default function UserProfile({ user = profileData.userInfo, onBack }) {
       fontSize: "1rem",
       color: "#e1e1e1",
       lineHeight: 1.4,
-      marginLeft: "3rem",
+      marginLeft: "calc(48px + 0.75rem)",
       marginTop: "0.25rem",
     },
     postActions: {
       display: "flex",
       justifyContent: "space-between",
       marginTop: "0.5rem",
-      marginLeft: "3rem",
+      marginLeft: "calc(48px + 0.75rem)",
       marginRight: "1rem",
       color: "#a9b6fc",
+      flexWrap: "wrap",
+      rowGap: "0.5rem",
     },
     actionItem: {
       display: "flex",
@@ -526,11 +592,11 @@ export default function UserProfile({ user = profileData.userInfo, onBack }) {
       <div style={styles.contentContainer}>
         {/* Header Bar */}
         <div style={styles.header}>
-          <button onClick={onBack} style={styles.backBtn}>
+          <button onClick={onBack} style={styles.backBtn} aria-label="Go back">
             <FiArrowLeft size={20} />
           </button>
           <h2 style={{ margin: 0, fontSize: "1.1rem" }}>
-            {user.displayName}
+            {resolvedUser.displayName}
           </h2>
         </div>
 
@@ -540,17 +606,20 @@ export default function UserProfile({ user = profileData.userInfo, onBack }) {
         {/* Avatar + Follow Row */}
         <div style={styles.avatarRow}>
           <img 
-            src={user.avatar}
-            alt={`${user.displayName} avatar`} 
-            style={styles.userAvatar} 
+            src={avatarSrc}
+            alt={`${resolvedUser.displayName} avatar`} 
+            style={styles.userAvatar}
+            onError={() => {
+              setAvatarSrc(DEFAULT_AVATAR);
+            }}
           />
-          <button style={styles.followBtn}>Follow</button>
+          <button style={styles.followBtn} type="button">Follow</button>
         </div>
 
         {/* Name & Bio */}
         <div style={styles.nameAndBio}>
           <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
-            <div style={styles.displayName}>{user.displayName}</div>
+            <div style={styles.displayName}>{resolvedUser.displayName}</div>
             <div style={{
               display: 'flex',
               alignItems: 'center',
@@ -568,20 +637,22 @@ export default function UserProfile({ user = profileData.userInfo, onBack }) {
               }}>1312</span>
             </div>
           </div>
-          <div style={styles.handle}>@{user.username}</div>
-          <p style={styles.bioText}>
-            {user.bio}
-          </p>
+          <div style={styles.handle}>@{resolvedUser.username}</div>
+          {resolvedUser.bio && (
+            <p style={styles.bioText}>
+              {resolvedUser.bio}
+            </p>
+          )}
         </div>
 
         {/* Stats Row */}
         <div style={styles.statsRow}>
           <div style={styles.statItem}>
-            <span style={styles.statNumber}>{user.following}</span>
+            <span style={styles.statNumber}>{numberFormatter.format(Math.max(0, Number(resolvedUser.following) || 0))}</span>
             <span style={styles.statLabel}> Following</span>
           </div>
           <div style={styles.statItem}>
-            <span style={styles.statNumber}>{user.followers}</span>
+            <span style={styles.statNumber}>{numberFormatter.format(Math.max(0, Number(resolvedUser.followers) || 0))}</span>
             <span style={styles.statLabel}> Followers</span>
           </div>
         </div>
@@ -671,38 +742,38 @@ export default function UserProfile({ user = profileData.userInfo, onBack }) {
         </div>
 
         {/* Tabs */}
-        <div style={styles.tabsContainer}>
-          <div
-            style={{
-              ...styles.tabItem,
-              ...(activeTab === "Recents" ? styles.tabItemActive : {}),
-            }}
-            onClick={() => setActiveTab("Recents")}
-          >
-            Recents
-          </div>
-          <div
-            style={{
-              ...styles.tabItem,
-              ...(activeTab === "Discovery" ? styles.tabItemActive : {}),
-            }}
-            onClick={() => setActiveTab("Discovery")}
-          >
-            Discovery
-          </div>
-          <div
-            style={{
-              ...styles.tabItem,
-              ...(activeTab === "Timeline" ? styles.tabItemActive : {}),
-            }}
-            onClick={() => setActiveTab("Timeline")}
-          >
-            Timeline
-          </div>
+        <div style={styles.tabsContainer} role="tablist" aria-label="User profile tabs">
+          {profileTabs.map((tabName) => {
+            const isSelected = activeTab === tabName;
+            const tabId = `userprofile-tab-${tabName.toLowerCase()}`;
+            const panelId = `userprofile-panel-${tabName.toLowerCase()}`;
+            return (
+              <button
+                key={tabName}
+                type="button"
+                id={tabId}
+                role="tab"
+                aria-selected={isSelected}
+                aria-controls={panelId}
+                onClick={() => setActiveTab(tabName)}
+                style={{
+                  ...styles.tabItem,
+                  ...(isSelected ? styles.tabItemActive : {}),
+                }}
+              >
+                {tabName}
+              </button>
+            );
+          })}
         </div>
 
         {/* Tab Content */}
-        <div style={styles.tabContent}>
+        <div
+          style={styles.tabContent}
+          role="tabpanel"
+          id={`userprofile-panel-${activeTab.toLowerCase()}`}
+          aria-labelledby={`userprofile-tab-${activeTab.toLowerCase()}`}
+        >
           {activeTab === "Recents" && (
             <div style={styles.recentsContainer}>
               {userPosts.slice(0, 5).map((post) => (
@@ -711,14 +782,18 @@ export default function UserProfile({ user = profileData.userInfo, onBack }) {
                     display: 'flex',
                     alignItems: 'flex-start',
                     gap: '1rem',
+                    flexWrap: 'wrap',
                   }}>
                     {/* Main post content on the left */}
-                    <div style={{flex: 1}}>
+                    <div style={{ flex: '1 1 320px', minWidth: 0 }}>
                       <div style={styles.postHeader}>
                         <img 
-                          src={user.avatar}
+                          src={avatarSrc}
                           style={styles.postAvatar} 
-                          alt="avatar" 
+                          alt={`${resolvedUser.displayName} avatar`}
+                          onError={(event) => {
+                            event.currentTarget.src = DEFAULT_AVATAR;
+                          }}
                         />
                         <div style={styles.postAuthor}>{post.author} • {post.postedAt}</div>
                       </div>
@@ -731,15 +806,16 @@ export default function UserProfile({ user = profileData.userInfo, onBack }) {
                       backgroundColor: 'rgba(30, 41, 59, 0.5)',
                       borderRadius: '8px',
                       padding: '10px',
-                      minWidth: '140px',
+                      minWidth: 'min(140px, 100%)',
                       maxWidth: '180px',
+                      width: '100%',
                       border: '1px solid rgba(255, 255, 255, 0.1)',
                       boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
                       display: 'flex',
                       flexDirection: 'column',
                       gap: '6px',
                       alignSelf: 'flex-start',
-                      marginTop: '2.5rem',
+                      marginTop: '0.5rem',
                     }}>
                       <div style={{
                         fontSize: '0.7rem',
