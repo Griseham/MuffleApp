@@ -4,9 +4,9 @@ import React, { createContext, useContext, useState, useCallback } from 'react';
 // Create context
 const GlobalModalContext = createContext({
   openModalId: null,
-  setOpenModalId: () => {},
-  openModal: () => {},
-  closeModal: () => {},
+  setOpenModalId: () => { /* intentionally empty */ },
+  openModal: () => { /* intentionally empty */ },
+  closeModal: () => { /* intentionally empty */ },
   isModalOpen: () => false
 });
 

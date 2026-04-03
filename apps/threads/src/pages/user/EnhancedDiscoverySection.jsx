@@ -2,6 +2,13 @@
 import React, { useState, useEffect } from 'react';
 import EnhancedArtistCircle from './EnhancedArtistCircle';
 
+const normalizeArtistName = (name = '') =>
+  String(name || '')
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase();
+
 // Function to preload all artist images to avoid showing loading states when switching tabs
 const preloadArtistImages = (artistData) => {
   const allDays = artistData.getAllDiscoveryDays();
@@ -67,16 +74,26 @@ const EnhancedDiscoverySection = ({ artistData, styles }) => {
           ? Math.min(6, Math.max(4, Number(day.visibleCount)))
           : Math.min(6, Math.max(4, day.artistIds.length > 6 ? 6 : day.artistIds.length));
 
-        // Get artist objects from IDs and filter out undefined artists
-        const visibleArtists = day.artistIds.slice(0, visibleLimit).map(id => 
-          artistData.getArtist(id)
-        ).filter(artist => artist && artist.id && artist.name);
+        // Enforce unique artists both within the day and across the discovery tab.
+        const daySeenArtistNames = new Set();
+        const dayArtists = day.artistIds
+          .map((id) => artistData.getArtist(id))
+          .filter((artist) => artist && artist.id && artist.name)
+          .filter((artist) => {
+            const normalized = normalizeArtistName(artist.name);
+            if (!normalized || daySeenArtistNames.has(normalized)) {
+              return false;
+            }
+            daySeenArtistNames.add(normalized);
+            return true;
+          });
+        const visibleArtists = dayArtists.slice(0, visibleLimit);
         
         // Calculate remaining artist count
         const explicitPlusCount = Number.isFinite(day.plusCount)
           ? Math.max(0, Number(day.plusCount))
           : null;
-        const computedRemaining = Math.max(0, day.artistIds.length - visibleLimit);
+        const computedRemaining = Math.max(0, dayArtists.length - visibleArtists.length);
         const remainingCount = explicitPlusCount ?? computedRemaining;
           
         return (
@@ -104,7 +121,7 @@ const EnhancedDiscoverySection = ({ artistData, styles }) => {
                 maxWidth: '70%', // Ensure it doesn't crowd the stats
               }}>
                 {visibleArtists.map((artist, artistIdx) => (
-                  <EnhancedArtistCircle key={artistIdx} artist={artist} />
+                  <EnhancedArtistCircle key={artist.id || `${artist.name}-${artistIdx}`} artist={artist} />
                 ))}
                 
                 {/* Plus count if there are more artists */}

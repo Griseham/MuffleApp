@@ -2,6 +2,13 @@ import React, { useMemo, useState } from 'react';
 import { BarChart3, GitBranch } from 'lucide-react';
 import InfoIconModal from '../../components/InfoIconModal';
 
+function withAlpha(color, alphaHex) {
+  if (typeof color === 'string' && color.startsWith('#') && color.length === 7) {
+    return `${color}${alphaHex}`;
+  }
+  return color;
+}
+
 // Design 4: Bullet Chart Style for Vertical Ratings Graph
 export const VerticalRatingsGraph = ({ graphRatings, onOpenModal }) => {
   const [hoveredIndex, setHoveredIndex] = useState(null);
@@ -271,8 +278,10 @@ export const ScatterRatingsGraph = ({ scatterData, onOpenModal }) => {
     const placed = [];
 
     return scatterData.map((user, idx) => {
-      let x = 10 + (((user.ratingCount || 0) / maxRatings) * 80);
-      let y = 88 - ((user.average || 0) * 0.76);
+      const hasPresetX = Number.isFinite(user?._plotX);
+      const hasPresetY = Number.isFinite(user?._plotY);
+      let x = hasPresetX ? user._plotX : 10 + (((user.ratingCount || 0) / maxRatings) * 80);
+      let y = hasPresetY ? user._plotY : 88 - ((user.average || 0) * 0.76);
       let attempts = 0;
 
       while (
@@ -391,6 +400,7 @@ export const ScatterRatingsGraph = ({ scatterData, onOpenModal }) => {
         {/* Data points with names */}
         {positionedScatterData.map((user, idx) => {
           const isHovered = hoveredUser === idx;
+          const accentColor = user.color || '#a78bfa';
           
           return (
             <div
@@ -422,11 +432,11 @@ export const ScatterRatingsGraph = ({ scatterData, onOpenModal }) => {
                     borderRadius: '50%',
                     objectFit: 'cover',
                     border: isHovered 
-                      ? '3px solid #a78bfa' 
-                      : '2px solid rgba(139, 92, 246, 0.4)',
+                      ? `4px solid ${accentColor}` 
+                      : `3px solid ${withAlpha(accentColor, 'CC')}`,
                     boxShadow: isHovered 
-                      ? '0 0 16px rgba(167, 139, 250, 0.5)' 
-                      : '0 2px 8px rgba(0,0,0,0.3)',
+                      ? `0 0 20px ${withAlpha(accentColor, 'CC')}` 
+                      : `0 0 12px ${withAlpha(accentColor, '88')}`,
                     transition: 'all 0.2s ease',
                     cursor: 'pointer',
                   }}
@@ -443,11 +453,11 @@ export const ScatterRatingsGraph = ({ scatterData, onOpenModal }) => {
                   fontSize: '12px',
                   color: '#94a3b8',
                   border: isHovered 
-                    ? '3px solid #a78bfa' 
-                    : '2px solid rgba(139, 92, 246, 0.4)',
+                    ? `4px solid ${accentColor}` 
+                    : `3px solid ${withAlpha(accentColor, 'CC')}`,
                   boxShadow: isHovered 
-                    ? '0 0 16px rgba(167, 139, 250, 0.5)' 
-                    : '0 2px 8px rgba(0,0,0,0.3)',
+                    ? `0 0 20px ${withAlpha(accentColor, 'CC')}` 
+                    : `0 0 12px ${withAlpha(accentColor, '88')}`,
                   transition: 'all 0.2s ease',
                   cursor: 'pointer',
                 }}>
@@ -458,7 +468,7 @@ export const ScatterRatingsGraph = ({ scatterData, onOpenModal }) => {
               {/* Username label */}
               <span style={{
                 fontSize: '10px',
-                color: isHovered ? '#a78bfa' : '#64748b',
+                color: isHovered ? accentColor : '#64748b',
                 fontWeight: isHovered ? '600' : '400',
                 transition: 'all 0.2s',
                 maxWidth: '50px',
@@ -486,7 +496,7 @@ export const ScatterRatingsGraph = ({ scatterData, onOpenModal }) => {
                   fontSize: '12px',
                   pointerEvents: 'none',
                 }}>
-                  <span style={{ color: '#a78bfa' }}>{user.ratingCount} ratings</span>
+                  <span style={{ color: accentColor }}>{user.ratingCount} ratings</span>
                   <span style={{ color: '#475569', margin: '0 6px' }}>·</span>
                   <span style={{ color: '#64748b' }}>{user.average}% avg</span>
                 </div>

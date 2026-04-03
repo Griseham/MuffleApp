@@ -30,7 +30,7 @@ export default function CommentItem({ comment, snippet, onPlaySnippet, activeSni
               ▶
             </button>
             {/* If this snippet is active, you can render a rating bar or progress */}
-            {activeSnippet.snippetId === snippet.id && (
+            {activeSnippet?.snippetId === (snippet.commentId || snippet.id) && (
               <div style={{ marginTop: "0.5rem" }}>
                 {/* You can render your HorizontalRatingBar component here */}
               </div>

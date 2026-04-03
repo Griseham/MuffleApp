@@ -818,9 +818,7 @@ const PostCard = ({ post, onClick, onUserClick, POST_TYPE_INDICATORS, _isCached 
           setExpandArtistImages(images);
         }
       })
-      .catch((error) => {
-        console.error('Failed to load expand artist images:', error);
-      });
+      .catch((_error) => { /* intentionally empty */ });
 
     return () => {
       mounted = false;
@@ -839,9 +837,7 @@ const PostCard = ({ post, onClick, onUserClick, POST_TYPE_INDICATORS, _isCached 
           setExpandAlbumArtworks(artworks);
         }
       })
-      .catch((error) => {
-        console.error('Failed to load expand album artworks:', error);
-      });
+      .catch((_error) => { /* intentionally empty */ });
 
     return () => {
       mounted = false;

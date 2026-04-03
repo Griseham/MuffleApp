@@ -59,8 +59,7 @@ export default function useThreadData(postId, postData = null) {
   const processCachedSnippets = useCallback((snippets, commentsData) => {
     if (!snippets || snippets.length === 0) return [];
     
-    console.log("useThreadData: Processing snippets from cached data:", snippets.length);
-    return snippets.map((snippet, index) => {
+    return snippets.map((snippet) => {
       const commentsArray = Array.isArray(commentsData)
         ? commentsData
         : (commentsData?.topLevel && Array.isArray(commentsData.topLevel) ? commentsData.topLevel : []);
@@ -91,24 +90,11 @@ export default function useThreadData(postId, postData = null) {
         snippet.artistImage ||
         snippet.artwork;
 
-      // DEBUG: Log raw artwork before processing
-      console.log(`processCachedSnippets: Snippet ${index} raw artwork debug:`, {
-        commentId: snippet.commentId,
-        'snippet.artworkUrl': snippet.artworkUrl,
-        'snippet.snippetData?.attributes?.artwork?.url': snippet.snippetData?.attributes?.artwork?.url,
-        'snippet.artistImage': snippet.artistImage,
-        'snippet.artwork': snippet.artwork,
-        'rawArtwork selected': rawArtwork
-      });
-
       const artworkUrl = normalizeMediaUrl(
         formatArtworkUrl(rawArtwork, 300) ||
         rawArtwork ||
         "/assets/default-artist.png"
       );
-
-      // DEBUG: Log final artwork URL
-      console.log(`processCachedSnippets: Snippet ${index} final artworkUrl:`, artworkUrl);
 
       const previewUrl = normalizeMediaUrl(
         snippet.previewUrl ||
@@ -167,10 +153,8 @@ export default function useThreadData(postId, postData = null) {
   // Fetch cached post data including comments
   const fetchCachedPostData = useCallback(async (id) => {
     try {
-      console.log(`useThreadData: Fetching cached post data for ID: ${id}`);
       const resp = await fetch(buildApiUrl(`/cached-posts/${id}`));
       if (!resp.ok) {
-        console.log(`useThreadData: Cached post not found (${resp.status}): ${id}`);
         return null;
       }
       
@@ -179,8 +163,7 @@ export default function useThreadData(postId, postData = null) {
         return data.data;
       }
       return null;
-    } catch (error) {
-      console.error("useThreadData: Error fetching cached post:", error);
+    } catch {
       return null;
     }
   }, []);
@@ -190,8 +173,6 @@ export default function useThreadData(postId, postData = null) {
     let cancelled = false;
     
     async function loadPost() {
-      console.log("useThreadData: Loading post with ID:", postId);
-      console.log("useThreadData: PostData provided:", !!postData);
       setIsLoading(true);
       setError(null);
       setCommentsLoaded(false);
@@ -206,7 +187,6 @@ export default function useThreadData(postId, postData = null) {
       
       // If postData is provided, use it for the post but still try to load comments from cache
       if (postData) {
-        console.log("useThreadData: Using provided postData, will also fetch cached comments");
         setPost(ensureValidDate(postData));
 
         if (isLocalOnlyPost(postData)) {
@@ -221,13 +201,11 @@ export default function useThreadData(postId, postData = null) {
             if (localSnippets.length > 0) {
               const processedSnippets = processCachedSnippets(localSnippets, localComments);
               setSnippetRecs(processedSnippets);
-              console.log(`useThreadData: Loaded ${processedSnippets.length} local snippets`);
             }
 
             setUsedCache(true);
             setCommentsLoaded(true);
             setIsLoading(false);
-            console.log("useThreadData: Loaded local-only post data without backend fetch");
           }
           return;
         }
@@ -236,29 +214,20 @@ export default function useThreadData(postId, postData = null) {
         let cachedData = null;
         if (postData?.hasCachedData !== false) {
           cachedData = await fetchCachedPostData(postId);
-        } else {
-          console.log("useThreadData: postData.hasCachedData is false; skipping cached-posts fetch");
         }
-        if (!cachedData) {
-          console.log("useThreadData: No cached data found for postId:", postId);
-        }
+
         if (!cancelled && cachedData) {
-          console.log("useThreadData: Found cached data, loading comments and snippets");
-          
           if (cachedData.comments && cachedData.comments.length > 0) {
             setComments(cachedData.comments);
-            console.log(`useThreadData: Loaded ${cachedData.comments.length} cached comments`);
           }
           
           if (cachedData.snippets && cachedData.snippets.length > 0) {
             const processedSnippets = processCachedSnippets(cachedData.snippets, cachedData.comments);
             setSnippetRecs(processedSnippets);
-            console.log(`useThreadData: Loaded ${processedSnippets.length} cached snippets`);
           }
           
           setUsedCache(true);
         } else {
-          console.log("useThreadData: No cached data found for postId:", postId);
           setUsedCache(false);
         }
         
@@ -266,15 +235,12 @@ export default function useThreadData(postId, postData = null) {
           if (cachedData) {
             setCommentsLoaded(true);
             setIsLoading(false);
-            console.log("useThreadData: commentsLoaded set to true (cached)");
           } else if (postData?.postType === "news" || postData?.postType === "parameter") {
             setCommentsLoaded(true);
             setIsLoading(false);
-            console.log(`useThreadData: Skipping live fetch for ${postData.postType} thread without cache`);
           } else {
             setCommentsLoaded(false);
             setIsLoading(false);
-            console.log("useThreadData: No cache for provided postData; will fetch live comments/snippets");
           }
         }
         return;
@@ -284,7 +250,6 @@ export default function useThreadData(postId, postData = null) {
       try {
         const cachedData = await fetchCachedPostData(postId);
         if (!cancelled && cachedData) {
-          console.log("useThreadData: Successfully loaded cached post data");
           setPost(ensureValidDate(cachedData));
           setComments(cachedData.comments || []);
           
@@ -300,7 +265,6 @@ export default function useThreadData(postId, postData = null) {
         }
         
         // Try other API sources...
-        console.log("useThreadData: No cached data found, trying other sources...");
         
         // Try /api/posts endpoint
         try {
@@ -323,13 +287,10 @@ export default function useThreadData(postId, postData = null) {
               }
             }
           }
-        } catch (error) {
-          console.log("useThreadData: Error fetching from /api/posts:", error);
-        }
+        } catch { /* intentionally empty */ }
         
         // Try diverse-posts endpoint
         try {
-          console.log("useThreadData: Trying diverse-posts API...");
           const diverseResp = await fetch(buildApiUrl("/diverse-posts"));
           
           if (diverseResp.ok) {
@@ -338,7 +299,6 @@ export default function useThreadData(postId, postData = null) {
               const diversePost = diverseData.data.find(p => p.id === postId);
               
               if (diversePost && !cancelled) {
-                console.log("useThreadData: Found post in diverse-posts API");
                 setPost(ensureValidDate({
                   ...diversePost,
                   ups: diversePost.ups ?? 0,
@@ -351,13 +311,10 @@ export default function useThreadData(postId, postData = null) {
               }
             }
           }
-        } catch (error) {
-          console.log("useThreadData: Error fetching from diverse-posts:", error);
-        }
+        } catch { /* intentionally empty */ }
         
         // Fallback - create minimal post
         if (!cancelled) {
-          console.log("useThreadData: Using fallback post data");
           setPost({
             id: postId,
             title: "Thread",
@@ -370,7 +327,6 @@ export default function useThreadData(postId, postData = null) {
         }
         
       } catch (error) {
-        console.error("useThreadData: Error loading post:", error);
         if (!cancelled) {
           setError(error);
           setCommentsLoaded(true);
@@ -399,21 +355,17 @@ export default function useThreadData(postId, postData = null) {
       isLocalOnlyPost(post);
 
     if (!postId || !post || usedCache) {
-      console.log("useThreadData: Live fetch skipped - conditions not met", { postId: !!postId, post: !!post, usedCache });
       return;
     }
     if (shouldSkipLiveFetch) {
-      console.log(`useThreadData: Live fetch skipped for ${post.postType} thread`, { postId });
       setCommentsLoaded(true);
       setSnippetsLoading(false);
       return;
     }
     if (didFetchLiveRef.current) {
-      console.log("useThreadData: Live fetch skipped - already fetched");
       return;
     }
 
-    console.log("useThreadData: Starting live fetch for comments and snippets for post:", postId);
     didFetchLiveRef.current = true;
     let cancelled = false;
 
@@ -430,52 +382,35 @@ export default function useThreadData(postId, postData = null) {
         // Fetch comments first
         let liveComments = [];
         try {
-          console.log("useThreadData: Fetching live comments...");
           const cResp = await fetch(buildApiUrl(`/posts/${postId}/comments${subredditParam}`));
           const cJson = await cResp.json();
           liveComments = cJson?.success && cJson?.data ? cJson.data : [];
-          console.log(`useThreadData: Received ${Array.isArray(liveComments) ? liveComments.length : 0} live comments`);
           if (!cancelled) setComments(liveComments);
-        } catch (e) {
-          console.error("useThreadData: Error fetching live comments:", e);
-        }
+        } catch { /* intentionally empty */ }
 
         // Then fetch snippets (don't let the comments state update cancel this)
         try {
-          console.log("useThreadData: Fetching live snippets...");
           const sResp = await fetch(buildApiUrl(`/posts/${postId}/snippets${subredditParam}`));
           const sJson = await sResp.json();
-          console.log("useThreadData: Snippets API response:", sJson);
           
           const raw = sJson?.success && Array.isArray(sJson.data) ? sJson.data : [];
-          console.log(`useThreadData: Received ${raw.length} raw snippets from API`);
           
           if (raw.length > 0) {
             const liveSnippets = processCachedSnippets(raw, liveComments);
-            console.log(`useThreadData: Processed ${liveSnippets.length} snippets`);
             if (!cancelled) {
               setSnippetRecs(liveSnippets);
-              console.log("useThreadData: Set snippetRecs with", liveSnippets.length, "snippets");
-            } else {
-              console.log("useThreadData: Cancelled before setting snippets");
             }
-          } else {
-            console.log("useThreadData: No snippets returned from API");
           }
-        } catch (e) {
-          console.error("useThreadData: Error fetching live snippets:", e);
-        }
+        } catch { /* intentionally empty */ }
       } finally {
         if (!cancelled) {
           setCommentsLoaded(true);
           setSnippetsLoading(false);
-          console.log("useThreadData: Live fetch complete, commentsLoaded set to true, snippetsLoading set to false");
         }
       }
     })();
 
     return () => { 
-      console.log("useThreadData: Live fetch effect cleanup called");
       cancelled = true; 
     };
   }, [postId, post, usedCache, processCachedSnippets, isLocalOnlyPost]); // FIXED: Removed comments, snippetRecs, commentsLoaded from deps

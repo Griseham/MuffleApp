@@ -265,8 +265,8 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
           },
         },
       };
-    } catch (error) {
-      console.warn("Failed to recover snippet media for groupchat:", error?.message || error);
+    } catch  {
+      
       return snippet;
     }
   }, []);
@@ -379,9 +379,7 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
               cachedPostData = cachedJson.data;
             }
           }
-        } catch (e) {
-          console.warn("Failed to load cached post for groupchat:", e?.message || e);
-        }
+        } catch  { /* intentionally empty */ }
 
         let commentsData = { data: [] };
         let snippetsData = [];
@@ -414,9 +412,7 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
             if (snippetsJson.success) {
               snippetsData = snippetsJson.data || [];
             }
-          } catch (e) {
-            console.log("No snippets found:", e.message);
-          }
+          } catch  { /* intentionally empty */ }
         }
 
         snippetsData = await Promise.all(
@@ -563,8 +559,8 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
         
         startMessageSequence(snippetFirstMessages);
         
-      } catch (error) {
-        console.error("Error loading messages:", error);
+      } catch  {
+        
         setMessages([]);
         setAllMessages([]);
       } finally {
@@ -659,8 +655,8 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
     audioElement.currentTime = 0;
     audioElement.src = normalizeMediaUrl(snippet.previewUrl);
     audioElement.load();
-    audioElement.play().catch(err => {
-      console.error("Error playing audio:", err);
+    audioElement.play().catch(_err => {
+      
       setIsSnippetAudioPlaying(false);
       setCurrentPlayingSnippetId(null);
     });

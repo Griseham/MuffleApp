@@ -32,7 +32,8 @@ import {
 const HOME_THREAD_BLUE = '#1d9bf0';
 const HOME_THREAD_BLUE_DEEP = '#1a8cd8';
 const HOME_THREAD_BLUE_SOFT = '#7dd3fc';
-const HOME_NEWS_YELLOW = '#f8ed62';
+const HOME_NEWS_CHAMPAGNE = '#e8d5a8';
+const HOME_NEWS_CHAMPAGNE_DEEP = '#c4a86a';
 
 const normalizePostType = (postType) => String(postType || '').toLowerCase();
 
@@ -41,7 +42,7 @@ const getThemeColor = (postType) => {
   const normalizedType = normalizePostType(postType);
   if (normalizedType === 'groupchat') return '#FF69B4';
   if (normalizedType === 'parameter') return '#00C4B4';
-  if (normalizedType === 'news') return HOME_NEWS_YELLOW;
+  if (normalizedType === 'news') return HOME_NEWS_CHAMPAGNE;
   return HOME_THREAD_BLUE;
 };
 
@@ -50,7 +51,7 @@ const getMusicBadgeGradient = (postType) => {
   const normalizedType = normalizePostType(postType);
   if (normalizedType === 'groupchat') return 'linear-gradient(135deg, #FF69B4, #ec4899)';
   if (normalizedType === 'parameter') return 'linear-gradient(135deg, #00C4B4, #06b6d4)';
-  if (normalizedType === 'news') return `linear-gradient(135deg, ${HOME_NEWS_YELLOW}, #dfd654)`;
+  if (normalizedType === 'news') return `linear-gradient(135deg, ${HOME_NEWS_CHAMPAGNE}, ${HOME_NEWS_CHAMPAGNE_DEEP})`;
   return `linear-gradient(135deg, ${HOME_THREAD_BLUE}, ${HOME_THREAD_BLUE_DEEP})`;
 };
 
@@ -109,7 +110,6 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
     setComments, 
     snippetRecs, 
     setSnippetRecs, 
-    uniqueUsers, 
     usedCache,
     commentsLoaded,
     snippetsLoading
@@ -139,13 +139,10 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
   useEffect(() => {
     // Don't inject until comments are loaded from cache
     if (!commentsLoaded) {
-      console.log("ThreadDetail: Waiting for comments to load before injection...");
       return;
     }
     
     const injected = postData?.__prefillFromTikTok;
-    console.log("ThreadDetail: __prefillFromTikTok payload", injected);
-    console.log("ThreadDetail: commentsLoaded =", commentsLoaded, "injectedOnce =", injectedOnceRef.current);
     
     if (!injected || injectedOnceRef.current) return;
 
@@ -154,17 +151,13 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
 
     // Inject the comment
     if (comment?.id) {
-      console.log("ThreadDetail: Injecting comment into comments array", comment);
       setComments(prev => {
         // Check if already exists
         if (prev.some(c => c.id === comment.id)) {
-          console.log("ThreadDetail: Comment already exists, skipping");
           return prev;
         }
-        console.log("ThreadDetail: Adding injected comment to array. Previous length:", prev.length);
         // Add at the beginning (after example comment will be added in stableCommentOrder)
         const newComments = [{ ...comment, __injectedFromTikTok: true }, ...prev];
-        console.log("ThreadDetail: New comments length:", newComments.length);
         return newComments;
       });
     }
@@ -172,7 +165,6 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
     // Inject the snippet
     const snipId = snippet?.commentId || snippet?.id;
     if (snipId) {
-      console.log("ThreadDetail: Injecting snippet with ID:", snipId);
       injectedSnippetIdRef.current = snipId;
       
       // Format artwork URL if needed
@@ -190,14 +182,10 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
         artworkUrl: artworkUrl,
       };
       
-      console.log("ThreadDetail: Formatted snippet with artwork:", formattedSnippet);
-      
       setSnippetRecs(prev => {
         if (prev.some(s => (s.commentId || s.id) === snipId)) {
-          console.log("ThreadDetail: Snippet already exists, skipping");
           return prev;
         }
-        console.log("ThreadDetail: Adding injected snippet. Previous length:", prev.length);
         return [formattedSnippet, ...prev];
       });
       
@@ -206,26 +194,6 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
       }
     }
   }, [postId, postData, setComments, setSnippetRecs, commentsLoaded]);
-
-  // Debug logging for comments
-  useEffect(() => {
-    console.log("ThreadDetail: comments count changed to", comments.length);
-    if (comments.length > 0) {
-      console.log("ThreadDetail: First comment:", comments[0]?.id, comments[0]?.author);
-      const injected = comments.find(c => c.__injectedFromTikTok);
-      if (injected) {
-        console.log("ThreadDetail: Found injected comment in comments array:", injected.id);
-      }
-    }
-  }, [comments]);
-
-  useEffect(() => {
-    console.log("ThreadDetail: snippetRecs count", snippetRecs.length);
-    const injectedSnippet = snippetRecs.find(s => s.__injectedFromTikTok);
-    if (injectedSnippet) {
-      console.log("ThreadDetail: Found injected snippet in snippetRecs:", injectedSnippet.id);
-    }
-  }, [snippetRecs]);
 
   // Check if this is a special-case thread
   const normalizedPostType = normalizePostType(post?.postType || postData?.postType || 'thread');
@@ -267,7 +235,7 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
     snippetRecs.length === 0;
 
   const getSnippetId = useCallback((snippet) => {
-    return snippet?.id || snippet?.commentId;
+    return snippet?.commentId || snippet?.id;
   }, []);
 
   const hasSnippetRating = useCallback((snippet) => {
@@ -341,7 +309,6 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
 
   // Wrap handleUserRate to trigger graph update after rating
   const handleUserRate = useCallback((snippet, newRating) => {
-    console.log("ThreadDetail: handleUserRate called for snippet:", snippet?.id, "rating:", newRating);
     baseHandleUserRate(snippet, newRating);
   }, [baseHandleUserRate]);
 
@@ -381,7 +348,6 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
 
     setStableCommentOrder((prev) => {
       if (sameOrderById(prev, finalComments)) return prev;
-      console.log("ThreadDetail: Setting stableCommentOrder size", finalComments.length);
       return finalComments;
     });
   }, [comments, commentsLoaded, shouldShowExampleComment, exampleComment]);
@@ -558,19 +524,6 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
       snippet => snippet.didRate || snippet.userRating != null
     );
     
-    console.log("ThreadDetail: processRatingsData - found", ratedSnippets.length, "rated snippets");
-    
-    // Log injected snippet status
-    const injectedSnippet = ratedSnippets.find(s => s.__injectedFromTikTok);
-    if (injectedSnippet) {
-      console.log("ThreadDetail: Injected snippet in rated snippets:", {
-        id: injectedSnippet.id,
-        userRating: injectedSnippet.userRating,
-        avgRating: injectedSnippet.avgRating,
-        didRate: injectedSnippet.didRate
-      });
-    }
-    
     if (ratedSnippets.length === 0) return;
     
     const verticalData = ratedSnippets
@@ -587,8 +540,7 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
         };
       })
       .slice(0, 6);
-    
-    console.log("ThreadDetail: Setting graphRatings with", verticalData.length, "items");
+
     setGraphRatings(verticalData);
     updateScatterData(ratedSnippets);
   }, [snippetRecs, comments, updateScatterData]);
@@ -699,7 +651,6 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
 
   const styles = ThreadDetailStyles;
   const graphsCount = graphRatings?.length || 0;
-  const usersCount = uniqueUsers?.length || 0;
 
   // Build TikTok modal snippets from both snippetRecs and comment-attached snippets.
   // Exclude the seeded example snippet from this modal feed.
@@ -821,6 +772,10 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
           backgroundColor: "#071423",
           background: "linear-gradient(165deg, #071423 0%, #0a2238 44%, #08182a 100%)",
         } : null),
+        ...(isNewsThread ? {
+          backgroundColor: "#0a0b10",
+          background: "linear-gradient(165deg, #0a0b10 0%, #10111a 40%, #0c0d14 100%)",
+        } : null),
         opacity: isVisible ? 1 : 0,
         transform: `scale(${isVisible ? '1' : '0.98'})`,
       }}>
@@ -838,11 +793,15 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
         padding: "18px 20px",
         backgroundColor: isNormalThread
           ? "rgba(5, 16, 30, 0.72)"
-          : "rgba(10, 14, 26, 0.6)",
+          : isNewsThread
+            ? "rgba(10, 11, 16, 0.7)"
+            : "rgba(10, 14, 26, 0.6)",
         backdropFilter: "blur(24px) saturate(1.4)",
         borderBottom: isNormalThread
           ? "1px solid rgba(29, 155, 240, 0.28)"
-          : "1px solid rgba(255, 255, 255, 0.06)",
+          : isNewsThread
+            ? "1px solid rgba(232, 213, 168, 0.25)"
+            : "1px solid rgba(255, 255, 255, 0.06)",
         position: "sticky",
         top: 0,
         zIndex: 10,
@@ -856,19 +815,25 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
             borderRadius: "50%",
             background: isNormalThread
               ? "rgba(29, 155, 240, 0.16)"
+              : isNewsThread
+                ? "rgba(232, 213, 168, 0.12)"
                 : "rgba(255, 255, 255, 0.06)",
             border: isNormalThread
               ? "1px solid rgba(29, 155, 240, 0.45)"
+              : isNewsThread
+                ? "1px solid rgba(232, 213, 168, 0.35)"
                 : "1px solid rgba(255, 255, 255, 0.08)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             cursor: "pointer",
-            color: isNormalThread ? "#bae6fd" : "#e2e8f0",
+            color: isNormalThread ? "#bae6fd" : isNewsThread ? HOME_NEWS_CHAMPAGNE : "#e2e8f0",
             marginRight: "16px",
             backdropFilter: "blur(8px)",
             boxShadow: isNormalThread
               ? "0 6px 14px rgba(29, 155, 240, 0.18)"
+              : isNewsThread
+                ? "0 6px 14px rgba(232, 213, 168, 0.12)"
                 : "none",
             padding: 0,
           }}
@@ -880,7 +845,7 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
           fontWeight: "600",
           letterSpacing: "3px",
           textTransform: "uppercase",
-          color: isNormalThread ? "#93dbff" : isNewsThread ? "#d7cd66" : "#94a3b8",
+          color: isNormalThread ? "#93dbff" : isNewsThread ? HOME_NEWS_CHAMPAGNE_DEEP : "#94a3b8",
         }}>
           {headerLabel}
         </span>
@@ -917,6 +882,11 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
             border: "1px solid rgba(29, 155, 240, 0.25)",
             boxShadow: "0 12px 36px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(29, 155, 240, 0.14)",
           } : null),
+          ...(isNewsThread ? {
+            backgroundColor: "rgba(232, 213, 168, 0.05)",
+            border: "1px solid rgba(232, 213, 168, 0.18)",
+            boxShadow: "0 12px 40px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(232, 213, 168, 0.1)",
+          } : null),
         }}>
           {/* Ambient glow orbs */}
           <div style={{
@@ -925,7 +895,7 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
             right: "-80px",
             width: "340px",
             height: "340px",
-            background: `radial-gradient(circle, ${themeColor}${isNewsThread ? '10' : '18'} 0%, transparent 70%)`,
+            background: `radial-gradient(circle, ${themeColor}${isNewsThread ? '0a' : '18'} 0%, transparent 70%)`,
             pointerEvents: "none",
             zIndex: 0,
           }}/>
@@ -937,6 +907,8 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
             height: "260px",
             background: isNormalThread
               ? "radial-gradient(circle, rgba(125, 211, 252, 0.14) 0%, transparent 70%)"
+              : isNewsThread
+                ? `radial-gradient(circle, rgba(196, 168, 106, 0.1) 0%, transparent 70%)`
                 : "radial-gradient(circle, rgba(236, 72, 153, 0.08) 0%, transparent 70%)",
             pointerEvents: "none",
             zIndex: 0,
@@ -983,7 +955,7 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
               </button>
               <div style={{
                 fontSize: "12px",
-                color: isNormalThread ? "#7cc8ea" : "#64748b",
+                color: isNormalThread ? "#7cc8ea" : isNewsThread ? `${HOME_NEWS_CHAMPAGNE_DEEP}99` : "#64748b",
                 marginTop: "2px",
               }}>
                 {new Date(post.createdUtc * 1000).toLocaleDateString()}
@@ -1001,7 +973,9 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
               lineHeight: "1.2",
               background: isNormalThread
                 ? `linear-gradient(135deg, #f8fdff 24%, ${HOME_THREAD_BLUE_SOFT} 92%)`
-                : "linear-gradient(135deg, #f8fafc 30%, #94a3b8)",
+                : isNewsThread
+                  ? `linear-gradient(135deg, #fffef8 20%, ${HOME_NEWS_CHAMPAGNE} 90%)`
+                  : "linear-gradient(135deg, #f8fafc 30%, #94a3b8)",
               backgroundClip: "text",
               WebkitBackgroundClip: "text",
               WebkitTextFillColor: "transparent",
@@ -1014,7 +988,7 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
             <p style={{
               fontSize: "16px",
               lineHeight: 1.6,
-              color: isNormalThread ? "#d6efff" : "#cbd5e1",
+              color: isNormalThread ? "#d6efff" : isNewsThread ? `${HOME_NEWS_CHAMPAGNE}cc` : "#cbd5e1",
               margin: 0,
               padding: "0 20px 16px",
               position: "relative",
@@ -1093,15 +1067,17 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
             padding: "14px 20px 18px",
             borderTop: isNormalThread
               ? "1px solid rgba(29, 155, 240, 0.18)"
+              : isNewsThread
+                ? "1px solid rgba(232, 213, 168, 0.15)"
                 : "1px solid rgba(255, 255, 255, 0.05)",
             position: "relative",
             zIndex: 1,
           }}>
             {[
-              { icon: <MessageCircle size={16} />, val: displayedPostStatsWithFallback.num_comments },
-              { icon: <Heart size={16} />, val: displayedPostStatsWithFallback.ups },
-              { icon: <Share2 size={16} />, val: null },
-              { icon: <Bookmark size={16} />, val: displayedPostStatsWithFallback.bookmarks },
+              { icon: <MessageCircle size={18} />, val: displayedPostStatsWithFallback.num_comments },
+              { icon: <Heart size={18} />, val: displayedPostStatsWithFallback.ups },
+              { icon: <Share2 size={18} />, val: null },
+              { icon: <Bookmark size={18} />, val: displayedPostStatsWithFallback.bookmarks },
             ].map((stat, i) => (
               <button key={i} style={{
                 display: "flex",
@@ -1109,13 +1085,17 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
                 gap: "6px",
                 background: isNormalThread
                   ? "rgba(29, 155, 240, 0.12)"
+                  : isNewsThread
+                    ? "rgba(232, 213, 168, 0.08)"
                     : "rgba(255, 255, 255, 0.04)",
                 border: isNormalThread
                   ? "1px solid rgba(29, 155, 240, 0.28)"
+                  : isNewsThread
+                    ? "1px solid rgba(232, 213, 168, 0.18)"
                     : "1px solid rgba(255, 255, 255, 0.06)",
                 borderRadius: "999px",
                 padding: "8px 14px",
-                color: isNormalThread ? "#a8e1ff" : "#94a3b8",
+                color: isNormalThread ? "#a8e1ff" : isNewsThread ? `${HOME_NEWS_CHAMPAGNE}bb` : "#94a3b8",
                 cursor: "pointer",
                 fontSize: "13px",
                 fontWeight: "600",
@@ -1223,62 +1203,11 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
                   </span>
                 </div>
 
-                {post?.postType === "groupchat" && (
-                  <button
-                    type="button"
-                    onClick={() => handleTabClick("users")}
-                    style={{
-                      flex: 1,
-                      border: "none",
-                      cursor: "pointer",
-                      background:
-                        activeSection === "users"
-                          ? `linear-gradient(135deg, ${themeColor}40, ${themeColor}20)`
-                          : "transparent",
-                      color: activeSection === "users" ? "#e0e7ff" : "#64748b",
-                      borderRadius: "999px",
-                      padding: "12px 14px",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: "10px",
-                      fontWeight: 700,
-                      letterSpacing: "0.2px",
-                      boxShadow:
-                        activeSection === "users"
-                          ? `0 0 0 1px ${themeColor}66, 0 8px 20px rgba(0,0,0,0.25)`
-                          : "none",
-                      transition: "all 0.2s ease",
-                    }}
-                  >
-                    <Users size={18} color={activeSection === "users" ? themeColor : "#64748b"} />
-                    <span style={{ fontSize: "15px" }}>Users</span>
-
-                    <span
-                      style={{
-                        minWidth: "28px",
-                        height: "22px",
-                        padding: "0 10px",
-                        borderRadius: "999px",
-                        display: "inline-flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        fontSize: "11px",
-                        fontWeight: 800,
-                        background: activeSection === "users" ? `${themeColor}33` : "rgba(255,255,255,0.06)",
-                        color: activeSection === "users" ? "#fff" : "#cbd5e1",
-                        border: activeSection === "users" ? `1px solid ${themeColor}55` : "1px solid rgba(255,255,255,0.06)",
-                      }}
-                    >
-                      {usersCount}
-                    </span>
-                  </button>
-                )}
               </div>
             </div>
           )}
           
-          {/* Graph/Users content area */}
+          {/* Graph content area */}
           {!isNewsThread && (
             <>
               <GraphModal 
@@ -1298,40 +1227,6 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
                 />
               )}
               
-              {post?.postType === "groupchat" && activeSection === "users" && (
-                <div style={{
-                  ...styles.usersContainer,
-                  width: "calc(100% - 32px)",
-                  margin: "16px auto",
-                }}>
-                  {uniqueUsers.map((user) => (
-                    <div 
-                      key={user.name} 
-                      style={styles.userMinimal}
-                    >
-                      <ClickableUserAvatar
-                        user={buildProfileUser(user, user.name, user.avatar)}
-                        avatarSrc={user.avatar}
-                        size={56}
-                        onUserClick={handleSelectUser}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => handleSelectUser(buildProfileUser(user, user.name, user.avatar))}
-                        style={{
-                          ...styles.userName,
-                          background: "none",
-                          border: "none",
-                          padding: 0,
-                          cursor: "pointer",
-                        }}
-                      >
-                        {user.name}
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
             </>
           )}
           
@@ -1382,12 +1277,22 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
             background: "linear-gradient(180deg, rgba(9, 27, 44, 0.5) 0%, rgba(7, 21, 35, 0.35) 100%)",
             padding: "8px 16px 18px",
           } : null),
+          ...(isNewsThread ? {
+            border: "1px solid rgba(232, 213, 168, 0.14)",
+            borderRadius: "16px",
+            background: "linear-gradient(180deg, rgba(232, 213, 168, 0.06) 0%, transparent 100%)",
+            padding: "8px 16px 18px",
+          } : null),
         }}>
           <h3 style={{
             ...styles.commentsHeader,
             ...(isNormalThread ? {
               color: "#9edfff",
               borderBottom: "1px solid rgba(29, 155, 240, 0.24)",
+            } : null),
+            ...(isNewsThread ? {
+              color: HOME_NEWS_CHAMPAGNE_DEEP,
+              borderBottom: "1px solid rgba(232, 213, 168, 0.2)",
             } : null),
           }}>
             Responses ({stableCommentOrder.length || comments.length})
@@ -1418,11 +1323,6 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
             {(stableCommentOrder.length > 0 ? stableCommentOrder : comments).map((c, index) => {
               let snippetObj = null;
               
-              // Debug logging for injected comments
-              if (c.__injectedFromTikTok) {
-                console.log(`ThreadDetail: Rendering injected comment ${c.id}:`, c);
-              }
-              
               // For news threads, don't process any snippets
               if (!isNewsThread) {
                 // First check if this comment has a snippet attached directly (from injection)
@@ -1450,7 +1350,6 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
                     didRate: c.snippet.didRate,
                     snippetData: c.snippet.snippetData,
                   };
-                  console.log(`ThreadDetail: Found attached snippet for comment ${c.id}:`, snippetObj);
                 }
                 
                 // Then check snippetRecs for this comment (might have updated rating)

@@ -13,7 +13,7 @@ export default function Starfield({
   posts = [],
   initialArtists = [],
   jumpGenre = null,
-  onJumpComplete = () => {},
+  onJumpComplete = () => { /* intentionally empty */ },
   isActive = true
 }) {
   return (

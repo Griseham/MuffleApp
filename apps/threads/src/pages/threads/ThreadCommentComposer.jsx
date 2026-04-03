@@ -10,6 +10,7 @@ import {
 } from '../../utils/currentUser';
 
 const DEFAULT_ARTWORK = '/assets/default-artist.png';
+const MIN_SEARCH_QUERY_LENGTH = 2;
 
 function formatArtworkUrl(url, size = 100) {
   if (!url || typeof url !== 'string') {
@@ -173,9 +174,7 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
     audio.play().then(() => {
       setIsPlaying(true);
       setPreviewingSongId(song.id);
-    }).catch(err => {
-      console.error("Error playing audio:", err);
-    });
+    }).catch(_err => { /* intentionally empty */ });
   };
 
   // Clear selected song
@@ -192,24 +191,24 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
       return;
     }
 
-    abortPendingSearch();
-    const requestId = latestSearchRequestRef.current + 1;
-    latestSearchRequestRef.current = requestId;
-
-    if (!checkRateLimit('music_search', 20, 60000)) {
-      console.warn('Search rate limit exceeded');
-      setIsSearching(false);
-      return;
-    }
-    
     const sanitizedQuery = sanitizeSearchQuery(query);
-    if (!sanitizedQuery) {
-      console.warn('Invalid search query');
+    if (!sanitizedQuery || sanitizedQuery.length < MIN_SEARCH_QUERY_LENGTH) {
+      cancelPendingSearch();
       setSearchResults([]);
       setIsSearching(false);
       return;
     }
 
+    abortPendingSearch();
+    const requestId = latestSearchRequestRef.current + 1;
+    latestSearchRequestRef.current = requestId;
+
+    if (!checkRateLimit('music_search', 20, 60000)) {
+      
+      setIsSearching(false);
+      return;
+    }
+    
     const controller = new AbortController();
     searchAbortControllerRef.current = controller;
 
@@ -234,7 +233,7 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
       if (error?.name === 'AbortError') {
         return;
       }
-      console.error("Error searching for music:", error);
+      
       if (latestSearchRequestRef.current === requestId) {
         setSearchResults([]);
       }
@@ -251,6 +250,13 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
   // Debounced search as user types
   useEffect(() => {
     if (!searchQuery.trim()) {
+      cancelPendingSearch();
+      setSearchResults([]);
+      return;
+    }
+
+    const sanitizedQuery = sanitizeSearchQuery(searchQuery);
+    if (!sanitizedQuery || sanitizedQuery.length < MIN_SEARCH_QUERY_LENGTH) {
       cancelPendingSearch();
       setSearchResults([]);
       return;
@@ -310,7 +316,7 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
     if (!comment.trim() && !selectedSong) return;
     
     if (!checkRateLimit('comment_submit', 5, 60000)) {
-      console.warn('Comment submission rate limit exceeded');
+      
       return;
     }
     
@@ -321,7 +327,7 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
     });
     
     if (!validation.isValid) {
-      console.warn('Invalid comment:', validation.error);
+      
       return;
     }
     

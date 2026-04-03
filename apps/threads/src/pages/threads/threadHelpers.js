@@ -145,7 +145,7 @@ export const spreadScatterPoints = (points = []) => {
 };
 
 export const formatSnippetData = (snippet, _relatedComment, _comments) => {
-  const snippetId = snippet?.id || snippet?.commentId;
+  const snippetId = snippet?.commentId || snippet?.id;
   
   if (snippet.snippetData) {
     const artworkUrl = snippet.snippetData.attributes?.artwork?.url || snippet.artistImage || "/assets/default-artist.png";

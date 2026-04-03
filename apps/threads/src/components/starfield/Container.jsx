@@ -28,7 +28,7 @@ export default function Container({
   posts = [],
   initialArtists = [],
   jumpGenre = null,
-  onJumpComplete = () => {},
+  onJumpComplete = () => { /* intentionally empty */ },
   isActive = true
 }) {
   // Use global modal context to sync with app-wide modal state
@@ -137,7 +137,6 @@ export default function Container({
   // Handle artist management
   const handleAddArtist = useCallback((artist) => {
     if (!artist || !artist.id) {
-      console.error("Invalid artist object:", artist);
       return;
     }
     

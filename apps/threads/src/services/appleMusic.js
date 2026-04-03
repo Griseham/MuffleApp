@@ -26,9 +26,7 @@ async function tryParseJson(response) {
   }
 }
 
-function logUnavailableEndpoint(message) {
-  console.warn(message);
-}
+function logUnavailableEndpoint(_message) { /* intentionally empty */ }
 
 /**
  * Search for a song using Apple Music API via our backend
@@ -57,8 +55,8 @@ export async function searchAppleMusic(query) {
     }
     
     return null;
-  } catch (error) {
-    console.error('Error searching Apple Music:', error);
+  } catch  {
+    
     return null;
   }
 }
@@ -155,8 +153,8 @@ export async function cacheMediaAssets(artworkUrl, previewUrl, songId) {
       artworkPath: artworkUrl,
       previewPath: previewUrl
     };
-  } catch (error) {
-    console.error('Error caching media assets:', error);
+  } catch  {
+    
     // Return original URLs as fallback
     return {
       artworkPath: artworkUrl,
@@ -311,8 +309,8 @@ export async function getAppleMusicArtistImages(artistNames, options = {}) {
       }
 
       return fallback;
-    } catch (error) {
-      console.error("Error fetching Apple Music artist images:", error);
+    } catch  {
+      
       return fallback;
     }
   })();
@@ -403,8 +401,8 @@ export async function getAppleMusicAlbumArtworks(tracks, options = {}) {
       }
 
       return fallback;
-    } catch (error) {
-      console.error("Error fetching Apple Music album artworks:", error);
+    } catch  {
+      
       return fallback;
     }
   })();

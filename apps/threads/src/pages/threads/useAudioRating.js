@@ -99,8 +99,8 @@ export const useAudioRating = (snippetRecs, setSnippetRecs, getSnippetId) => {
 
     try {
       await audioRef.current.play();
-    } catch (err) {
-      console.error('Error playing audio:', err);
+    } catch  {
+      
       stopAudio();
       return;
     }

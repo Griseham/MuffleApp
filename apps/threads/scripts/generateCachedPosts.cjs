@@ -253,7 +253,7 @@ async function fetchRedditListing(subreddit, listing) {
   if (listing.t) params.set("t", listing.t);
 
   const url = `${REDDIT_BASE_URL}/r/${subreddit}/${listing.sort}.json?${params.toString()}`;
-  console.log(`Fetching Reddit listing: ${url}`);
+  
 
   const { data } = await axios.get(url, {
     timeout: 15000,
@@ -286,7 +286,7 @@ async function fetchRedditListing(subreddit, listing) {
 
 async function fetchCommentsForPost(subreddit, postId) {
   const url = `${REDDIT_BASE_URL}/r/${subreddit}/comments/${postId}.json?limit=100`;
-  console.log(`Fetching Reddit comments: ${url}`);
+  
 
   const { data } = await axios.get(url, {
     timeout: 15000,
@@ -309,7 +309,7 @@ async function searchAppleMusic(query) {
   }
 
   const url = `${APPLE_API_BASE_URL}/search`;
-  console.log(`Searching Apple Music: "${normalizedQuery}"`);
+  
 
   const response = await axios.get(url, {
     timeout: 15000,
@@ -374,7 +374,7 @@ async function cacheMediaForSong(song) {
       cachedArtworkUrl = await cacheRemoteAsset(artworkUrl, `${songId}_artwork`, ".jpg");
     }
   } catch (error) {
-    console.warn(`Failed to cache artwork for song ${songId}: ${error.message}`);
+    
   }
 
   try {
@@ -382,7 +382,7 @@ async function cacheMediaForSong(song) {
       cachedPreviewUrl = await cacheRemoteAsset(previewUrl, `${songId}_preview`, ".m4a");
     }
   } catch (error) {
-    console.warn(`Failed to cache preview for song ${songId}: ${error.message}`);
+    
   }
 
   return {
@@ -475,7 +475,7 @@ async function buildThreadOrGroupchatCache(candidate, postType) {
 
       usedCommentIds.add(comment.id);
     } catch (error) {
-      console.warn(`Apple Music lookup failed for comment ${comment.id}: ${error.message}`);
+      
     }
   }
 
@@ -554,7 +554,7 @@ async function enrichCacheEntry(cacheEntry) {
         previewUrl: cachedMedia.previewUrl,
       });
     } catch (error) {
-      console.warn(`Failed to enrich ${nextEntry.id} candidate ${candidate.commentId}: ${error.message}`);
+      
     }
   }
 
@@ -621,7 +621,7 @@ async function gatherCandidates(postType, existingIds) {
           }
         }
       } catch (error) {
-        console.warn(`Failed listing ${subreddit}/${listing.sort}: ${error.message}`);
+        
       }
     }
   }
@@ -643,14 +643,14 @@ function writeCacheFile(cacheEntry) {
 async function fillPostType(postType, existingIds) {
   const targetCount = TARGET_COUNTS[postType];
   const candidates = await gatherCandidates(postType, existingIds);
-  console.log(`Found ${candidates.length} candidates for ${postType}`);
+  
 
   const accepted = [];
 
   for (const candidate of candidates) {
     if (accepted.length >= targetCount) break;
 
-    console.log(`Evaluating ${postType} candidate ${candidate.id} from r/${candidate.subreddit}`);
+    
 
     try {
       const cacheEntry =
@@ -659,7 +659,7 @@ async function fillPostType(postType, existingIds) {
           : await buildThreadOrGroupchatCache(candidate, postType);
 
       if (!cacheEntry) {
-        console.log(`Rejected ${candidate.id} for ${postType}`);
+        
         continue;
       }
 
@@ -678,11 +678,9 @@ async function fillPostType(postType, existingIds) {
         image: Boolean(cacheEntry.imageUrl),
       });
 
-      console.log(
-        `Accepted ${cacheEntry.id} (${accepted.length}/${targetCount}) with ${cacheEntry.comments.length} comments, ${cacheEntry.snippets.length} snippets, ${Array.isArray(cacheEntry.snippetCandidates) ? cacheEntry.snippetCandidates.length : 0} snippet candidates`
-      );
+      
     } catch (error) {
-      console.warn(`Failed candidate ${candidate.id}: ${error.message}`);
+      
     }
   }
 
@@ -694,7 +692,7 @@ async function main() {
   ensureDir(SHARED_MEDIA_DIR);
 
   if (ENRICH_REDDIT_ONLY_MODE) {
-    console.log("Mode: enrich-reddit-only");
+    
     const cacheEntries = loadCacheEntries()
       .filter(({ data }) =>
         data &&
@@ -705,22 +703,22 @@ async function main() {
 
     let updatedCount = 0;
     for (const entry of cacheEntries) {
-      console.log(`Enriching ${entry.data.id} (${entry.data.postType})`);
+      
       const result = await enrichCacheEntry(entry.data);
       if (!result.updated) {
-        console.log(`Skipped ${entry.data.id} because fewer than ${TARGET_SNIPPETS_PER_THREAD} snippets resolved`);
+        
         continue;
       }
       writeCacheFile(result.cacheEntry);
       updatedCount += 1;
-      console.log(`Enriched ${entry.data.id} with ${result.cacheEntry.snippets.length} snippets`);
+      
     }
 
-    console.log(`\nEnriched ${updatedCount}/${cacheEntries.length} reddit_only cache entries`);
+    
     return;
   }
 
-  console.log(`Mode: ${REDDIT_ONLY_MODE ? "reddit-only" : "full-resolution"}`);
+  
 
   const existingIds = loadExistingCacheIds();
   const summary = {
@@ -737,13 +735,11 @@ async function main() {
     summary.created[postType] = await fillPostType(postType, existingIds);
   }
 
-  console.log("\nGeneration summary:");
+  
   for (const postType of ["groupchat", "thread", "news"]) {
-    console.log(`- ${postType}: ${summary.created[postType].length}/${TARGET_COUNTS[postType]}`);
+    
     summary.created[postType].forEach((entry) => {
-      console.log(
-        `  ${entry.id} r/${entry.subreddit} comments=${entry.comments} snippets=${entry.snippets} image=${entry.image}`
-      );
+      
     });
   }
 
@@ -755,12 +751,12 @@ async function main() {
   );
 
   if (Object.values(missing).some((count) => count > 0)) {
-    console.error("\nDid not reach all target counts:", missing);
+    
     process.exitCode = 1;
   }
 }
 
 main().catch((error) => {
-  console.error("Fatal cache generation error:", error);
+  
   process.exit(1);
 });

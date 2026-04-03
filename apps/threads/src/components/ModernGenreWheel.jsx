@@ -6,7 +6,7 @@ const ModernGenreWheel = ({
   isFullscreen = false, 
   distanceFromCenter = 0.2,
   isScrolling = false,
-  onGenreSelect = () => {}
+  onGenreSelect = () => { /* intentionally empty */ }
 }) => {
   // Animation refs and state
   const wheelRef = useRef(null);

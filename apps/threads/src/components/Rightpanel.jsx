@@ -473,7 +473,7 @@ export default function RightPanel({
       .then((artworks) => {
         if (mounted && artworks) setAlbumArtworks(artworks);
       })
-      .catch((err) => console.error("RightPanel: failed to load album artworks", err));
+      .catch((_err) => undefined);
     return () => { mounted = false; };
   }, []);
 

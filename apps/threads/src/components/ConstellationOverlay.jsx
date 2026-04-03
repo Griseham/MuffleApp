@@ -287,8 +287,6 @@ export default function ConstellationOverlay({ artists = [], onNodeClick }) {
   const allConstellations = useMemo(() => {
     if (!artists || artists.length === 0) return [];
     
-    console.log("Generating constellations for artists:", artists);
-    
     // Create a map of artists by ID for faster lookup
     const artistMap = {};
     artists.forEach(artist => {
@@ -303,12 +301,11 @@ export default function ConstellationOverlay({ artists = [], onNodeClick }) {
       try {
         const artistConstellations = generateArtistConstellations(artist);
         constellations.push(...artistConstellations);
-      } catch (error) {
-        console.error(`Error generating constellations for artist ${artist.name}:`, error);
+      } catch {
+        // Skip malformed artist constellation data without spamming the console.
       }
     });
-    
-    console.log(`Generated ${constellations.length} total constellations`);
+
     return constellations;
   }, [artists]);
   

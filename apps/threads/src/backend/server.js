@@ -13,26 +13,22 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const dotenvResult = dotenv.config({ path: path.resolve(__dirname, ".env") });
-if (dotenvResult.error) {
-  console.warn("Backend env file not found; falling back to process env only.");
-}
+if (dotenvResult.error) { /* intentionally empty */ }
 
 const APPLE_API_BASE_URL = process.env.APPLE_API_BASE_URL || "https://api.music.apple.com/v1/catalog/us";
 const APPLE_DEVELOPER_TOKEN = process.env.APPLE_DEVELOPER_TOKEN;
 
-console.log("APPLE_API_BASE_URL:", APPLE_API_BASE_URL);
-if (!APPLE_DEVELOPER_TOKEN) {
-  console.warn("APPLE_DEVELOPER_TOKEN is missing; Apple Music search will fail.");
-}
+
+if (!APPLE_DEVELOPER_TOKEN) { /* intentionally empty */ }
 
 // Log cache configuration on startup
-console.log("=== Cache Configuration ===");
-console.log("Post cache TTL: 5 minutes");
-console.log("Comment cache TTL: 8 minutes");
-console.log("Snippet cache TTL: 12 minutes");
-console.log("Apple Music query cache TTL: 24 hours");
-console.log("Min snippets per thread: 5 (excludes news & parameter threads)");
-console.log("===========================");
+
+
+
+
+
+
+
 
 const app = express();
 app.use(cors());
@@ -96,8 +92,8 @@ function loadArtistImageCacheFromDisk() {
       return {};
     }
     return parsed;
-  } catch (error) {
-    console.warn("Failed to load artist image cache file:", error?.message || error);
+  } catch  {
+    
     return {};
   }
 }
@@ -106,8 +102,8 @@ function saveArtistImageCacheToDisk(cacheData) {
   try {
     fs.writeFileSync(ARTIST_IMAGE_CACHE_FILE, JSON.stringify(cacheData, null, 2), "utf8");
     return true;
-  } catch (error) {
-    console.warn("Failed to save artist image cache file:", error?.message || error);
+  } catch  {
+    
     return false;
   }
 }
@@ -135,7 +131,7 @@ async function parseAppleResponse(response) {
   try {
     return JSON.parse(bodyText);
   } catch {
-    console.warn("Apple Music returned invalid JSON:", bodyText.slice(0, 180));
+    
     return null;
   }
 }
@@ -170,12 +166,8 @@ async function fetchArtistImageFromAppleMusic(artistName) {
           };
         }
       }
-    } else {
-      console.warn(`Artist image search failed (${artistResponse.status}) for "${artistName}"`);
-    }
-  } catch (error) {
-    console.warn(`Artist image search error for "${artistName}":`, error?.message || error);
-  }
+    } else { /* intentionally empty */ }
+  } catch  { /* intentionally empty */ }
 
   // Fallback to song artwork when artist artwork is unavailable.
   const songSearchUrl =
@@ -198,12 +190,8 @@ async function fetchArtistImageFromAppleMusic(artistName) {
           };
         }
       }
-    } else {
-      console.warn(`Song artwork fallback failed (${songResponse.status}) for "${artistName}"`);
-    }
-  } catch (error) {
-    console.warn(`Song artwork fallback error for "${artistName}":`, error?.message || error);
-  }
+    } else { /* intentionally empty */ }
+  } catch  { /* intentionally empty */ }
 
   return null;
 }
@@ -223,8 +211,8 @@ function loadAlbumArtworkCacheFromDisk() {
       return {};
     }
     return parsed;
-  } catch (error) {
-    console.warn("Failed to load album artwork cache file:", error?.message || error);
+  } catch  {
+    
     return {};
   }
 }
@@ -233,8 +221,8 @@ function saveAlbumArtworkCacheToDisk(cacheData) {
   try {
     fs.writeFileSync(ALBUM_ARTWORK_CACHE_FILE, JSON.stringify(cacheData, null, 2), "utf8");
     return true;
-  } catch (error) {
-    console.warn("Failed to save album artwork cache file:", error?.message || error);
+  } catch  {
+    
     return false;
   }
 }
@@ -430,8 +418,8 @@ async function searchItunesSongs(query, limit = 8) {
 
     const data = await response.json();
     return Array.isArray(data?.results) ? data.results : [];
-  } catch (error) {
-    console.warn(`iTunes search failed for "${safeQuery}":`, error?.message || error);
+  } catch  {
+    
     return [];
   }
 }
@@ -533,9 +521,7 @@ async function resolveSnippetMedia(snippet = {}) {
         break;
       }
     }
-  } catch (error) {
-    console.warn(`Snippet media repair failed for ${songName} - ${artistName}:`, error?.message || error);
-  }
+  } catch  { /* intentionally empty */ }
 
   repairedSnippetMediaCache.set(cacheKey, resolved);
   return resolved;
@@ -622,13 +608,9 @@ async function cacheMediaForSong(songId, artworkUrl, previewUrl) {
         const buf = Buffer.from(await resp.arrayBuffer());
         fs.writeFileSync(artworkPathFs, buf);
         artworkCached = true;
-        console.log(`Cached artwork for song ${safeId}`);
-      } else {
-        console.warn(`cacheMediaForSong: artwork fetch returned ${resp.status} for ${artworkUrl}`);
-      }
-    } catch (e) {
-      console.warn("cacheMediaForSong: artwork fetch failed:", e?.message || e);
-    }
+        
+      } else { /* intentionally empty */ }
+    } catch  { /* intentionally empty */ }
   }
 
   // Try to cache preview if not already cached
@@ -639,13 +621,9 @@ async function cacheMediaForSong(songId, artworkUrl, previewUrl) {
         const buf = Buffer.from(await resp.arrayBuffer());
         fs.writeFileSync(previewPathFs, buf);
         previewCached = true;
-        console.log(`Cached preview for song ${safeId}`);
-      } else {
-        console.warn(`cacheMediaForSong: preview fetch returned ${resp.status} for ${previewUrl}`);
-      }
-    } catch (e) {
-      console.warn("cacheMediaForSong: preview fetch failed:", e?.message || e);
-    }
+        
+      } else { /* intentionally empty */ }
+    } catch  { /* intentionally empty */ }
   }
 
   // FIXED: Only return cached path if file actually exists, otherwise return original URL
@@ -753,13 +731,13 @@ function removeLinks(text) {
 }
 
 function extractImageUrl(post) {
-  console.log("Extracting image URL for post ID:", post.id);
+  
   if (post.post_hint === 'image' && post.url) {
-    console.log("Direct image found:", post.url);
+    
     return post.url;
   }
   if (post.preview && post.preview.images && post.preview.images.length > 0) {
-    console.log("Preview image found:", post.preview.images[0].source.url);
+    
     return post.preview.images[0].source.url;
   }
   if (post.is_gallery && post.gallery_data && post.media_metadata) {
@@ -768,11 +746,11 @@ function extractImageUrl(post) {
     const imageUrls = items.map(item => {
       const mediaItem = media[item.media_id];
       const url = mediaItem?.s?.u || null;
-      console.log("Gallery image found:", url);
+      
       return url;
     }).filter(url => url !== null);
     if (imageUrls.length > 0) {
-      console.log("First gallery image returned:", imageUrls[0]);
+      
       return imageUrls[0];
     }
   }
@@ -781,7 +759,7 @@ function extractImageUrl(post) {
   if (isImageLink) {
     return post.url;
   }
-  console.log("No image found for post ID:", post.id);
+  
   return null;
 }
 
@@ -862,11 +840,11 @@ async function fetchSubreddit(subreddit) {
     url = `https://www.reddit.com/r/${subreddit}/top.json?t=month&limit=25`;
   }
   
-  console.log(`Fetching from ${subreddit}, URL: ${url}`);
+  
   
   const resp = await fetch(url);
   if (!resp.ok) {
-    console.error(`Failed to fetch from ${subreddit}`, resp.status);
+    
     return [];
   }
   const data = await resp.json();
@@ -952,7 +930,7 @@ async function fetchSubreddit(subreddit) {
     out.unshift(...topGroupChatPosts);
   }
   
-  console.log(`Fetched ${out.length} posts from r/${subreddit}`);
+  
   return out;
 }
 
@@ -971,7 +949,7 @@ async function fetchAllSubreddits() {
     "electronicmusic"
   ];
   
-  console.log("Fetching posts from expanded subreddit list:", subs);
+  
   
   let allPosts = [];
   for (const sub of subs) {
@@ -985,7 +963,7 @@ async function fetchAllSubreddits() {
     (post.ups >= 10 || post.num_comments >= 5)
   );
   
-  console.log(`Filtered from ${allPosts.length} total posts to ${qualityPosts.length} quality posts`);
+  
   
   // If we have enough quality posts, use those; otherwise use all posts
   const postsToUse = qualityPosts.length >= 25 ? qualityPosts : allPosts;
@@ -1003,7 +981,7 @@ async function fetchAllSubreddits() {
   const maxPosts = 40; // Increased from 30 to 40
   const finalPosts = uniquePosts.length > maxPosts ? uniquePosts.slice(0, maxPosts) : uniquePosts;
   
-  console.log(`Returning ${finalPosts.length} diverse posts with good engagement`);
+  
   return finalPosts;
 }
 
@@ -1018,11 +996,11 @@ function forceRefreshCachedPosts() {
   // Also clear the cached posts array to ensure completely fresh data
   cachedPosts = [];
   
-  console.log("Cache fully cleared and expiration forced. Next request will fetch completely fresh data.");
+  
 }
 async function searchAppleMusic(query, limit = 6) {
   if (!APPLE_DEVELOPER_TOKEN || !APPLE_API_BASE_URL) {
-    console.warn("Apple Music search skipped due to missing API configuration.");
+    
     return [];
   }
 
@@ -1033,7 +1011,7 @@ async function searchAppleMusic(query, limit = 6) {
   // Check the query cache first (24-hour TTL)
   const cachedResult = appleMusicQueryCache[cacheKey];
   if (cachedResult && (now - cachedResult.timestamp < APPLE_MUSIC_QUERY_CACHE_TTL_MS)) {
-    console.log(`Apple Music cache HIT for query: "${query}" (cached ${Math.round((now - cachedResult.timestamp) / 60000)} min ago)`);
+    
     return cachedResult.data;
   }
 
@@ -1050,15 +1028,12 @@ async function searchAppleMusic(query, limit = 6) {
     const bodyText = await response.text();
 
     if (!response.ok) {
-      console.error(
-        `Apple Music API error ${response.status} ${response.statusText}. Body:`,
-        bodyText ? bodyText.slice(0, 300) : "(empty body)"
-      );
+      
       return [];
     }
 
     if (!bodyText) {
-      console.error("Apple Music API returned an empty body (unexpected).");
+      
       return [];
     }
 
@@ -1066,7 +1041,7 @@ async function searchAppleMusic(query, limit = 6) {
     try {
       data = JSON.parse(bodyText);
     } catch {
-      console.error("Apple Music API returned non-JSON. First bytes:", bodyText.slice(0, 200));
+      
       return [];
     }
 
@@ -1078,11 +1053,11 @@ async function searchAppleMusic(query, limit = 6) {
       data: results,
       timestamp: now
     };
-    console.log(`Apple Music cache MISS - stored result for query: "${query}" (${results.length} songs)`);
+    
     
     return results;
-  } catch (error) {
-    console.error("Error searching Apple Music:", error);
+  } catch  {
+    
     return [];
   }
 }
@@ -1092,18 +1067,18 @@ function isUsableSnippetComment(commentText) {
 }
 
 function cachePostToJson(postId, subreddit) {
-  console.log(`Caching post ${postId} from r/${subreddit} to JSON...`);
+  
   
   // Use path.resolve relative to this file's directory
   const cacheDir = path.resolve(__dirname, './cached_posts');
-  console.log("Cache directory path:", cacheDir);
+  
   
   if (!fs.existsSync(cacheDir)) {
     try {
       fs.mkdirSync(cacheDir, { recursive: true });
-      console.log("Successfully created cached_posts directory at:", cacheDir);
-    } catch (dirError) {
-      console.error("Error creating cached_posts directory:", dirError);
+      
+    } catch  {
+      
       return Promise.resolve(false);
     }
   }
@@ -1115,7 +1090,7 @@ function cachePostToJson(postId, subreddit) {
       const response = await fetch(postUrl);
       
       if (!response.ok) {
-        console.error(`Failed to fetch post ${postId}:`, response.status);
+        
         return false;
       }
       
@@ -1123,7 +1098,7 @@ function cachePostToJson(postId, subreddit) {
       const mainPost = json[0]?.data?.children[0]?.data;
       
       if (!mainPost) {
-        console.error(`Invalid post data structure for ${postId}`);
+        
         return false;
       }
       
@@ -1132,7 +1107,7 @@ function cachePostToJson(postId, subreddit) {
       
       // Check if post should be blacklisted
       if (isPostBlacklisted({ author: mainPost.author })) {
-        console.log(`Skipping blacklisted post from user: ${mainPost.author}`);
+        
         return false;
       }
 
@@ -1229,10 +1204,10 @@ function cachePostToJson(postId, subreddit) {
       const filename = path.join(cacheDir, `${postId}.json`);
       fs.writeFileSync(filename, JSON.stringify(cachedPost, null, 2));
       
-      console.log(`Successfully cached post ${postId} with ${snippetCount} snippets to ${filename}`);
+      
       return true;
-    } catch (error) {
-      console.error(`Error caching post ${postId}:`, error);
+    } catch  {
+      
       return false;
     }
   })();
@@ -1255,11 +1230,11 @@ async function getSnippetRecommendations(comments, minSnippets = MIN_SNIPPETS_PE
     if (isUsableSnippetComment(body)) {
       processedCommentIds.add(commentId);
       const query = body.substring(0, 40).trim();
-      console.log(`[Pass 1] Testing comment ID ${commentId} with query: "${query}"`);
+      
       const songs = await searchAppleMusic(query);
       const song = songs[0];
       if (song) {
-        console.log(`Success: Found song for comment ID ${commentId}: "${song.attributes.name}"`);
+        
         const artworkRaw = song.attributes.artwork?.url || null;
         const artworkUrl = artworkRaw
           ? artworkRaw.replace("{w}", "300").replace("{h}", "300").replace("{f}", "jpg")
@@ -1289,7 +1264,7 @@ async function getSnippetRecommendations(comments, minSnippets = MIN_SNIPPETS_PE
   
   // Second pass: if we still don't have enough snippets, try broader extraction from remaining comments
   if (snippetRecommendations.length < minSnippets) {
-    console.log(`[Pass 2] Only found ${snippetRecommendations.length}/${minSnippets} snippets, trying broader extraction...`);
+    
     
     for (const comment of comments) {
       if (snippetRecommendations.length >= minSnippets) break;
@@ -1322,12 +1297,12 @@ async function getSnippetRecommendations(comments, minSnippets = MIN_SNIPPETS_PE
       
       if (query.length < 5) continue;
       
-      console.log(`[Pass 2] Testing comment ID ${commentId} with extracted query: "${query}"`);
+      
       const songs = await searchAppleMusic(query);
       const song = songs[0];
       
       if (song) {
-        console.log(`[Pass 2] Success: Found song for comment ID ${commentId}: "${song.attributes.name}"`);
+        
         const artworkRaw = song.attributes.artwork?.url || null;
         const artworkUrl = artworkRaw
           ? artworkRaw.replace("{w}", "300").replace("{h}", "300").replace("{f}", "jpg")
@@ -1355,17 +1330,10 @@ async function getSnippetRecommendations(comments, minSnippets = MIN_SNIPPETS_PE
     }
   }
   
-  console.log(`Final snippetRecommendations: ${snippetRecommendations.length} (target was ${minSnippets})`);
+  
   
   // DEBUG: Log artwork URLs being returned
-  snippetRecommendations.forEach((s, i) => {
-    console.log(`Snippet ${i} artwork debug:`, {
-      commentId: s.commentId,
-      songName: s.songName,
-      artworkUrl: s.artworkUrl,
-      artistImage: s.artistImage
-    });
-  });
+  snippetRecommendations.forEach((_s, _i) => { /* intentionally empty */ });
   
   return snippetRecommendations;
 }
@@ -1383,7 +1351,7 @@ async function getSnippetRecommendations(comments, minSnippets = MIN_SNIPPETS_PE
 
 // Endpoint to trigger caching
 // Replace the existing /api/posts/:postId/cache endpoint
-app.get("/api/posts/:postId/cache", async (req, res) => {
+app.get("/api/posts/:postId/cache", async (_req, res) => {
   // Return that the post is already cached even if it's not
   // This prevents the client from trying to cache new posts
   return res.json({ 
@@ -1396,22 +1364,22 @@ app.get("/api/posts/:postId/cache", async (req, res) => {
 // =========================
 // GET /api/posts  (updated)
 // =========================
-app.get("/api/posts", postsLimiter, async (req, res) => {
+app.get("/api/posts", postsLimiter, async (_req, res) => {
   try {
     // Get all cached posts first
-    console.log("Checking for cached posts...");
+    
     const cacheDir = path.resolve(__dirname, './cached_posts');
     let cachedPostsData = [];
     
     if (fs.existsSync(cacheDir)) {
       try {
         const files = fs.readdirSync(cacheDir).filter(f => f.endsWith('.json'));
-        console.log(`Found ${files.length} cached post files in /api/posts endpoint:`, files);
+        
         
         cachedPostsData = files.map(file => {
           try {
             const filePath = path.join(cacheDir, file);
-            console.log(`Reading file: ${filePath}`);
+            
             const fileContents = fs.readFileSync(filePath, 'utf8');
             const postData = JSON.parse(fileContents);
             return {
@@ -1426,19 +1394,17 @@ app.get("/api/posts", postsLimiter, async (req, res) => {
               hasCachedData: true,
               num_comments: postData.comments?.length || 0
             };
-          } catch (err) {
-            console.error(`Error reading cached post ${file}:`, err);
+          } catch  {
+            
             return null;
           }
         }).filter(post => post !== null);
-      } catch (err) {
-        console.error("Error accessing cached posts directory in /api/posts endpoint:", err);
-      }
+      } catch  { /* intentionally empty */ }
     }
     
     // If we have enough cached posts, use them exclusively
     if (cachedPostsData.length >= 5) {
-      console.log(`Found ${cachedPostsData.length} cached posts to use`);
+      
       
       // Force at least one groupchat post type even from non-groupchat data
       const hasGroupChat = cachedPostsData.some(post => post.postType === "groupchat");
@@ -1453,12 +1419,12 @@ app.get("/api/posts", postsLimiter, async (req, res) => {
         explicitGroupChats.forEach(post => {
           post.postType = "groupchat";
         });
-        console.log(`Marked ${explicitGroupChats.length} posts as group chats explicitly`);
+        
       } else if (!hasGroupChat) {
         // Try to find at least one post that can be marked as a group chat (has comments)
         const potentialGroupChat = cachedPostsData.find(post => post.num_comments >= 5);
         if (potentialGroupChat) {
-          console.log(`Marking post ${potentialGroupChat.id} as a group chat`);
+          
           potentialGroupChat.postType = "groupchat";
         }
       }
@@ -1475,7 +1441,7 @@ app.get("/api/posts", postsLimiter, async (req, res) => {
         const numToConvert = Math.min(3, regularThreads.length);
         for (let i = 0; i < numToConvert; i++) {
           if (regularThreads[i]) {
-            console.log(`Marking post ${regularThreads[i].id} as news`);
+            
             regularThreads[i].postType = "news";
           }
         }
@@ -1499,12 +1465,12 @@ app.get("/api/posts", postsLimiter, async (req, res) => {
       cachedPosts = cachedPostsData;
       lastFetchTime = Date.now();
       
-      console.log("Using cached posts with the following post types:");
-      const typeCounts = cachedPosts.reduce((acc, post) => {
+      
+      const _typeCounts = cachedPosts.reduce((acc, post) => {
         acc[post.postType] = (acc[post.postType] || 0) + 1;
         return acc;
       }, {});
-      console.log(typeCounts);
+      
       
       return res.json({ success: true, data: cachedPosts });
     }
@@ -1512,11 +1478,11 @@ app.get("/api/posts", postsLimiter, async (req, res) => {
     // If we don't have enough cached posts, follow regular process
     const now = Date.now();
     if (cachedPosts.length > 0 && (now - lastFetchTime < CACHE_TTL_MS)) {
-      console.log("Using posts from in-memory cache");
+      
       return res.json({ success: true, data: cachedPosts });
     }
     
-    console.log("Not enough cached posts, fetching from Reddit...");
+    
     const newPosts = await fetchAllSubreddits();
     
     // Merge with any cached posts we found
@@ -1531,31 +1497,31 @@ app.get("/api/posts", postsLimiter, async (req, res) => {
     lastFetchTime = now;
     return res.json({ success: true, data: cachedPosts });
   } catch (err) {
-    console.error("Error fetching posts:", err);
+    
     return res.status(500).json({ success: false, error: err.toString() });
   }
 });
 
 // Also update the cached-posts endpoint to use the correct path
-app.get("/api/cached-posts", (req, res) => {
+app.get("/api/cached-posts", (_req, res) => {
   try {
     const cacheDir = path.resolve(__dirname, './cached_posts');
-    console.log("Looking for cached posts in:", cacheDir);
+    
     
     if (!fs.existsSync(cacheDir)) {
-      console.log("Cached posts directory does not exist:", cacheDir);
+      
       return res.json({ success: true, data: [] });
     }
     
     const files = fs.readdirSync(cacheDir).filter(f => f.endsWith('.json'));
-    console.log(`Found ${files.length} cached post files in /api/cached-posts endpoint:`, files);
+    
     
     const cachedPostIds = files.map(f => f.replace('.json', ''));
     
     const cachedPosts = cachedPostIds.map(id => {
       try {
         const filePath = path.join(cacheDir, `${id}.json`);
-        console.log(`Reading file: ${filePath}`);
+        
         const fileContents = fs.readFileSync(filePath, 'utf8');
         const data = JSON.parse(fileContents);
         return {
@@ -1571,16 +1537,16 @@ app.get("/api/cached-posts", (req, res) => {
           postType: data.postType || "thread",
           createdUtc: data.createdUtc || Date.now()/1000
         };
-      } catch (err) {
-        console.error(`Error reading cached post ${id}:`, err);
+      } catch  {
+        
         return { id, error: true };
       }
     });
     
-    console.log(`Successfully loaded ${cachedPosts.length} cached posts`);
+    
     return res.json({ success: true, data: cachedPosts });
   } catch (error) {
-    console.error("Error getting cached posts:", error);
+    
     return res.status(500).json({ success: false, error: error.toString() });
   }
 });
@@ -1661,7 +1627,7 @@ app.get("/api/cached-posts/:postId", async (req, res) => {
 
     return res.json({ success: true, data: cachedPost });
   } catch (error) {
-    console.error(`Error reading cached post ${postId}:`, error);
+    
     return res.status(500).json({ success: false, error: error.toString() });
   }
 });
@@ -1682,7 +1648,7 @@ app.get("/api/refresh", heavyLimiter, async (req, res) => {
     forceRefreshCachedPosts();
     
     // Fetch completely fresh data
-    console.log("Forcing total refresh of posts with maximum diversity...");
+    
     const newPosts = await fetchAllSubreddits();
     
     // Apply additional randomization for more diversity
@@ -1701,31 +1667,31 @@ app.get("/api/refresh", heavyLimiter, async (req, res) => {
       message: "Successfully refreshed with new diverse posts"
     });
   } catch (err) {
-    console.error("Error refreshing posts:", err);
+    
     return res.status(500).json({ success: false, error: err.toString() });
   }
 });
 
 // Add a new endpoint for specifically requesting diverse posts
-app.get("/api/diverse-posts", heavyLimiter, async (req, res) => {
+app.get("/api/diverse-posts", heavyLimiter, async (_req, res) => {
   try {
-    console.log("Fetching diverse post mix...");
+    
     
     // First, get all cached posts
     const cacheDir = path.resolve(__dirname, './cached_posts');
-    console.log("Looking for cached posts in:", cacheDir);
+    
     let cachedPostsData = [];
     
     if (fs.existsSync(cacheDir)) {
       try {
-        console.log("Checking for cached posts in:", cacheDir);
+        
         const files = fs.readdirSync(cacheDir).filter(f => f.endsWith('.json'));
-        console.log(`Found ${files.length} cached post files:`, files);
+        
         
         cachedPostsData = files.map(file => {
           try {
             const filePath = path.join(cacheDir, file);
-            console.log(`Reading file: ${filePath}`);
+            
             const fileContents = fs.readFileSync(filePath, 'utf8');
             const postData = JSON.parse(fileContents);
             return {
@@ -1742,14 +1708,12 @@ app.get("/api/diverse-posts", heavyLimiter, async (req, res) => {
               // Give cached posts a high diversity score to prioritize them
               diversityScore: 2.0 + (Math.random() * 0.5)
             };
-          } catch (err) {
-            console.error(`Error reading cached post ${file}:`, err);
+          } catch  {
+            
             return null;
           }
         }).filter(post => post !== null);
-      } catch (err) {
-        console.error("Error accessing cached posts directory:", err);
-      }
+      } catch  { /* intentionally empty */ }
     }
     
     // Now fetch fresh posts for additional diversity
@@ -1783,7 +1747,7 @@ app.get("/api/diverse-posts", heavyLimiter, async (req, res) => {
         // Give group chats extra priority
         post.diversityScore += 0.5;
       });
-      console.log(`Marked ${explicitGroupChats.length} cached posts as group chats`);
+      
     }
     
     // Combine cached and fresh posts (exclude parameter posts)
@@ -1824,14 +1788,14 @@ app.get("/api/diverse-posts", heavyLimiter, async (req, res) => {
     lastFetchTime = Date.now();
     
     // Log post type counts
-    const typeCounts = cachedPosts.reduce((acc, post) => {
+    const _typeCounts = cachedPosts.reduce((acc, post) => {
       acc[post.postType] = (acc[post.postType] || 0) + 1;
       return acc;
     }, {});
-    console.log("Diverse posts by type:", typeCounts);
     
-    const cachedCount = cachedPosts.filter(p => p.hasCachedData).length;
-    console.log(`Returning ${cachedPosts.length} diverse posts (${cachedCount} from cache)`);
+    
+    const _cachedCount = cachedPosts.filter(p => p.hasCachedData).length;
+    
     
     return res.json({ 
       success: true, 
@@ -1839,13 +1803,13 @@ app.get("/api/diverse-posts", heavyLimiter, async (req, res) => {
       message: "Fetched highly diverse post mix with cached content prioritized"
     });
   } catch (err) {
-    console.error("Error fetching diverse posts:", err);
+    
     return res.status(500).json({ success: false, error: err.toString() });
   }
 });
 
 // Add new endpoint to check cache status
-app.get("/api/cache-status", (req, res) => {
+app.get("/api/cache-status", (_req, res) => {
   const now = Date.now();
   const cacheAge = now - lastFetchTime;
   const cacheExpired = cacheAge > CACHE_TTL_MS;
@@ -1898,9 +1862,9 @@ app.get("/api/cache-status", (req, res) => {
 });
 
 // New endpoint for browsing groupchats and news posts only
-app.get("/api/browse-posts", async (req, res) => {
+app.get("/api/browse-posts", async (_req, res) => {
   try {
-    console.log("Fetching posts for browsing (groupchats and news only)...");
+    
     
     // Fetch fresh data from Reddit
     const musicPosts = await fetchSubreddit("music");  // These become news posts
@@ -1926,7 +1890,7 @@ app.get("/api/browse-posts", async (req, res) => {
     const browsePosts = [...newsPosts, ...groupchatPosts];
     shuffleArray(browsePosts);
     
-    console.log(`Returning ${browsePosts.length} browse posts: ${newsPosts.length} news, ${groupchatPosts.length} groupchats`);
+    
     
     return res.json({ 
       success: true, 
@@ -1937,7 +1901,7 @@ app.get("/api/browse-posts", async (req, res) => {
       }
     });
   } catch (err) {
-    console.error("Error fetching browse posts:", err);
+    
     return res.status(500).json({ success: false, error: err.toString() });
   }
 });
@@ -1951,7 +1915,7 @@ app.post("/api/cache-post", async (req, res) => {
       return res.status(400).json({ success: false, error: "Missing postId or subreddit" });
     }
     
-    console.log(`Caching post ${postId} from r/${subreddit} as ${postType}...`);
+    
     
     // Use the existing caching function but modify the postType
     const success = await cachePostToJson(postId, subreddit);
@@ -1966,14 +1930,14 @@ app.post("/api/cache-post", async (req, res) => {
         cachedData.postType = postType || cachedData.postType;
         fs.writeFileSync(filename, JSON.stringify(cachedData, null, 2));
         
-        console.log(`Successfully cached post ${postId} as ${postType}`);
+        
         return res.json({ 
           success: true, 
           message: `Post ${postId} cached successfully as ${postType}`,
           postId 
         });
-      } catch (updateError) {
-        console.error("Error updating cached post type:", updateError);
+      } catch  {
+        
         return res.json({ 
           success: true, 
           message: `Post ${postId} cached but could not update post type` 
@@ -1986,7 +1950,7 @@ app.post("/api/cache-post", async (req, res) => {
       });
     }
   } catch (err) {
-    console.error("Error caching post:", err);
+    
     return res.status(500).json({ success: false, error: err.toString() });
   }
 });
@@ -2008,8 +1972,8 @@ function findPostByIdWithFallback(postId) {
       subreddit: data.subreddit,
       postType: data.postType || "thread",
     };
-  } catch (e) {
-    console.error("findPostByIdWithFallback error:", e);
+  } catch  {
+    
     return null;
   }
 }
@@ -2043,8 +2007,8 @@ async function resolvePostForId(postId) {
       subreddit === "musicsuggestions" && numComments >= 8 ? "groupchat" : "thread";
 
     return { id: postId, subreddit, postType };
-  } catch (e) {
-    console.error("resolvePostForId error:", e);
+  } catch  {
+    
     return null;
   }
 }
@@ -2067,7 +2031,7 @@ app.get("/api/posts/:postId/comments", async (req, res) => {
   }
 
   if (post.postType === "news" || post.postType === "parameter") {
-    console.log(`Skipping comments for ${post.postType} thread: ${postId}`);
+    
     return res.json({ success: true, data: [], skipped: true, reason: post.postType });
   }
 
@@ -2078,7 +2042,7 @@ app.get("/api/posts/:postId/comments", async (req, res) => {
     cacheEntry &&
     (now - cacheEntry.timestamp < COMMENT_CACHE_TTL_MS)
   ) {
-    console.log("Returning comments from cache for post:", postId);
+    
     return res.json({ success: true, data: cacheEntry.data });
   }
 
@@ -2095,7 +2059,7 @@ app.get("/api/posts/:postId/comments", async (req, res) => {
       },
     });
     if (!fetchResp.ok) {
-      console.error("Reddit API fetch failed for comments:", fetchResp.status);
+      
       // If needed, store an empty result in the cache to avoid repeated attempts
       commentsCache[postId] = { data: [], timestamp: now };
       // Return an empty array or handle gracefully
@@ -2153,7 +2117,7 @@ app.get("/api/posts/:postId/comments", async (req, res) => {
     return res.json({ success: true, data: finalData });
 
   } catch (err) {
-    console.error("Error fetching comments:", err);
+    
     return res.status(500).json({ success: false, error: err.toString() });
   }
 });
@@ -2171,9 +2135,7 @@ app.get("/api/posts/:postId/snippets", async (req, res) => {
       };
       return res.json({ success: true, data: cachedPost.snippets, cached: true, source: "cached-post" });
     }
-  } catch (error) {
-    console.warn(`Failed to repair cached snippets for ${postId}:`, error?.message || error);
-  }
+  } catch  { /* intentionally empty */ }
 
   // Allow snippets for posts that aren't in our in-memory cache (e.g. loaded via the Reddit button)
   // by resolving basic post info from Reddit on-demand.
@@ -2184,7 +2146,7 @@ app.get("/api/posts/:postId/snippets", async (req, res) => {
 
   // Skip news and parameter threads - they don't need music snippets
   if (post.postType === "news" || post.postType === "parameter") {
-    console.log(`Skipping snippets for ${post.postType} thread: ${postId}`);
+    
     return res.json({ success: true, data: [], skipped: true, reason: post.postType });
   }
 
@@ -2193,12 +2155,12 @@ app.get("/api/posts/:postId/snippets", async (req, res) => {
   
   // Check per-post snippet cache (10-15 minute TTL)
   if (cacheEntry && cacheEntry.timestamp && now - cacheEntry.timestamp < SNIPPET_CACHE_TTL_MS) {
-    const cacheAgeMin = Math.round((now - cacheEntry.timestamp) / 60000);
-    console.log(`Snippets cache HIT for post ${postId}: ${cacheEntry.data?.length || 0} snippets (cached ${cacheAgeMin} min ago)`);
+    const _cacheAgeMin = Math.round((now - cacheEntry.timestamp) / 60000);
+    
     return res.json({ success: true, data: cacheEntry.data || [], cached: true });
   }
 
-  console.log(`Snippets cache MISS for post ${postId}, fetching from Reddit...`);
+  
   const commentsUrl = `https://www.reddit.com/comments/${postId}.json?limit=60&raw_json=1`;
   try {
     const fetchResp = await fetch(commentsUrl, {
@@ -2208,15 +2170,15 @@ app.get("/api/posts/:postId/snippets", async (req, res) => {
       },
     });
     if (!fetchResp.ok) {
-      console.error("Reddit API fetch failed with status:", fetchResp.status);
+      
       snippetsCache[postId] = { data: [], timestamp: now };
       return res.json({ success: true, data: [] });
     }
     let json;
     try {
       json = await fetchResp.json();
-    } catch (e) {
-      console.error("Error parsing JSON for snippets:", e);
+    } catch  {
+      
       json = null;
     }
     const comments =
@@ -2224,16 +2186,16 @@ app.get("/api/posts/:postId/snippets", async (req, res) => {
         ? json[1].data.children
         : [];
     
-    console.log(`Found ${comments.length} comments for post ${postId}, extracting snippets (target: ${MIN_SNIPPETS_PER_THREAD})...`);
+    
     const snippetRecommendations = await getSnippetRecommendations(comments, MIN_SNIPPETS_PER_THREAD);
     
     // Cache the results
     snippetsCache[postId] = { data: snippetRecommendations, timestamp: now };
-    console.log(`Cached ${snippetRecommendations.length} snippets for post ${postId}`);
+    
     
     return res.json({ success: true, data: snippetRecommendations });
   } catch (err) {
-    console.error("Error fetching snippet recommendations:", err);
+    
     return res.status(500).json({ success: false, error: err.toString() });
   }
 });
@@ -2251,8 +2213,8 @@ app.get("/api/apple-music-search", async (req, res) => {
       return res.json({ success: true, data: results });
     }
     return res.json({ success: false, message: "No results found." });
-  } catch (error) {
-    console.error("Error searching Apple Music:", error);
+  } catch  {
+    
     return res.status(500).json({ success: false, error: "Internal server error" });
   }
 });
@@ -2331,8 +2293,8 @@ app.post("/api/apple-music-artist-images", heavyLimiter, async (req, res) => {
         cacheFile: path.basename(ARTIST_IMAGE_CACHE_FILE),
       },
     });
-  } catch (error) {
-    console.error("Error fetching Apple Music artist images:", error);
+  } catch  {
+    
     return res.status(500).json({ success: false, error: "Internal server error" });
   }
 });
@@ -2464,8 +2426,8 @@ app.post("/api/apple-music-album-artworks", heavyLimiter, async (req, res) => {
         cacheFile: path.basename(ALBUM_ARTWORK_CACHE_FILE),
       },
     });
-  } catch (error) {
-    console.error("Error fetching Apple Music album artworks:", error);
+  } catch  {
+    
     return res.status(500).json({ success: false, error: "Internal server error" });
   }
 });
@@ -2498,11 +2460,9 @@ app.post("/api/cache-media", async (req, res) => {
           const artworkPath = path.join(CACHED_MEDIA_DIR, `${songId}_artwork${ext}`);
           fs.writeFileSync(artworkPath, Buffer.from(buffer));
           results.artworkPath = `/cached_media/${songId}_artwork${ext}`;
-          console.log(`Cached artwork for ${songId}`);
+          
         }
-      } catch (artworkError) {
-        console.error('Error caching artwork:', artworkError);
-      }
+      } catch  { /* intentionally empty */ }
     }
     
     // Cache preview if provided
@@ -2514,11 +2474,9 @@ app.post("/api/cache-media", async (req, res) => {
           const previewPath = path.join(CACHED_MEDIA_DIR, `${songId}_preview.m4a`);
           fs.writeFileSync(previewPath, Buffer.from(buffer));
           results.previewPath = `/cached_media/${songId}_preview.m4a`;
-          console.log(`Cached preview for ${songId}`);
+          
         }
-      } catch (previewError) {
-        console.error('Error caching preview:', previewError);
-      }
+      } catch  { /* intentionally empty */ }
     }
     
     return res.json({
@@ -2526,7 +2484,7 @@ app.post("/api/cache-media", async (req, res) => {
       ...results
     });
   } catch (error) {
-    console.error("Error caching media:", error);
+    
     return res.status(500).json({ success: false, error: error.toString() });
   }
 });
@@ -2536,12 +2494,12 @@ app.use('/cached_media', express.static(CACHED_MEDIA_DIR));
 
 // server.js
 
-app.get('/api/spotify-token', heavyLimiter, async (req, res) => {
+app.get('/api/spotify-token', heavyLimiter, async (_req, res) => {
   try {
     const token = await getSpotifyAccessToken();
     res.json({ success: true, token });
-  } catch (error) {
-    console.error("Error fetching Spotify token:", error?.message || error);
+  } catch  {
+    
     res.status(500).json({ success: false, error: "Failed to get token" });
   }
 });
@@ -2584,17 +2542,15 @@ app.get('/api/spotify-artist-search', heavyLimiter, async (req, res) => {
     }));
 
     return res.json({ success: true, artists });
-  } catch (error) {
-    console.error("Error searching Spotify artists:", error?.message || error);
+  } catch  {
+    
     return res.status(500).json({ success: false, error: "Search failed" });
   }
 });
 
 
 const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => {
-  console.log("Server listening on port", PORT);
-});
+app.listen(PORT, () => { /* intentionally empty */ });
 
 // Periodic cache cleanup function - runs every hour
 function cleanupExpiredCaches() {
@@ -2632,9 +2588,7 @@ function cleanupExpiredCaches() {
     }
   }
   
-  if (appleMusicCleaned > 0 || snippetsCleaned > 0 || commentsCleaned > 0) {
-    console.log(`Cache cleanup: Removed ${appleMusicCleaned} Apple Music queries, ${snippetsCleaned} snippet caches, ${commentsCleaned} comment caches`);
-  }
+  if (appleMusicCleaned > 0 || snippetsCleaned > 0 || commentsCleaned > 0) { /* intentionally empty */ }
 }
 
 // Run cache cleanup every hour
@@ -2648,14 +2602,12 @@ try {
   const cacheDirPath = path.resolve(__dirname, './cached_posts');
   if (!fs.existsSync(cacheDirPath)) {
     fs.mkdirSync(cacheDirPath, { recursive: true });
-    console.log("Successfully created cached_posts directory on startup:", cacheDirPath);
+    
   } else {
-    console.log("cached_posts directory already exists:", cacheDirPath);
+    
     
     // Log the actual files in the directory
-    const files = fs.readdirSync(cacheDirPath).filter(f => f.endsWith('.json'));
-    console.log(`Found ${files.length} cached post files:`, files);
+    const _files = fs.readdirSync(cacheDirPath).filter(f => f.endsWith('.json'));
+    
   }
-} catch (err) {
-  console.error("CRITICAL ERROR: Could not access or create cached_posts directory:", err);
-}
+} catch  { /* intentionally empty */ }

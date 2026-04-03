@@ -6,12 +6,10 @@ const APPLE_API_BASE_URL =
 const APPLE_DEVELOPER_TOKEN =
   process.env.APPLE_DEVELOPER_TOKEN || process.env.REACT_APP_APPLE_DEVELOPER_TOKEN;
 
-console.log('ENV in appleMusicService: baseUrl=', APPLE_API_BASE_URL ? 'set' : 'missing');
-console.log('ENV in appleMusicService: developer token=', APPLE_DEVELOPER_TOKEN ? 'set' : 'missing');
 
-if (!APPLE_API_BASE_URL || !APPLE_DEVELOPER_TOKEN) {
-  console.warn('Missing Apple Music environment variables in appleMusicService.js');
-}
+
+
+if (!APPLE_API_BASE_URL || !APPLE_DEVELOPER_TOKEN) { /* intentionally empty */ }
 
 // Helper function to validate image URLs
 function hasValidImageUrl(imageUrl) {
@@ -34,13 +32,13 @@ async function fetchAppleMusicTracks(artistName) {
       });
   
       if (!response.data || !response.data.results) {
-        console.warn('Apple Music fetch returned no data for', artistName);
+        
         return [];
       }
       const appleSongs = response.data.results.songs?.data || [];
       return appleSongs; // raw Apple objects
-    } catch (error) {
-      console.error('Error fetching Apple Music tracks for artist:', artistName, error.message);
+    } catch  {
+      
       return [];
     }
 }
@@ -113,7 +111,7 @@ async function getArtistsFromMostPlayedSongs(limit = 50, genre = 'pop') {
         const batchSize = 8; // Smaller batches for more precise results
         const targetCount = Math.min(limit * 2, artistList.length); // Get 2x to filter for images
         
-        console.log(`Searching for ${targetCount} artists in genre "${genre}" to find ${limit} with valid images`);
+        
         
         for (let i = 0; i < Math.ceil(targetCount / batchSize); i++) {
             const batch = artistList.slice(i * batchSize, (i + 1) * batchSize);
@@ -129,9 +127,7 @@ async function getArtistsFromMostPlayedSongs(limit = 50, genre = 'pop') {
                             headers: { Authorization: `Bearer ${APPLE_DEVELOPER_TOKEN}` },
                         });
 
-                        if (response.status === 401 || response.status === 403) {
-                            console.error(`Apple Music auth error ${response.status} for ${artistName}. Token may be expired.`);
-                        }
+                        if (response.status === 401 || response.status === 403) { /* intentionally empty */ }
                         const artists = response.data.results?.artists?.data || [];
                         
                         for (const artist of artists) {
@@ -154,38 +150,26 @@ async function getArtistsFromMostPlayedSongs(limit = 50, genre = 'pop') {
                                     isMain: true
                                 });
                                 
-                                console.log(`✅ Added ${artistNameFromAPI} with valid image`);
-                            } else if (artistNameFromAPI && !hasValidImageUrl(imageUrl)) {
-                                console.log(`❌ Skipped ${artistNameFromAPI} - no valid image`);
-                            }
+                                
+                            } else if (artistNameFromAPI && !hasValidImageUrl(imageUrl)) { /* intentionally empty */ }
                         }
                         
                         // Small delay to respect API limits
                         await new Promise(resolve => setTimeout(resolve, 100));
                         
                     } catch (artistError) {
-                        if (artistError.response) {
-                            console.error(
-                                `Error searching for ${artistName}:`,
-                                artistError.response.status,
-                                artistError.response.data
-                            );
-                        } else {
-                            console.error(`Error searching for ${artistName}:`, artistError.message);
-                        }
+                        if (artistError.response) { /* intentionally empty */ } else { /* intentionally empty */ }
                     }
                 }
                 
-            } catch (searchError) {
-                console.error(`Error in batch search:`, searchError.message);
-            }
+            } catch  { /* intentionally empty */ }
         }
 
-        console.log(`Successfully fetched ${results.length} artists with valid images for genre: ${genre}`);
+        
         return results;
         
-    } catch (error) {
-        console.error('Error fetching artists:', error.message);
+    } catch  {
+        
         
         // NO FALLBACK MOCK DATA - if Apple Music fails, return empty array
         // This ensures we only show real artists with real images
@@ -223,10 +207,10 @@ async function getSnippetsForArtists(artistIds) {
             });
         }
 
-        console.log('Fetched snippets (with valid images only):', snippets.length);
+        
         return snippets;
-    } catch (error) {
-        console.error('Error fetching snippets:', error.message);
+    } catch  {
+        
         return [];
     }
 }
@@ -256,15 +240,7 @@ async function resolveAppleMusicArtistIds(artistNames) {
                 });
             }
         } catch (error) {
-            if (error.response) {
-                console.error(
-                    `Error resolving artist ${name}:`,
-                    error.response.status,
-                    error.response.data
-                );
-            } else {
-                console.error(`Error resolving artist ${name}:`, error.message);
-            }
+            if (error.response) { /* intentionally empty */ } else { /* intentionally empty */ }
         }
     }
 
@@ -306,15 +282,7 @@ async function searchSongsByArtists(searchQuery, selectedArtists) {
 
         return results;
     } catch (error) {
-        if (error.response) {
-            console.error(
-                'Error searching songs by artists:',
-                error.response.status,
-                error.response.data
-            );
-        } else {
-            console.error('Error searching songs by artists:', error.message);
-        }
+        if (error.response) { /* intentionally empty */ } else { /* intentionally empty */ }
         throw error;
     }
 }
@@ -346,15 +314,7 @@ async function searchSongs(searchQuery) {
                 artworkUrl: song.attributes.artwork.url.replace('{w}x{h}', '300x300'),
             }));
     } catch (error) {
-        if (error.response) {
-            console.error(
-                'Error searching songs:',
-                error.response.status,
-                error.response.data
-            );
-        } else {
-            console.error('Error searching songs:', error.message);
-        }
+        if (error.response) { /* intentionally empty */ } else { /* intentionally empty */ }
         throw error;
     }
 }

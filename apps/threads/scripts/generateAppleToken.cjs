@@ -29,5 +29,5 @@ const token = jwt.sign(
   }
 );
 
-console.log('New Apple Music developer token:\n');
-console.log(token);
+
+

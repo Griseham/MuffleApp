@@ -131,9 +131,7 @@ export default function HomeTikTokModal({ onClose, cachedPosts = [], onNavigateT
               if (result?.success && result?.data) {
                 return result.data;
               }
-            } catch (error) {
-              console.warn(`HomeTikTokModal: failed to load repaired cached post ${post.id}:`, error);
-            }
+            } catch { /* intentionally empty */ }
 
             return post;
           })
@@ -306,8 +304,7 @@ export default function HomeTikTokModal({ onClose, cachedPosts = [], onNavigateT
 
         setSnippets(cards.slice(0, 5));
         setIsLoadingSnippets(false);
-      } catch (err) {
-        console.error("Error loading cached post snippets:", err);
+      } catch {
         if (!cancelled) {
           setSnippets([
             {
@@ -384,7 +381,7 @@ export default function HomeTikTokModal({ onClose, cachedPosts = [], onNavigateT
         audioRef={audioRef}
         isPlaying={false}
         activeSnippet={null}
-        playOrPauseSnippet={() => {}}
+        playOrPauseSnippet={() => { /* intentionally empty */ }}
         onUserRate={handleUserRate}
         isInitialLoading={isLoadingSnippets}
         threadTitle="For You"
@@ -396,20 +393,15 @@ export default function HomeTikTokModal({ onClose, cachedPosts = [], onNavigateT
           },
         ]}
         onNavigateToThread={(postId, snippet) => {
-          console.log("HomeTikTokModal: onNavigateToThread called with postId:", postId, "snippet:", snippet);
-          
           if (!onNavigateToThread) {
-            console.log("HomeTikTokModal: No onNavigateToThread callback provided");
             return;
           }
           
           const post = snippet?.sourcePost || cachedPosts.find(p => p.id === postId);
           if (!post) {
-            console.log("HomeTikTokModal: Post not found for ID:", postId);
             return;
           }
 
-          console.log("HomeTikTokModal: Found post:", post.title);
           onNavigateToThread(post);
         }}
       />

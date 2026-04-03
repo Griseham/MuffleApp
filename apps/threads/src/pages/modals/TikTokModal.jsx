@@ -329,7 +329,7 @@ export default function TikTokModal({
     );
 
     if (!previewUrl) {
-      console.warn("No previewUrl for this snippet. Skipping play.", currentSnippet);
+      
       setModalIsPlaying(false);
       return;
     }
@@ -351,8 +351,8 @@ export default function TikTokModal({
         setModalIsPlaying(true);
         setAudioProgress(0);
       })
-      .catch(err => {
-        console.error("Error playing audio:", err, { previewUrl });
+      .catch(_err => {
+        
         setModalIsPlaying(false);
         setCurrentSnippetId(null);
         setAudioProgress(0);

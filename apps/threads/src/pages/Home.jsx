@@ -29,7 +29,7 @@ const HomeTikTokModal = lazy(() => import('./modals/HomeTikTokModal'));
 
 const POST_TYPE_INDICATORS = {
   thread: { color: "#1d9bf0", label: "Thread" },
-  news: { color: "#f8ed62", label: "News" },
+  news: { color: "#e8d5a8", label: "News" },
   groupchat: { color: "#FF69B4", label: "GroupChat" },
   parameter: { color: "#00C4B4", label: "Parameter" },
   tweet: { color: "#FFB6C1", label: "Tweet" }
@@ -401,7 +401,7 @@ const createExamplePost = () => ({
 });
 
 function ThreadsHomeSidebar() {
-  const handlePlaceholderNav = () => {};
+  const handlePlaceholderNav = () => { /* intentionally empty */ };
 
   const subNavItems = [
     {
@@ -425,7 +425,10 @@ function ThreadsHomeSidebar() {
     <aside className="threads-home-sidebar" aria-label="Threads navigation">
       <div className="threads-home-sidebar__logo">
         <div className="threads-home-sidebar__logo-wrapper">
-          <div className="threads-home-sidebar__logo-circle" />
+          <div
+            className="threads-home-sidebar__logo-circle"
+            style={{ backgroundImage: "url('/assets/MuflLogo.png')" }}
+          />
         </div>
       </div>
 
@@ -464,6 +467,44 @@ function ThreadsHomeSidebar() {
         Old Videos
       </button>
     </aside>
+  );
+}
+
+function ThreadsAppShell({ children, rightPanel = null }) {
+  return (
+    <div className="music-home threads-home-layout">
+      <div className="threads-home-shell">
+        <ThreadsHomeSidebar />
+        <div className="threads-home-main">
+          {children}
+        </div>
+        {rightPanel ? (
+          <div className="threads-home-rightpanel">
+            {rightPanel}
+          </div>
+        ) : (
+          <div className="threads-home-rightpanel threads-home-rightpanel-spacer" aria-hidden="true">
+            <div className="threads-home-rightpanel-spacer-inner" />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ThreadsMainFrame({ children }) {
+  return (
+    <div
+      style={{
+        maxWidth: '1000px',
+        width: '100%',
+        margin: '0 auto',
+        padding: '1rem 1rem 0',
+        boxSizing: 'border-box',
+      }}
+    >
+      {children}
+    </div>
   );
 }
 
@@ -672,9 +713,7 @@ const MusicHome = () => {
             });
           }
         }
-      } catch (err) {
-        console.error("Failed to refresh cached posts:", err);
-      }
+      } catch { /* intentionally empty */ }
     };
 
     window.addEventListener('refreshCachedPosts', handleCachedPostsRefresh);
@@ -714,11 +753,9 @@ const MusicHome = () => {
           }
 
           setPosts([createExamplePost()]);
-          console.error("Failed to fetch cached posts");
         }
         
-      } catch (err) {
-        console.error("Error loading cached posts:", err);
+      } catch {
         if (!isMounted) {
           return;
         }
@@ -785,50 +822,63 @@ const MusicHome = () => {
   return (
     <>
       {selectedUser ? (
-        <UserProfile 
-          user={selectedUser} 
-          onBack={handleUserProfileBack}
-        />
+        <ThreadsAppShell>
+          <ThreadsMainFrame>
+            <UserProfile 
+              user={selectedUser} 
+              onBack={handleUserProfileBack}
+            />
+          </ThreadsMainFrame>
+        </ThreadsAppShell>
       ) : selectedThread ? (
-        <Suspense fallback={<HomeViewFallback label="Loading thread..." />}>
-          {selectedThread.postType === "groupchat" ? (
-            <GroupChatDetail
-              post={selectedThread}
-              onBack={handleThreadBack}
-              onUserListUpdate={() => {}}
-            />
-          ) : selectedThread.postType === "parameter" ? (
-            <ParameterThreadDetail
-              postId={selectedThread.id}
-              onBack={handleThreadBack}
-            />
-          ) : (
-            <ThreadDetail 
-              postId={selectedThread.id}
-              postData={selectedThread}
-              onSelectUser={(user) => {
-                setNavigationHistory(prev => [...prev, 'thread']);
-                setSelectedUser(user);
-              }}
-              onBack={handleThreadBack} 
+        <ThreadsAppShell>
+          <ThreadsMainFrame>
+            <Suspense fallback={<HomeViewFallback label="Loading thread..." />}>
+              {selectedThread.postType === "groupchat" ? (
+                <GroupChatDetail
+                  post={selectedThread}
+                  onBack={handleThreadBack}
+                  onUserListUpdate={() => { /* intentionally empty */ }}
+                />
+              ) : selectedThread.postType === "parameter" ? (
+                <ParameterThreadDetail
+                  postId={selectedThread.id}
+                  onBack={handleThreadBack}
+                  onSelectUser={(user) => {
+                    setNavigationHistory(prev => [...prev, 'thread']);
+                    setSelectedUser(user);
+                  }}
+                />
+              ) : (
+                <ThreadDetail 
+                  postId={selectedThread.id}
+                  postData={selectedThread}
+                  onSelectUser={(user) => {
+                    setNavigationHistory(prev => [...prev, 'thread']);
+                    setSelectedUser(user);
+                  }}
+                  onBack={handleThreadBack} 
+                />
+              )}
+            </Suspense>
+          </ThreadsMainFrame>
+        </ThreadsAppShell>
+      ) : (
+        <ThreadsAppShell
+          rightPanel={(
+            <MemoRightPanel
+              feedLoaded={feedLoaded}
+              coordinates={feedCoordinate}
+              genres={feedData.genres}
+              artists={feedData.artists}
+              onLoadGenreFeed={handleLoadGenreFeed}
+              cachedPosts={cachedPosts}
+              onNavigateToThread={handleViewThread}
+              onUserClick={handleViewUserProfile}
             />
           )}
-        </Suspense>
-      ) : (
-        <div className="music-home threads-home-layout">
-          <div className="threads-home-shell">
-            <ThreadsHomeSidebar />
-
-            <div className="threads-home-main">
-              <div
-                style={{
-                  maxWidth: '1000px',
-                  width: '100%',
-                  margin: '0 auto',
-                  padding: '1rem 1rem 0',
-                  boxSizing: 'border-box',
-                }}
-              >
+        >
+          <ThreadsMainFrame>
                 <div
                   style={{
                     borderRadius: '16px',
@@ -960,7 +1010,6 @@ const MusicHome = () => {
                     )}
                   </div>
                   </div>
-                </div>
 
             <div className="feed-content-overlay" style={{
               maxWidth: '1000px',
@@ -1219,21 +1268,8 @@ const MusicHome = () => {
                 )}
               </div>
             </div>
-          </div>
-            <div className="threads-home-rightpanel">
-              <MemoRightPanel
-                feedLoaded={feedLoaded}
-                coordinates={feedCoordinate}
-                genres={feedData.genres}
-                artists={feedData.artists}
-                onLoadGenreFeed={handleLoadGenreFeed}
-                cachedPosts={cachedPosts}
-                onNavigateToThread={handleViewThread}
-                onUserClick={handleViewUserProfile}
-              />
-            </div>
-          </div>
-        </div>
+          </ThreadsMainFrame>
+        </ThreadsAppShell>
       )}
       
       <style>{`

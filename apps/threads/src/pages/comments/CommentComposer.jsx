@@ -10,6 +10,7 @@ import {
 } from '../../utils/currentUser';
 
 const DEFAULT_ARTWORK = '/assets/default-artist.png';
+const MIN_SEARCH_QUERY_LENGTH = 2;
 
 function formatArtworkUrl(url, size = 100) {
   if (!url || typeof url !== 'string') {
@@ -199,6 +200,14 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
       return;
     }
 
+    const sanitizedQuery = sanitizeSearchQuery(query);
+    if (!sanitizedQuery || sanitizedQuery.length < MIN_SEARCH_QUERY_LENGTH) {
+      cancelPendingSearch();
+      setSearchResults([]);
+      setIsSearching(false);
+      return;
+    }
+
     abortPendingSearch();
     const requestId = latestSearchRequestRef.current + 1;
     latestSearchRequestRef.current = requestId;
@@ -209,14 +218,6 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
       return;
     }
     
-    // Sanitize search query
-    const sanitizedQuery = sanitizeSearchQuery(query);
-    if (!sanitizedQuery) {
-      setSearchResults([]);
-      setIsSearching(false);
-      return;
-    }
-
     const controller = new AbortController();
     searchAbortControllerRef.current = controller;
 
@@ -257,6 +258,13 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
   // Debounced search as user types
   useEffect(() => {
     if (!searchQuery.trim()) {
+      cancelPendingSearch();
+      setSearchResults([]);
+      return;
+    }
+
+    const sanitizedQuery = sanitizeSearchQuery(searchQuery);
+    if (!sanitizedQuery || sanitizedQuery.length < MIN_SEARCH_QUERY_LENGTH) {
       cancelPendingSearch();
       setSearchResults([]);
       return;

@@ -11,33 +11,33 @@ export const StarfieldContext = createContext({
   
   // Selection states
   selectedStar: null,
-  setSelectedStar: () => {},
+  setSelectedStar: () => { /* intentionally empty */ },
   selectedNode: null,
-  setSelectedNode: () => {},
+  setSelectedNode: () => { /* intentionally empty */ },
   selectedArtist: null,
-  setSelectedArtist: () => {},
+  setSelectedArtist: () => { /* intentionally empty */ },
   
   // Data
   artists: [],
-  setArtists: () => {},
+  setArtists: () => { /* intentionally empty */ },
   posts: [],
   
   // Handlers
-  handleStarClick: () => {},
-  handleConstellationNodeClick: () => {},
-  handleViewThread: () => {},
+  handleStarClick: () => { /* intentionally empty */ },
+  handleConstellationNodeClick: () => { /* intentionally empty */ },
+  handleViewThread: () => { /* intentionally empty */ },
   
   // Coordinates for display
   displayedX: 50,
   displayedY: 50,
   
   // Constellation navigation
-  handleNavigateConstellation: () => {},
+  handleNavigateConstellation: () => { /* intentionally empty */ },
   visibleConstellations: {},
   
   // Modal state management
   openModalId: null,
-  openModal: () => {},
-  closeModal: () => {},
+  openModal: () => { /* intentionally empty */ },
+  closeModal: () => { /* intentionally empty */ },
   isModalOpen: () => false
 });

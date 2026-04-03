@@ -51,11 +51,11 @@ const DEFAULT_AVATAR = "/assets/default-avatar.png";
 const MusicSnippet = ({ snippet }) => {
   return (
     <div style={{
-      width: "min(220px, 100%)",
+      width: "min(220px, calc(100% - (48px + 0.75rem)))",
       height: "220px",
       backgroundImage: "linear-gradient(135deg, #303f9f 0%, #7b1fa2 100%)",
       borderRadius: "8px",
-      marginLeft: 0,
+      marginLeft: "calc(48px + 0.75rem)",
       marginTop: "0.5rem",
       position: "relative",
       overflow: "hidden"
@@ -184,10 +184,10 @@ export default function UserProfile({ user = profileData.userInfo, onBack }) {
   const styles = {
     pageContainer: {
       width: "100%",
-      height: "100vh",
+      minHeight: "100vh",
       backgroundColor: "#0c111b",
       color: "#fff",
-      overflowY: "auto",
+      overflowY: "visible",
       position: "relative",
     },
     cosmicBackground: {
@@ -196,13 +196,15 @@ export default function UserProfile({ user = profileData.userInfo, onBack }) {
       left: 0,
       right: 0,
       height: "300px",
-      background: "linear-gradient(180deg, rgba(31, 38, 135, 0.4) 0%, rgba(12, 17, 27, 0) 100%)",
+      background: "linear-gradient(180deg, rgba(12, 17, 27, 0.92) 0%, rgba(12, 17, 27, 0) 100%)",
       zIndex: 0,
+      pointerEvents: "none",
     },
     contentContainer: {
       position: "relative",
-      maxWidth: "800px",
-      margin: "0 auto",
+      width: "100%",
+      maxWidth: "100%",
+      margin: 0,
       padding: "0",
       zIndex: 1,
     },
@@ -424,14 +426,15 @@ export default function UserProfile({ user = profileData.userInfo, onBack }) {
     },
     tabContent: {
       padding: "1rem",
-      maxWidth: "750px",
-      margin: "0 auto",
+      width: "100%",
+      maxWidth: "100%",
+      margin: "1rem 0 0",
+      boxSizing: "border-box",
       backgroundColor: "rgba(12, 17, 27, 0.7)",
       borderRadius: "1rem",
       backdropFilter: "blur(8px)",
       border: "1px solid rgba(255, 255, 255, 0.1)",
       boxShadow: "0 8px 32px rgba(31, 38, 135, 0.1)",
-      marginTop: "1rem",
     },
     recentsContainer: {
       display: "flex",
@@ -504,8 +507,10 @@ export default function UserProfile({ user = profileData.userInfo, onBack }) {
       display: "flex",
       alignItems: "center",
       gap: "1rem",
-      maxWidth: "750px",
-      margin: "1rem auto",
+      width: "100%",
+      maxWidth: "100%",
+      margin: "1rem 0",
+      boxSizing: "border-box",
     },
     musicIconWrapper: {
       backgroundColor: "#1d4ed8",

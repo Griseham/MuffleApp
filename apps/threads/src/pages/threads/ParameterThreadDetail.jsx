@@ -28,14 +28,30 @@ import './../../styles/threadDetailStyles.css';
 
 const THREAD_THEME_COLOR = '#00C4B4';
 const PARAMETER_PALETTE = [
-  '#CC5427',
-  '#3A9B93',
-  '#3686A3',
-  '#7BA387',
-  '#DDA0DD',
-  '#F7DC6F',
-  '#BB8FCE',
-  '#85C1E9',
+  '#EF4444',
+  '#F59E0B',
+  '#22C55E',
+  '#3B82F6',
+  '#EC4899',
+  '#8B5CF6',
+  '#14B8A6',
+  '#A16207',
+];
+const MIN_PARAMETER_SONG_COUNT = 11;
+const MAX_PARAMETER_SONG_COUNT = 23;
+const INITIAL_PARAMETER_VERTICAL_USERS = [
+  { username: "EchoPilot", userRating: 88, avgRating: 74, parameterIndex: 0 },
+  { username: "NovaRhythm", userRating: 71, avgRating: 66, parameterIndex: 1 },
+];
+const INITIAL_PARAMETER_SCATTER_USERS = [
+  "AuroraLoop",
+  "NeonTape",
+  "EchoPulse",
+  "SonicAtlas",
+  "VinylOrbit",
+  "CobaltWave",
+  "MintCassette",
+  "SolarGroove",
 ];
 
 function rangeFromSeed(seedInput, min, max) {
@@ -94,6 +110,195 @@ function normalizeParameterKey(value = "") {
   return String(value).trim().toLowerCase().replace(/\s+/g, " ");
 }
 
+function buildParameterLookup(parameters = []) {
+  const lookup = new Map();
+  parameters.forEach((parameter) => {
+    const key = normalizeParameterKey(parameter);
+    if (key && !lookup.has(key)) {
+      lookup.set(key, parameter);
+    }
+  });
+  return lookup;
+}
+
+function resolveKnownParameter(candidates = [], parameterLookup = new Map(), fallback = null) {
+  for (const candidate of candidates) {
+    const key = normalizeParameterKey(candidate);
+    if (key && parameterLookup.has(key)) {
+      return parameterLookup.get(key);
+    }
+  }
+  return fallback;
+}
+
+function buildRandomizedParameterCounts(seedPrefix, parameters = []) {
+  const counts = {};
+  const usedCounts = new Set();
+
+  parameters.forEach((parameter, index) => {
+    let count = rangeFromSeed(
+      `${seedPrefix || "parameter-thread"}:${parameter}:${index}:song-count`,
+      MIN_PARAMETER_SONG_COUNT,
+      MAX_PARAMETER_SONG_COUNT
+    );
+    let attempts = 0;
+
+    while (usedCounts.has(count) && attempts < (MAX_PARAMETER_SONG_COUNT - MIN_PARAMETER_SONG_COUNT + 1)) {
+      count = count >= MAX_PARAMETER_SONG_COUNT ? MIN_PARAMETER_SONG_COUNT : count + 1;
+      attempts += 1;
+    }
+
+    usedCounts.add(count);
+    counts[parameter] = count;
+  });
+
+  return counts;
+}
+
+function buildNonOverlappingRandomPoints(
+  seedKey,
+  count,
+  {
+    minX = 8,
+    maxX = 92,
+    minY = 10,
+    maxY = 90,
+    minDistance = 11,
+  } = {}
+) {
+  const points = [];
+  const distanceSq = minDistance * minDistance;
+
+  for (let index = 0; index < count; index += 1) {
+    let accepted = false;
+
+    for (let attempt = 0; attempt < 48; attempt += 1) {
+      const x = rangeFromSeed(`${seedKey}:x:${index}:${attempt}`, minX, maxX);
+      const y = rangeFromSeed(`${seedKey}:y:${index}:${attempt}`, minY, maxY);
+      const hasCollision = points.some((point) => {
+        const dx = point.x - x;
+        const dy = point.y - y;
+        return (dx * dx) + (dy * dy) < distanceSq;
+      });
+
+      if (!hasCollision) {
+        points.push({ x, y });
+        accepted = true;
+        break;
+      }
+    }
+
+    if (!accepted) {
+      points.push({
+        x: rangeFromSeed(`${seedKey}:fallback:x:${index}`, minX, maxX),
+        y: rangeFromSeed(`${seedKey}:fallback:y:${index}`, minY, maxY),
+      });
+    }
+  }
+
+  return points;
+}
+
+function buildInitialParameterGraphRatings(threadSeed, parameters = []) {
+  return INITIAL_PARAMETER_VERTICAL_USERS.map((seedUser, index) => ({
+    snippetId: `__parameter_seed_vertical_${threadSeed}_${index + 1}`,
+    userRating: seedUser.userRating,
+    avgRating: seedUser.avgRating,
+    userAvatar: authorToAvatar(seedUser.username),
+    parameter: parameters[seedUser.parameterIndex] || parameters[index] || parameters[0] || null,
+  }));
+}
+
+function buildInitialParameterScatterUsers(threadSeed, parameters = [], getParameterColor) {
+  const points = buildNonOverlappingRandomPoints(
+    `${threadSeed}:scatter:initial`,
+    INITIAL_PARAMETER_SCATTER_USERS.length,
+    { minX: 10, maxX: 90, minY: 12, maxY: 88, minDistance: 12 }
+  );
+
+  return INITIAL_PARAMETER_SCATTER_USERS.map((username, index) => {
+    const parameter = parameters[index % Math.max(1, parameters.length)] || null;
+    return {
+      username,
+      userAvatar: authorToAvatar(username),
+      ratingCount: rangeFromSeed(`${threadSeed}:initial:ratings:${username}`, 12, 78),
+      average: rangeFromSeed(`${threadSeed}:initial:average:${username}`, 28, 92),
+      parameter,
+      color: getParameterColor(parameter, index),
+      _plotX: points[index].x,
+      _plotY: points[index].y,
+    };
+  });
+}
+
+function normalizeParameterThreadData(rawPost = {}, rawComments = [], rawSnippets = []) {
+  const parameterLookup = buildParameterLookup(rawPost?.parameters || []);
+  const snippetByCommentId = new Map();
+
+  rawSnippets.forEach((snippet) => {
+    const snippetId = snippet?.commentId || snippet?.id;
+    if (snippetId) {
+      snippetByCommentId.set(snippetId, snippet);
+    }
+  });
+
+  const normalizedComments = rawComments.map((comment) => {
+    const linkedSnippet = snippetByCommentId.get(comment?.id);
+    const resolvedParameter = resolveKnownParameter(
+      [
+        comment?.parameter,
+        comment?.snippet?.parameter,
+        comment?.snippet?.artistName,
+        linkedSnippet?.parameter,
+        linkedSnippet?.artistName,
+        linkedSnippet?.snippetData?.attributes?.artistName,
+      ],
+      parameterLookup,
+      comment?.parameter || null
+    );
+
+    if (!resolvedParameter || resolvedParameter === comment?.parameter) {
+      return comment;
+    }
+
+    return {
+      ...comment,
+      parameter: resolvedParameter,
+    };
+  });
+
+  const commentParameterById = new Map(
+    normalizedComments
+      .filter((comment) => comment?.id && comment?.parameter)
+      .map((comment) => [comment.id, comment.parameter])
+  );
+
+  const normalizedSnippets = rawSnippets.map((snippet) => {
+    const snippetId = snippet?.commentId || snippet?.id;
+    const commentParameter = snippetId ? commentParameterById.get(snippetId) : null;
+    const resolvedParameter = resolveKnownParameter(
+      [
+        snippet?.parameter,
+        snippet?.artistName,
+        snippet?.snippetData?.attributes?.artistName,
+        commentParameter,
+      ],
+      parameterLookup,
+      snippet?.parameter || commentParameter || null
+    );
+
+    return normalizeParameterSnippet({
+      ...snippet,
+      parameter: resolvedParameter,
+    });
+  });
+
+  return {
+    comments: normalizedComments,
+    snippets: normalizedSnippets,
+  };
+}
+
 function formatArtworkUrl(url, size = 300) {
   if (!url || typeof url !== "string") {
     return "/assets/default-artist.png";
@@ -108,6 +313,9 @@ function formatArtworkUrl(url, size = 300) {
 function normalizeParameterSnippet(snippet = {}) {
   const attrs = snippet?.snippetData?.attributes || {};
   const snippetId = snippet.commentId || snippet.id;
+  const communityStats = getCommunitySnippetStats(snippetId, snippet.avgRating);
+  const hasTotalRatings = Number.isFinite(snippet.totalRatings) && snippet.totalRatings > 0;
+  const hasAvgRating = Number.isFinite(snippet.avgRating);
 
   return {
     ...snippet,
@@ -124,9 +332,35 @@ function normalizeParameterSnippet(snippet = {}) {
     ),
     previewUrl: snippet.previewUrl || attrs.previews?.[0]?.url || null,
     userRating: Number.isFinite(snippet.userRating) ? snippet.userRating : null,
-    avgRating: Number.isFinite(snippet.avgRating) ? snippet.avgRating : null,
-    totalRatings: Number.isFinite(snippet.totalRatings) ? snippet.totalRatings : 0,
+    avgRating: hasAvgRating ? Math.round(snippet.avgRating) : communityStats.avgRating,
+    totalRatings: hasTotalRatings ? Math.round(snippet.totalRatings) : communityStats.totalRatings,
     didRate: Boolean(snippet.didRate),
+  };
+}
+
+function buildProfileUser(userLike, fallbackName, fallbackAvatar) {
+  const displayName =
+    userLike?.displayName ||
+    userLike?.name ||
+    userLike?.author ||
+    fallbackName ||
+    "User";
+
+  const username =
+    userLike?.username ||
+    String(displayName)
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "")
+      .slice(0, 24) ||
+    "user";
+
+  return {
+    ...userLike,
+    displayName,
+    name: userLike?.name || displayName,
+    username,
+    avatar: userLike?.avatar || fallbackAvatar || authorToAvatar(displayName),
   };
 }
 
@@ -408,7 +642,7 @@ const parameterThreadMockData = {
   ]
 };
 
-export default function ParameterThreadDetail({ postId, onBack, _onSelectUser }) {
+export default function ParameterThreadDetail({ postId, onBack, onSelectUser }) {
   const { closeModal: closeGlobalModal } = useContext(GlobalModalContext);
 
   // Transition state
@@ -427,7 +661,7 @@ export default function ParameterThreadDetail({ postId, onBack, _onSelectUser })
   const [activeGraphType, setActiveGraphType] = useState('vertical');
   const [isGraphsOpen, setIsGraphsOpen] = useState(false);
   const [isTikTokOpen, setIsTikTokOpen] = useState(false);
-  const seededInitialRatingsRef = useRef(false);
+  const [hasUserRatedInSession, setHasUserRatedInSession] = useState(false);
 
   // Always enter parameter thread detail with info sidebar closed.
   useEffect(() => {
@@ -438,6 +672,13 @@ export default function ParameterThreadDetail({ postId, onBack, _onSelectUser })
     post?.parameters?.[0] ||
     comments.find((comment) => comment?.parameter)?.parameter ||
     null;
+  const postParameterLookup = useMemo(
+    () => buildParameterLookup(post?.parameters || []),
+    [post?.parameters]
+  );
+  const resolveParameterTag = useCallback((...candidates) => (
+    resolveKnownParameter(candidates, postParameterLookup, fallbackParameter)
+  ), [fallbackParameter, postParameterLookup]);
   const displayComments = comments;
   const snippetIds = useMemo(
     () => new Set(snippetRecs.map((snippet) => snippet?.commentId || snippet?.id).filter(Boolean)),
@@ -533,6 +774,14 @@ export default function ParameterThreadDetail({ postId, onBack, _onSelectUser })
     }
     return PARAMETER_PALETTE[fallbackIndex % PARAMETER_PALETTE.length];
   }, [parameterColorMap]);
+  const initialGraphRatings = useMemo(
+    () => buildInitialParameterGraphRatings(post?.id || postId, post?.parameters || []),
+    [post?.id, post?.parameters, postId]
+  );
+  const initialScatterUsers = useMemo(
+    () => buildInitialParameterScatterUsers(post?.id || postId, post?.parameters || [], getParameterColor),
+    [getParameterColor, post?.id, post?.parameters, postId]
+  );
   
   // Audio states
   const audioRef = useRef(null);
@@ -563,27 +812,35 @@ export default function ParameterThreadDetail({ postId, onBack, _onSelectUser })
           const { data: cachedData } = await cacheResp.json();
           
           if (cachedData && cachedData.postType === 'parameter') {
+            const normalizedData = normalizeParameterThreadData(
+              cachedData,
+              cachedData.comments || [],
+              cachedData.snippets || []
+            );
             setPost(cachedData);
-            setComments(cachedData.comments || []);
-            setSnippetRecs((cachedData.snippets || []).map(normalizeParameterSnippet));
+            setComments(normalizedData.comments);
+            setSnippetRecs(normalizedData.snippets);
             setIsLoading(false);
             return;
           }
         }
 
         if (postId === 'parameter_thread_001') {
+          const normalizedData = normalizeParameterThreadData(
+            parameterThreadMockData.post,
+            parameterThreadMockData.comments,
+            parameterThreadMockData.snippetRecs
+          );
           setPost(parameterThreadMockData.post);
-          setComments(parameterThreadMockData.comments);
-          setSnippetRecs(parameterThreadMockData.snippetRecs);
+          setComments(normalizedData.comments);
+          setSnippetRecs(normalizedData.snippets);
           setIsLoading(false);
           return;
         }
 
-        console.log("Parameter thread not found in cache");
         setIsLoading(false);
         
-      } catch (error) {
-        console.error("Error loading parameter thread:", error);
+      } catch {
         setIsLoading(false);
       }
     }
@@ -595,55 +852,88 @@ export default function ParameterThreadDetail({ postId, onBack, _onSelectUser })
 
   // Process parameter-specific graph data
   useEffect(() => {
-    if (snippetRecs.length === 0 || !post?.parameters) return;
+    if (!post?.parameters) {
+      setGraphRatings([]);
+      setParameterScatterData([]);
+      return;
+    }
+
+    const snippetsByCommentId = new Map(
+      snippetRecs
+        .filter((snippet) => snippet?.commentId || snippet?.id)
+        .map((snippet) => [snippet.commentId || snippet.id, snippet])
+    );
     
     // Process vertical ratings data
     const ratedSnippets = snippetRecs.filter(
-      snippet => snippet.userRating != null || snippet.avgRating != null
+      snippet => Number.isFinite(snippet.userRating) || Boolean(snippet.didRate)
     );
     
     if (ratedSnippets.length > 0) {
       const verticalData = ratedSnippets.map(snippet => {
-        const snippetId = snippet.id || snippet.commentId;
+        const snippetId = snippet.commentId || snippet.id;
         const relatedComment = displayComments.find(c => c.id === snippetId);
         const commentAuthor = relatedComment?.author || "Unknown";
+        const resolvedParameter = resolveParameterTag(
+          snippet.parameter,
+          relatedComment?.parameter,
+          snippet.artistName
+        );
         
         return {
           snippetId,
           userRating: snippet.userRating ?? 0,
           avgRating: snippet.avgRating ?? 0,
           userAvatar: authorToAvatar(commentAuthor),
-          parameter: snippet.parameter || relatedComment?.parameter
+          parameter: resolvedParameter,
         };
       });
       
-      setGraphRatings(verticalData);
+      if (hasUserRatedInSession) {
+        setGraphRatings(verticalData);
+      } else {
+        setGraphRatings(initialGraphRatings);
+      }
+    } else {
+      setGraphRatings(initialGraphRatings);
+    }
+
+    if (!hasUserRatedInSession) {
+      setParameterScatterData(initialScatterUsers);
+      return;
     }
     
     // Process parameter scatter data - group users by artist/parameter
     const userParameterMap = new Map();
     
     displayComments.forEach(comment => {
-      if (comment.parameter && comment.author) {
-        if (!userParameterMap.has(comment.author)) {
-          userParameterMap.set(comment.author, {
-            username: comment.author,
-            parameter: comment.parameter,
-            ratings: [],
-            totalRatings: 0,
-            avgRating: 0
-          });
-        }
-        
-        // Find snippet for this comment
-        const snippet = snippetRecs.find(s => s.commentId === comment.id);
-        if (snippet && (Number.isFinite(snippet.userRating) || Number.isFinite(snippet.avgRating))) {
-          const userData = userParameterMap.get(comment.author);
-          const score = Number.isFinite(snippet.userRating) ? snippet.userRating : snippet.avgRating;
-          userData.ratings.push(score);
-          userData.totalRatings = userData.ratings.length;
-          userData.avgRating = userData.ratings.reduce((sum, rating) => sum + rating, 0) / userData.ratings.length;
-        }
+      const snippet = snippetsByCommentId.get(comment?.id);
+      const resolvedParameter = resolveParameterTag(
+        comment?.parameter,
+        snippet?.parameter,
+        snippet?.artistName
+      );
+
+      if (!resolvedParameter || !comment?.author) {
+        return;
+      }
+
+      if (!userParameterMap.has(comment.author)) {
+        userParameterMap.set(comment.author, {
+          username: comment.author,
+          parameter: resolvedParameter,
+          ratings: [],
+          totalRatings: 0,
+          avgRating: 0,
+        });
+      }
+      
+      if (snippet && (Number.isFinite(snippet.userRating) || Boolean(snippet.didRate))) {
+        const userData = userParameterMap.get(comment.author);
+        const score = Number.isFinite(snippet.userRating) ? snippet.userRating : snippet.avgRating;
+        userData.ratings.push(score);
+        userData.totalRatings = userData.ratings.length;
+        userData.avgRating = userData.ratings.reduce((sum, rating) => sum + rating, 0) / userData.ratings.length;
       }
     });
     
@@ -658,9 +948,30 @@ export default function ParameterThreadDetail({ postId, onBack, _onSelectUser })
         parameter: user.parameter,
         color: getParameterColor(user.parameter)
       }));
-    
-    setParameterScatterData(scatterData);
-  }, [snippetRecs, displayComments, post, getParameterColor]);
+
+    const liveScatterPoints = buildNonOverlappingRandomPoints(
+      `${post?.id || postId}:scatter:live`,
+      scatterData.length,
+      { minX: 10, maxX: 90, minY: 12, maxY: 88, minDistance: 12 }
+    );
+    const liveScatterData = scatterData.map((user, index) => ({
+      ...user,
+      _plotX: liveScatterPoints[index].x,
+      _plotY: liveScatterPoints[index].y,
+    }));
+
+    setParameterScatterData(liveScatterData.length > 0 ? liveScatterData : initialScatterUsers);
+  }, [
+    snippetRecs,
+    displayComments,
+    post,
+    postId,
+    getParameterColor,
+    resolveParameterTag,
+    hasUserRatedInSession,
+    initialGraphRatings,
+    initialScatterUsers,
+  ]);
 
   // Build TikTok modal snippets from real thread comments and snippet rec state.
   // Exclude seeded example IDs and include all songs attached to comments.
@@ -772,34 +1083,14 @@ export default function ParameterThreadDetail({ postId, onBack, _onSelectUser })
     return mergedSnippets;
   }, [comments, fallbackParameter, snippetRecs]);
 
-  // Count songs per parameter
-  const getParameterCounts = useCallback(() => {
-    if (!post?.parameters) return {};
-    
-    const counts = {};
-    post.parameters.forEach(param => {
-      const normalizedParameter = normalizeParameterKey(param);
-      counts[param] = comments.filter((comment) => {
-        if (normalizeParameterKey(comment.parameter) !== normalizedParameter) {
-          return false;
-        }
-
-        return snippetRecs.some((snippet) => snippet.commentId === comment.id);
-      }).length;
-    });
-    return counts;
-  }, [comments, post, snippetRecs]);
+  const parameterCounts = useMemo(
+    () => buildRandomizedParameterCounts(post?.id || postId, post?.parameters || []),
+    [post?.id, post?.parameters, postId]
+  );
 
   // Audio and rating handlers
   const getSnippetId = useCallback((snippet) => {
-    return snippet?.id || snippet?.commentId;
-  }, []);
-
-  const hasSnippetRating = useCallback((snippet) => {
-    return (
-      Number.isFinite(snippet?.userRating) ||
-      Boolean(snippet?.didRate)
-    );
+    return snippet?.commentId || snippet?.id;
   }, []);
 
   const stopAudio = useCallback(() => {
@@ -858,6 +1149,7 @@ export default function ParameterThreadDetail({ postId, onBack, _onSelectUser })
   const handleUserRate = useCallback((snippetObj, ratingVal) => {
     const realId = getSnippetId(snippetObj);
     if (!realId) return;
+    setHasUserRatedInSession(true);
     
     setSnippetRecs(prev => {
       return prev.map(s => {
@@ -902,6 +1194,11 @@ export default function ParameterThreadDetail({ postId, onBack, _onSelectUser })
 
   const handleSubmitComment = useCallback((newComment) => {
     if (!newComment) return;
+    const resolvedParameter = resolveParameterTag(
+      newComment.parameter,
+      newComment.snippet?.parameter,
+      newComment.snippet?.artistName
+    );
 
     if (newComment.snippet) {
       setSnippetRecs(prevSnippets => [
@@ -909,13 +1206,16 @@ export default function ParameterThreadDetail({ postId, onBack, _onSelectUser })
         normalizeParameterSnippet({
           ...newComment.snippet,
           commentId: newComment.id,
-          parameter: newComment.parameter || newComment.snippet.parameter || null,
+          parameter: resolvedParameter,
         }),
       ]);
     }
 
-    setComments(prevComments => [...prevComments, newComment]);
-  }, []);
+    setComments(prevComments => [...prevComments, {
+      ...newComment,
+      parameter: resolvedParameter || newComment.parameter || null,
+    }]);
+  }, [resolveParameterTag]);
 
   // Cleanup
   useEffect(() => {
@@ -924,134 +1224,8 @@ export default function ParameterThreadDetail({ postId, onBack, _onSelectUser })
 
   useEffect(() => {
     setIsGraphsOpen(false);
-    seededInitialRatingsRef.current = false;
+    setHasUserRatedInSession(false);
   }, [postId]);
-
-  useEffect(() => {
-    if (!post || post.id !== postId || seededInitialRatingsRef.current) return;
-
-    seededInitialRatingsRef.current = true;
-
-    setSnippetRecs((prevSnippets) => {
-      const getId = (snippet) => snippet?.commentId || snippet?.id;
-      const nextSnippets = [...prevSnippets];
-
-      const upsertSnippetWithRating = (baseSnippet, ratingSeed) => {
-        const snippetId = getId(baseSnippet);
-        if (!snippetId) return;
-
-        const existingIndex = nextSnippets.findIndex((snippet) => getId(snippet) === snippetId);
-        const existingSnippet = existingIndex >= 0 ? nextSnippets[existingIndex] : null;
-        const mergedSnippet = existingSnippet ? { ...baseSnippet, ...existingSnippet } : baseSnippet;
-        const snippetWithRating = hasSnippetRating(mergedSnippet)
-          ? mergedSnippet
-          : {
-              ...mergedSnippet,
-              userRating: ratingSeed.userRating,
-              avgRating: ratingSeed.avgRating,
-              totalRatings: ratingSeed.totalRatings,
-              didRate: true,
-            };
-
-        if (existingIndex >= 0) {
-          nextSnippets[existingIndex] = snippetWithRating;
-        } else {
-          nextSnippets.push(snippetWithRating);
-        }
-      };
-
-      const firstRealCommentWithSnippet = comments.find((comment) => {
-        if (!comment?.id) return false;
-        if (comment.snippet) return true;
-        return nextSnippets.some((snippet) => getId(snippet) === comment.id);
-      });
-
-      const priorityIds = [];
-
-      if (firstRealCommentWithSnippet) {
-        const firstRealId = firstRealCommentWithSnippet.id;
-        const snippetFromState = nextSnippets.find((snippet) => getId(snippet) === firstRealId) || {};
-        const commentSnippet = firstRealCommentWithSnippet.snippet || {};
-        const snippetSource = {
-          ...commentSnippet,
-          ...snippetFromState,
-        };
-
-        upsertSnippetWithRating(
-          {
-            ...snippetSource,
-            id: snippetSource.id || snippetSource.commentId || firstRealId,
-            commentId: snippetSource.commentId || snippetSource.id || firstRealId,
-            name:
-              snippetSource.name ||
-              snippetSource.songName ||
-              snippetSource.snippetData?.attributes?.name ||
-              "Unknown Song",
-            songName:
-              snippetSource.songName ||
-              snippetSource.name ||
-              snippetSource.snippetData?.attributes?.name ||
-              "Unknown Song",
-            artistName:
-              snippetSource.artistName ||
-              snippetSource.snippetData?.attributes?.artistName ||
-              "Unknown Artist",
-            artwork:
-              snippetSource.artwork ||
-              snippetSource.artworkUrl ||
-              snippetSource.snippetData?.attributes?.artwork?.url ||
-              snippetSource.artistImage ||
-              "/assets/default-artist.png",
-            artworkUrl:
-              snippetSource.artworkUrl ||
-              snippetSource.artwork ||
-              snippetSource.snippetData?.attributes?.artwork?.url ||
-              snippetSource.artistImage ||
-              "/assets/default-artist.png",
-            previewUrl:
-              snippetSource.previewUrl ||
-              snippetSource.snippetData?.attributes?.previews?.[0]?.url ||
-              null,
-            author: snippetSource.author || firstRealCommentWithSnippet.author,
-            parameter: snippetSource.parameter || firstRealCommentWithSnippet.parameter || fallbackParameter,
-          },
-          {
-            userRating: 86,
-            avgRating: 74,
-            totalRatings: 31,
-          }
-        );
-
-        priorityIds.push(firstRealId);
-      }
-
-      const orderedSnippets = [];
-      const seenIds = new Set();
-
-      priorityIds.forEach((id) => {
-        const match = nextSnippets.find((snippet) => getId(snippet) === id);
-        if (match && !seenIds.has(id)) {
-          orderedSnippets.push(match);
-          seenIds.add(id);
-        }
-      });
-
-      nextSnippets.forEach((snippet) => {
-        const snippetId = getId(snippet);
-        if (!snippetId || seenIds.has(snippetId)) return;
-        orderedSnippets.push(snippet);
-        seenIds.add(snippetId);
-      });
-
-      return orderedSnippets;
-    });
-  }, [
-    comments,
-    fallbackParameter,
-    hasSnippetRating,
-    post,
-    postId,
-  ]);
 
   // Modal handlers
   const openVerticalGraphModal = useCallback(() => {
@@ -1080,9 +1254,17 @@ export default function ParameterThreadDetail({ postId, onBack, _onSelectUser })
     setIsGraphsOpen((prevOpen) => !prevOpen);
   }, []);
 
+  const handleSelectUser = useCallback((user) => {
+    if (!onSelectUser || !user) return;
+    onSelectUser(user);
+  }, [onSelectUser]);
+
   const styles = ThreadDetailStyles;
-  const parameterCounts = getParameterCounts();
   const graphsCount = graphRatings?.length || 0;
+  const postUser = useMemo(
+    () => buildProfileUser(post, post?.author, post ? getAvatarSrc(post) : null),
+    [post]
+  );
 
   return (
     <div 
@@ -1202,27 +1384,52 @@ export default function ParameterThreadDetail({ postId, onBack, _onSelectUser })
             position: "relative",
             zIndex: 1,
           }}>
-            <img
-              src={getAvatarSrc(post)}
-              alt="User avatar"
+            <button
+              type="button"
+              onClick={() => handleSelectUser(postUser)}
               style={{
-                width: "44px",
-                height: "44px",
+                background: "none",
+                border: "none",
+                padding: 0,
+                margin: 0,
+                cursor: onSelectUser ? "pointer" : "default",
                 borderRadius: "50%",
-                objectFit: "cover",
-                border: "2px solid rgba(0, 196, 180, 0.4)",
-                background: "#1e293b",
               }}
-            />
+            >
+              <img
+                src={postUser?.avatar || getAvatarSrc(post)}
+                alt={`${postUser?.displayName || post?.author || "User"} avatar`}
+                style={{
+                  width: "44px",
+                  height: "44px",
+                  borderRadius: "50%",
+                  objectFit: "cover",
+                  border: "2px solid rgba(0, 196, 180, 0.4)",
+                  background: "#1e293b",
+                }}
+              />
+            </button>
             <div style={{
               display: "flex",
               flexDirection: "column",
             }}>
-              <div style={{
-                fontWeight: "700",
-                fontSize: "15px",
-                color: "#f1f5f9",
-              }}>{post.author}</div>
+              <button
+                type="button"
+                onClick={() => handleSelectUser(postUser)}
+                style={{
+                  fontWeight: "700",
+                  fontSize: "15px",
+                  color: "#f1f5f9",
+                  background: "none",
+                  border: "none",
+                  padding: 0,
+                  margin: 0,
+                  textAlign: "left",
+                  cursor: onSelectUser ? "pointer" : "default",
+                }}
+              >
+                {postUser?.displayName || post.author}
+              </button>
               <div style={{
                 fontSize: "12px",
                 color: "#64748b",
@@ -1371,10 +1578,10 @@ export default function ParameterThreadDetail({ postId, onBack, _onSelectUser })
             zIndex: 1,
           }}>
             {[
-              { icon: <MessageCircle size={16} />, val: displayedPostStatsWithFallback.num_comments },
-              { icon: <Heart size={16} />, val: displayedPostStatsWithFallback.ups },
-              { icon: <Share2 size={16} />, val: null },
-              { icon: <Bookmark size={16} />, val: displayedPostStatsWithFallback.bookmarks },
+              { icon: <MessageCircle size={18} />, val: displayedPostStatsWithFallback.num_comments },
+              { icon: <Heart size={18} />, val: displayedPostStatsWithFallback.ups },
+              { icon: <Share2 size={18} />, val: null },
+              { icon: <Bookmark size={18} />, val: displayedPostStatsWithFallback.bookmarks },
             ].map((stat, i) => (
               <button key={i} style={{
                 display: "flex",
@@ -1513,7 +1720,7 @@ export default function ParameterThreadDetail({ postId, onBack, _onSelectUser })
             </div>
             
             <div style={{ 
-              height: '220px', 
+              height: '270px', 
               marginBottom: '40px',
               backgroundColor: 'rgba(255, 255, 255, 0.02)',
               backdropFilter: 'blur(10px)',
@@ -1530,8 +1737,8 @@ export default function ParameterThreadDetail({ postId, onBack, _onSelectUser })
                   data={graphRatings}
                   layout="vertical"
                   margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                  barGap={5}
-                  barCategoryGap="20%"
+                  barGap={12}
+                  barCategoryGap="58%"
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.05)" horizontal={false} />
                   <XAxis 
@@ -1720,6 +1927,35 @@ export default function ParameterThreadDetail({ postId, onBack, _onSelectUser })
               };
             }
 
+            if (snippetObj) {
+              const resolvedSnippetId = snippetObj.commentId || snippetObj.id || c.id;
+              const communityStats = getCommunitySnippetStats(resolvedSnippetId, snippetObj.avgRating);
+              const resolvedParameter = resolveParameterTag(
+                c.parameter,
+                snippetObj.parameter,
+                snippetObj.artistName
+              );
+              snippetObj = {
+                ...snippetObj,
+                id: resolvedSnippetId,
+                commentId: resolvedSnippetId,
+                parameter: resolvedParameter,
+                avgRating: Number.isFinite(snippetObj.avgRating)
+                  ? Math.round(snippetObj.avgRating)
+                  : communityStats.avgRating,
+                totalRatings: Number.isFinite(snippetObj.totalRatings) && snippetObj.totalRatings > 0
+                  ? Math.round(snippetObj.totalRatings)
+                  : communityStats.totalRatings,
+              };
+            }
+
+            const commentTag = resolveParameterTag(
+              c.parameter,
+              snippetObj?.parameter,
+              snippetObj?.artistName
+            );
+            const usernameDotColor = snippetObj ? getParameterColor(commentTag) : null;
+
             const isThisSnippetPlaying = 
               activeSnippet && 
               activeSnippet.snippetId === getSnippetId(snippetObj) && 
@@ -1737,7 +1973,10 @@ export default function ParameterThreadDetail({ postId, onBack, _onSelectUser })
                 onPlayPause={() => playSnippetInComment(snippetObj)}
                 onRate={handleUserRate}
                 onRatingPause={handleRatingPause}
+                onUserClick={handleSelectUser}
                 isFirstSnippet={false}
+                usernameDotColor={usernameDotColor}
+                isParameterTheme
               />
             );
           })}

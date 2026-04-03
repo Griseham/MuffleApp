@@ -65,7 +65,6 @@
 .threads-home-sidebar__logo-circle {
   width: 130px;
   height: 130px;
-  background-image: url('/assets/MuflLogo.png');
   background-size: contain;
   background-repeat: no-repeat;
   background-position: center;
@@ -160,6 +159,16 @@
   align-self: flex-start;
   flex-shrink: 0;
   z-index: 20;
+}
+
+.threads-home-rightpanel-spacer {
+  pointer-events: none;
+}
+
+.threads-home-rightpanel-spacer-inner {
+  width: 420px;
+  height: 1px;
+  visibility: hidden;
 }
 
 @keyframes fadeIn {
@@ -421,5 +430,9 @@
     position: relative;
     top: 0;
     width: 100%;
+  }
+
+  .threads-home-rightpanel-spacer {
+    display: none;
   }
 }

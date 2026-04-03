@@ -1,6 +1,13 @@
 // ScatterRatingsGraph.jsx
 import React, { useMemo, useState } from "react";
 
+function withAlpha(color, alphaHex) {
+  if (typeof color === "string" && color.startsWith("#") && color.length === 7) {
+    return `${color}${alphaHex}`;
+  }
+  return color;
+}
+
 export default function ScatterRatingsGraph({ scatter = [], isEnlarged = false }) {
   const [hoveredUser, setHoveredUser] = useState(null);
 
@@ -14,8 +21,10 @@ export default function ScatterRatingsGraph({ scatter = [], isEnlarged = false }
     const placed = [];
 
     return scatter.map((user, idx) => {
-      let x = ((user.ratingCount || 0) / maxRatings) * 100;
-      let y = 100 - (user.average || 0);
+      const hasPresetX = Number.isFinite(user?._plotX);
+      const hasPresetY = Number.isFinite(user?._plotY);
+      let x = hasPresetX ? user._plotX : ((user.ratingCount || 0) / maxRatings) * 100;
+      let y = hasPresetY ? user._plotY : 100 - (user.average || 0);
       let attempts = 0;
 
       while (
@@ -135,6 +144,7 @@ export default function ScatterRatingsGraph({ scatter = [], isEnlarged = false }
         {positionedScatter.map((user, idx) => {
           const isHovered = hoveredUser === idx;
           const size = isEnlarged ? 32 : 26;
+          const accentColor = user.color || "#8b5cf6";
 
           return (
             <div
@@ -165,11 +175,11 @@ export default function ScatterRatingsGraph({ scatter = [], isEnlarged = false }
                     borderRadius: "50%",
                     objectFit: "cover",
                     border: isHovered
-                      ? "2px solid #8b5cf6"
-                      : "2px solid rgba(139, 92, 246, 0.3)",
+                      ? `4px solid ${accentColor}`
+                      : `3px solid ${withAlpha(accentColor, "CC")}`,
                     boxShadow: isHovered
-                      ? "0 0 12px rgba(139, 92, 246, 0.5)"
-                      : "0 2px 6px rgba(0, 0, 0, 0.3)",
+                      ? `0 0 20px ${withAlpha(accentColor, "CC")}`
+                      : `0 0 12px ${withAlpha(accentColor, "88")}`,
                     transition: "all 0.2s ease",
                   }}
                 />
@@ -183,17 +193,17 @@ export default function ScatterRatingsGraph({ scatter = [], isEnlarged = false }
                       ? "rgba(139, 92, 246, 0.3)"
                       : "rgba(255, 255, 255, 0.08)",
                     border: isHovered
-                      ? "2px solid #8b5cf6"
-                      : "1px solid rgba(255, 255, 255, 0.2)",
+                      ? `4px solid ${accentColor}`
+                      : `3px solid ${withAlpha(accentColor, "CC")}`,
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    color: isHovered ? "#a78bfa" : "#fff",
+                    color: isHovered ? accentColor : "#fff",
                     fontSize: isEnlarged ? "13px" : "11px",
                     fontWeight: "500",
                     boxShadow: isHovered
-                      ? "0 0 12px rgba(139, 92, 246, 0.5)"
-                      : "0 2px 6px rgba(0, 0, 0, 0.3)",
+                      ? `0 0 20px ${withAlpha(accentColor, "CC")}`
+                      : `0 0 12px ${withAlpha(accentColor, "88")}`,
                     transition: "all 0.2s ease",
                   }}
                 >
@@ -205,7 +215,7 @@ export default function ScatterRatingsGraph({ scatter = [], isEnlarged = false }
               <span
                 style={{
                   fontSize: isEnlarged ? "10px" : "9px",
-                  color: isHovered ? "#a78bfa" : "#64748b",
+                  color: isHovered ? accentColor : "#64748b",
                   fontWeight: isHovered ? "600" : "400",
                   maxWidth: isEnlarged ? "60px" : "50px",
                   overflow: "hidden",
@@ -252,7 +262,7 @@ export default function ScatterRatingsGraph({ scatter = [], isEnlarged = false }
                       fontSize: isEnlarged ? "12px" : "10px",
                     }}
                   >
-                    <span style={{ color: "#a78bfa" }}>
+                    <span style={{ color: accentColor }}>
                       {user.ratingCount || 0} ratings
                     </span>
                     <span style={{ color: "#64748b" }}>

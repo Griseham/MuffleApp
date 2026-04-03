@@ -40,19 +40,20 @@ export default function Constellations() {
           onNodeClick={handleConstellationNodeClick}
         />
       ) : (
-        <text
-          x={TOTAL_WIDTH / 2}
-          y={TOTAL_HEIGHT / 2 + 300}
-          textAnchor="middle"
-          fill="rgba(255,255,255,0.5)"
-          fontSize="24"
-          style={{ 
+        <div
+          style={{
+            position: "absolute",
+            left: TOTAL_WIDTH / 2,
+            top: TOTAL_HEIGHT / 2 + 300,
+            transform: "translate(-50%, -50%)",
+            color: "rgba(255,255,255,0.5)",
+            fontSize: 24,
             pointerEvents: "none",
-            position: "absolute"
+            whiteSpace: "nowrap",
           }}
         >
           Search for an artist to see constellations
-        </text>
+        </div>
       )}
     </>
   );

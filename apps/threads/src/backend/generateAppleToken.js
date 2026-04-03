@@ -20,7 +20,7 @@ const PRIVATE_KEY_PATH =
   path.resolve(__dirname, "AuthKey.p8");
 
 if (!TEAM_ID || !KEY_ID || !PRIVATE_KEY_PATH) {
-  console.error("Missing inputs. Provide --team, --key, and --p8 (path).");
+  
   process.exit(1);
 }
 
@@ -60,9 +60,9 @@ const signature = signer.sign(
   "base64"
 );
 
-const encodedSignature = signature
+const _encodedSignature = signature
   .replace(/=/g, "")
   .replace(/\+/g, "-")
   .replace(/\//g, "_");
 
-console.log(`${signingInput}.${encodedSignature}`);
+

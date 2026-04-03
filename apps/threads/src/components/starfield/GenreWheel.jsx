@@ -7,7 +7,7 @@ import { GENRE_CHANGE_THRESHOLD, TOTAL_WIDTH, TOTAL_HEIGHT } from "../utils";
 import { StarfieldContext } from "../context/Context";
 import { Music, Stars } from "lucide-react";
 
-export default function GenreWheel({ forcedGenres = null, onVisibleGenresChange = () => {} }) {
+export default function GenreWheel({ forcedGenres = null, onVisibleGenresChange = () => { /* intentionally empty */ } }) {
   const { 
     scrollPos,
     isFullscreen,

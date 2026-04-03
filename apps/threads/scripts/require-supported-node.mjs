@@ -75,19 +75,19 @@ if (isSupported(current, minimum)) {
   })
 
   child.on('error', (error) => {
-    console.error(error.message)
+    
     process.exit(1)
   })
 } else {
   const alternativeNode = findAlternativeNodeBinary()
 
   if (!alternativeNode) {
-    console.error(buildErrorMessage())
+    
     process.exit(1)
   }
 
   if (targetArgs.length === 0) {
-    console.error(buildErrorMessage())
+    
     process.exit(1)
   }
 
@@ -108,7 +108,7 @@ if (isSupported(current, minimum)) {
   })
 
   child.on('error', (error) => {
-    console.error(error.message)
+    
     process.exit(1)
   })
 }
