@@ -42,7 +42,7 @@ export const createExampleData = () => {
     id: 'example_comment_001',
     commentId: 'example_comment_001',
     name: 'Example snippet',
-    artistName: 'Prototype audio unavailable',
+    artistName: 'Demo Example',
     artwork: null,
     previewUrl: null,
     userRating: 78,

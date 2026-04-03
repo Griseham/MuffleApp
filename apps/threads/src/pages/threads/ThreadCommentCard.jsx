@@ -681,36 +681,38 @@ const ThreadCommentCard = ({
                   </div>
                 )}
                 
-                <button
-                  type="button"
-                  onClick={handlePlayPause}
-                  disabled={!hasPreview}
-                  title={hasPreview ? "Play preview" : "Preview unavailable"}
-                  style={{
-                    position: "absolute",
-                    top: "50%",
-                    left: "50%",
-                    transform: "translate(-50%, -50%)",
-                    width: "54px",
-                    height: "54px",
-                    borderRadius: "50%",
-                    backgroundColor: "rgba(99, 102, 241, 0.85)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    border: "none",
-                    cursor: hasPreview ? "pointer" : "not-allowed",
-                    boxShadow: "0 4px 16px rgba(0, 0, 0, 0.4)",
-                    transition: "transform 0.2s",
-                    opacity: hasPreview ? 1 : 0.55,
-                  }}
-                >
-                  {isThisSnippetPlaying ? (
-                    <Pause size={28} color="#ffffff" />
-                  ) : (
-                    <Play size={28} color="#ffffff" />
-                  )}
-                </button>
+                {!isFirstSnippet && (
+                  <button
+                    type="button"
+                    onClick={handlePlayPause}
+                    disabled={!hasPreview}
+                    title={hasPreview ? "Play preview" : "Preview unavailable"}
+                    style={{
+                      position: "absolute",
+                      top: "50%",
+                      left: "50%",
+                      transform: "translate(-50%, -50%)",
+                      width: "54px",
+                      height: "54px",
+                      borderRadius: "50%",
+                      backgroundColor: "rgba(99, 102, 241, 0.85)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      border: "none",
+                      cursor: hasPreview ? "pointer" : "not-allowed",
+                      boxShadow: "0 4px 16px rgba(0, 0, 0, 0.4)",
+                      transition: "transform 0.2s",
+                      opacity: hasPreview ? 1 : 0.55,
+                    }}
+                  >
+                    {isThisSnippetPlaying ? (
+                      <Pause size={28} color="#ffffff" />
+                    ) : (
+                      <Play size={28} color="#ffffff" />
+                    )}
+                  </button>
+                )}
               </div>
               
               {/* Song details and controls */}
@@ -745,7 +747,7 @@ const ThreadCommentCard = ({
                   }}>
                     {snippet.artistName || 'Unknown artist'}
                   </div>
-                  {!hasPreview && (
+                  {!hasPreview && !isFirstSnippet && (
                     <div style={{
                       fontSize: "12px",
                       color: "#94a3b8",

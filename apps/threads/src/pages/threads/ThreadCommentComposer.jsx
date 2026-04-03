@@ -468,7 +468,7 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
                       {
                         icon: <Disc size={18} color="#a9b6fc" />,
                         title: "Snippets",
-                        content: "Quickly scroll through recommended songs in threads throughout the app",
+                        content: "Quickly scroll through recommended songs in threads this thread.",
                       },
                     ]}
                   />
@@ -503,7 +503,7 @@ const MusicCommentComposer = ({ onSubmit, onOpenTikTokModal }) => {
                       {
                         icon: <Music size={18} color="#a9b6fc" />,
                         title: "Add music",
-                        content: "Add songs using Apple music APi or your own downloaded content from your device",
+                        content: "Add songs using Apple music API or downloaded content from your device.",
                       },
                     ]}
                   />

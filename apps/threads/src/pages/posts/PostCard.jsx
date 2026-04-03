@@ -845,7 +845,7 @@ const PostCard = ({ post, onClick, onUserClick, POST_TYPE_INDICATORS, _isCached 
   }, [shouldLoadExpandAssets, expandAllTracks, expandAlbumArtworks]);
 
   const getThemeColor = (postType) => {
-    if (postType === 'news') return '#f8ed62';
+    if (postType === 'news') return '#e8d5a8';
     if (postType === 'parameter') return '#00C4B4';
     return POST_TYPE_INDICATORS[postType]?.color || '#1d9bf0';
   };

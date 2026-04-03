@@ -175,6 +175,10 @@ const InfoIconModal = ({
   // Event handlers
   const handleOpenModal = (e) => {
     e.stopPropagation(); // Prevent event bubbling to parent elements
+    if (isThisModalOpen) {
+      handleCloseModal();
+      return;
+    }
     if (openModal) {
       openModal(uniqueModalId);
     } else {
