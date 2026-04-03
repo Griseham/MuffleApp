@@ -17,6 +17,7 @@ const FILTER_TABS = [
 ];
 
 const ZONE1_GENRE_OPTIONS = ["Hip-Hop", "Pop", "R&B", "Electronic"];
+const ZONE1_INFO_ICON_SIZE = 22;
 
 export default function Zone1Header({
   activeViewTab,
@@ -119,10 +120,10 @@ export default function Zone1Header({
             steps={ZONE1_TIMELINE_INFO_STEPS}
             modalId="zone1-timeline-info"
             showButtonText={false}
-            iconSize={20}
+            iconSize={ZONE1_INFO_ICON_SIZE}
             iconColor="#FFA500"
             buttonClassName="zone-header-info-btn"
-            buttonStyle={{ width: "36px", height: "36px" }}
+            buttonStyle={{ padding: 0 }}
             ariaLabel="Zone 1 timeline information"
           />
         </div>
@@ -240,7 +241,7 @@ export default function Zone1Header({
                   steps={addUsersInfoModal.steps || []}
                   modalId={addUsersInfoModal.modalId}
                   showButtonText={false}
-                  iconSize={16}
+                  iconSize={ZONE1_INFO_ICON_SIZE}
                   iconColor={addUsersInfoModal.iconColor || "#FFA500"}
                   buttonClassName="zone-header-info-btn zone1-add-user-info-btn"
                   buttonStyle={{ padding: 0 }}

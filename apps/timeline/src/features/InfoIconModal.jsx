@@ -3,6 +3,9 @@ import { createPortal } from "react-dom";
 
 const INFO_MODAL_EVENT = "info-modal-change";
 const CLOSE_ANIMATION_MS = 260;
+const INFO_ICON_BUTTON_Z_INDEX = 25000;
+const INFO_SIDE_PANEL_Z_INDEX = 30000;
+const INFO_BACKDROP_Z_INDEX = 30000;
 
 export const InfoIcon = ({ size = 18, color = "#ffffff" }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -275,7 +278,7 @@ export default function InfoIconModal({
           gap: "8px",
           padding: showButtonText ? "8px 16px" : "8px",
           borderRadius: showButtonText ? "24px" : "50%",
-          zIndex: 25000,
+          zIndex: INFO_ICON_BUTTON_Z_INDEX,
           ...buttonStyle,
         }}
       >
@@ -309,7 +312,7 @@ export default function InfoIconModal({
                 borderLeft: "1px solid rgba(255, 255, 255, 0.3)",
                 overflowY: "auto",
                 backdropFilter: "blur(8px)",
-                zIndex: 15000,
+                zIndex: INFO_SIDE_PANEL_Z_INDEX,
                 animation: isClosing ? "slideOutRight 0.26s ease-in forwards" : "slideInRight 0.3s ease-out",
                 color: "white",
               }}
@@ -328,7 +331,7 @@ export default function InfoIconModal({
                 display: "flex",
                 justifyContent: "center",
                 alignItems: "center",
-                zIndex: 11000,
+                zIndex: INFO_BACKDROP_Z_INDEX,
                 animation: isClosing ? "backdropFadeOut 0.2s ease-in forwards" : "backdropFadeIn 0.2s ease-out",
               }}
               onClick={handleCloseModal}

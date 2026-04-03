@@ -8,7 +8,7 @@ public/                    # Static public assets
 dist/                      # Production build output
 package.json               # Vite scripts/dependencies
 package-lock.json          # Lockfile
-.env                       # Optional local env file (currently unused by runtime)
+.env                       # Optional local env overrides (for example VITE_BASE_PATH)
 eslint.config.js           # ESLint config
 vite.config.js             # Vite config
 README.md                  # Project notes

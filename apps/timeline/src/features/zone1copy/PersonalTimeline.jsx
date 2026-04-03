@@ -858,9 +858,9 @@ export default function PersonalTimeline({
       },
       {
         id: "you",
-        label: "You",
+        label: "Me",
         placements: personalTopArtistsPlacements,
-        avatar: "Y",
+        avatar: "M",
         avatarSrc: YOU_AVATAR_SRC,
         color: "#D39A3B",
         avatarOnly: true,

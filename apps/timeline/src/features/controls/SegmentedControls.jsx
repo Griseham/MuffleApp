@@ -72,7 +72,7 @@ export function MultiToggleTabs({ tabs, activeIds, onToggle, exclusiveId, disabl
                 steps={infoModal.steps || []}
                 modalId={infoModal.modalId}
                 showButtonText={false}
-                iconSize={16}
+                iconSize={infoModal.iconSize ?? 22}
                 iconColor={infoModal.iconColor || "#FFA500"}
                 buttonClassName={`zone-header-info-btn zone1-tab-info-btn ${infoModal.buttonClassName || ""}`.trim()}
                 buttonStyle={{ padding: 0, ...(infoModal.buttonStyle || {}) }}

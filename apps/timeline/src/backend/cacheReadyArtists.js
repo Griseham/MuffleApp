@@ -1,10 +1,22 @@
 import { FOLLOWED_ARTISTS } from "./timelineMockData";
-import artistImagesCache from "./cache/artist_images.json";
-import artistDiscographyCache from "./cache/artist_discography.json";
 
 const VALID_COMMA_ARTISTS = new Set(
   FOLLOWED_ARTISTS.map((artist) => normalizeName(artist?.name))
 );
+
+const FOLLOWED_NAME_SET = new Set(
+  FOLLOWED_ARTISTS.map((artist) => normalizeName(artist?.name)).filter(Boolean)
+);
+
+let cacheReadyLoadPromise = null;
+let hasLoadedCacheData = false;
+
+export let ARTIST_IMAGE_BY_NAME = new Map();
+export let ARTIST_DISCOGRAPHY_BY_NAME = new Map();
+export let CACHE_READY_FOLLOWED_ARTISTS = [];
+export let CACHE_READY_EXTRA_ARTISTS = [];
+export let CACHE_READY_TIMELINE_ARTISTS = [];
+export let CACHE_READY_TIMELINE_ARTISTS_BY_NAME = new Map();
 
 function normalizeName(name) {
   return String(name || "")
@@ -20,10 +32,10 @@ function normalizeAppleArtworkUrl(url) {
   return raw.replace("{w}x{h}", "300x300").replace("{w}", "300").replace("{h}", "300");
 }
 
-function buildDiscographyMap() {
+function buildDiscographyMap(discographyCache) {
   const byName = new Map();
 
-  for (const [rawName, profile] of Object.entries(artistDiscographyCache || {})) {
+  for (const [rawName, profile] of Object.entries(discographyCache || {})) {
     const key = normalizeName(rawName);
     if (!key || !profile || byName.has(key)) continue;
     byName.set(key, profile);
@@ -32,7 +44,7 @@ function buildDiscographyMap() {
   return byName;
 }
 
-function buildArtistImageMap() {
+function buildArtistImageMap(artistImagesCache) {
   const byName = new Map();
 
   for (const [rawName, imageUrl] of Object.entries(artistImagesCache || {})) {
@@ -108,25 +120,64 @@ function buildCacheBackedArtistEntries(artistImageByName, discographyByName, fol
   return artists.sort((left, right) => left.name.localeCompare(right.name));
 }
 
-const ARTIST_IMAGE_BY_NAME = buildArtistImageMap();
-const ARTIST_DISCOGRAPHY_BY_NAME = buildDiscographyMap();
-const FOLLOWED_NAME_SET = new Set(
-  FOLLOWED_ARTISTS.map((artist) => normalizeName(artist?.name)).filter(Boolean)
-);
+function rebuildCacheReadyCollections() {
+  CACHE_READY_FOLLOWED_ARTISTS = buildFollowedArtistEntries(ARTIST_IMAGE_BY_NAME);
+  CACHE_READY_EXTRA_ARTISTS = buildCacheBackedArtistEntries(
+    ARTIST_IMAGE_BY_NAME,
+    ARTIST_DISCOGRAPHY_BY_NAME,
+    FOLLOWED_NAME_SET
+  );
+  CACHE_READY_TIMELINE_ARTISTS = [
+    ...CACHE_READY_FOLLOWED_ARTISTS,
+    ...CACHE_READY_EXTRA_ARTISTS,
+  ];
+  CACHE_READY_TIMELINE_ARTISTS_BY_NAME = new Map(
+    CACHE_READY_TIMELINE_ARTISTS.map((artist) => [artist.normalizedName, artist])
+  );
+}
 
-export const CACHE_READY_FOLLOWED_ARTISTS = buildFollowedArtistEntries(ARTIST_IMAGE_BY_NAME);
-export const CACHE_READY_EXTRA_ARTISTS = buildCacheBackedArtistEntries(
-  ARTIST_IMAGE_BY_NAME,
-  ARTIST_DISCOGRAPHY_BY_NAME,
-  FOLLOWED_NAME_SET
-);
-export const CACHE_READY_TIMELINE_ARTISTS = [
-  ...CACHE_READY_FOLLOWED_ARTISTS,
-  ...CACHE_READY_EXTRA_ARTISTS,
-];
-export const CACHE_READY_TIMELINE_ARTISTS_BY_NAME = new Map(
-  CACHE_READY_TIMELINE_ARTISTS.map((artist) => [artist.normalizedName, artist])
-);
+function getDataUrl(fileName) {
+  return `${import.meta.env.BASE_URL}data/${fileName}`;
+}
+
+async function fetchCacheJson(fileName) {
+  const response = await fetch(getDataUrl(fileName), { cache: "force-cache" });
+  if (!response.ok) {
+    throw new Error(`Failed to load ${fileName}: ${response.status}`);
+  }
+  return response.json();
+}
+
+rebuildCacheReadyCollections();
+
+export async function loadCacheReadyArtists() {
+  if (hasLoadedCacheData) return true;
+  if (cacheReadyLoadPromise) return cacheReadyLoadPromise;
+
+  cacheReadyLoadPromise = Promise.all([
+    fetchCacheJson("artist_images.json"),
+    fetchCacheJson("artist_discography.json"),
+  ])
+    .then(([artistImagesCache, artistDiscographyCache]) => {
+      ARTIST_IMAGE_BY_NAME = buildArtistImageMap(artistImagesCache);
+      ARTIST_DISCOGRAPHY_BY_NAME = buildDiscographyMap(artistDiscographyCache);
+      rebuildCacheReadyCollections();
+      hasLoadedCacheData = true;
+      return true;
+    })
+    .catch(() => {
+      return false;
+    })
+    .finally(() => {
+      cacheReadyLoadPromise = null;
+    });
+
+  return cacheReadyLoadPromise;
+}
+
+export function isCacheReadyArtistsLoaded() {
+  return hasLoadedCacheData;
+}
 
 export function getCacheReadyArtistByName(name) {
   return CACHE_READY_TIMELINE_ARTISTS_BY_NAME.get(normalizeName(name)) || null;
@@ -137,8 +188,6 @@ export function getCacheReadyTimelineArtists() {
 }
 
 export {
-  ARTIST_IMAGE_BY_NAME,
-  ARTIST_DISCOGRAPHY_BY_NAME,
   isLikelyCompositeArtistName,
   normalizeName,
   normalizeAppleArtworkUrl,

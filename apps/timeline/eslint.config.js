@@ -24,6 +24,18 @@ export default defineConfig([
     },
     rules: {
       'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
+      'no-restricted-imports': ['error', {
+        patterns: [
+          {
+            group: ['**/zone1copy/**'],
+            message: 'Use src/features/zone1 instead of archived zone1copy files.',
+          },
+          {
+            group: ['**/backend/cache/zone3_data.json'],
+            message: 'Use zone3_calendar_v4.json at runtime; zone3_data.json is source-only.',
+          },
+        ],
+      }],
     },
   },
 ])

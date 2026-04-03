@@ -1,6 +1,5 @@
 import { useMemo, useRef, useState, useCallback, useEffect } from "react";
 import { USERS } from "../../backend/timelineMockData";
-import zone3CalendarCachePayload from "../../backend/cache/zone3_calendar_v4.json";
 import UsersHeader from "./UsersHeader";
 import GridBody from "./GridBody";
 import { TrophyIcon, VolumeIcon } from "../Icons";
@@ -12,7 +11,7 @@ const ACTIVE_GENRES = ["Hip-Hop", "Pop", "R&B"];
 const DISABLED_GENRES = ["Rock"];
 const GENRES = [...ACTIVE_GENRES, ...DISABLED_GENRES];
 const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
-const ZONE3_INFO_ICON_SIZE = 20;
+const ZONE3_INFO_ICON_SIZE = 22;
 const ZONE3_TIMELINE_INFO_STEPS = [
   {
     title: "Month, Year, Decade",
@@ -223,8 +222,20 @@ function buildBuckets(rawMonths, timeScale) {
   return Array.from(m.values());
 }
 
-function getLocalZone3Calendar(genres) {
-  const payload = zone3CalendarCachePayload?.data || {};
+function getDataUrl(fileName) {
+  return `${import.meta.env.BASE_URL}data/${fileName}`;
+}
+
+async function loadZone3CalendarPayload() {
+  const response = await fetch(getDataUrl("zone3_calendar_v4.json"), { cache: "force-cache" });
+  if (!response.ok) {
+    throw new Error(`Failed to load zone3_calendar_v4.json: ${response.status}`);
+  }
+  const data = await response.json();
+  return data?.data || {};
+}
+
+function getLocalZone3Calendar(payload, genres) {
   const requestedGenres = Array.isArray(genres) ? genres : [];
   return Object.fromEntries(
     requestedGenres
@@ -285,12 +296,12 @@ function InlineVolumeSlider({ value, onChange, onCommit }) {
   );
 }
 
-export default function TimelineGrid() {
+export default function TimelineGrid({ onReady }) {
   const [timeScale, setTimeScale] = useState("months");
   const [zone3Filter, setZone3Filter] = useState("you"); // mostRated | genre | you
   const [zone3VolumeMin, setZone3VolumeMin] = useState(1600);
   const [zone3Genre, setZone3Genre] = useState("Hip-Hop");
-  const [zone3Calendar] = useState(() => getLocalZone3Calendar(ACTIVE_GENRES));
+  const [zone3Calendar, setZone3Calendar] = useState({});
   const [showTopAlbums, setShowTopAlbums] = useState(false);
   const [showYou, setShowYou] = useState(true);
   const [youPinnedManually, setYouPinnedManually] = useState(false);
@@ -299,6 +310,7 @@ export default function TimelineGrid() {
   const [volumeDraft, setVolumeDraft] = useState(1600);
   const [shuffleSeed, setShuffleSeed] = useState(0);
   const [isReloading, setIsReloading] = useState(false);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [showAddMenu, setShowAddMenu] = useState(false);
 
   const headerScrollRef = useRef(null);
@@ -485,6 +497,26 @@ export default function TimelineGrid() {
     };
   }, [clearPendingVolumeCommit]);
 
+  useEffect(() => {
+    let isMounted = true;
+
+    loadZone3CalendarPayload()
+      .then((payload) => {
+        if (!isMounted) return;
+        setZone3Calendar(getLocalZone3Calendar(payload, ACTIVE_GENRES));
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (!isMounted) return;
+        setIsInitialLoading(false);
+        onReady?.();
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [onReady]);
+
   // Smoothly scroll to You column when in You view; reset when back to Most Rated
   useEffect(() => {
     const bodyEl = bodyScrollRef.current;
@@ -503,6 +535,18 @@ export default function TimelineGrid() {
       headerEl.scrollTo({ left: 0, behavior: "smooth" });
     }
   }, [zone3Filter, youDisplayIndex]);
+
+  if (isInitialLoading) {
+    return (
+      <div className="main-content">
+        <div className="zone3-layout">
+          <div className="zone3-initial-loading" role="status" aria-label="Loading timeline grid">
+            <div className="zone3-loading-circle" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="main-content">
@@ -538,7 +582,8 @@ export default function TimelineGrid() {
             showButtonText={false}
             iconSize={ZONE3_INFO_ICON_SIZE}
             iconColor="#FFA500"
-            buttonClassName="zone-header-info-btn zone3-toolbar-info-btn"
+            buttonClassName="zone-header-info-btn"
+            buttonStyle={{ padding: 0 }}
             ariaLabel="Zone 3 timeline information"
           />
           {showVolume && <InlineVolumeSlider value={volumeDraft} onChange={setVolumeDraft} onCommit={commitVolume} />}

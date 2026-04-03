@@ -67,7 +67,7 @@ const ARTIST_COLORS = [
 ];
 
 const USER_LANES = [
-  { id: "you", label: "You", avatar: "Y", color: "#D39A3B" },
+  { id: "you", label: "Me", avatar: "M", color: "#D39A3B" },
   { id: "alex", label: "Alex", avatar: "A", color: "#85C1E9" },
   { id: "jordan", label: "Jordan", avatar: "J", color: "#C9B1FF" },
   { id: "sam", label: "Sam", avatar: "S", color: "#7DD3C0" },

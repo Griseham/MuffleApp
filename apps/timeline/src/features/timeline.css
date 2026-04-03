@@ -82,16 +82,23 @@
 .timeline-left-sidebar__logo-circle {
   width: 130px;
   height: 130px;
-  background-image: url('/assets/MuflLogo.png');
-  background-size: contain;
-  background-repeat: no-repeat;
-  background-position: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
   border-radius: 50%;
   margin-right: 0;
   margin-bottom: 8px;
   box-shadow:
     0 2px 4px rgba(0, 0, 0, 0.1),
     0 8px 16px rgba(0, 0, 0, 0.1);
+}
+
+.timeline-left-sidebar__logo-image {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
 }
 
 .timeline-left-sidebar__nav-section {
@@ -177,6 +184,46 @@
   border-left: 1px solid var(--color-border-primary);
   border-right: 1px solid var(--color-border-primary);
   margin: 0 auto;
+}
+
+.timeline-zones-shell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.timeline-zones-loading {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-bg-primary);
+}
+
+.timeline-boot-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 120;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-bg-primary);
+}
+
+.timeline-zones-loading-circle {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  border: 3px solid rgba(255, 255, 255, 0.16);
+  border-top-color: var(--color-accent);
+  animation: timelineZonesSpin 0.75s linear infinite;
+}
+
+@keyframes timelineZonesSpin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @media (max-width: 1200px) {

@@ -2,10 +2,10 @@ import { useMemo, useState, useCallback, useRef, useEffect } from "react";
 import { CloseIcon, BackIcon, HeartIcon, PlusIcon } from "../Icons";
 import { TOP_ALBUMS } from "../../backend/timelineMockData";
 import {
-  CACHE_READY_TIMELINE_ARTISTS,
+  getCacheReadyTimelineArtists,
+  loadCacheReadyArtists,
   getCacheReadyArtistByName,
 } from "../../backend/cacheReadyArtists";
-import albumArtworksCache from "../../backend/cache/album_artworks.json";
 import AlbumDetail from "./AlbumDetail";
 
 // ===== small helper (inlined) =====
@@ -98,7 +98,10 @@ function mergeArtistProfile(baseArtist, profile) {
   };
 }
 
-function buildAlbumArtworkLookup() {
+let LOCAL_ALBUM_ARTWORK_BY_TRACK = new Map();
+let albumArtworkLoadPromise = null;
+
+function buildAlbumArtworkLookup(albumArtworksCache) {
   const byTrack = new Map();
 
   for (const [rawKey, entry] of Object.entries(albumArtworksCache || {})) {
@@ -111,10 +114,36 @@ function buildAlbumArtworkLookup() {
   return byTrack;
 }
 
-const LOCAL_ALBUM_ARTWORK_BY_TRACK = buildAlbumArtworkLookup();
-
 function getLocalAlbumArtwork(songName, artistName) {
   return LOCAL_ALBUM_ARTWORK_BY_TRACK.get(normalizeTrackLookupKey(songName, artistName)) || null;
+}
+
+function getDataUrl(fileName) {
+  return `${import.meta.env.BASE_URL}data/${fileName}`;
+}
+
+async function loadAlbumArtworksCache() {
+  if (albumArtworkLoadPromise) return albumArtworkLoadPromise;
+
+  albumArtworkLoadPromise = fetch(getDataUrl("album_artworks.json"), { cache: "force-cache" })
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error(`Failed to load album_artworks.json: ${response.status}`);
+      }
+      return response.json();
+    })
+    .then((albumArtworksCache) => {
+      LOCAL_ALBUM_ARTWORK_BY_TRACK = buildAlbumArtworkLookup(albumArtworksCache);
+      return true;
+    })
+    .catch(() => {
+      return false;
+    })
+    .finally(() => {
+      albumArtworkLoadPromise = null;
+    });
+
+  return albumArtworkLoadPromise;
 }
 
 function hydrateArtistFromLocalCache(baseArtist) {
@@ -170,8 +199,8 @@ function hydrateArtistFromLocalCache(baseArtist) {
   });
 }
 
-function buildZone2Artists() {
-  return CACHE_READY_TIMELINE_ARTISTS.map((artist) => hydrateArtistFromLocalCache(artist));
+function buildZone2Artists(timelineArtists) {
+  return (timelineArtists || []).map((artist) => hydrateArtistFromLocalCache(artist));
 }
 
 function buildZone2TopAlbums(zone2Artists) {
@@ -666,13 +695,17 @@ export default function ContextPanel({
   setSelectedArtist,
   selectedAlbum,
   setSelectedAlbum,
+  onReady,
 }) {
   const ALBUM_TRANSITION_MS = 280;
   const [likedSongs, setLikedSongs] = useState(() => new Set());
   const [activeAlbumView, setActiveAlbumView] = useState(null);
   const [isAlbumClosing, setIsAlbumClosing] = useState(false);
+  const [isSelectedArtistLoading, setIsSelectedArtistLoading] = useState(false);
+  const [zone2Artists, setZone2Artists] = useState(() =>
+    buildZone2Artists(getCacheReadyTimelineArtists())
+  );
   const albumCloseTimerRef = useRef(null);
-  const zone2Artists = useMemo(() => buildZone2Artists(), []);
   const zone2TopAlbums = useMemo(() => buildZone2TopAlbums(zone2Artists), [zone2Artists]);
 
   const selectedArtistForView = useMemo(() => {
@@ -715,7 +748,28 @@ export default function ContextPanel({
     return selectedArtistForView.topSongs || [];
   }, [selectedArtistForView]);
 
-  const isSelectedArtistLoading = false;
+  useEffect(() => {
+    let isMounted = true;
+
+    setIsSelectedArtistLoading(true);
+    Promise.all([
+      loadCacheReadyArtists(),
+      loadAlbumArtworksCache(),
+    ])
+      .then(() => {
+        if (!isMounted) return;
+        setZone2Artists(buildZone2Artists(getCacheReadyTimelineArtists()));
+      })
+      .finally(() => {
+        if (!isMounted) return;
+        setIsSelectedArtistLoading(false);
+        onReady?.();
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [onReady]);
 
   useEffect(() => () => {
     if (albumCloseTimerRef.current) {

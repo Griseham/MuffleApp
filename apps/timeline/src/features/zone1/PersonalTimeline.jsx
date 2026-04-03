@@ -1,6 +1,8 @@
 import { useMemo, useState, useRef, useEffect, useCallback } from "react";
-import { getCacheReadyTimelineArtists } from "../../backend/cacheReadyArtists";
-import albumArtworksCache from "../../backend/cache/album_artworks.json";
+import {
+  getCacheReadyTimelineArtists,
+  loadCacheReadyArtists,
+} from "../../backend/cacheReadyArtists";
 import Zone1Header from "./Zone1Header";
 import ArtistDot from "./ArtistDot";
 import { BellIcon } from "../Icons";
@@ -77,6 +79,9 @@ const MONTH_START_BY_YEAR = (() => {
   });
   return starts;
 })();
+
+let ALBUM_ARTWORK_BY_ARTIST_AND_ALBUM = new Map();
+let albumArtworkLoadPromise = null;
 
 function getMiddleMonthIndex(year, fallbackIndex) {
   const monthIndexes = [];
@@ -201,7 +206,7 @@ function getArtistAlbumTitles(artist) {
   return titles;
 }
 
-const ALBUM_ARTWORK_BY_ARTIST_AND_ALBUM = (() => {
+function buildAlbumArtworkLookup(albumArtworksCache) {
   const map = new Map();
   Object.values(albumArtworksCache || {}).forEach((entry) => {
     const artworkUrl = String(entry?.artworkUrl || "").trim();
@@ -214,7 +219,35 @@ const ALBUM_ARTWORK_BY_ARTIST_AND_ALBUM = (() => {
     }
   });
   return map;
-})();
+}
+
+function getDataUrl(fileName) {
+  return `${import.meta.env.BASE_URL}data/${fileName}`;
+}
+
+async function loadAlbumArtworkCache() {
+  if (albumArtworkLoadPromise) return albumArtworkLoadPromise;
+
+  albumArtworkLoadPromise = fetch(getDataUrl("album_artworks.json"), { cache: "force-cache" })
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error(`Failed to load album_artworks.json: ${response.status}`);
+      }
+      return response.json();
+    })
+    .then((albumArtworksCache) => {
+      ALBUM_ARTWORK_BY_ARTIST_AND_ALBUM = buildAlbumArtworkLookup(albumArtworksCache);
+      return true;
+    })
+    .catch(() => {
+      return false;
+    })
+    .finally(() => {
+      albumArtworkLoadPromise = null;
+    });
+
+  return albumArtworkLoadPromise;
+}
 
 function getAlbumArtworkForArtistAlbum(artistName, albumName) {
   const key = `${normalizeName(artistName)}|||${normalizeName(albumName)}`;
@@ -278,12 +311,13 @@ function buildTimelinePlacement(
 }
 
 function buildUniqueZone1Artists(
+  artistPool,
   {
     futureArtistCount = FUTURE_ARTIST_COUNT_DEFAULT,
     pastArtistCount = null,
   } = {}
 ) {
-  const unique = dedupeArtistsByName(getCacheReadyTimelineArtists());
+  const unique = dedupeArtistsByName(artistPool || []);
   return buildTimelinePlacement(unique, { futureArtistCount, pastArtistCount });
 }
 
@@ -682,6 +716,7 @@ export default function PersonalTimeline({
   setSelectedArtist,
   hoveredArtist,
   setHoveredArtist,
+  onReady,
 }) {
   const monthWidth = 112;
   const personalTimelineHeight = 240;
@@ -699,6 +734,10 @@ export default function PersonalTimeline({
   const [zone1Volume, setZone1Volume] = useState(1600);
   const [zone1Genre, setZone1Genre] = useState("Hip-Hop");
   const [visibleYear, setVisibleYear] = useState(CURRENT_TIMELINE_YEAR);
+  const [cacheReadyArtists, setCacheReadyArtists] = useState(() =>
+    dedupeArtistsByName(getCacheReadyTimelineArtists())
+  );
+  const [albumArtworkVersion, setAlbumArtworkVersion] = useState(0);
 
   const showTopArtistsLane = activeViewTab === "topAlbums";
   const showAnticipatedAlbums = activeViewTab === "mostAnticipated";
@@ -715,37 +754,62 @@ export default function PersonalTimeline({
     };
   }, []);
 
+  useEffect(() => {
+    let isMounted = true;
+
+    Promise.all([
+      loadCacheReadyArtists(),
+      loadAlbumArtworkCache(),
+    ])
+      .then(([, loadedArtwork]) => {
+        if (!isMounted) return;
+        setCacheReadyArtists(dedupeArtistsByName(getCacheReadyTimelineArtists()));
+        if (loadedArtwork) {
+          setAlbumArtworkVersion((value) => value + 1);
+        }
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (!isMounted) return;
+        onReady?.();
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [onReady]);
+
   // Rebuild the timeline artists when image cache or anticipated mode changes.
   const timelineArtists = useMemo(() => {
     const futureCount = showAnticipatedAlbums
       ? FUTURE_ARTIST_COUNT_ANTICIPATED
       : FUTURE_ARTIST_COUNT_DEFAULT;
-    return buildUniqueZone1Artists({
+    return buildUniqueZone1Artists(cacheReadyArtists, {
       futureArtistCount: futureCount,
       pastArtistCount: null,
     }).map((artist) => enrichAnticipatedArtist(artist, waitingArtistIds));
-  }, [showAnticipatedAlbums, waitingArtistIds]);
+  }, [cacheReadyArtists, showAnticipatedAlbums, waitingArtistIds]);
 
   const topAlbumsArtists = useMemo(() => (
-    buildUniqueZone1Artists({
+    buildUniqueZone1Artists(cacheReadyArtists, {
       futureArtistCount: FUTURE_ARTIST_COUNT_DEFAULT,
       pastArtistCount: TOP_ARTISTS_POOL_PER_YEAR,
     })
-  ), []);
+  ), [cacheReadyArtists]);
 
   const anticipatedReferenceArtists = useMemo(() => (
-    buildUniqueZone1Artists({
+    buildUniqueZone1Artists(cacheReadyArtists, {
       futureArtistCount: FUTURE_ARTIST_COUNT_ANTICIPATED,
       pastArtistCount: null,
     })
       .map((artist) => enrichAnticipatedArtist(artist, waitingArtistIds))
       .filter((artist) => artist.isAnticipated)
       .sort(sortArtistsChronologically)
-  ), [waitingArtistIds]);
+  ), [cacheReadyArtists, waitingArtistIds]);
 
   const futureRandomArtistPool = useMemo(
-    () => dedupeArtistsByName(getCacheReadyTimelineArtists()),
-    []
+    () => cacheReadyArtists,
+    [cacheReadyArtists]
   );
 
   const volumeStepBucket = useMemo(() => Math.floor(zone1Volume / 80), [zone1Volume]);
@@ -1156,9 +1220,9 @@ export default function PersonalTimeline({
       },
       {
         id: "you",
-        label: "You",
+        label: "Me",
         placements: personalTopArtistsPlacements,
-        avatar: "Y",
+        avatar: "M",
         avatarSrc: YOU_AVATAR_SRC,
         color: "#D39A3B",
         avatarOnly: true,
@@ -1243,6 +1307,7 @@ export default function PersonalTimeline({
     anticipatedReferenceArtists,
     futureRandomArtistPool,
     waitingArtistIds,
+    albumArtworkVersion,
     monthWidth,
     artistSize,
   ]);

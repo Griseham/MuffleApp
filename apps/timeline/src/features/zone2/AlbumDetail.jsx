@@ -55,6 +55,7 @@ const TRACKLIST_INFO_STEPS = [
       "You can't currently play these songs, but in the final app users should be able to listen to 30-second previews in this tracklist.",
   },
 ];
+const TIMELINE_INFO_ICON_SIZE = 22;
 
 const formatLikes = (num) => {
   if (num >= 1000) return (num / 1000).toFixed(1) + "k";
@@ -182,10 +183,10 @@ function GenreCard({ genre, volume, maxVolume = MAX_VOLUME, isVolumeMuted }) {
               steps={GENRE_COMMUNITIES_INFO_STEPS}
               modalId="zone2-genre-communities-info"
               showButtonText={false}
-              iconSize={20}
+              iconSize={TIMELINE_INFO_ICON_SIZE}
               iconColor="#FFA500"
               buttonClassName="zone-header-info-btn zone2-genre-info-btn"
-              buttonStyle={{ width: "36px", height: "36px" }}
+              buttonStyle={{ padding: 0 }}
               ariaLabel="Genre communities information"
             />
           )}
@@ -397,10 +398,10 @@ function AlbumDetail({ artist, album, tracks = [], toggleLike, likedSongs }) {
               steps={FILTER_BY_VOLUME_INFO_STEPS}
               modalId="zone2-filter-by-volume-info"
               showButtonText={false}
-              iconSize={20}
+              iconSize={TIMELINE_INFO_ICON_SIZE}
               iconColor="#FFA500"
               buttonClassName="zone-header-info-btn zone2-volume-info-btn"
-              buttonStyle={{ width: "36px", height: "36px" }}
+              buttonStyle={{ padding: 0 }}
               ariaLabel="Filter by volume information"
             />
           </div>
@@ -461,10 +462,10 @@ function AlbumDetail({ artist, album, tracks = [], toggleLike, likedSongs }) {
           steps={TRACKLIST_INFO_STEPS}
           modalId="zone2-tracklist-info"
           showButtonText={false}
-          iconSize={20}
+          iconSize={TIMELINE_INFO_ICON_SIZE}
           iconColor="#FFA500"
           buttonClassName="zone-header-info-btn zone2-tracklist-info-btn"
-          buttonStyle={{ width: "36px", height: "36px" }}
+          buttonStyle={{ padding: 0 }}
           ariaLabel="Tracklist information"
         />
       </div>

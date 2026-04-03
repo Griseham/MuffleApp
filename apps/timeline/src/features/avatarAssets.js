@@ -1,21 +1,24 @@
-const USER_AVATAR_SOURCES = Object.entries(
-  import.meta.glob("../../../../assets/image*.png", { eager: true, import: "default" })
-)
-  .sort((a, b) => {
-    const aNum = Number(a[0].match(/image(\d+)\.png$/)?.[1] ?? 0);
-    const bNum = Number(b[0].match(/image(\d+)\.png$/)?.[1] ?? 0);
-    return aNum - bNum;
-  })
-  .map(([, src]) => src);
+const TOTAL_USER_AVATARS = 1000;
+const AVATAR_BASE_URL = `${import.meta.env.BASE_URL}assets/avatars`;
 
-const DEFAULT_AVATAR_SRC = USER_AVATAR_SOURCES[0] ?? null;
+function normalizeAvatarNumber(number) {
+  const raw = Math.trunc(Math.abs(Number(number) || 1));
+  if (!Number.isFinite(raw) || raw < 1) return 1;
+  return ((raw - 1) % TOTAL_USER_AVATARS) + 1;
+}
+
+function buildAvatarSrc(number) {
+  return `${AVATAR_BASE_URL}/image${normalizeAvatarNumber(number)}.png`;
+}
+
+const USER_AVATAR_SOURCES = Array.from(
+  { length: TOTAL_USER_AVATARS },
+  (_, index) => buildAvatarSrc(index + 1)
+);
+const DEFAULT_AVATAR_SRC = buildAvatarSrc(1);
 
 function getAvatarSrcFromNumber(number) {
-  const avatarCount = USER_AVATAR_SOURCES.length;
-  if (!avatarCount) return DEFAULT_AVATAR_SRC;
-
-  const normalizedNumber = Math.max(1, Math.trunc(Math.abs(Number(number) || 1)));
-  return USER_AVATAR_SOURCES[(normalizedNumber - 1) % avatarCount] ?? DEFAULT_AVATAR_SRC;
+  return buildAvatarSrc(number);
 }
 
 export {
