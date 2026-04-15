@@ -3,34 +3,38 @@ Timeline video
 
 The timeline focuses on promoting albums
 
-Part 1 lists your followed artists and plots them based on how you've rated their albums and the last time they've released one. 
+Zone 1 lists your followed artists and plots them based on how you've rated their albums and the last time they've released one. 
 
 The volume filter compares your rating position to users of different volumes while the genre tab shows how those artists are rated in different genre communities. 
 
-The top albums toggle lets you compare the top 5 albums of a year to your 5 highest rated albums and you can add some friends.
+The top albums toggle lets you compare the top 5 albums of a year to your 5 highest rated albums of that same year. 
 
-Most anticipated toggle promotes upcoming albums. 
+Then add some friends to compare with using the + icon. 
+
+Most anticipated button promotes upcoming albums. Click the bell to be notified of its release, and see how many other users are waiting. 
 
 
 
 
 Second part of the timeline showcases the top albums of the month.
 
-Clicking on an artist in your timeline will list that artist's albums and how you've rated each. 
+Clicking on an artist in your timeline will list that artist's albums.
 
-Clicking on an album will show that album's rating in different genre communities and you can further filter by user volume
+Then select one to see that album's rating in different genre communities. You can further filter by user volume.
+
+Under that is the reviews tab and the album tracklist, where you'll be able to listen to 30 second previews of the songs. 
 
 
 
 
 
-Part C of the timeline is a calendar where each slot is taken by an album, allowing users to compare their highest rated album of that month, year or half-decade. 
+Zone 3 of the timeline is a calendar where each slot is taken by an album, allowing users to compare their highest rated album of that month, year or decade. 
 
 Users who rate the most albums will have a higher ranking on this calendar. 
 
-The Top album toggle shows the highest rated album for each month and reveals a ranking on the top right of each album to show their distance to the top album. 
+The Top album toggle shows the highest rated album for each month and reveals a ranking on the top right of each album to show their distance to the top. 
 
-The volume button filters the users by their volumes and the genre button specifies users in a genre community, so you can see the top albums there.
+The volume button filters users by their volumes and the genre button specifies users in a genre community, so you can see the top albums in different genre spheres.
 
 You can also add some friends and compare your favorite albums.  
 
@@ -39,18 +43,24 @@ You can also add some friends and compare your favorite albums.
 
 ////////////
 
-Expand the personal timeline so that you can add friends under your timeline and on top of your timeline is theta albums timmmmeline with numbers showing up for me a nd the users I addd.
-
-Show old albums like around 1990 bu adding ... after 2024
 
 
 
 
-How do I give the users a reason to care about listen to older songs, I have to create a new purpose...
 
 
-Volume and genre should not be clickable when top albums is toggled
 
-Replace empty albums slots withs svg
 
-If most anticipated is toggled and I scroll back to the timeline, the timeline button should be toggled. 
+For the zone1header.jsx most anticipated button, the genre button should be clickable and when diff genres are clicked , just change the 5 artists in the most anticipated year to 5 diff artists . If possible, make the artist match the selected genre. And also change the placeholder album svg so it looks like a different album placeholder I guess. 
+
+
+When I use the genre button in the zone1header.jsx and the artists in the timeline start taking diff positions, there is a difference between what I rated them and what people of those genres rated them. I want that difference to be more noticeable on the graph bc I think the dashed line between my artist position and the genre artist position is too think and I can't really see it . Should be more oticable and the difference should be longer so it looks more interesting. And instead of a dot, make it a dash to represent my position. Same thing for volume but the difference should be longer when changing genres than changing volume. 
+
+
+All albums must have a tracklist in Zone 2
+
+Make sure it looks good in diff chrome profiles
+
+
+
+

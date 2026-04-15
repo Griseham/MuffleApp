@@ -47,6 +47,10 @@ export default function Zone1Header({
 
   const handleViewToggle = (id) => {
     setExpandAddUser(false);
+    if (id === "topAlbums" || id === "mostAnticipated") {
+      onVolumeActiveChange(false);
+      onGenreActiveChange(false);
+    }
     onViewTabChange(id);
   };
 

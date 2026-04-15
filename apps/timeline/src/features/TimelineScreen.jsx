@@ -74,7 +74,7 @@ function TimelineLeftSidebar() {
         data-content="old-videos"
         onClick={handlePlaceholderNav}
       >
-        Old Videos
+        Archives
       </button>
     </aside>
   );

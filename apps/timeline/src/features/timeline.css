@@ -25,7 +25,7 @@
   --user-column-width: 140px;
   --row-height: 176px;
   --app-max-width: 1248px;
-  --timeline-left-sidebar-width: 360px;
+  --timeline-left-sidebar-width: 260px;
 }
 
 .app-wrapper {
@@ -39,16 +39,15 @@
 }
 
 .timeline-shell {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, var(--app-max-width)) minmax(0, 1fr);
   align-items: flex-start;
-  justify-content: flex-start;
-  gap: 0;
   width: 100%;
-  max-width: calc(var(--timeline-left-sidebar-width) + var(--app-max-width));
-  margin: 0 auto;
 }
 
 .timeline-left-sidebar {
+  grid-column: 1;
+  justify-self: end;
   width: var(--timeline-left-sidebar-width);
   min-width: var(--timeline-left-sidebar-width);
   max-width: var(--timeline-left-sidebar-width);
@@ -173,8 +172,10 @@
 }
 
 .app-root {
+  grid-column: 2;
   width: min(100%, var(--app-max-width));
   max-width: var(--app-max-width);
+  min-width: 0;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -250,7 +251,9 @@
   }
 
   .timeline-shell {
+    display: block;
     max-width: var(--app-max-width);
+    margin: 0 auto;
   }
 }
 

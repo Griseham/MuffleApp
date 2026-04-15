@@ -47,6 +47,12 @@ export default function Zone1Header({
 
   const handleViewToggle = (id) => {
     setExpandAddUser(false);
+    if (id === "topAlbums") {
+      onVolumeActiveChange(false);
+      onGenreActiveChange(false);
+    } else if (id === "mostAnticipated") {
+      onVolumeActiveChange(false);
+    }
     onViewTabChange(id);
   };
 
@@ -79,7 +85,11 @@ export default function Zone1Header({
     [tabInfoModals]
   );
   const addUsersInfoModal = tabInfoModals?.addUsers || null;
-  const filtersDisabled = activeViewTab === "topAlbums" || activeViewTab === "mostAnticipated";
+  const disabledFilterIds = activeViewTab === "topAlbums"
+    ? ["volume", "genre"]
+    : activeViewTab === "mostAnticipated"
+      ? ["volume"]
+      : [];
 
   const handleAddFriend = (friend) => {
     onAddFriendTimeline(friend);
@@ -265,7 +275,7 @@ export default function Zone1Header({
                 tabs={filterTabs}
                 activeIds={activeFilterIds}
                 onToggle={handleFilterToggle}
-                disabledIds={filtersDisabled ? ["volume", "genre"] : []}
+                disabledIds={disabledFilterIds}
               />
             </>
           )}

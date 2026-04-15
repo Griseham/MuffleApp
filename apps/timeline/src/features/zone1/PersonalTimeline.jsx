@@ -3,6 +3,7 @@ import {
   getCacheReadyTimelineArtists,
   loadCacheReadyArtists,
 } from "../../backend/cacheReadyArtists";
+import ZONE3_DATA from "../../backend/cache/zone3_data.json";
 import Zone1Header from "./Zone1Header";
 import ArtistDot from "./ArtistDot";
 import { BellIcon } from "../Icons";
@@ -100,6 +101,23 @@ function getCenteredMonthScrollLeft(monthIndex, monthWidth, viewportWidth) {
 const ANTICIPATED_ALBUM_NAMES = [
   "Nation II", "R9", "Hurry Up Tomorrow", "Lana", "Eternal Atake 2",
 ];
+const GENRE_MANUAL_ARTIST_FALLBACKS = {
+  Electronic: [
+    "Martin Garrix",
+    "Martin Garrix & Dua Lipa",
+    "Marshmello & Imanbek",
+    "Taylor Swift & Skream",
+    "Jonas Blue",
+    "Sabrina Carpenter & Jonas Blue",
+    "Calvin Harris, Dua Lipa & Young Thug",
+  ],
+};
+const MANUAL_GENRE_ARTIST_SETS = Object.fromEntries(
+  Object.entries(GENRE_MANUAL_ARTIST_FALLBACKS).map(([genre, artists]) => [
+    genre,
+    new Set((artists || []).map((name) => normalizeName(name))),
+  ])
+);
 const TOP_ALBUM_NAMES = [
   "Midnight Sessions", "Neon Dreams", "Velvet Horizon", "Dark Paradise",
   "Golden Hour", "Electric Soul", "Phantom Waves", "Crystal Memory",
@@ -118,6 +136,78 @@ function normalizeName(name) {
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase();
 }
+
+function getArtistInitials(name) {
+  const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "A";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0] || ""}${parts[1][0] || ""}`.toUpperCase();
+}
+
+function sanitizeArtistKey(name) {
+  const normalized = normalizeName(name).replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  return normalized || "artist";
+}
+
+const { ARTIST_GENRE_SCORES_BY_NAME, ZONE3_ARTISTS_BY_GENRE } = (() => {
+  const byName = new Map();
+  const artistsByGenre = new Map();
+  const genreCountsByArtist = new Map();
+  const zone3Albums = Array.isArray(ZONE3_DATA?.albums) ? ZONE3_DATA.albums : [];
+
+  zone3Albums.forEach((entry) => {
+    const genre = String(entry?.genre || "").trim();
+    const artistName = String(entry?.artistName || "").trim();
+    const normalizedName = normalizeName(artistName);
+    if (!genre || !normalizedName) return;
+
+    if (!genreCountsByArtist.has(normalizedName)) {
+      genreCountsByArtist.set(normalizedName, new Map());
+    }
+    const genreCounts = genreCountsByArtist.get(normalizedName);
+    genreCounts.set(genre, (genreCounts.get(genre) || 0) + 1);
+
+    if (!artistsByGenre.has(genre)) {
+      artistsByGenre.set(genre, new Map());
+    }
+    const byGenre = artistsByGenre.get(genre);
+    let artist = byGenre.get(normalizedName);
+    if (!artist) {
+      artist = {
+        id: `zone3-${sanitizeArtistKey(artistName)}`,
+        name: artistName,
+        initials: getArtistInitials(artistName),
+        artworkUrl: String(entry?.artistImageUrl || entry?.artworkUrl || "").trim() || null,
+        albums: [],
+      };
+      byGenre.set(normalizedName, artist);
+    }
+
+    const albumTitle = String(entry?.albumName || "").trim();
+    const albumArtworkUrl = String(entry?.artworkUrl || "").trim();
+    if (albumTitle && !artist.albums.some((album) => normalizeName(album?.title) === normalizeName(albumTitle))) {
+      artist.albums.push({
+        title: albumTitle,
+        artworkUrl: albumArtworkUrl || null,
+      });
+    }
+  });
+
+  genreCountsByArtist.forEach((genreCounts, normalizedName) => {
+    const total = Array.from(genreCounts.values()).reduce((sum, count) => sum + count, 0);
+    if (!total) return;
+    const normalizedScores = {};
+    genreCounts.forEach((count, genre) => {
+      normalizedScores[genre] = count / total;
+    });
+    byName.set(normalizedName, normalizedScores);
+  });
+
+  return {
+    ARTIST_GENRE_SCORES_BY_NAME: byName,
+    ZONE3_ARTISTS_BY_GENRE: artistsByGenre,
+  };
+})();
 
 function hashString(str) {
   let h = 2166136261;
@@ -319,6 +409,129 @@ function buildUniqueZone1Artists(
 ) {
   const unique = dedupeArtistsByName(artistPool || []);
   return buildTimelinePlacement(unique, { futureArtistCount, pastArtistCount });
+}
+
+function getArtistGenreAffinity(artist, selectedGenre) {
+  const normalizedArtistName = normalizeName(artist?.name);
+  const manualGenreArtists = MANUAL_GENRE_ARTIST_SETS[selectedGenre] || new Set();
+  if (manualGenreArtists.has(normalizedArtistName)) {
+    return 1;
+  }
+
+  const knownGenreScores = ARTIST_GENRE_SCORES_BY_NAME.get(normalizedArtistName);
+  const knownScore = knownGenreScores ? Number(knownGenreScores[selectedGenre]) : NaN;
+  if (Number.isFinite(knownScore)) {
+    return knownScore;
+  }
+
+  const genreHasCatalog = ZONE3_ARTISTS_BY_GENRE.has(selectedGenre) || manualGenreArtists.size > 0;
+  if (genreHasCatalog) {
+    return 0;
+  }
+
+  const seeded = hashString(`${normalizedArtistName}|${selectedGenre}|anticipated-genre-affinity`);
+  return 0.18 + ((seeded % 1000) / 1000) * 0.72;
+}
+
+function buildGenreArtistCandidatePool(artistPool, selectedGenre) {
+  const byName = new Map();
+  dedupeArtistsByName(artistPool || []).forEach((artist) => {
+    const key = normalizeName(artist?.name);
+    if (!key || byName.has(key)) return;
+    byName.set(key, artist);
+  });
+
+  const zone3ArtistsForGenre = ZONE3_ARTISTS_BY_GENRE.get(selectedGenre);
+  if (zone3ArtistsForGenre) {
+    zone3ArtistsForGenre.forEach((artist, normalizedName) => {
+      if (byName.has(normalizedName)) {
+        const existing = byName.get(normalizedName);
+        if (!existing.artworkUrl && artist.artworkUrl) {
+          byName.set(normalizedName, {
+            ...existing,
+            artworkUrl: artist.artworkUrl,
+          });
+        }
+        if ((!existing.albums || existing.albums.length === 0) && artist.albums?.length) {
+          byName.set(normalizedName, {
+            ...byName.get(normalizedName),
+            albums: artist.albums,
+          });
+        }
+      } else {
+        byName.set(normalizedName, {
+          ...artist,
+          color: getArtistColor(artist, selectedGenre),
+        });
+      }
+    });
+  }
+
+  (GENRE_MANUAL_ARTIST_FALLBACKS[selectedGenre] || []).forEach((artistName) => {
+    const normalizedName = normalizeName(artistName);
+    if (!normalizedName || byName.has(normalizedName)) return;
+    const artist = {
+      id: `manual-${sanitizeArtistKey(artistName)}`,
+      name: artistName,
+      initials: getArtistInitials(artistName),
+    };
+    byName.set(normalizedName, {
+      ...artist,
+      color: getArtistColor(artist, selectedGenre),
+    });
+  });
+
+  return Array.from(byName.values());
+}
+
+function buildGenreMatchedFutureArtists(
+  artistPool,
+  {
+    genre,
+    count = FUTURE_ARTIST_COUNT_ANTICIPATED,
+  } = {}
+) {
+  const futureYearStart = MONTH_START_BY_YEAR.get(FUTURE_YEAR);
+  if (futureYearStart === undefined) return [];
+
+  const selectedGenre = String(genre || "").trim();
+  const uniqueArtists = buildGenreArtistCandidatePool(artistPool, selectedGenre);
+  if (!selectedGenre || uniqueArtists.length === 0 || count <= 0) return [];
+
+  const genreKey = selectedGenre.toLowerCase().replace(/[^a-z0-9]+/g, "-") || "genre";
+  const rankedArtists = uniqueArtists
+    .map((artist) => {
+      const artistName = String(artist?.name || "");
+      const normalizedArtistName = normalizeName(artistName);
+      const tieBreaker = hashString(`${normalizedArtistName}|${selectedGenre}|anticipated-order`);
+      return {
+        artist,
+        affinity: getArtistGenreAffinity(artist, selectedGenre),
+        tieBreaker,
+      };
+    })
+    .sort((left, right) =>
+      right.affinity - left.affinity ||
+      left.tieBreaker - right.tieBreaker ||
+      String(left.artist?.name || "").localeCompare(String(right.artist?.name || ""))
+    );
+
+  return rankedArtists
+    .slice(0, count)
+    .map(({ artist }, index) => {
+      const artistKey = sanitizeArtistKey(artist?.name);
+      const releaseDaySeed = hashString(`${artistKey}|${selectedGenre}|anticipated-day|${index}`);
+      const albumSeed = hashString(`${artistKey}|${selectedGenre}|anticipated-album|${index}`);
+      return {
+        ...artist,
+        id: `anticipated-${genreKey}-${artistKey}-${index}`,
+        releaseMonth: futureYearStart + clamp(Math.floor(((index + 1) * 12) / (count + 1)), 0, 11),
+        releaseDay: 1 + (releaseDaySeed % 28),
+        isAnticipated: true,
+        albumName: ANTICIPATED_ALBUM_NAMES[albumSeed % ANTICIPATED_ALBUM_NAMES.length],
+      };
+    })
+    .sort(sortArtistsChronologically);
 }
 
 function clamp(value, min, max) {
@@ -784,11 +997,29 @@ export default function PersonalTimeline({
     const futureCount = showAnticipatedAlbums
       ? FUTURE_ARTIST_COUNT_ANTICIPATED
       : FUTURE_ARTIST_COUNT_DEFAULT;
-    return buildUniqueZone1Artists(cacheReadyArtists, {
+
+    const baseTimelineArtists = buildUniqueZone1Artists(cacheReadyArtists, {
       futureArtistCount: futureCount,
       pastArtistCount: null,
-    }).map((artist) => enrichAnticipatedArtist(artist, waitingArtistIds));
-  }, [cacheReadyArtists, showAnticipatedAlbums, waitingArtistIds]);
+    });
+
+    const useGenreMatchedFutureArtists = showAnticipatedAlbums && genreActive;
+    const resolvedTimelineArtists = useGenreMatchedFutureArtists
+      ? (() => {
+        const genreMatchedFutureArtists = buildGenreMatchedFutureArtists(cacheReadyArtists, {
+          genre: zone1Genre,
+          count: FUTURE_ARTIST_COUNT_ANTICIPATED,
+        });
+        if (genreMatchedFutureArtists.length === 0) {
+          return baseTimelineArtists;
+        }
+        const nonFutureArtists = baseTimelineArtists.filter((artist) => !artist.isAnticipated);
+        return [...nonFutureArtists, ...genreMatchedFutureArtists].sort(sortArtistsChronologically);
+      })()
+      : baseTimelineArtists;
+
+    return resolvedTimelineArtists.map((artist) => enrichAnticipatedArtist(artist, waitingArtistIds));
+  }, [cacheReadyArtists, showAnticipatedAlbums, waitingArtistIds, genreActive, zone1Genre]);
 
   const topAlbumsArtists = useMemo(() => (
     buildUniqueZone1Artists(cacheReadyArtists, {
