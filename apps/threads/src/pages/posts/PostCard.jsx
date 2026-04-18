@@ -3,6 +3,27 @@ import {
   Heart, MessageCircle, Share2, Bookmark, MoreHorizontal, 
   Headphones, Volume2, Users, Music, Mic, Info
 } from 'lucide-react';
+
+// Mobile breakpoint: covers iPhone (390), Android (360), big phone (414)
+// Tablet portrait (768) gets the desktop grid layout
+const MOBILE_BREAKPOINT = 767;
+
+function useIsMobile(breakpoint = MOBILE_BREAKPOINT) {
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.innerWidth <= breakpoint;
+  });
+
+  useEffect(() => {
+    const mql = window.matchMedia(`(max-width: ${breakpoint}px)`);
+    const handler = (e) => setIsMobile(e.matches);
+    setIsMobile(mql.matches);
+    mql.addEventListener('change', handler);
+    return () => mql.removeEventListener('change', handler);
+  }, [breakpoint]);
+
+  return isMobile;
+}
 import InfoIconModal from '../../components/InfoIconModal';
 import { 
   getRandomNumber, 
@@ -11,6 +32,7 @@ import {
   hashString, 
   getAvatarSrc, 
   generateUsername, 
+  sanitizeDeletedUsername,
   getTimeAgo, 
   formatCompactNumber 
 } from './postCardUtils';
@@ -305,47 +327,55 @@ const EXAMPLE_EXPAND_ARTIST_SECS = [
 ];
 
 const EXAMPLE_ARTIST_SONG_POOL = {
-  'Placeholder Artist A': [{ song: 'Placeholder Song 01', accent: '#60A5FA', albumColor: '#0f172a', avgRating: 84, totalRatings: 120 }],
-  'Placeholder Artist B': [{ song: 'Placeholder Song 02', accent: '#A78BFA', albumColor: '#1e1b4b', avgRating: 79, totalRatings: 94 }],
-  'Placeholder Artist C': [{ song: 'Placeholder Song 03', accent: '#34D399', albumColor: '#052e2b', avgRating: 88, totalRatings: 143 }],
-  'Placeholder Artist D': [{ song: 'Placeholder Song 04', accent: '#F59E0B', albumColor: '#3b2300', avgRating: 75, totalRatings: 81 }],
-  'Placeholder Artist E': [{ song: 'Placeholder Song 05', accent: '#F472B6', albumColor: '#3d1024', avgRating: 82, totalRatings: 111 }],
-  'Placeholder Artist F': [{ song: 'Placeholder Song 06', accent: '#22D3EE', albumColor: '#083344', avgRating: 86, totalRatings: 138 }],
-  'Placeholder Artist G': [{ song: 'Placeholder Song 07', accent: '#FB7185', albumColor: '#3f0c1c', avgRating: 77, totalRatings: 96 }],
-  'Placeholder Artist H': [{ song: 'Placeholder Song 08', accent: '#FDE68A', albumColor: '#3b3200', avgRating: 80, totalRatings: 107 }],
-  'Placeholder Artist I': [{ song: 'Placeholder Song 09', accent: '#93C5FD', albumColor: '#0b2a4a', avgRating: 85, totalRatings: 126 }],
+  'Placeholder Artist A': [{ song: 'Song title', accent: '#60A5FA', albumColor: '#0f172a', avgRating: 84, totalRatings: 120 }],
+  'Placeholder Artist B': [{ song: 'Song title', accent: '#A78BFA', albumColor: '#1e1b4b', avgRating: 79, totalRatings: 94 }],
+  'Placeholder Artist C': [{ song: 'Song title', accent: '#34D399', albumColor: '#052e2b', avgRating: 88, totalRatings: 143 }],
+  'Placeholder Artist D': [{ song: 'Song title', accent: '#F59E0B', albumColor: '#3b2300', avgRating: 75, totalRatings: 81 }],
+  'Placeholder Artist E': [{ song: 'Song title', accent: '#F472B6', albumColor: '#3d1024', avgRating: 82, totalRatings: 111 }],
+  'Placeholder Artist F': [{ song: 'Song title', accent: '#22D3EE', albumColor: '#083344', avgRating: 86, totalRatings: 138 }],
+  'Placeholder Artist G': [{ song: 'Song title', accent: '#FB7185', albumColor: '#3f0c1c', avgRating: 77, totalRatings: 96 }],
+  'Placeholder Artist H': [{ song: 'Song title', accent: '#FDE68A', albumColor: '#3b3200', avgRating: 80, totalRatings: 107 }],
+  'Placeholder Artist I': [{ song: 'Song title', accent: '#93C5FD', albumColor: '#0b2a4a', avgRating: 85, totalRatings: 126 }],
 };
 
 const EXAMPLE_SONG_RESPONSES = [
-  { id: 1, user: 'placeholderuser1', avatar: 'PU', avatarColor: '#334155', comment: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.', song: 'Placeholder Song 01', artist: 'Placeholder Artist A', albumColor: '#0f172a', accent: '#60A5FA', avgRating: 84, totalRatings: 120 },
-  { id: 2, user: 'placeholderuser2', avatar: 'PU', avatarColor: '#334155', comment: 'Sed do eiusmod tempor incididunt ut labore magna.', song: 'Placeholder Song 02', artist: 'Placeholder Artist B', albumColor: '#1e1b4b', accent: '#A78BFA', avgRating: 79, totalRatings: 94 },
-  { id: 3, user: 'placeholderuser3', avatar: 'PU', avatarColor: '#334155', comment: 'Ut enim ad minim veniam quis nostrud exercitation.', song: 'Placeholder Song 03', artist: 'Placeholder Artist C', albumColor: '#052e2b', accent: '#34D399', avgRating: 88, totalRatings: 143 },
+  { id: 1, user: 'User', avatar: 'PU', avatarColor: '#334155', comment: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.', song: 'Song title', artist: 'Artist', albumColor: '#0f172a', accent: '#60A5FA', avgRating: 84, totalRatings: 120 },
+  { id: 2, user: 'User', avatar: 'PU', avatarColor: '#334155', comment: 'Sed do eiusmod tempor incididunt ut labore magna.', song: 'Song title', artist: 'Artist', albumColor: '#1e1b4b', accent: '#A78BFA', avgRating: 79, totalRatings: 94 },
+  { id: 3, user: 'User', avatar: 'PU', avatarColor: '#334155', comment: 'Ut enim ad minim veniam quis nostrud exercitation.', song: 'Song title', artist: 'Artist', albumColor: '#052e2b', accent: '#34D399', avgRating: 88, totalRatings: 143 },
 ];
 
-function _ArtistPool({ onToggle, selected, artistImages, sections = EXPAND_ARTIST_SECS }) {
+const _isExampleArtistPlaceholder = (name = '') => String(name).startsWith('Placeholder Artist ');
+const _displayExpandArtistName = (name = '') => (_isExampleArtistPlaceholder(name) ? 'Artist' : String(name));
+const _displayExpandArtistChip = (name = '') => _displayExpandArtistName(name).split(',')[0].split(' ')[0];
+const _displayExpandArtistInitials = (name = '') => (_isExampleArtistPlaceholder(name) ? 'A' : _ini(name));
+
+function _ArtistPool({ onToggle, selected, artistImages, sections = EXPAND_ARTIST_SECS, isMobile = false }) {
+  const chipAvatarSize = isMobile ? 28 : 30;
+  const chipBadgeSize = isMobile ? 11 : 12;
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 16 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? 12 : 14, marginBottom: isMobile ? 14 : 16 }}>
       {sections.map(sec => (
         <div key={sec.key}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 9 }}>
-            <div style={{ width: 3, height: 13, borderRadius: 2, background: sec.accent, flexShrink: 0 }} />
-            <span style={{ fontSize: 11, fontWeight: 700, color: sec.accent, letterSpacing: 1 }}>{sec.label}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 6 : 7, marginBottom: isMobile ? 8 : 9 }}>
+            <div style={{ width: 3, height: isMobile ? 12 : 13, borderRadius: 2, background: sec.accent, flexShrink: 0 }} />
+            <span style={{ fontSize: isMobile ? 10 : 11, fontWeight: 700, color: sec.accent, letterSpacing: 1 }}>{sec.label}</span>
             <div style={{ flex: 1, height: 1, background: `linear-gradient(to right,${sec.accent}35,transparent)` }} />
-            <span style={{ fontSize: 10, color: '#475569' }}>{sec.artists.length}</span>
+            <span style={{ fontSize: isMobile ? 9 : 10, color: '#475569' }}>{sec.artists.length}</span>
           </div>
           {/* paddingTop gives tooltip room to render downward without being clipped */}
-          <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4, paddingTop: 2, scrollbarWidth: 'none' }}>
+          <div style={{ display: 'flex', gap: isMobile ? 6 : 8, overflowX: 'auto', paddingBottom: 4, paddingTop: 2, scrollbarWidth: 'none' }}>
             {sec.artists.map((name, i) => {
               const h = _ahue(name);
               const isSel = selected.has(name);
               const count = _fire(name);
               const artistImage = artistImages?.[name] || null;
+              const displayArtistName = _displayExpandArtistName(name);
               return (
                 <div key={i} onClick={() => onToggle(name)} style={{
-                  flexShrink: 0, display: 'flex', alignItems: 'center', gap: 7,
+                  flexShrink: 0, display: 'flex', alignItems: 'center', gap: isMobile ? 6 : 7,
                   background: isSel ? `hsl(${h},38%,18%)` : 'rgba(15,24,35,0.75)',
                   border: `1px solid ${isSel ? `hsl(${h},52%,44%)` : `${sec.accent}30`}`,
-                  borderRadius: 20, padding: '6px 11px 6px 6px', cursor: 'pointer', transition: 'all .25s cubic-bezier(.4,0,.2,1)',
+                  borderRadius: 20, padding: isMobile ? '5px 10px 5px 5px' : '6px 11px 6px 6px', cursor: 'pointer', transition: 'all .25s cubic-bezier(.4,0,.2,1)',
                   boxShadow: isSel ? `0 0 0 1px ${sec.accent}55, 0 0 12px ${sec.accent}20` : 'none',
                   transform: isSel ? 'scale(1.04)' : 'scale(1)',
                 }}
@@ -356,30 +386,30 @@ function _ArtistPool({ onToggle, selected, artistImages, sections = EXPAND_ARTIS
                     {artistImage ? (
                       <img
                         src={artistImage}
-                        alt={name}
+                        alt={displayArtistName}
                         loading="lazy"
                         decoding="async"
-                        style={{ width: 30, height: 30, borderRadius: '50%', objectFit: 'cover', border: `1.5px solid hsl(${h},48%,40%)`, display: 'block' }}
+                        style={{ width: chipAvatarSize, height: chipAvatarSize, borderRadius: '50%', objectFit: 'cover', border: `1.5px solid hsl(${h},48%,40%)`, display: 'block' }}
                       />
                     ) : (
-                      <div style={{ width: 30, height: 30, borderRadius: '50%', background: `hsl(${h},40%,22%)`, border: `1.5px solid hsl(${h},48%,40%)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: `hsl(${h},75%,80%)` }}>
-                        {_ini(name)}
+                      <div style={{ width: chipAvatarSize, height: chipAvatarSize, borderRadius: '50%', background: `hsl(${h},40%,22%)`, border: `1.5px solid hsl(${h},48%,40%)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: isMobile ? 9 : 10, fontWeight: 700, color: `hsl(${h},75%,80%)` }}>
+                        {_displayExpandArtistInitials(name)}
                       </div>
                     )}
                     {sec.badgeType === 'check' && (
-                      <div style={{ position: 'absolute', top: -2, right: -2, width: 12, height: 12, borderRadius: '50%', background: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 7, color: '#fff', border: '1px solid #1e2732', fontWeight: 900 }}>✓</div>
+                      <div style={{ position: 'absolute', top: -2, right: -2, width: chipBadgeSize, height: chipBadgeSize, borderRadius: '50%', background: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 7, color: '#fff', border: '1px solid #1e2732', fontWeight: 900 }}>✓</div>
                     )}
                     {sec.badgeType === 'star' && (
-                      <div style={{ position: 'absolute', top: -2, right: -2, width: 12, height: 12, borderRadius: '50%', background: '#7C3AED', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 7, color: '#fff', border: '1px solid #1e2732' }}>✦</div>
+                      <div style={{ position: 'absolute', top: -2, right: -2, width: chipBadgeSize, height: chipBadgeSize, borderRadius: '50%', background: '#7C3AED', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 7, color: '#fff', border: '1px solid #1e2732' }}>✦</div>
                     )}
                   </div>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: isSel ? '#ffffff' : '#8899a6', whiteSpace: 'nowrap' }}>
-                    {name.split(',')[0].split(' ')[0]}
+                  <span style={{ fontSize: isMobile ? 11 : 12, fontWeight: 600, color: isSel ? '#ffffff' : '#8899a6', whiteSpace: 'nowrap' }}>
+                    {_displayExpandArtistChip(name)}
                   </span>
                   <Tip text={`${count}× recommended today`}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                      <svg width="8" height="8" viewBox="0 0 24 24" fill="#f97316"><path d="M12 2C9.5 6 14 10 11 14c-1-2-3-2.5-3-2.5C8.5 17 10.5 22 15 22c4 0 6-3 6-6 0-4-4-5-4-8-2 2-1.5 5-3.5 5S12 9 12 2z" /></svg>
-                      <span style={{ fontSize: 9, color: '#fb923c', fontWeight: 700 }}>{count}</span>
+                      <svg width={isMobile ? "7" : "8"} height={isMobile ? "7" : "8"} viewBox="0 0 24 24" fill="#f97316"><path d="M12 2C9.5 6 14 10 11 14c-1-2-3-2.5-3-2.5C8.5 17 10.5 22 15 22c4 0 6-3 6-6 0-4-4-5-4-8-2 2-1.5 5-3.5 5S12 9 12 2z" /></svg>
+                      <span style={{ fontSize: isMobile ? 8 : 9, color: '#fb923c', fontWeight: 700 }}>{count}</span>
                     </div>
                   </Tip>
                 </div>
@@ -407,41 +437,116 @@ function _GenrePill({ name, color, fill }) {
 }
 
 // Vertical rating bar for song response cards
-function VertRatingBar({ avgRating, userRating, onRate }) {
+function VertRatingBar({ avgRating, userRating, onRate, compact = false }) {
   const [hovering, setHovering] = React.useState(false);
   const [hoverVal, setHoverVal] = React.useState(0);
   const barRef = React.useRef(null);
   const didRate = userRating > 0;
-  function getVal(e) {
+  const getPoint = (event) => {
+    if (event.touches?.length) return event.touches[0];
+    if (event.changedTouches?.length) return event.changedTouches[0];
+    return event;
+  };
+  function getVal(point) {
     const r = barRef.current.getBoundingClientRect();
-    return Math.max(0, Math.min(100, Math.round((1 - (e.clientY - r.top) / r.height) * 100)));
+    if (compact) {
+      return Math.max(0, Math.min(100, Math.round(((point.clientX - r.left) / r.width) * 100)));
+    }
+    return Math.max(0, Math.min(100, Math.round((1 - (point.clientY - r.top) / r.height) * 100)));
   }
   const fill = didRate ? userRating : (hovering ? hoverVal : avgRating);
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, padding: '12px 14px', borderLeft: '1px solid rgba(255,255,255,0.07)' }}>
-      <span style={{ fontSize: 9, color: '#475569', letterSpacing: 1, marginBottom: 4 }}>RATE</span>
+    <div style={compact
+      ? {
+          display: 'grid',
+          gridTemplateColumns: 'auto minmax(0, 1fr) auto',
+          alignItems: 'center',
+          gap: 10,
+          paddingTop: 10,
+          borderTop: '1px solid rgba(255,255,255,0.07)',
+        }
+      : {
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 4,
+          padding: '12px 14px',
+          borderLeft: '1px solid rgba(255,255,255,0.07)',
+        }
+    }>
+      <span style={{ fontSize: compact ? 10 : 9, color: '#475569', letterSpacing: 1, marginBottom: compact ? 0 : 4 }}>RATE</span>
       <div ref={barRef}
-        onMouseMove={e => { if (!didRate) setHoverVal(getVal(e)); }}
+        onMouseMove={e => { if (!didRate) setHoverVal(getVal(getPoint(e))); }}
         onMouseEnter={() => setHovering(true)}
         onMouseLeave={() => setHovering(false)}
-        onClick={e => { if (!didRate) onRate(getVal(e)); }}
-        style={{ width: 14, height: 80, background: 'rgba(255,255,255,0.05)', borderRadius: 7, position: 'relative', cursor: didRate ? 'default' : 'pointer', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.07)' }}
+        onTouchStart={e => {
+          if (!didRate) {
+            const point = getPoint(e);
+            const nextValue = getVal(point);
+            setHoverVal(nextValue);
+            onRate(nextValue);
+          }
+        }}
+        onClick={e => { if (!didRate) onRate(getVal(getPoint(e))); }}
+        style={compact
+          ? {
+              width: '100%',
+              height: 10,
+              background: 'rgba(255,255,255,0.05)',
+              borderRadius: 999,
+              position: 'relative',
+              cursor: didRate ? 'default' : 'pointer',
+              overflow: 'hidden',
+              border: '1px solid rgba(255,255,255,0.07)',
+            }
+          : {
+              width: 14,
+              height: 80,
+              background: 'rgba(255,255,255,0.05)',
+              borderRadius: 7,
+              position: 'relative',
+              cursor: didRate ? 'default' : 'pointer',
+              overflow: 'hidden',
+              border: '1px solid rgba(255,255,255,0.07)',
+            }
+        }
       >
-        <div style={{ position: 'absolute', bottom: 0, width: '100%', height: `${fill}%`, background: didRate ? 'linear-gradient(to top,#1d9bf0,#60c5ff)' : hovering ? 'linear-gradient(to top,#1d9bf0aa,#1d9bf0)' : 'linear-gradient(to top,#1e2732,#2a3a4a)', transition: 'height .2s ease', borderRadius: 7 }} />
+        <div style={compact
+          ? {
+              position: 'absolute',
+              left: 0,
+              top: 0,
+              height: '100%',
+              width: `${fill}%`,
+              background: didRate ? 'linear-gradient(to right,#1d9bf0,#60c5ff)' : hovering ? 'linear-gradient(to right,#1d9bf0aa,#1d9bf0)' : 'linear-gradient(to right,#1e2732,#2a3a4a)',
+              transition: 'width .2s ease',
+              borderRadius: 999,
+            }
+          : {
+              position: 'absolute',
+              bottom: 0,
+              width: '100%',
+              height: `${fill}%`,
+              background: didRate ? 'linear-gradient(to top,#1d9bf0,#60c5ff)' : hovering ? 'linear-gradient(to top,#1d9bf0aa,#1d9bf0)' : 'linear-gradient(to top,#1e2732,#2a3a4a)',
+              transition: 'height .2s ease',
+              borderRadius: 7,
+            }
+        } />
       </div>
-      <span style={{ fontSize: 11, color: didRate ? '#1d9bf0' : '#475569', fontWeight: 700 }}>
-        {didRate ? userRating : (hovering ? hoverVal : '—')}
+      <span style={{ fontSize: compact ? 12 : 11, color: didRate ? '#1d9bf0' : '#475569', fontWeight: 700, minWidth: compact ? 30 : 'auto', textAlign: 'right' }}>
+        {didRate ? userRating : (compact ? avgRating : (hovering ? hoverVal : '—'))}
       </span>
     </div>
   );
 }
 
 // Song response card — "Inset Sleeve": square album art with rounded corners, glow shadow, gradient bg bleed
-function SongCard({ data, songName, artistName, albumArtUrl, onExpand, onUserClick, expanded }) {
+function SongCard({ data, songName, artistName, albumArtUrl, onExpand, onUserClick, expanded, isMobile = false }) {
   const [localRating, setLocalRating] = React.useState(0);
   const displaySong = songName || data.song;
-  const displayArtist = artistName || data.artist;
+  const displayArtist = _displayExpandArtistName(artistName || data.artist);
   const responseUser = _expandUser(data.user);
+  const albumArtSize = isMobile ? 88 : 120;
   return (
     <div
       style={{
@@ -450,82 +555,84 @@ function SongCard({ data, songName, artistName, albumArtUrl, onExpand, onUserCli
         borderRadius: 14,
         overflow: 'hidden',
         cursor: 'pointer',
-        padding: '14px',
+        padding: isMobile ? '12px' : '14px',
         transition: 'all .2s',
       }}
       onClick={onExpand}
       onMouseEnter={e => { e.currentTarget.style.borderColor = `${data.accent}50`; }}
       onMouseLeave={e => { e.currentTarget.style.borderColor = expanded ? `${data.accent}70` : 'rgba(255,255,255,0.08)'; }}
     >
-      <div style={{ display: 'flex', gap: 14 }}>
-        {/* Inset square album art with rounded corners + glow */}
-        <div style={{
-          width: 120, height: 120, flexShrink: 0, borderRadius: 12, overflow: 'hidden',
-          position: 'relative',
-          boxShadow: `0 4px 24px ${data.accent}25, 0 0 0 1px rgba(255,255,255,0.06)`,
-        }}>
-          {albumArtUrl ? (
-            <img
-              src={albumArtUrl}
-              alt={`${displaySong} album art`}
-              loading="lazy"
-              decoding="async"
-              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-            />
-          ) : (
-            <div style={{ width: '100%', height: '100%', background: data.albumColor }} />
-          )}
-          {/* Play button overlay */}
+      <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? 12 : 14 }}>
+        <div style={{ display: 'flex', gap: isMobile ? 12 : 14, alignItems: 'flex-start', minWidth: 0, flex: 1 }}>
+          {/* Inset square album art with rounded corners + glow */}
           <div style={{
-            position: 'absolute', inset: 0,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            background: 'rgba(0,0,0,0.15)',
+            width: albumArtSize, height: albumArtSize, flexShrink: 0, borderRadius: 12, overflow: 'hidden',
+            position: 'relative',
+            boxShadow: `0 4px 24px ${data.accent}25, 0 0 0 1px rgba(255,255,255,0.06)`,
           }}>
-            <div style={{
-              width: 40, height: 40, borderRadius: '50%',
-              background: `${data.accent}30`, border: `1.5px solid ${data.accent}80`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              backdropFilter: 'blur(4px)',
-            }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill={data.accent}><polygon points="6,3 20,12 6,21" /></svg>
-            </div>
-          </div>
-        </div>
-
-        {/* Content */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minWidth: 0 }}>
-          <div>
-            {/* Song title + inline rating badge */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-              <span style={{ fontSize: 17, fontWeight: 800, color: '#fff', letterSpacing: -0.3 }}>{displaySong}</span>
-              <span style={{
-                fontSize: 9, color: data.accent,
-                background: `${data.accent}18`, padding: '2px 7px', borderRadius: 4,
-                fontWeight: 700, letterSpacing: 0.5,
-              }}>{data.avgRating}</span>
-            </div>
-            <div style={{ fontSize: 12, color: '#64748b', marginBottom: 8 }}>{displayArtist}</div>
-
-            {/* Comment */}
-            <p style={{ margin: 0, fontSize: 13, color: '#8899a6', lineHeight: 1.5 }}>{data.comment}</p>
-          </div>
-
-          {/* Footer: user + rated count */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-              <ClickableUserAvatar
-                user={responseUser}
-                avatarSrc={responseUser.avatar}
-                size={22}
-                onUserClick={onUserClick}
+            {albumArtUrl ? (
+              <img
+                src={albumArtUrl}
+                alt={`${displaySong} album art`}
+                loading="lazy"
+                decoding="async"
+                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
               />
-              <span style={{ fontSize: 12, color: '#64748b' }}>@{data.user}</span>
+            ) : (
+              <div style={{ width: '100%', height: '100%', background: data.albumColor }} />
+            )}
+            {/* Play button overlay */}
+            <div style={{
+              position: 'absolute', inset: 0,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: 'rgba(0,0,0,0.15)',
+            }}>
+              <div style={{
+                width: isMobile ? 34 : 40, height: isMobile ? 34 : 40, borderRadius: '50%',
+                background: `${data.accent}30`, border: `1.5px solid ${data.accent}80`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                backdropFilter: 'blur(4px)',
+              }}>
+                <svg width={isMobile ? "14" : "16"} height={isMobile ? "14" : "16"} viewBox="0 0 24 24" fill={data.accent}><polygon points="6,3 20,12 6,21" /></svg>
+              </div>
             </div>
-            <span style={{ fontSize: 11, color: '#475569' }}>{data.totalRatings} rated</span>
+          </div>
+
+          {/* Content */}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minWidth: 0 }}>
+            <div>
+              {/* Song title + inline rating badge */}
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: isMobile ? 15 : 17, fontWeight: 800, color: '#fff', letterSpacing: -0.3, lineHeight: 1.2, minWidth: 0, wordBreak: 'break-word' }}>{displaySong}</span>
+                <span style={{
+                  fontSize: 9, color: data.accent,
+                  background: `${data.accent}18`, padding: '2px 7px', borderRadius: 4,
+                  fontWeight: 700, letterSpacing: 0.5,
+                }}>{data.avgRating}</span>
+              </div>
+              <div style={{ fontSize: isMobile ? 11 : 12, color: '#64748b', marginBottom: 8 }}>{displayArtist}</div>
+
+              {/* Comment */}
+              <p style={{ margin: 0, fontSize: isMobile ? 12 : 13, color: '#8899a6', lineHeight: 1.5 }}>{data.comment}</p>
+            </div>
+
+            {/* Footer: user + rated count */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10, gap: 8, flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
+                <ClickableUserAvatar
+                  user={responseUser}
+                  avatarSrc={responseUser.avatar}
+                  size={22}
+                  onUserClick={onUserClick}
+                />
+                <span style={{ fontSize: 12, color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>@{data.user}</span>
+              </div>
+              <span style={{ fontSize: 11, color: '#475569' }}>{data.totalRatings} rated</span>
+            </div>
           </div>
         </div>
 
-        <VertRatingBar avgRating={data.avgRating} userRating={localRating} onRate={v => setLocalRating(v)} />
+        <VertRatingBar avgRating={data.avgRating} userRating={localRating} onRate={v => setLocalRating(v)} compact={isMobile} />
       </div>
     </div>
   );
@@ -578,17 +685,17 @@ function RatingScrollbar({ value, onChange }) {
 }
 
 // Sub-comment view — bigger, more readable text
-function SubCommentView({ song, onClose, onUserClick }) {
+function SubCommentView({ song, onClose, onUserClick, isMobile = false }) {
   const [threshold, setThreshold] = React.useState(100);
   const [filterActive, setFilterActive] = React.useState(false);
   const sorted = [...EXPAND_SUB_COMMENTS].sort((a, b) => b.rating - a.rating);
   const displayed = filterActive ? sorted.filter(c => c.rating <= threshold) : sorted;
   return (
     <div style={{ marginTop: 10, background: '#171f28', border: '1px solid rgba(29,155,240,0.35)', borderRadius: 14, overflow: 'hidden' }}>
-      <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div>
-          <span style={{ fontSize: 14, fontWeight: 700, color: '#ffffff' }}>{song.song || song.displaySong}</span>
-          <span style={{ fontSize: 12, color: '#475569' }}> · {song.artist || song.displayArtist}</span>
+      <div style={{ padding: isMobile ? '12px 12px 10px' : '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
+        <div style={{ minWidth: 0 }}>
+          <span style={{ fontSize: isMobile ? 13 : 14, fontWeight: 700, color: '#ffffff', wordBreak: 'break-word' }}>{song.song || song.displaySong}</span>
+          <span style={{ fontSize: isMobile ? 11 : 12, color: '#475569' }}> · {_displayExpandArtistName(song.artist || song.displayArtist)}</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           {filterActive && (
@@ -597,8 +704,33 @@ function SubCommentView({ song, onClose, onUserClick }) {
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#8899a6', cursor: 'pointer', fontSize: 20, lineHeight: 1, padding: '0 4px' }}>×</button>
         </div>
       </div>
-      <div style={{ display: 'flex', maxHeight: 360 }}>
-        <div style={{ flex: 1, overflowY: 'auto' }}>
+      {isMobile && (
+        <div style={{ padding: '10px 12px 12px', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+            <span style={{ fontSize: 11, color: '#8899a6' }}>
+              {filterActive ? <>ratings ≤ <span style={{ color: '#1d9bf0', fontWeight: 700 }}>{threshold}</span></> : 'all ratings'}
+            </span>
+            {filterActive && (
+              <button onClick={() => { setFilterActive(false); setThreshold(100); }} style={{ fontSize: 11, color: '#1d9bf0', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                show all
+              </button>
+            )}
+          </div>
+          <input
+            type="range"
+            min="0"
+            max="100"
+            value={threshold}
+            onChange={(e) => {
+              setThreshold(Number(e.target.value));
+              setFilterActive(true);
+            }}
+            style={{ width: '100%', accentColor: '#1d9bf0' }}
+          />
+        </div>
+      )}
+      <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', maxHeight: isMobile ? 'none' : 360 }}>
+        <div style={{ flex: 1, overflowY: 'auto', maxHeight: isMobile ? 320 : 'none' }}>
           {displayed.length === 0 && (
             <div style={{ padding: '24px 16px', textAlign: 'center', color: '#475569', fontSize: 13 }}>no ratings ≤ {threshold}</div>
           )}
@@ -628,9 +760,11 @@ function SubCommentView({ song, onClose, onUserClick }) {
             );
           })}
         </div>
-        <RatingScrollbar value={threshold} onChange={v => { setThreshold(v); setFilterActive(true); }} />
+        {!isMobile && (
+          <RatingScrollbar value={threshold} onChange={v => { setThreshold(v); setFilterActive(true); }} />
+        )}
       </div>
-      {filterActive && (
+      {filterActive && !isMobile && (
         <div style={{ padding: '8px 16px', borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span style={{ fontSize: 11, color: '#8899a6' }}>
             ratings <span style={{ color: '#1d9bf0', fontWeight: 700 }}>≤ {threshold}</span>
@@ -738,6 +872,8 @@ function AnimatedSongEntry({ children, index, transitionKey }) {
 
 // ─── PostCard ─────────────────────────────────────────────────────────────────
 const PostCard = ({ post, onClick, onUserClick, POST_TYPE_INDICATORS, _isCached }) => {
+  const isMobile = useIsMobile();
+  const isCompactPhone = useIsMobile(390);
   const [genres] = useState(() => getPostGenres(post.id));
   const [_artists] = useState(() => getPostArtists(post.id));
   const [headerVolume] = useState(() => getRandomNumber(800, 4300));
@@ -761,7 +897,7 @@ const PostCard = ({ post, onClick, onUserClick, POST_TYPE_INDICATORS, _isCached 
   const [selectedArtists, setSelectedArtists] = useState(() => new Set());
   const [expandArtistImages, setExpandArtistImages] = useState({});
   const [expandAlbumArtworks, setExpandAlbumArtworks] = useState({});
-  const username = post.username || generateUsername(post.author);
+  const username = sanitizeDeletedUsername(post.username || generateUsername(post.author));
   const timeAgo = getTimeAgo(post.createdUtc);
   const isExamplePost = post.id === 'example_post_001';
   const expandArtistSections = isExamplePost ? EXAMPLE_EXPAND_ARTIST_SECS : EXPAND_ARTIST_SECS;
@@ -973,9 +1109,9 @@ const PostCard = ({ post, onClick, onUserClick, POST_TYPE_INDICATORS, _isCached 
       style={{
         backgroundColor: '#1e2732',
         backgroundImage: backgroundStyle,
-        borderRadius: '16px',
+        borderRadius: 'clamp(12px, 2.8vw, 16px)',
         overflow: 'hidden',
-        marginBottom: '16px',
+        marginBottom: 'clamp(12px, 2.8vw, 16px)',
         border: isNews ? `1px solid ${getRgbaFromHex(themeColor, 0.3)}` : '1px solid rgba(255, 255, 255, 0.05)',
         width: '100%',
         position: 'relative',
@@ -985,30 +1121,6 @@ const PostCard = ({ post, onClick, onUserClick, POST_TYPE_INDICATORS, _isCached 
         containIntrinsicSize: hasInlineExpandedContent ? undefined : (hasImage ? '720px' : '540px')
       }}
     >
-      {post.id === 'example_post_001' && (
-        <div
-          style={{
-            position: 'absolute',
-            top: '50%',
-            right: '-48px',
-            transform: 'rotate(-90deg) translateY(-50%)',
-            transformOrigin: 'right top',
-            backgroundColor: 'rgba(255, 255, 255, 0.95)',
-            color: '#0c111b',
-            padding: '6px 14px',
-            borderRadius: '8px',
-            fontSize: '12px',
-            fontWeight: '800',
-            letterSpacing: '0.08em',
-            textTransform: 'uppercase',
-            pointerEvents: 'none',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.35)',
-            zIndex: 20
-          }}
-        >
-          Example Post · Not Clickable
-        </div>
-      )}
       {/* Post type indicator */}
       <div style={{
         position: 'relative',
@@ -1023,8 +1135,8 @@ const PostCard = ({ post, onClick, onUserClick, POST_TYPE_INDICATORS, _isCached 
           top: '6px',
           backgroundColor: themeColor,
           borderRadius: '4px',
-          padding: '2px 12px',
-          fontSize: '12px',
+          padding: '2px clamp(8px, 2.8vw, 12px)',
+          fontSize: 'clamp(11px, 3.2vw, 12px)',
           fontWeight: '600',
           color: isNews || post.postType === 'parameter' ? 'black' : 'white',
           boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
@@ -1037,7 +1149,7 @@ const PostCard = ({ post, onClick, onUserClick, POST_TYPE_INDICATORS, _isCached 
       {/* Main content area */}
       <div 
         style={{ 
-          padding: '20px', 
+          padding: 'clamp(14px, 4vw, 20px)', 
           cursor: post.id === 'example_post_001' ? 'default' : 'pointer' // No cursor change for example post
         }}
         onClick={post.id === 'example_post_001' ? undefined : () => onClick(post)} // Disable click for example post
@@ -1047,9 +1159,9 @@ const PostCard = ({ post, onClick, onUserClick, POST_TYPE_INDICATORS, _isCached 
             style={{
               backgroundColor: 'rgba(255, 255, 255, 0.9)',
               color: '#0c111b',
-              padding: '6px 12px',
+              padding: '6px 10px',
               borderRadius: '8px',
-              fontSize: '12px',
+              fontSize: 'clamp(10px, 2.8vw, 12px)',
               fontWeight: '800',
               letterSpacing: '0.06em',
               textTransform: 'uppercase',
@@ -1065,12 +1177,17 @@ const PostCard = ({ post, onClick, onUserClick, POST_TYPE_INDICATORS, _isCached 
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          marginBottom: '16px'
+          marginBottom: 'clamp(12px, 2.8vw, 16px)',
+          flexWrap: 'wrap',
+          rowGap: '10px',
+          columnGap: '10px',
         }}>
           <div style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '12px'
+            gap: 'clamp(8px, 2.4vw, 12px)',
+            minWidth: 0,
+            flex: '1 1 210px',
           }}>
             <div 
               style={{ position: 'relative' }}
@@ -1083,7 +1200,7 @@ const PostCard = ({ post, onClick, onUserClick, POST_TYPE_INDICATORS, _isCached 
                   avatar: post.avatar || getAvatarSrc(post),
                 }}
                 avatarSrc={post.avatar || getAvatarSrc(post)}
-                size={48}
+                size={44}
                 onUserClick={(user) => {
                   const completeUser = {
                     ...user,
@@ -1096,7 +1213,7 @@ const PostCard = ({ post, onClick, onUserClick, POST_TYPE_INDICATORS, _isCached 
               <div style={{
                 position: 'absolute',
                 bottom: '2px',
-                left: '40px',
+                left: '36px',
                 width: '8px',
                 height: '8px',
                 borderRadius: '50%',
@@ -1142,17 +1259,21 @@ const PostCard = ({ post, onClick, onUserClick, POST_TYPE_INDICATORS, _isCached 
             </div>
             <div style={{
               display: 'flex',
-              flexDirection: 'column'
+              flexDirection: 'column',
+              minWidth: 0,
             }}>
               <span style={{
-                fontSize: '16px',
+                fontSize: 'clamp(14px, 3.9vw, 16px)',
                 fontWeight: '700',
-                color: 'white'
+                color: 'white',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
               }}>
                 {username}
               </span>
               <span style={{
-                fontSize: '14px',
+                fontSize: 'clamp(12px, 3.2vw, 14px)',
                 color: '#8899a6'
               }}>
                 {timeAgo}
@@ -1167,7 +1288,7 @@ const PostCard = ({ post, onClick, onUserClick, POST_TYPE_INDICATORS, _isCached 
               alignItems: 'center',
               gap: '8px',
               backgroundColor: 'rgba(20, 30, 40, 0.5)',
-              padding: '6px 12px',
+              padding: '6px 10px',
               borderRadius: '12px',
               color: 'white'
             }}>
@@ -1179,24 +1300,38 @@ const PostCard = ({ post, onClick, onUserClick, POST_TYPE_INDICATORS, _isCached 
                 marginRight: '1px'
               }}></div>
               <Users size={16} color="#d0d7de" />
-              <span style={{ fontWeight: '700' }}>{formatCompactNumber(liveUsers)} Live</span>
+              <span style={{ fontWeight: '700', fontSize: 'clamp(12px, 3.3vw, 14px)' }}>{formatCompactNumber(liveUsers)} Live</span>
+            </div>
+          ) : isMobile ? (
+            <div style={{ display: 'flex', alignItems: 'center', marginLeft: 'auto', flexShrink: 0 }}>
+              <button style={{
+                color: '#8899a6',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                padding: '8px 6px'
+              }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <MoreHorizontal size={20} />
+              </button>
             </div>
           ) : (
-            <div style={{ display: 'flex', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', marginLeft: 'auto', flexShrink: 0 }}>
               <div style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: '4px',
                 backgroundColor: 'rgba(15, 24, 35, 0.7)',
-                padding: '6px 12px',
+                padding: '6px 10px',
                 borderRadius: '12px',
                 color: 'white',
                 position: 'relative'
               }}>
-                <Volume2 size={22} />
+                <Volume2 size={20} />
                 <span style={{ 
                   fontWeight: '700', 
-                  fontSize: '18px',
+                  fontSize: 'clamp(15px, 4vw, 18px)',
                   color: '#10b981' 
                 }}>
                   {isGroupChat ? groupChatRoomVolume : headerVolume}
@@ -1206,7 +1341,7 @@ const PostCard = ({ post, onClick, onUserClick, POST_TYPE_INDICATORS, _isCached 
                   <div style={{ 
                     position: 'absolute', 
                     top: '-2px', 
-                    right: '-18px'
+                    right: '-12px'
                   }}
                     onClick={(e) => e.stopPropagation()} // Prevent post click when clicking icon
                   >
@@ -1247,7 +1382,7 @@ const PostCard = ({ post, onClick, onUserClick, POST_TYPE_INDICATORS, _isCached 
           // News layout - more tweet-like with no right column
           <div>
             <div style={{
-              fontSize: '20px',
+              fontSize: 'clamp(17px, 5vw, 20px)',
               fontWeight: '700',
               lineHeight: '1.3',
               color: 'white',
@@ -1282,9 +1417,11 @@ const PostCard = ({ post, onClick, onUserClick, POST_TYPE_INDICATORS, _isCached 
               display: 'flex',
               justifyContent: 'space-between',
               width: '100%',
-              padding: '16px 0 8px',
+              padding: '14px 0 8px',
               borderTop: '1px solid rgba(255, 255, 255, 0.05)',
-              marginTop: '8px'
+              marginTop: '8px',
+              flexWrap: 'wrap',
+              rowGap: '6px',
             }}>
               <button 
                 style={{
@@ -1299,7 +1436,7 @@ const PostCard = ({ post, onClick, onUserClick, POST_TYPE_INDICATORS, _isCached 
                 onClick={(e) => e.stopPropagation()}
               >
                 <MessageCircle size={22} />
-                <span style={{ marginLeft: '6px', fontSize: '15px', fontWeight: '500', color: 'white' }}>
+                <span style={{ marginLeft: '6px', fontSize: 'clamp(13px, 3.6vw, 15px)', fontWeight: '500', color: 'white' }}>
                   {formatCompactNumber(commentsCount)}
                 </span>
               </button>
@@ -1316,7 +1453,7 @@ const PostCard = ({ post, onClick, onUserClick, POST_TYPE_INDICATORS, _isCached 
                 onClick={handleBookmark}
               >
                 <Bookmark size={22} fill={isBookmarked ? '#fbbf24' : 'none'} />
-                <span style={{ marginLeft: '6px', fontSize: '15px', fontWeight: '500', color: 'white' }}>
+                <span style={{ marginLeft: '6px', fontSize: 'clamp(13px, 3.6vw, 15px)', fontWeight: '500', color: 'white' }}>
                   {isBookmarked ? formatCompactNumber(bookmarksCount + 1) : formatCompactNumber(bookmarksCount)}
                 </span>
               </button>
@@ -1333,7 +1470,7 @@ const PostCard = ({ post, onClick, onUserClick, POST_TYPE_INDICATORS, _isCached 
                 onClick={handleLike}
               >
                 <Heart size={22} fill={isLiked ? '#f91880' : 'none'} />
-                <span style={{ marginLeft: '6px', fontSize: '15px', fontWeight: '500', color: 'white' }}>
+                <span style={{ marginLeft: '6px', fontSize: 'clamp(13px, 3.6vw, 15px)', fontWeight: '500', color: 'white' }}>
                   {isLiked ? formatCompactNumber(likesCount + 1) : formatCompactNumber(likesCount)}
                 </span>
               </button>
@@ -1353,19 +1490,245 @@ const PostCard = ({ post, onClick, onUserClick, POST_TYPE_INDICATORS, _isCached 
               </button>
             </div>
           </div>
-        ) : (
-          // Regular post layout with right column
-          <div style={{ display: 'flex' }}> 
+        ) : isMobile ? (
+          // ── MOBILE: Stacked clean layout ──
+          <div className="postcard-mobile-stacked">
+            {/* Post title - full width */}
             <div style={{
-              flex: '1',
-              paddingRight: '16px',
-              maxWidth: 'calc(100% - 180px)'
+              fontSize: 'clamp(17px, 4.8vw, 20px)',
+              lineHeight: '1.35',
+              color: 'white',
+              marginBottom: 'clamp(12px, 3vw, 16px)',
+              fontWeight: '700',
+              letterSpacing: '-0.01em'
+            }}>
+              {post.title || post.selftext}
+            </div>
+
+            <div className="postcard-mobile-thread-vol-row">
+              <div className="postcard-mobile-thread-vol-left">
+                <Volume2 size={15} color="#a9b6fc" />
+                <span className="postcard-mobile-thread-vol-label">Thread Volume</span>
+              </div>
+              <div className="postcard-mobile-thread-vol-value">
+                {isGroupChat ? groupChatRoomVolume : headerVolume}
+              </div>
+              {post.id === 'example_post_001' && (
+                <div
+                  style={{ marginLeft: 4 }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <InfoIconModal
+                    title="Post Main Volume"
+                    modalId={`volume-info-mobile-${post.id}`}
+                    iconSize={14}
+                    showButtonText={false}
+                    steps={[
+                      {
+                        icon: <Volume2 size={18} color="#a9b6fc" />,
+                        title: "Volume Rating",
+                        content: "Volume rating of this thread. Reflected by overall user ratings to the song recommendations and volumes of the users who engaged with the post"
+                      }
+                    ]}
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Post image - full width */}
+            {post.imageUrl && (
+              <div style={{
+                marginBottom: '14px',
+                borderRadius: '14px',
+                overflow: 'hidden'
+              }}>
+                <img 
+                  src={post.imageUrl} 
+                  alt="Post" 
+                  loading="lazy"
+                  decoding="async"
+                  style={{
+                    width: '100%',
+                    height: 'auto',
+                    objectFit: 'cover'
+                  }}
+                />
+              </div>
+            )}
+
+            {/* Genre stats section - stacked below content */}
+            <div className="postcard-mobile-genre-section">
+              {/* Volume row */}
+              <div className="postcard-mobile-vol-row">
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  color: '#9ca3af',
+                  fontSize: '13px'
+                }}>
+                  <Volume2 size={14} color="#9ca3af" />
+                  <span>Vol</span>
+                </div>
+                <div style={{
+                  color: '#10b981',
+                  fontWeight: '700',
+                  fontSize: '14px'
+                }}>
+                  +{isGroupChat ? groupChatVolumePoints : sideVolume}
+                </div>
+                {post.id === 'example_post_001' && (
+                  <div style={{ 
+                    position: 'absolute', 
+                    top: '-2px', 
+                    right: '-12px'
+                  }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <InfoIconModal
+                      title="Post Genres"
+                      modalId={`genres-info-${post.id}`}
+                      iconSize={16}
+                      showButtonText={false}
+                      steps={[
+                        {
+                          icon: <Music size={18} color="#a9b6fc" />,
+                          title: "Joining and Engaging",
+                          content: "Joining and engaging in different threads will give you volume and genre points."
+                        },
+                        {
+                          icon: <Volume2 size={18} color="#a9b6fc" />,
+                          title: "Higher Volume Benefits",
+                          content: "The higher your volume, the more engagement your posts might get and users earn more from engaging in your posts."
+                        },
+                        {
+                          icon: <Users size={18} color="#a9b6fc" />,
+                          title: "Community Recognition",
+                          content: "Having a lot of genre stats and a high volume will show the community that you have great music taste and might be worth following."
+                        },
+                        {
+                          icon: <Mic size={18} color="#a9b6fc" />,
+                          title: "Promote Artists",
+                          content: "Your song recommendations will be prioritized and you can promote your favorite underrated artists."
+                        }
+                      ]}
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Genre tags - flexible wrap layout */}
+              <div className="postcard-mobile-genre-grid">
+                {post.postType === 'parameter' ? (
+                  <>
+                    {genres.slice(0, 3).map((genre, i) => (
+                      <div key={i} className="postcard-mobile-genre-chip">
+                        <span className="postcard-mobile-genre-tag" style={{ backgroundColor: genre.color }}>
+                          {genre.name}
+                        </span>
+                        <span className="postcard-mobile-genre-pct">
+                          +{(genre.percentage * 100).toFixed(1)}%
+                        </span>
+                      </div>
+                    ))}
+                    {(Array.isArray(post.parameters) ? post.parameters : []).map((parameterName, i) => (
+                      <div key={`param-${i}`} style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        padding: '6px 10px',
+                        borderRadius: '8px',
+                        backgroundColor: ['#FF6B35', '#4ECDC4', '#45B7D1', '#96CEB4'][i % 4],
+                        color: 'white',
+                        fontSize: '13px',
+                        fontWeight: '600',
+                        width: '100%'
+                      }}>
+                        <span>{parameterName}</span>
+                        <span>{post.parameterCounts?.[parameterName] ?? 0}</span>
+                      </div>
+                    ))}
+                  </>
+                ) : isGroupChat ? (
+                  groupChatGenreStats.map((genre, i) => (
+                    <div key={`${genre.name}-${i}`} className="postcard-mobile-genre-chip">
+                      <span className="postcard-mobile-genre-tag" style={{ backgroundColor: genre.color }}>
+                        {genre.name}
+                      </span>
+                      <span className="postcard-mobile-genre-pct">
+                        {genre.change}
+                      </span>
+                    </div>
+                  ))
+                ) : (
+                  genres.slice(0, 3).map((genre, i) => (
+                    <div key={i} className="postcard-mobile-genre-chip">
+                      <span className="postcard-mobile-genre-tag" style={{ backgroundColor: genre.color }}>
+                        {genre.name}
+                      </span>
+                      <span className="postcard-mobile-genre-pct">
+                        +{(genre.percentage * 100).toFixed(1)}%
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* Stats row - full width */}
+            <div className="postcard-mobile-stats-row">
+              <button 
+                className="postcard-mobile-stat-btn"
+                style={{ color: isLiked ? '#f91880' : '#9ca3af' }}
+                onClick={handleLike}
+              >
+                <Heart size={20} fill={isLiked ? '#f91880' : 'none'} />
+                <span>{isLiked ? formatCompactNumber(likesCount + 1) : formatCompactNumber(likesCount)}</span>
+              </button>
+              
+              <button 
+                className="postcard-mobile-stat-btn"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <MessageCircle size={20} />
+                <span>{formatCompactNumber(commentsCount)}</span>
+              </button>
+              
+              <button 
+                className="postcard-mobile-stat-btn"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <Share2 size={20} />
+              </button>
+              
+              <button 
+                className="postcard-mobile-stat-btn"
+                style={{ color: isBookmarked ? '#fbbf24' : '#9ca3af' }}
+                onClick={handleBookmark}
+              >
+                <Bookmark size={20} fill={isBookmarked ? '#fbbf24' : 'none'} />
+                <span>{isBookmarked ? formatCompactNumber(bookmarksCount + 1) : formatCompactNumber(bookmarksCount)}</span>
+              </button>
+            </div>
+          </div>
+        ) : (
+          // ── DESKTOP / TABLET: Original grid layout with right column ──
+          // Regular post layout with right column
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'minmax(0, 1fr) clamp(104px, 30vw, 160px)',
+            columnGap: 'clamp(8px, 2.4vw, 16px)',
+            rowGap: '10px',
+            alignItems: 'start',
+          }}> 
+            <div style={{
+              minWidth: 0,
             }}>
               <div style={{
-                fontSize: '19px',
+                fontSize: 'clamp(16px, 4.6vw, 19px)',
                 lineHeight: '1.4',
                 color: 'white',
-                marginBottom: '20px',
+                marginBottom: 'clamp(14px, 3vw, 20px)',
                 fontWeight: '600',
                 letterSpacing: '0.01em'
               }}>
@@ -1404,7 +1767,9 @@ const PostCard = ({ post, onClick, onUserClick, POST_TYPE_INDICATORS, _isCached 
                   display: 'flex', 
                   width: '100%', 
                   justifyContent: 'space-between',
-                  paddingRight: '20px'
+                  paddingRight: '4px',
+                  flexWrap: 'wrap',
+                  rowGap: '6px',
                 }}>
                   <button 
                     style={{
@@ -1419,7 +1784,7 @@ const PostCard = ({ post, onClick, onUserClick, POST_TYPE_INDICATORS, _isCached 
                     onClick={handleLike}
                   >
                     <Heart size={22} fill={isLiked ? '#f91880' : 'none'} />
-                    <span style={{ marginLeft: '6px', fontSize: '15px', fontWeight: '500', color: 'white' }}>
+                    <span style={{ marginLeft: '6px', fontSize: 'clamp(13px, 3.6vw, 15px)', fontWeight: '500', color: 'white' }}>
                       {isLiked ? formatCompactNumber(likesCount + 1) : formatCompactNumber(likesCount)}
                     </span>
                   </button>
@@ -1436,7 +1801,7 @@ const PostCard = ({ post, onClick, onUserClick, POST_TYPE_INDICATORS, _isCached 
                     onClick={(e) => e.stopPropagation()}
                   >
                     <MessageCircle size={22} />
-                    <span style={{ marginLeft: '6px', fontSize: '15px', fontWeight: '500', color: 'white' }}>
+                    <span style={{ marginLeft: '6px', fontSize: 'clamp(13px, 3.6vw, 15px)', fontWeight: '500', color: 'white' }}>
                       {formatCompactNumber(commentsCount)}
                     </span>
                   </button>
@@ -1467,7 +1832,7 @@ const PostCard = ({ post, onClick, onUserClick, POST_TYPE_INDICATORS, _isCached 
                     onClick={handleBookmark}
                   >
                     <Bookmark size={22} fill={isBookmarked ? '#fbbf24' : 'none'} />
-                    <span style={{ marginLeft: '6px', fontSize: '15px', fontWeight: '500', color: 'white' }}>
+                    <span style={{ marginLeft: '6px', fontSize: 'clamp(13px, 3.6vw, 15px)', fontWeight: '500', color: 'white' }}>
                       {isBookmarked ? formatCompactNumber(bookmarksCount + 1) : formatCompactNumber(bookmarksCount)}
                     </span>
                   </button>
@@ -1475,26 +1840,21 @@ const PostCard = ({ post, onClick, onUserClick, POST_TYPE_INDICATORS, _isCached 
               </div>
             </div>
 
-            {/* Vertical separator line */}
-            <div style={{
-              width: '1px',
-              backgroundColor: 'rgba(255, 255, 255, 0.1)',
-              margin: '0 8px'
-            }}></div>
-
             {/* Right side stats column */}
             <div style={{
-              width: '160px',
+              width: '100%',
               display: 'flex',
               flexDirection: 'column',
               gap: '8px',
-              paddingLeft: '4px'
+              paddingLeft: '4px',
+              borderLeft: '1px solid rgba(255, 255, 255, 0.1)',
+              minWidth: 0,
             }}>
               <div style={{
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                padding: '6px 10px',
+                padding: '6px 8px',
                 backgroundColor: 'rgba(15, 24, 35, 0.7)',
                 borderRadius: '8px',
                 marginBottom: '6px',
@@ -1504,17 +1864,17 @@ const PostCard = ({ post, onClick, onUserClick, POST_TYPE_INDICATORS, _isCached 
                 <div style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '6px',
+                  gap: '4px',
                   color: 'white',
-                  fontSize: '14px'
+                  fontSize: 'clamp(12px, 3.2vw, 14px)'
                 }}>
-                  <Volume2 size={14} color="white" />
+                  <Volume2 size={13} color="white" />
                   <span>Vol</span>
                 </div>
                 <div style={{
                   color: '#10b981',
                   fontWeight: '700',
-                  fontSize: '15px'
+                  fontSize: 'clamp(12px, 3.6vw, 15px)'
                 }}>
                   +{isGroupChat ? groupChatVolumePoints : sideVolume}
                 </div>
@@ -1523,7 +1883,7 @@ const PostCard = ({ post, onClick, onUserClick, POST_TYPE_INDICATORS, _isCached 
                   <div style={{ 
                     position: 'absolute', 
                     top: '-2px', 
-                    right: '-18px'
+                    right: '-12px'
                   }}
                     onClick={(e) => e.stopPropagation()} // Prevent post click when clicking icon
                   >
@@ -1576,21 +1936,25 @@ const PostCard = ({ post, onClick, onUserClick, POST_TYPE_INDICATORS, _isCached 
                         width: '100%'
                       }}>
                         <div style={{
-                          padding: '4px 10px',
+                          padding: '4px 8px',
                           borderRadius: '6px',
                           backgroundColor: genre.color,
                           color: 'white',
                           fontWeight: '600',
-                          fontSize: '13px',
+                          fontSize: 'clamp(11px, 3.2vw, 13px)',
                           display: 'inline-block',
-                          textAlign: 'center'
+                          textAlign: 'center',
+                          maxWidth: '68%',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
                         }}>
                           {genre.name}
                         </div>
                         <div style={{
                           color: '#10b981',
                           fontWeight: '700',
-                          fontSize: '13px',
+                          fontSize: 'clamp(11px, 3.2vw, 13px)',
                           whiteSpace: 'nowrap'
                         }}>
                           +{(genre.percentage * 100).toFixed(1)}%
@@ -1610,11 +1974,11 @@ const PostCard = ({ post, onClick, onUserClick, POST_TYPE_INDICATORS, _isCached 
                           display: 'flex',
                           justifyContent: 'space-between',
                           alignItems: 'center',
-                          padding: '6px 16px',
+                          padding: '6px 10px',
                           borderRadius: '8px',
                           backgroundColor: ['#FF6B35', '#4ECDC4', '#45B7D1', '#96CEB4'][i % 4],
                           color: 'white',
-                          fontSize: '15px',
+                          fontSize: 'clamp(12px, 3.6vw, 15px)',
                           fontWeight: '600'
                         }}>
                           <span>{parameterName}</span>
@@ -1633,21 +1997,25 @@ const PostCard = ({ post, onClick, onUserClick, POST_TYPE_INDICATORS, _isCached 
                       width: '100%'
                     }}>
                       <div style={{
-                        padding: '4px 10px',
+                        padding: '4px 8px',
                         borderRadius: '6px',
                         backgroundColor: genre.color,
                         color: 'white',
                         fontWeight: '600',
-                        fontSize: '13px',
+                        fontSize: 'clamp(11px, 3.2vw, 13px)',
                         display: 'inline-block',
-                        textAlign: 'center'
+                        textAlign: 'center',
+                        maxWidth: '68%',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
                       }}>
                         {genre.name}
                       </div>
                       <div style={{
                         color: '#10b981',
                         fontWeight: '700',
-                        fontSize: '13px',
+                        fontSize: 'clamp(11px, 3.2vw, 13px)',
                         whiteSpace: 'nowrap'
                       }}>
                         {genre.change}
@@ -1665,21 +2033,25 @@ const PostCard = ({ post, onClick, onUserClick, POST_TYPE_INDICATORS, _isCached 
                       width: '100%'
                     }}>
                       <div style={{
-                        padding: '4px 10px',
+                        padding: '4px 8px',
                         borderRadius: '6px',
                         backgroundColor: genre.color,
                         color: 'white',
                         fontWeight: '600',
-                        fontSize: '13px',
+                        fontSize: 'clamp(11px, 3.2vw, 13px)',
                         display: 'inline-block',
-                        textAlign: 'center'
+                        textAlign: 'center',
+                        maxWidth: '68%',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
                       }}>
                         {genre.name}
                       </div>
                       <div style={{
                         color: '#10b981',
                         fontWeight: '700',
-                        fontSize: '13px',
+                        fontSize: 'clamp(11px, 3.2vw, 13px)',
                         whiteSpace: 'nowrap'
                       }}>
                         +{(genre.percentage * 100).toFixed(1)}%
@@ -1756,7 +2128,7 @@ const PostCard = ({ post, onClick, onUserClick, POST_TYPE_INDICATORS, _isCached 
 
           {expandOpen && (
             <div
-              style={{ padding: '18px 16px', borderTop: '1px solid rgba(29,155,240,0.2)', background: 'rgba(10,16,26,0.88)' }}
+              style={{ padding: isMobile ? (isCompactPhone ? '14px 10px' : '16px 12px') : '18px 16px', borderTop: '1px solid rgba(29,155,240,0.2)', background: 'rgba(10,16,26,0.88)' }}
               onClick={e => e.stopPropagation()}
             >
               {/* Artist pool */}
@@ -1772,23 +2144,24 @@ const PostCard = ({ post, onClick, onUserClick, POST_TYPE_INDICATORS, _isCached 
                 selected={selectedArtists}
                 artistImages={expandArtistImages || EMPTY_OBJECT}
                 sections={expandArtistSections}
+                isMobile={isMobile}
               />
 
               {/* Selected artist chips row */}
               {selectedArtists.size > 0 && (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: isMobile ? 5 : 6, marginBottom: isMobile ? 12 : 14 }}>
                   {[...selectedArtists].map((name, i) => {
                     const h = _ahue(name);
                     return (
-                      <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px 4px 8px', borderRadius: 20, background: `hsl(${h},38%,16%)`, border: `1px solid hsl(${h},52%,40%)`, fontSize: 12, color: `hsl(${h},75%,80%)`, fontWeight: 600, animation: `_expandChipIn .25s cubic-bezier(.4,0,.2,1) ${i * 0.04}s both` }}>
-                        <span>{name.split(',')[0]}</span>
+                      <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: isMobile ? '4px 8px 4px 7px' : '4px 10px 4px 8px', borderRadius: 20, background: `hsl(${h},38%,16%)`, border: `1px solid hsl(${h},52%,40%)`, fontSize: isMobile ? 11 : 12, color: `hsl(${h},75%,80%)`, fontWeight: 600, animation: `_expandChipIn .25s cubic-bezier(.4,0,.2,1) ${i * 0.04}s both` }}>
+                        <span>{_displayExpandArtistName(name).split(',')[0]}</span>
                         <button onClick={() => setSelectedArtists(prev => { const n = new Set(prev); n.delete(name); return n; })}
                           style={{ background: 'none', border: 'none', color: `hsl(${h},60%,60%)`, cursor: 'pointer', fontSize: 15, lineHeight: 1, padding: 0, marginTop: -1 }}>×</button>
                       </div>
                     );
                   })}
                   <button onClick={() => { setSelectedArtists(new Set()); setExpandedResponse(null); }}
-                    style={{ padding: '4px 10px', borderRadius: 20, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', fontSize: 11, color: '#475569', cursor: 'pointer', transition: 'all .2s' }}>
+                    style={{ padding: isMobile ? '4px 9px' : '4px 10px', borderRadius: 20, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', fontSize: 11, color: '#475569', cursor: 'pointer', transition: 'all .2s' }}>
                     clear all
                   </button>
                 </div>
@@ -1814,7 +2187,7 @@ const PostCard = ({ post, onClick, onUserClick, POST_TYPE_INDICATORS, _isCached 
                   return (
                     <AnimatedSongList transitionKey={songLayoutKey}>
                       <div>
-                        <div style={{ fontSize: 10, color: '#475569', letterSpacing: 2, marginBottom: 10 }}>
+                        <div style={{ fontSize: isMobile ? 9 : 10, color: '#475569', letterSpacing: isMobile ? 1.4 : 2, marginBottom: 10 }}>
                           PLAYLIST · {playlist.length} SONG{playlist.length !== 1 ? 'S' : ''}
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -1829,12 +2202,14 @@ const PostCard = ({ post, onClick, onUserClick, POST_TYPE_INDICATORS, _isCached 
                                   onExpand={() => setExpandedResponse(p => p === item.key ? null : item.key)}
                                   onUserClick={handleUserClick}
                                   expanded={expandedResponse === item.key}
+                                  isMobile={isMobile}
                                 />
                                 {expandedResponse === item.key && (
                                   <SubCommentView
                                     song={{ song: item.songName, artist: item.artistName }}
                                     onUserClick={handleUserClick}
                                     onClose={() => setExpandedResponse(null)}
+                                    isMobile={isMobile}
                                   />
                                 )}
                               </div>
@@ -1849,7 +2224,7 @@ const PostCard = ({ post, onClick, onUserClick, POST_TYPE_INDICATORS, _isCached 
                 return (
                   <AnimatedSongList transitionKey={songLayoutKey}>
                     <div>
-                      <div style={{ fontSize: 10, color: '#475569', letterSpacing: 2, marginBottom: 10 }}>
+                      <div style={{ fontSize: isMobile ? 9 : 10, color: '#475569', letterSpacing: isMobile ? 1.4 : 2, marginBottom: 10 }}>
                         TOP RESPONSES WITH SONGS
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -1862,9 +2237,10 @@ const PostCard = ({ post, onClick, onUserClick, POST_TYPE_INDICATORS, _isCached 
                                 onExpand={() => setExpandedResponse(p => p === r.id ? null : r.id)}
                                 onUserClick={handleUserClick}
                                 expanded={expandedResponse === r.id}
+                                isMobile={isMobile}
                               />
                               {expandedResponse === r.id && (
-                                <SubCommentView song={r} onUserClick={handleUserClick} onClose={() => setExpandedResponse(null)} />
+                                <SubCommentView song={r} onUserClick={handleUserClick} onClose={() => setExpandedResponse(null)} isMobile={isMobile} />
                               )}
                             </div>
                           </AnimatedSongEntry>

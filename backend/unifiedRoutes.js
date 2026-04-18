@@ -1,8 +1,12 @@
-require('dotenv').config({ path: './.env' });
+require('dotenv').config({
+  path: require('path').resolve(__dirname, '../.env'),
+  override: true,
+});
 console.log(
   'Apple token loaded:',
   Boolean(process.env.APPLE_DEVELOPER_TOKEN)
 );
+
 
 const fs   = require('fs');
 const dns = require('dns').promises;
@@ -63,7 +67,7 @@ const sanitizeCacheKeySegment = (value, fallback = 'media') => {
   return cleaned || fallback;
 };
 
-const createRouteLimiter = (max, message) => rateLimit({
+const createRouteLimiter = (max, message, extraOptions = {}) => rateLimit({
   windowMs: 15 * 60 * 1000,
   max,
   standardHeaders: true,
@@ -72,9 +76,22 @@ const createRouteLimiter = (max, message) => rateLimit({
     success: false,
     error: message,
   },
+  ...extraOptions,
 });
 
 const searchLimiter = createRouteLimiter(60, 'Too many search requests. Please try again later.');
+const appleMusicArtistSearchLimiter = createRouteLimiter(
+  180,
+  'Too many Apple Music artist search requests. Please try again later.',
+  {
+    skip: (req) => {
+      const key = String(req.query?.query || '').trim().toLowerCase();
+      if (!key) return false;
+      const cachedEntry = appleArtistSearchCache.get(key);
+      return Boolean(cachedEntry) && Date.now() - cachedEntry.ts < CACHE_TTL;
+    },
+  }
+);
 const heavyLookupLimiter = createRouteLimiter(30, 'Too many expensive requests. Please try again later.');
 const mediaCacheLimiter = createRouteLimiter(20, 'Too many media cache requests. Please try again later.');
 
@@ -430,8 +447,57 @@ const searchMockArtists = (query, limit = 20) => {
 
 let spotifyToken = null;
 let tokenExpiration = null;
+let spotifyServiceDisabledUntil = 0;
+let spotifyServiceDisableReason = '';
+const SPOTIFY_DISABLE_WINDOW_MS = 2 * 60 * 60 * 1000;
+
+const getSpotifyErrorMessage = (error) => {
+  const responseData = error?.response?.data;
+  if (typeof responseData === 'string' && responseData.trim()) {
+    return responseData.trim();
+  }
+
+  const nestedMessage = responseData?.error?.message;
+  if (typeof nestedMessage === 'string' && nestedMessage.trim()) {
+    return nestedMessage.trim();
+  }
+
+  if (typeof error?.message === 'string' && error.message.trim()) {
+    return error.message.trim();
+  }
+
+  return 'Unknown Spotify error';
+};
+
+const isSpotifyServiceDisabled = () =>
+  Number.isFinite(spotifyServiceDisabledUntil) && Date.now() < spotifyServiceDisabledUntil;
+
+const disableSpotifyServiceIfNeeded = (error) => {
+  const status = Number(error?.response?.status || 0);
+  const message = getSpotifyErrorMessage(error).toLowerCase();
+  const isPremiumRequirementBlock =
+    status === 403 && message.includes('active premium subscription required');
+
+  if (!isPremiumRequirementBlock) {
+    return false;
+  }
+
+  spotifyServiceDisabledUntil = Date.now() + SPOTIFY_DISABLE_WINDOW_MS;
+  spotifyServiceDisableReason = getSpotifyErrorMessage(error);
+  spotifyToken = null;
+  tokenExpiration = null;
+
+  console.warn(
+    `Spotify API access disabled until ${new Date(spotifyServiceDisabledUntil).toISOString()} due to 403 (${spotifyServiceDisableReason}). Using mock fallbacks.`
+  );
+  return true;
+};
 
 const getAccessToken = async () => {
+  if (isSpotifyServiceDisabled()) {
+    throw new Error(spotifyServiceDisableReason || 'Spotify service temporarily unavailable');
+  }
+
   if (spotifyToken && tokenExpiration && Date.now() < tokenExpiration) {
     return spotifyToken;
   }
@@ -458,6 +524,7 @@ const getAccessToken = async () => {
     tokenExpiration = Date.now() + (response.data.expires_in * 1000);
     return spotifyToken;
   } catch (error) {
+    disableSpotifyServiceIfNeeded(error);
     throw error;
   }
 };
@@ -1233,12 +1300,19 @@ const fetchImagesFor = async (artistNames) => {
           }
         }
       } catch (artistError) {
+        if (disableSpotifyServiceIfNeeded(artistError)) {
+          break;
+        }
       }
     }
     
     return artists;
   } catch (error) {
-    throw error;
+    disableSpotifyServiceIfNeeded(error);
+    if (!isSpotifyServiceDisabled()) {
+      console.warn('Spotify image lookup failed:', getSpotifyErrorMessage(error));
+    }
+    return [];
   }
 };
 
@@ -1332,7 +1406,11 @@ const getPopArtists = async (genre = 'pop', minPopularity = 70, limit = 40, page
           }
         }
       } catch (error) {
+        disableSpotifyServiceIfNeeded(error);
         lastError = error;
+        if (isSpotifyServiceDisabled()) {
+          break;
+        }
       }
     }
 
@@ -1340,15 +1418,18 @@ const getPopArtists = async (genre = 'pop', minPopularity = 70, limit = 40, page
       return Array.from(collectedArtists.values()).slice(0, requestedLimit);
     }
 
-    if (lastError) {
+    if (lastError && !isSpotifyServiceDisabled()) {
       console.warn(`Spotify artist search failed for genre "${normalizedGenre}":`, lastError.message);
-    } else {
+    } else if (!isSpotifyServiceDisabled()) {
       console.warn(`Spotify artist search returned no artists for genre "${normalizedGenre}"`);
     }
 
     return getRandomMockArtists(requestedLimit, genre);
   } catch (error) {
-    console.warn(`Spotify artist search failed for genre "${normalizedGenre}":`, error.message);
+    disableSpotifyServiceIfNeeded(error);
+    if (!isSpotifyServiceDisabled()) {
+      console.warn(`Spotify artist search failed for genre "${normalizedGenre}":`, error.message);
+    }
     return getRandomMockArtists(requestedLimit, genre);
   }
 };
@@ -1391,7 +1472,10 @@ const fetchSpotifyRelatedArtists = async (artistName, limit = 20) => {
       }))
       .filter((artist) => artist.name);
   } catch (error) {
-    console.warn(`Spotify related-artists failed for "${artistName}":`, error.message);
+    disableSpotifyServiceIfNeeded(error);
+    if (!isSpotifyServiceDisabled()) {
+      console.warn(`Spotify related-artists failed for "${artistName}":`, error.message);
+    }
     return [];
   }
 };
@@ -1532,16 +1616,26 @@ const spotifySearchCache = new Map();
 const appleArtistSearchCache = new Map();
 const CACHE_TTL   = 900_000;              // 15 min
 
-unifiedRouter.get('/spotify/search-artists', searchLimiter, async (req, res) => {
-  const { query = '' } = req.query;
+const normalizeSpotifyArtistResult = (artist = {}) => ({
+  id: artist.id,
+  name: artist.name,
+  image: artist.image || artist.imageUrl || null,
+  imageUrl: artist.imageUrl || artist.image || null,
+  genres: Array.isArray(artist.genres) ? artist.genres : [],
+  popularity: Number.isFinite(artist.popularity) ? artist.popularity : 0,
+});
 
-  if (!query.trim()) {
-    return res.status(400).json({ error: 'Search query is required' });
+const searchSpotifyArtistsByName = async (query, limit = 20) => {
+  const sanitizedQuery = sanitizeSongSearchQuery(query);
+  const requestedLimit = Math.max(1, Math.min(Number(limit) || 20, 20));
+
+  if (!sanitizedQuery) {
+    return [];
   }
 
-  const key = query.toLowerCase();
+  const key = `${sanitizedQuery.toLowerCase()}::${requestedLimit}`;
   if (spotifySearchCache.has(key) && Date.now() - spotifySearchCache.get(key).ts < CACHE_TTL) {
-    return res.json(spotifySearchCache.get(key).data);
+    return spotifySearchCache.get(key).data;
   }
 
   try {
@@ -1549,41 +1643,72 @@ unifiedRouter.get('/spotify/search-artists', searchLimiter, async (req, res) => 
     const response = await axios.get('https://api.spotify.com/v1/search', {
       headers: { Authorization: `Bearer ${token}` },
       params: {
-        q: query,
+        q: sanitizedQuery,
         type: 'artist',
-        limit: 20,
+        limit: requestedLimit,
       },
     });
 
-    const artists = response.data.artists?.items.map((artist) => {
-      // Find the best quality image (prefer 640x640, fallback to largest available)
-      let imageUrl = null;
-      if (artist.images && artist.images.length > 0) {
-        // Try to find 640x640 image first
-        const preferredImage = artist.images.find(img => img.height === 640 && img.width === 640);
-        if (preferredImage) {
-          imageUrl = preferredImage.url;
-        } else {
-          // Use the first (largest) image available
-          imageUrl = artist.images[0].url;
-        }
-      }
-      
-      return {
-        id: artist.id,
-        name: artist.name,
-        image: imageUrl,
-        genres: artist.genres || [],
-        popularity: artist.popularity,
-      };
-    }).filter(artist => artist.image) || []; // Only return artists with images
+    const artists = Array.isArray(response.data?.artists?.items)
+      ? response.data.artists.items.map((artist) => normalizeSpotifyArtistResult({
+          id: artist.id,
+          name: artist.name,
+          image: Array.isArray(artist.images) && artist.images.length > 0 ? artist.images[0].url : null,
+          genres: artist.genres || [],
+          popularity: artist.popularity,
+        }))
+      : [];
 
     spotifySearchCache.set(key, { ts: Date.now(), data: artists });
+    return artists;
+  } catch (error) {
+    disableSpotifyServiceIfNeeded(error);
+    const fallbackArtists = searchMockArtists(sanitizedQuery, requestedLimit)
+      .map((artist) => normalizeSpotifyArtistResult(artist));
+
+    return fallbackArtists;
+  }
+};
+
+unifiedRouter.get('/spotify/search-artists', searchLimiter, async (req, res) => {
+  const sanitizedQuery = sanitizeSongSearchQuery(req.query?.query);
+  if (!sanitizedQuery) {
+    return res.status(400).json({ error: 'Search query is required' });
+  }
+
+  try {
+    const artists = await searchSpotifyArtistsByName(sanitizedQuery, 20);
     res.json(artists);
   } catch (error) {
     res.status(500).json({ 
       error: 'Failed to search for artists',
       message: error.response?.data?.error?.message || error.message
+    });
+  }
+});
+
+unifiedRouter.get('/spotify-artist-search', searchLimiter, async (req, res) => {
+  const sanitizedQuery = sanitizeSongSearchQuery(req.query?.q);
+  const requestedLimit = Math.max(1, Math.min(Number(req.query?.limit) || 5, 10));
+
+  if (!sanitizedQuery || sanitizedQuery.length < 2) {
+    return res.status(400).json({
+      success: false,
+      error: 'Query must be at least 2 characters',
+    });
+  }
+
+  try {
+    const artists = await searchSpotifyArtistsByName(sanitizedQuery, requestedLimit);
+    return res.json({
+      success: true,
+      artists,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to search for artists',
+      message: error.response?.data?.error?.message || error.message,
     });
   }
 });
@@ -1637,7 +1762,7 @@ unifiedRouter.post('/lastfm/similar-artists', heavyLookupLimiter, async (req, re
 // Apple Music Routes
 // Apple Music Routes
 /* ---------------- Apple Music search artists ---------------- */
-unifiedRouter.get('/apple-music/search-artists', searchLimiter, async (req, res) => {
+unifiedRouter.get('/apple-music/search-artists', appleMusicArtistSearchLimiter, async (req, res) => {
   const { query = '' } = req.query;
   if (!query.trim()) {
     return res.status(400).json({ error: 'Search query is required' });
@@ -1986,6 +2111,11 @@ unifiedRouter.get('/apple-music-search', searchLimiter, async (req, res) => {
 
 const THREADS_CACHE_DIR = path.resolve(__dirname, '..', 'apps', 'threads', 'src', 'cached_posts');
 const DIVERSE_THREADS_SUBREDDITS = ['music', 'musicsuggestions', 'listentothis', 'hiphopheads', 'popheads'];
+const CACHED_POSTS_FEED_SUMMARY_TTL_MS = 60 * 1000;
+let cachedPostsFeedSummaryCache = {
+  data: null,
+  expiresAt: 0,
+};
 
 const loadCachedThreadPost = (postId) => {
   const fileName = fs.readdirSync(THREADS_CACHE_DIR)
@@ -2065,9 +2195,24 @@ const summarizeCachedThreadPost = (post = {}) => ({
   postType: post.postType || 'thread',
   createdUtc: post.createdUtc || Math.floor(Date.now() / 1000),
   hasCachedData: true,
+  ups: post.ups || 0,
+  bookmarks: post.bookmarks || 0,
   num_comments: post.comments?.length || post.num_comments || 0,
   commentCount: post.comments?.length || 0,
   snippetCount: post.snippets?.length || 0,
+  parameters: Array.isArray(post.parameters) ? post.parameters : [],
+  parameterCounts: Array.isArray(post.parameters)
+    ? post.parameters.reduce((accumulator, parameterName) => {
+        accumulator[parameterName] = (post.comments || []).filter((comment) => {
+          if (comment?.parameter !== parameterName) {
+            return false;
+          }
+
+          return Boolean(comment?.hasSnippet) || (post.snippets || []).some((snippet) => snippet?.commentId === comment?.id);
+        }).length;
+        return accumulator;
+      }, {})
+    : {},
 });
 
 const readThreadsCachedPosts = () => {
@@ -2092,6 +2237,24 @@ const readThreadsCachedPosts = () => {
     console.warn('Failed to read cached thread posts:', error.message);
     return [];
   }
+};
+
+const getThreadsCachedPostSummaries = ({ forceRefresh = false } = {}) => {
+  const now = Date.now();
+  if (
+    !forceRefresh &&
+    Array.isArray(cachedPostsFeedSummaryCache.data) &&
+    cachedPostsFeedSummaryCache.expiresAt > now
+  ) {
+    return cachedPostsFeedSummaryCache.data;
+  }
+
+  const data = readThreadsCachedPosts();
+  cachedPostsFeedSummaryCache = {
+    data,
+    expiresAt: now + CACHED_POSTS_FEED_SUMMARY_TTL_MS,
+  };
+  return data;
 };
 
 const fetchRedditPostsForSubreddit = async (subreddit, limit = 8) => {
@@ -2192,6 +2355,16 @@ unifiedRouter.get('/refresh', heavyLookupLimiter, async (req, res) => {
   }
 });
 
+unifiedRouter.get('/cached-posts/feed-summary', (req, res) => {
+  try {
+    const forceRefresh = ['1', 'true', 'yes'].includes(String(req.query.refresh || '').toLowerCase());
+    const data = getThreadsCachedPostSummaries({ forceRefresh });
+    return res.json({ success: true, data });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 unifiedRouter.get('/cached-posts/:postId', async (req, res) => {
   const { postId } = req.params;
 
@@ -2227,24 +2400,21 @@ unifiedRouter.get('/posts/:postId/snippets', heavyLookupLimiter, async (req, res
   }
 });
 
-unifiedRouter.get('/posts', async (req, res) => {
-  // Return mock posts list
-  res.json([
-    {
-      id: 'post-1',
-      title: 'Mock Post 1',
-      content: 'Mock content 1',
-      author: 'user1',
-      timestamp: new Date().toISOString()
-    },
-    {
-      id: 'post-2', 
-      title: 'Mock Post 2',
-      content: 'Mock content 2',
-      author: 'user2',
-      timestamp: new Date().toISOString()
-    }
-  ]);
+unifiedRouter.get('/posts', heavyLookupLimiter, async (req, res) => {
+  try {
+    const data = await buildDiverseThreadsFeed();
+    return res.json({
+      success: true,
+      data,
+      message: 'Fetched post feed',
+    });
+  } catch (error) {
+    console.error('Error building posts feed:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to build posts feed',
+    });
+  }
 });
 
 // Generate diverse mock posts for threads app with snippets and albums

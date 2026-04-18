@@ -68,7 +68,7 @@ function isLikelyCompositeArtistName(name) {
   const normalized = normalizeName(raw);
 
   if (!normalized) return true;
-  if (/[\/]/.test(raw)) return true;
+  if (/\//.test(raw)) return true;
   if (/\s&\s/.test(raw)) return true;
   if (/\sx\s/i.test(raw)) return true;
   if (/\b(and|with|feat\.?|featuring)\b/i.test(raw)) return true;

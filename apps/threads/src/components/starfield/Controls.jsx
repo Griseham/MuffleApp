@@ -262,16 +262,7 @@ export default function Controls({
         {artistButtons}
       </div>
       
-      {/* Artist filter bar */}
-      <EnhancedArtistFilterBar
-        onAddArtist={onAddArtist}
-        onRemoveArtist={onRemoveArtist}
-        onSelectArtist={onSelectArtist}
-        onNavigateConstellation={onNavigateConstellation}
-        selectedArtist={selectedArtist}
-        activeArtists={artists}
-        isFullscreen={isFullscreen}
-      />
+      {/* Artist filter bar — muted (constellation feature disabled) */}
     </>
   );
 }

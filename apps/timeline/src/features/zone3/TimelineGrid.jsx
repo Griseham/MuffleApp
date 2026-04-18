@@ -304,7 +304,6 @@ export default function TimelineGrid({ onReady }) {
   const [zone3Calendar, setZone3Calendar] = useState({});
   const [showTopAlbums, setShowTopAlbums] = useState(false);
   const [showYou, setShowYou] = useState(true);
-  const [youPinnedManually, setYouPinnedManually] = useState(false);
   const [pinnedFriends, setPinnedFriends] = useState([]);
   const [showVolume, setShowVolume] = useState(false);
   const [volumeDraft, setVolumeDraft] = useState(1600);
@@ -389,7 +388,7 @@ export default function TimelineGrid({ onReady }) {
   const youDisplayIndex = useMemo(() => displayUsers.findIndex((u) => u?.isYou), [displayUsers]);
 
   const onAddFriend = useCallback((friend) => {
-    if (friend.isYouFriend) { setShowYou(true); setYouPinnedManually(true); return; }
+    if (friend.isYouFriend) { setShowYou(true); return; }
     if (pinnedFriends.length >= 3) return;
     if (pinnedFriends.find((f) => f.id === friend.id)) return;
     setPinnedFriends((prev) => [...prev, friend]);
@@ -410,7 +409,7 @@ export default function TimelineGrid({ onReady }) {
   );
   const onRemoveUser = useCallback((userId) => {
     if (String(userId) === String(topAlbumsUser?.id)) { setShowTopAlbums(false); return; }
-    if (String(userId) === String(youUser?.id)) { setShowYou(false); setYouPinnedManually(false); return; }
+    if (String(userId) === String(youUser?.id)) { setShowYou(false); return; }
     setPinnedFriends((prev) => prev.filter((f) => String(f.id) !== String(userId)));
   }, [topAlbumsUser, youUser]);
   const onBodyScroll = useCallback(() => { if (headerScrollRef.current && bodyScrollRef.current) headerScrollRef.current.scrollLeft = bodyScrollRef.current.scrollLeft; }, []);
@@ -440,7 +439,6 @@ export default function TimelineGrid({ onReady }) {
     clearPendingVolumeCommit();
     setIsReloading(false);
     setPinnedFriends([]);
-    setYouPinnedManually(false);
     setShowAddMenu(false);
     setZone3Filter(nextFilter);
     if (nextFilter === "you") {

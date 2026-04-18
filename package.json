@@ -10,14 +10,15 @@
     "start": "node server.js",
     "dev": "node server.js",
     "dev:threads:stack": "node ./scripts/dev-threads-stack.mjs",
-    "dev:mufl": "cd apps/mufl && npm run start",
+    "dev:rooms": "cd apps/rooms && npm run start",
     "dev:threads": "cd apps/threads && npm run dev",
-    "build:mufl":   "cd apps/mufl && npm install --production=false && npm run build",
+    "build:rooms":  "cd apps/rooms && npm install --production=false && npm run build",
     "build:threads":"cd apps/threads && npm install --production=false && npm run build",
+    "build:timeline":"cd apps/timeline && npm install --production=false && npm run build",
     "prune:generated": "node ./scripts/prune-generated-artifacts.mjs",
     "test:threads": "cd apps/threads && npm test",
   
-    "build": "npm run build:mufl && npm run build:threads",
+    "build": "npm run build:rooms && npm run build:threads && npm run build:timeline",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {

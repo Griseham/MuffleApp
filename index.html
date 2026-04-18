@@ -11,6 +11,11 @@
             padding: 0;
             box-sizing: border-box;
         }
+
+        html {
+            overflow-y: scroll;
+            scrollbar-gutter: stable;
+        }
         
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', sans-serif;
@@ -20,12 +25,16 @@
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
         }
+
+        .hamburger {
+            display: none;
+        }
         
         .container {
             display: flex;
             min-height: 100vh;
             width: 100%;
-            max-width: 1280px;
+            max-width: 1728px;
             margin: 0 auto;
         }
         
@@ -39,10 +48,13 @@
             backdrop-filter: blur(20px);
             border-right: 1px solid rgba(255, 255, 255, 0.15);
             padding: 28px 0;
-            position: fixed;
+            position: sticky;
+            top: 0;
+            left: auto;
             height: 100vh;
             overflow-y: auto;
             z-index: 1000;
+            flex: 0 0 var(--sidebar-width);
         }
         
         .logo {
@@ -117,15 +129,6 @@
             color: #a0a0a8;
         }
 
-        .nav-sub-item[data-content="park"] {
-            color: #6d6d70 !important;
-            cursor: default !important;
-        }
-
-        .nav-sub-item[data-content="park"]:hover {
-            color: #6d6d70 !important;
-        }
-
         .nav-item:hover,
         .nav-sub-item:hover {
             color: #ffffff;
@@ -140,9 +143,23 @@
                 transparent 70%
             );
         }
+
+        .nav-submenu {
+            display: none;
+        }
+
+        .nav-submenu.open {
+            display: block;
+        }
+
+        .nav-item[data-content="old-videos"] {
+            margin-top: 16px;
+        }
         
         .main-content {
-            margin-left: var(--sidebar-width);
+            width: auto;
+            max-width: none;
+            margin-left: 0;
             flex: 1;
             min-height: 100vh;
             background: #000000;
@@ -680,23 +697,39 @@
             line-height: 1.083;
         }
 
-        /* Content for Home Screen */
-        .home-content {
+        /* Content for Archives */
+        .old-videos-content {
             padding-top: 60px;
             display: none;
         }
 
-        .home-content.active {
+        .old-videos-content.active {
             display: block;
         }
 
-        .home-title {
+        .old-videos-title {
             font-size: 64px;
             font-weight: 510;
             color: #f5f5f7;
-            margin-bottom: 80px;
+            margin-bottom: 48px;
             letter-spacing: -1.5px;
             line-height: 1.083;
+        }
+
+        .archive-tab-content {
+            display: none;
+        }
+
+        .archive-tab-content.active {
+            display: block;
+        }
+
+        .coming-soon-note {
+            margin-top: 28px;
+            text-align: center;
+            font-size: 22px;
+            color: #a1a1a6;
+            letter-spacing: -0.3px;
         }
 
         /* In Development Sections */
@@ -826,47 +859,278 @@
         }
 
         /* ────────────────────────────────────────────────────────────
-   MOBILE (≤ 768 px)
+   TABLET PORTRAIT (768 x 1024)
    ──────────────────────────────────────────────────────────── */
-@media (max-width: 767px) {
+        @media (max-width: 1024px) and (min-width: 768px) {
+            :root {
+                --sidebar-width: 280px;
+            }
 
-/* hamburger */
-.hamburger{display:flex;flex-direction:column;gap:6px;
-           width:34px;position:fixed;top:20px;left:20px;
-           z-index:2000;cursor:pointer}
-.hamburger span{height:2px;width:100%;background:#fff}
+            .content-wrapper {
+                padding: 64px 32px;
+            }
 
-/* sidebar slides in from the left */
-.sidebar{
-  position:fixed;top:0;left:0;transform:translateX(-100%);
-  transition:transform .3s ease;width:80vw;max-width:280px;
-  height:100vh;overflow-y:auto;border-right:0
-}
-.sidebar.open{transform:translateX(0)}
+            .nav-item,
+            .nav-sub-item {
+                font-size: 18px;
+                padding: 14px 24px;
+            }
 
-/* stack layout */
-.container{flex-direction:column}
-.main-content{margin-left:0}
+            .nav-sub-item {
+                padding: 14px 24px 14px 44px;
+            }
 
-/* tidy up spacing/typography */
-.rooms-title,
-.threads-title,
-.timeline-title,
-.home-title,
-.pitch-deck-title{font-size:40px;margin-bottom:40px}
-.page-title{font-size:32px}
-.page-subtitle{font-size:16px}
+            .nav-header {
+                font-size: 20px;
+                padding: 8px 24px;
+            }
 
-/* grids & cards */
-.video-grid{grid-template-columns:1fr}
-.video-thumbnail{height:200px}
-.single-video-thumbnail{height:240px}
-.info-video-thumbnail{height:260px}
+            .rooms-title,
+            .threads-title,
+            .timeline-title,
+            .old-videos-title,
+            .pitch-deck-title {
+                font-size: 52px;
+                margin-bottom: 56px;
+            }
 
-.prototype-section,
-.mvp-section,
-.development-section{padding:40px 20px}
-}
+            .section-title {
+                font-size: 32px;
+                margin-bottom: 36px;
+            }
+
+            .prototype-section,
+            .mvp-section,
+            .development-section {
+                padding: 48px 28px;
+                margin-bottom: 80px;
+            }
+
+            .video-grid {
+                grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+                gap: 24px;
+            }
+
+            .video-card,
+            .single-video-card {
+                padding: 22px;
+            }
+
+            .info-video-card {
+                padding: 28px;
+            }
+
+            .deck-info {
+                padding: 16px;
+            }
+
+            .main-slide {
+                width: 100%;
+                height: 56vh;
+                max-height: 620px;
+            }
+
+            .slide-dots {
+                width: 260px;
+            }
+        }
+
+        /* ────────────────────────────────────────────────────────────
+   MOBILE (360x800, 390x844, 414x896)
+   ──────────────────────────────────────────────────────────── */
+        @media (max-width: 767px) {
+            .hamburger {
+                display: flex;
+                flex-direction: column;
+                gap: 6px;
+                width: 34px;
+                position: fixed;
+                top: 16px;
+                left: 16px;
+                z-index: 2000;
+                cursor: pointer;
+            }
+
+            .hamburger span {
+                height: 2px;
+                width: 100%;
+                background: #fff;
+            }
+
+            .sidebar {
+                position: fixed;
+                top: 0;
+                left: 0;
+                transform: translateX(-100%);
+                transition: transform .3s ease;
+                width: min(86vw, 320px);
+                max-width: 320px;
+                height: 100vh;
+                overflow-y: auto;
+                border-right: 0;
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+            }
+
+            .container {
+                flex-direction: column;
+            }
+
+            .main-content {
+                margin-left: 0;
+                width: 100%;
+                max-width: 100%;
+            }
+
+            .content-container {
+                max-width: 100%;
+            }
+
+            .content-wrapper {
+                padding: 76px 16px 32px;
+            }
+
+            .logo-circle {
+                width: 88px;
+                height: 88px;
+            }
+
+            .nav-header {
+                font-size: 18px;
+                padding: 8px 20px;
+            }
+
+            .nav-item,
+            .nav-sub-item {
+                font-size: 18px;
+                padding: 14px 20px;
+            }
+
+            .nav-sub-item {
+                padding: 14px 20px 14px 32px;
+            }
+
+            .rooms-title,
+            .threads-title,
+            .timeline-title,
+            .old-videos-title,
+            .pitch-deck-title {
+                font-size: clamp(34px, 10vw, 40px);
+                margin-bottom: 32px;
+            }
+
+            .page-title {
+                font-size: 32px;
+            }
+
+            .page-subtitle {
+                font-size: 16px;
+            }
+
+            .section-title {
+                font-size: clamp(24px, 7vw, 30px);
+                margin-bottom: 24px;
+            }
+
+            .prototype-section,
+            .mvp-section,
+            .development-section {
+                padding: 32px 18px;
+                margin-bottom: 56px;
+            }
+
+            .prototype-text,
+            .mvp-text {
+                font-size: 26px;
+                margin-bottom: 24px;
+            }
+
+            .prototype-button,
+            .mvp-button {
+                width: 100%;
+                max-width: 280px;
+                padding: 16px 24px;
+                font-size: 17px;
+            }
+
+            .video-grid {
+                grid-template-columns: 1fr;
+                gap: 16px;
+            }
+
+            .video-card,
+            .single-video-card,
+            .info-video-card {
+                padding: 18px;
+            }
+
+            .video-thumbnail {
+                height: 188px;
+            }
+
+            .single-video-thumbnail {
+                height: 208px;
+            }
+
+            .info-video-thumbnail {
+                height: 228px;
+            }
+
+            .deck-info {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+                margin-bottom: 20px;
+            }
+
+            .main-slide {
+                width: 100%;
+                height: min(54vh, 340px);
+                margin-bottom: 18px;
+                border-radius: 14px;
+            }
+
+            .navigation-bar {
+                flex-wrap: wrap;
+                gap: 10px;
+            }
+
+            .slide-dots {
+                width: 100%;
+                margin-left: 0;
+                padding-bottom: 4px;
+            }
+
+            .pitch-action-buttons {
+                flex-direction: column;
+                gap: 10px;
+            }
+        }
+
+        @media (max-width: 420px) {
+            .content-wrapper {
+                padding: 74px 14px 24px;
+            }
+
+            .nav-item,
+            .nav-sub-item {
+                font-size: 17px;
+            }
+
+            .rooms-title,
+            .threads-title,
+            .timeline-title,
+            .old-videos-title,
+            .pitch-deck-title {
+                font-size: 34px;
+            }
+
+            .main-slide {
+                height: min(50vh, 300px);
+            }
+        }
 
     </style>
 </head>
@@ -887,13 +1151,18 @@
             
             <div class="nav-section">
                 <div class="nav-header">Mufl</div>
-                <div class="nav-sub-item active" data-content="rooms">Rooms</div>                <div class="nav-sub-item" data-content="threads">Threads</div>
+                <div class="nav-sub-item active" data-content="rooms">Rooms</div>
+                <div class="nav-sub-item" data-content="threads">Threads</div>
                 <div class="nav-sub-item" data-content="timeline">Timeline</div>
-                <div class="nav-sub-item" data-content="home">Home screen & Discover daily</div>
-                <div class="nav-sub-item" data-content="park">Mufl Park</div>
             </div>
             
             <div class="nav-item" data-content="pitch">Pitch Deck</div>
+            <div class="nav-item" data-content="old-videos">Archived Videos</div>
+            <div class="nav-submenu" id="archived-nav-submenu">
+                <div class="nav-sub-item nav-archive-sub-item" data-content="archived-rooms">Rooms</div>
+                <div class="nav-sub-item nav-archive-sub-item" data-content="archived-threads">Threads</div>
+                <div class="nav-sub-item nav-archive-sub-item" data-content="archived-timeline">Timeline</div>
+            </div>
         </div>
         
         <div class="main-content">
@@ -914,51 +1183,7 @@
                         <div class="prototype-section">
                             <div class="prototype-text">Try the MVP</div>
                             <button class="prototype-button">Launch Prototype</button>
-                        </div>
-
-                        <div class="videos-section">
-                            <h2 class="section-title">Demo Videos</h2>
-                            <div class="video-grid">
-                                <div class="video-card" data-video="/assets/HipHopRooms.mp4">
-                                    <div class="video-thumbnail">
-                                        <video class="video-element" preload="metadata">
-                                            <source src="/assets/HipHopRooms.mp4" type="video/mp4">
-                                        </video>
-                                        <div class="play-overlay">▶</div>
-                                    </div>
-                                    <div class="video-title">Hip-Hop Rooms</div>
-                                </div>
-                                <div class="video-card" data-video="/assets/IndieRooms.mp4">
-                                    <div class="video-thumbnail">
-                                        <video class="video-element" preload="metadata">
-                                            <source src="/assets/IndieRooms.mp4" type="video/mp4">
-                                        </video>
-                                        <div class="play-overlay">▶</div>
-                                    </div>
-                                    <div class="video-title">Indie Rooms</div>
-                                </div>
-                                <div class="video-card" data-video="/assets/AestheticRapRooms.mp4">
-                                    <div class="video-thumbnail">
-                                        <video class="video-element" preload="metadata">
-                                            <source src="/assets/AestheticRapRooms.mp4" type="video/mp4">
-                                        </video>
-                                        <div class="play-overlay">▶</div>
-                                    </div>
-                                    <div class="video-title">Aesthetic Rap Rooms</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="info-video-section">
-                            <h2 class="section-title">Informational</h2>
-                            <div class="info-video-card" data-video="/assets/RoomsInformational.mp4">
-                                <div class="info-video-thumbnail">
-                                    <video class="video-element" preload="metadata">
-                                        <source src="/assets/RoomsInformational.mp4" type="video/mp4">
-                                    </video>
-                                    <div class="play-overlay">▶</div>
-                                </div>
-                            </div>
+                            <div class="coming-soon-note">Updated Explainer video coming soon</div>
                         </div>
                     </div>
 
@@ -969,76 +1194,107 @@
                         <div class="mvp-section">
                             <div class="mvp-text">Try the MVP</div>
                             <button class="mvp-button">Launch Prototype</button>
-                        </div>
-
-                        <div class="single-video-section">
-                            <h2 class="section-title">Demo Video</h2>
-                            <div class="single-video-card" data-video="/assets/ThreadsDemo.mp4">
-                                <div class="single-video-thumbnail">
-                                    <video class="video-element" preload="metadata">
-                                        <source src="/assets/ThreadsDemo.mp4" type="video/mp4">
-                                    </video>
-                                    <div class="play-overlay">▶</div>
-                                </div>
-                                <div class="single-video-title">Threads Experience</div>
-                            </div>
-                        </div>
-
-                        <div class="info-video-section">
-                            <h2 class="section-title">Informational</h2>
-                            <div class="info-video-card" data-video="/assets/ThreadsInformational.mp4">
-                                <div class="info-video-thumbnail">
-                                    <video class="video-element" preload="metadata">
-                                        <source src="/assets/ThreadsInformational.mp4" type="video/mp4">
-                                    </video>
-                                    <div class="play-overlay">▶</div>
-                                </div>
-                            </div>
+                            <div class="coming-soon-note">Updated Explainer video coming soon</div>
                         </div>
                     </div>
 
                     <!-- Timeline Content -->
                     <div class="timeline-content" id="timeline-content">
                         <h1 class="timeline-title">Timeline</h1>
-                        
-                        <div class="development-section">
-                            <div class="development-container">
-                                <div class="development-text">In Development</div>
-                                <div class="status-message">Coming Soon</div>
-                            </div>
-                        </div>
 
-                        <div class="info-video-section">
-                            <h2 class="section-title">Profile screen and Timeline Informational</h2>
-                            <div class="info-video-card" data-video="/assets/ProfileInformational.mp4">
-                                <div class="info-video-thumbnail">
-                                    <video class="video-element" preload="metadata">
-                                        <source src="/assets/ProfileInformational.mp4" type="video/mp4">
-                                    </video>
-                                    <div class="play-overlay">▶</div>
-                                </div>
-                            </div>
+                        <div class="mvp-section">
+                            <div class="mvp-text">Try the MVP</div>
+                            <button class="mvp-button timeline-launch-button">Launch Prototype</button>
+                            <div class="coming-soon-note">Updated Explainer video coming soon</div>
                         </div>
                     </div>
 
-                    <!-- Home Screen Content -->
-                    <div class="home-content" id="home-content">
-                        <h1 class="home-title">Home screen & Discover daily</h1>
-                        
-                        <div class="development-section">
-                            <div class="development-container">
-                                <div class="development-text">In Development</div>
+                    <!-- Archives Content -->
+                    <div class="old-videos-content" id="old-videos-content">
+                        <div class="archive-tab-content active" id="archived-rooms-panel">
+                            <div class="videos-section">
+                                <h2 class="section-title">Demo Videos</h2>
+                                <div class="video-grid">
+                                    <div class="video-card" data-video="/assets/HipHopRooms.mp4">
+                                        <div class="video-thumbnail">
+                                            <video class="video-element" preload="metadata">
+                                                <source src="/assets/HipHopRooms.mp4" type="video/mp4">
+                                            </video>
+                                            <div class="play-overlay">▶</div>
+                                        </div>
+                                        <div class="video-title">Hip-Hop Rooms</div>
+                                    </div>
+                                    <div class="video-card" data-video="/assets/IndieRooms.mp4">
+                                        <div class="video-thumbnail">
+                                            <video class="video-element" preload="metadata">
+                                                <source src="/assets/IndieRooms.mp4" type="video/mp4">
+                                            </video>
+                                            <div class="play-overlay">▶</div>
+                                        </div>
+                                        <div class="video-title">Indie Rooms</div>
+                                    </div>
+                                    <div class="video-card" data-video="/assets/AestheticRapRooms.mp4">
+                                        <div class="video-thumbnail">
+                                            <video class="video-element" preload="metadata">
+                                                <source src="/assets/AestheticRapRooms.mp4" type="video/mp4">
+                                            </video>
+                                            <div class="play-overlay">▶</div>
+                                        </div>
+                                        <div class="video-title">Aesthetic Rap Rooms</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="info-video-section">
+                                <h2 class="section-title">Informational</h2>
+                                <div class="info-video-card" data-video="/assets/RoomsInformational.mp4">
+                                    <div class="info-video-thumbnail">
+                                        <video class="video-element" preload="metadata">
+                                            <source src="/assets/RoomsInformational.mp4" type="video/mp4">
+                                        </video>
+                                        <div class="play-overlay">▶</div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
-                        <div class="info-video-section">
-                            <h2 class="section-title">Informational</h2>
-                            <div class="info-video-card" data-video="/assets/HomeInformational.mp4">
-                                <div class="info-video-thumbnail">
-                                    <video class="video-element" preload="metadata">
-                                        <source src="/assets/HomeInformational.mp4" type="video/mp4">
-                                    </video>
-                                    <div class="play-overlay">▶</div>
+                        <div class="archive-tab-content" id="archived-threads-panel">
+                            <div class="single-video-section">
+                                <h2 class="section-title">Demo Video</h2>
+                                <div class="single-video-card" data-video="/assets/ThreadsDemo.mp4">
+                                    <div class="single-video-thumbnail">
+                                        <video class="video-element" preload="metadata">
+                                            <source src="/assets/ThreadsDemo.mp4" type="video/mp4">
+                                        </video>
+                                        <div class="play-overlay">▶</div>
+                                    </div>
+                                    <div class="single-video-title">Threads Experience</div>
+                                </div>
+                            </div>
+
+                            <div class="info-video-section">
+                                <h2 class="section-title">Informational</h2>
+                                <div class="info-video-card" data-video="/assets/ThreadsInformational.mp4">
+                                    <div class="info-video-thumbnail">
+                                        <video class="video-element" preload="metadata">
+                                            <source src="/assets/ThreadsInformational.mp4" type="video/mp4">
+                                        </video>
+                                        <div class="play-overlay">▶</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="archive-tab-content" id="archived-timeline-panel">
+                            <div class="info-video-section">
+                                <h2 class="section-title">Informational</h2>
+                                <div class="info-video-card" data-video="/assets/ProfileInformational.mp4">
+                                    <div class="info-video-thumbnail">
+                                        <video class="video-element" preload="metadata">
+                                            <source src="/assets/ProfileInformational.mp4" type="video/mp4">
+                                        </video>
+                                        <div class="play-overlay">▶</div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1135,53 +1391,109 @@
         });
         
         // Handle nav item selection and content switching
+        const archivedParentNavItem = document.querySelector('.nav-item[data-content="old-videos"]');
+        const archivedSubmenu = document.getElementById('archived-nav-submenu');
+
+        const contentMap = {
+            'rooms': 'rooms-content',
+            'threads': 'threads-content',
+            'timeline': 'timeline-content',
+            'archived-rooms': 'old-videos-content',
+            'archived-threads': 'old-videos-content',
+            'archived-timeline': 'old-videos-content',
+            'pitch': 'pitch-deck-content'
+        };
+
+        const archivedPanelMap = {
+            'archived-rooms': 'archived-rooms-panel',
+            'archived-threads': 'archived-threads-panel',
+            'archived-timeline': 'archived-timeline-panel'
+        };
+
+        function clearActiveNav() {
+            document.querySelectorAll('.nav-item, .nav-sub-item').forEach(nav => nav.classList.remove('active'));
+        }
+
+        function hideAllContent() {
+            ['investor-content', 'rooms-content', 'threads-content', 'timeline-content', 'old-videos-content', 'pitch-deck-content'].forEach(id => {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.style.display = 'none';
+                    element.classList.remove('active');
+                }
+            });
+        }
+
+        function setArchivedPanel(contentType) {
+            document.querySelectorAll('.archive-tab-content').forEach(panel => {
+                panel.classList.remove('active');
+                panel.style.display = 'none';
+            });
+            const panelId = archivedPanelMap[contentType];
+            const activePanel = panelId ? document.getElementById(panelId) : null;
+            if (activePanel) {
+                activePanel.style.display = 'block';
+                activePanel.classList.add('active');
+            }
+        }
+
+        function showContent(contentType) {
+            hideAllContent();
+
+            const targetId = contentMap[contentType];
+            if (targetId) {
+                const targetElement = document.getElementById(targetId);
+                if (targetElement) {
+                    targetElement.style.display = 'block';
+                    targetElement.classList.add('active');
+                }
+
+                if (contentType.startsWith('archived-')) {
+                    setArchivedPanel(contentType);
+                }
+
+                if (contentType === 'pitch') {
+                    setTimeout(generateDots, 100);
+                }
+            } else {
+                const investorContent = document.getElementById('investor-content');
+                if (investorContent) investorContent.style.display = 'flex';
+            }
+        }
+
+        function setArchivedNavActive(contentType) {
+            clearActiveNav();
+            archivedParentNavItem?.classList.add('active');
+            const matchingSubItem = document.querySelector(`.nav-archive-sub-item[data-content="${contentType}"]`);
+            matchingSubItem?.classList.add('active');
+        }
+
         document.querySelectorAll('.nav-item, .nav-sub-item').forEach(item => {
             item.addEventListener('click', (e) => {
                 e.stopPropagation();
-                
+
                 const contentType = item.getAttribute('data-content');
-                
-                // Skip Mufl Park - make it non-functional
-                if (contentType === 'park') return;
-                
-                // Remove active class from all nav items
-                document.querySelectorAll('.nav-item, .nav-sub-item').forEach(nav => nav.classList.remove('active'));
-                item.classList.add('active');
-                
-                // Hide all content sections
-                ['investor-content', 'rooms-content', 'threads-content', 'timeline-content', 'home-content', 'pitch-deck-content'].forEach(id => {
-                    const element = document.getElementById(id);
-                    if (element) {
-                        element.style.display = 'none';
-                        element.classList.remove('active');
-                    }
-                });
-                
-                // Show the appropriate content
-                const contentMap = {
-                    'rooms': 'rooms-content',
-                    'threads': 'threads-content', 
-                    'timeline': 'timeline-content',
-                    'home': 'home-content',
-                    'pitch': 'pitch-deck-content'
-                };
-                
-                const targetId = contentMap[contentType];
-                if (targetId) {
-                    const targetElement = document.getElementById(targetId);
-                    if (targetElement) {
-                        targetElement.style.display = 'block';
-                        targetElement.classList.add('active');
-                        
-                        // Generate dots for pitch deck when it's shown
-                        if (contentType === 'pitch') {
-                            setTimeout(generateDots, 100);
-                        }
-                    }
-                } else {
-                    // Default to investor portal
-                    document.getElementById('investor-content').style.display = 'flex';
+                if (!contentType) return;
+
+                if (contentType === 'old-videos') {
+                    archivedSubmenu?.classList.add('open');
+                    const defaultArchivedContent = 'archived-rooms';
+                    setArchivedNavActive(defaultArchivedContent);
+                    showContent(defaultArchivedContent);
+                    return;
                 }
+
+                if (item.classList.contains('nav-archive-sub-item')) {
+                    archivedSubmenu?.classList.add('open');
+                    setArchivedNavActive(contentType);
+                    showContent(contentType);
+                    return;
+                }
+
+                archivedSubmenu?.classList.remove('open');
+                clearActiveNav();
+                item.classList.add('active');
+                showContent(contentType);
             });
         });
 
@@ -1190,10 +1502,14 @@
             window.open(resolvePath('./rooms'), '_blank');
         });
 
-        document.querySelectorAll('.mvp-button').forEach(button => {
+        document.querySelectorAll('.threads-content .mvp-button').forEach(button => {
             button.addEventListener('click', () => {
                 window.open(resolvePath('./threads'), '_blank');
             });
+        });
+
+        document.querySelector('.timeline-launch-button')?.addEventListener('click', () => {
+            window.open(resolvePath('./timeline'), '_blank');
         });
 
         document.querySelectorAll('.video-card, .info-video-card, .single-video-card').forEach(card => {

@@ -1,5 +1,5 @@
 const TOTAL_USER_AVATARS = 1000;
-const AVATAR_BASE_URL = `${import.meta.env.BASE_URL}assets/avatars`;
+const AVATAR_BASE_URL = '/assets';
 
 function normalizeAvatarNumber(number) {
   const raw = Math.trunc(Math.abs(Number(number) || 1));

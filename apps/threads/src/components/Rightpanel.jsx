@@ -78,14 +78,92 @@ const PlayIcon = ({ size = 14 }) => (
 const TRACK_KEY_SEP = "|||";
 const _trackKey = (song, artist) =>
   `${String(song || "").trim()}${TRACK_KEY_SEP}${String(artist || "").trim()}`;
-const normalizeArtistName = (name = "") => String(name || "").trim().toLowerCase();
+const normalizeArtistName = (name = "") =>
+  String(name || "")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase();
 const hasUsableArtistImage = (imageUrl = "") => {
   const raw = String(imageUrl || "").trim();
   if (!raw) return false;
   const lower = raw.toLowerCase();
-  return (raw.startsWith("http://") || raw.startsWith("https://") || raw.startsWith("/")) &&
-    !lower.includes("placeholder");
+  if (!raw.startsWith("http://") && !raw.startsWith("https://")) return false;
+  if (lower.includes("placeholder") || lower.includes("default-avatar") || lower.includes("/user")) return false;
+
+  try {
+    const parsed = new URL(raw);
+    const host = parsed.hostname.toLowerCase();
+    // Top Artists should only show trusted artist artwork, never user/avatar assets.
+    return host.includes("mzstatic.com");
+  } catch {
+    return false;
+  }
 };
+const ARTIST_GENRE_BY_NAME = new Map([
+  ["ariana grande", "Pop"],
+  ["bad bunny", "Latin Trap/Reggaeton"],
+  ["post malone", "Pop Rap"],
+  ["dua lipa", "Dance-Pop"],
+  ["taylor swift", "Pop"],
+  ["billie eilish", "Alternative Pop"],
+  ["lana del rey", "Alternative Pop"],
+  ["travis scott", "Hip-Hop"],
+  ["sza", "R&B"],
+  ["frank ocean", "Alternative R&B"],
+  ["tyler, the creator", "Hip-Hop"],
+  ["kendrick lamar", "Hip-Hop"],
+  ["beyonce", "Pop/R&B"],
+  ["drake", "Hip-Hop"],
+  ["childish gambino", "Hip-Hop"],
+  ["h.e.r.", "R&B"],
+  ["daniel caesar", "R&B"],
+  ["jorja smith", "R&B"],
+  ["steve lacy", "Alternative R&B"],
+  ["brent faiyaz", "R&B"],
+  ["summer walker", "R&B"],
+  ["6lack", "R&B"],
+  ["lucky daye", "R&B"],
+  ["ravyn lenae", "R&B"],
+  ["ari lennox", "R&B"],
+  ["partynextdoor", "R&B"],
+  ["snoh aalegra", "R&B"],
+  ["charlotte day wilson", "Alternative R&B"],
+  ["pink sweat$", "R&B"],
+  ["umi", "R&B"],
+  ["masego", "Jazz/R&B"],
+  ["kirby", "R&B"],
+  ["raveena", "R&B"],
+  ["sudan archives", "Alternative R&B"],
+  ["fka twigs", "Electronic/Art Pop"],
+  ["james blake", "Electronic"],
+  ["moses sumney", "Alternative"],
+  ["caroline polachek", "Synth-Pop"],
+  ["mac miller", "Hip-Hop"],
+  ["radiohead", "Alternative Rock"],
+  ["the strokes", "Indie Rock"],
+  ["arctic monkeys", "Indie Rock"],
+  ["tame impala", "Psychedelic Rock"],
+  ["daft punk", "Electronic"],
+  ["the weeknd", "R&B/Pop"],
+]);
+const EXPANDED_POST_CONTENT_ARTISTS = [
+  "Ariana Grande",
+  "Bad Bunny",
+  "Drake",
+  "Post Malone",
+  "Dua Lipa",
+  "SZA",
+  "Frank Ocean",
+  "Beyoncé",
+  "Taylor Swift",
+  "Kendrick Lamar",
+  "Billie Eilish",
+  "The Weeknd",
+  "Lana Del Rey",
+  "Travis Scott",
+  "Tyler, The Creator",
+];
 
 const ARTIST_SONG_POOL = {
   "SZA":                [{ song: "Kill Bill", accent: "#818CF8", albumColor: "#1a1030" }, { song: "Good Days", accent: "#818CF8", albumColor: "#130a2a" }],
@@ -458,6 +536,7 @@ export default function RightPanel({
   onUserClick,
 }) {
   const PANEL_WIDTH = 420;
+  const MOBILE_PANEL_BREAKPOINT = 1180;
   const COLLAPSED_USER_COUNT = 10;
 
   const [expandedUsers, setExpandedUsers] = useState(false);
@@ -465,6 +544,9 @@ export default function RightPanel({
   const [hoveredGenre, setHoveredGenre] = useState(null);
   const [expandedUserId, setExpandedUserId] = useState(null);
   const [albumArtworks, setAlbumArtworks] = useState({});
+  const [isCompactLayout, setIsCompactLayout] = useState(
+    typeof window !== "undefined" ? window.innerWidth <= MOBILE_PANEL_BREAKPOINT : false
+  );
 
   // Load real album artworks from the cache (same call PostCard makes)
   useEffect(() => {
@@ -475,6 +557,16 @@ export default function RightPanel({
       })
       .catch((_err) => undefined);
     return () => { mounted = false; };
+  }, []);
+
+  useEffect(() => {
+    const updateLayout = () => {
+      setIsCompactLayout(window.innerWidth <= MOBILE_PANEL_BREAKPOINT);
+    };
+
+    updateLayout();
+    window.addEventListener("resize", updateLayout);
+    return () => window.removeEventListener("resize", updateLayout);
   }, []);
 
   // Build thread list from cachedPosts (same logic as HomeTikTokModal – take first 10 real posts)
@@ -497,15 +589,54 @@ export default function RightPanel({
   ];
 
   const defaultArtists = [
-    { name: "Mac Miller", genre: "Lo-Fi", recommendations: 1863 },
-    { name: "Radiohead", genre: "Electronic", recommendations: 2226 },
-    { name: "Kendrick Lamar", genre: "Afrobeat", recommendations: 1863 },
-    { name: "The Strokes", genre: "Synth-Pop", recommendations: 2226 },
-    { name: "Arctic Monkeys", genre: "Electronic", recommendations: 2589 },
+    { name: "SZA", genre: "R&B", recommendations: 2589 },
+    { name: "Kendrick Lamar", genre: "Hip-Hop", recommendations: 2488 },
+    { name: "Tyler, The Creator", genre: "Hip-Hop", recommendations: 2264 },
+    { name: "Frank Ocean", genre: "Alternative R&B", recommendations: 2126 },
+    { name: "Beyoncé", genre: "Pop/R&B", recommendations: 1863 },
   ];
 
   const safeGenres = (genres && genres.length ? genres : defaultGenres).slice(0, 6);
-  const safeArtists = (artists && artists.length ? artists : defaultArtists).slice(0, 8);
+  const sourceArtists = (artists && artists.length ? artists : defaultArtists);
+  const dedupedArtists = [];
+  const seenArtistNames = new Set();
+
+  sourceArtists.forEach((artist) => {
+    const artistName = String(artist?.name || "").trim();
+    const normalizedArtistName = normalizeArtistName(artistName);
+    if (!artistName || seenArtistNames.has(normalizedArtistName)) {
+      return;
+    }
+
+    seenArtistNames.add(normalizedArtistName);
+    const mappedGenre = ARTIST_GENRE_BY_NAME.get(normalizedArtistName);
+    const providedGenre = String(artist?.genre || "").trim();
+    const recommendationsValue = Number(artist?.recommendations);
+
+    dedupedArtists.push({
+      ...artist,
+      name: artistName,
+      genre: mappedGenre || providedGenre || "Music",
+      recommendations: Number.isFinite(recommendationsValue) ? recommendationsValue : 0,
+    });
+  });
+
+  if (dedupedArtists.length < 8) {
+    defaultArtists.forEach((artist) => {
+      const artistName = String(artist?.name || "").trim();
+      const normalizedArtistName = normalizeArtistName(artistName);
+      if (!artistName || seenArtistNames.has(normalizedArtistName)) {
+        return;
+      }
+      seenArtistNames.add(normalizedArtistName);
+      dedupedArtists.push({
+        ...artist,
+        genre: ARTIST_GENRE_BY_NAME.get(normalizedArtistName) || String(artist?.genre || "Music"),
+      });
+    });
+  }
+
+  const safeArtists = dedupedArtists.slice(0, 8);
   const cachedArtistsWithImages = useMemo(() => {
     const sourceList = cachedArtistImages && typeof cachedArtistImages === "object"
       ? Object.values(cachedArtistImages)
@@ -528,50 +659,51 @@ export default function RightPanel({
   }, [cachedArtistsWithImages]);
 
   const topArtistsWithImages = useMemo(() => {
-    const usedCachedArtistNames = new Set();
-    let fallbackIndex = 0;
+    const withImages = [];
+    const seenArtistNames = new Set();
 
-    const takeFallbackArtist = () => {
-      while (fallbackIndex < cachedArtistsWithImages.length) {
-        const candidate = cachedArtistsWithImages[fallbackIndex++];
-        const normalizedCandidateName = normalizeArtistName(candidate.name);
-        if (usedCachedArtistNames.has(normalizedCandidateName)) continue;
-        usedCachedArtistNames.add(normalizedCandidateName);
-        return candidate;
-      }
-      return null;
+    const pushIfCachedImageExists = (artist, fallbackRecommendations = 0) => {
+      const name = String(artist?.name || "").trim();
+      const normalizedName = normalizeArtistName(name);
+      if (!name || seenArtistNames.has(normalizedName)) return false;
+
+      const cachedMatch = cachedArtistByName.get(normalizedName);
+      if (!cachedMatch?.imageUrl) return false;
+
+      seenArtistNames.add(normalizedName);
+      const recommendationsValue = Number(
+        artist?.recommendations ?? fallbackRecommendations
+      );
+
+      withImages.push({
+        ...artist,
+        name,
+        genre: ARTIST_GENRE_BY_NAME.get(normalizedName) || String(artist?.genre || "Music"),
+        recommendations: Number.isFinite(recommendationsValue) ? recommendationsValue : 0,
+        imageUrl: cachedMatch.imageUrl,
+      });
+      return true;
     };
 
-    return safeArtists.map((artist) => {
-      const normalizedSourceName = normalizeArtistName(artist?.name);
-      const exactCachedMatch = cachedArtistByName.get(normalizedSourceName);
-      const fallbackCachedMatch = exactCachedMatch ? null : takeFallbackArtist();
-      const chosenCachedArtist = exactCachedMatch || fallbackCachedMatch;
-
-      if (exactCachedMatch) {
-        usedCachedArtistNames.add(normalizedSourceName);
-      }
-
-      if (!chosenCachedArtist) {
-        if (cachedArtistsWithImages.length > 0) {
-          const recycled = cachedArtistsWithImages[fallbackIndex % cachedArtistsWithImages.length];
-          fallbackIndex += 1;
-          return {
-            ...artist,
-            name: recycled.name,
-            imageUrl: recycled.imageUrl,
-          };
-        }
-        return { ...artist, imageUrl: "" };
-      }
-
-      return {
-        ...artist,
-        name: chosenCachedArtist.name,
-        imageUrl: chosenCachedArtist.imageUrl,
-      };
+    safeArtists.forEach((artist) => {
+      pushIfCachedImageExists(artist);
     });
-  }, [safeArtists, cachedArtistByName, cachedArtistsWithImages]);
+
+    // Keep the candidate set aligned with ExpandedPostContent artists.
+    EXPANDED_POST_CONTENT_ARTISTS.forEach((name, index) => {
+      if (withImages.length >= 8) return;
+      pushIfCachedImageExists(
+        {
+          name,
+          genre: ARTIST_GENRE_BY_NAME.get(normalizeArtistName(name)) || "Music",
+          recommendations: 1800 + index * 143,
+        },
+        1800 + index * 143
+      );
+    });
+
+    return withImages.slice(0, 8);
+  }, [safeArtists, cachedArtistByName]);
 
   const totalPct = safeGenres.reduce((acc, g) => acc + (Number(g.percentage) || 0), 0) || 1;
 
@@ -596,16 +728,19 @@ export default function RightPanel({
   return (
     <div
       style={{
-        width: PANEL_WIDTH,
+        width: `min(${PANEL_WIDTH}px, 100%)`,
+        maxWidth: `min(${PANEL_WIDTH}px, 100%)`,
+        alignSelf: isCompactLayout ? "stretch" : "auto",
+        margin: isCompactLayout ? "0 auto" : 0,
         flexShrink: 0,
-        borderRadius: 16,
-        overflow: "hidden",
+        borderRadius: isCompactLayout ? 14 : 16,
+        overflow: isCompactLayout ? "visible" : "hidden",
         fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
         background: "rgba(15, 20, 30, 0.9)",
         backdropFilter: "blur(40px)",
         border: "1px solid rgba(255,255,255,0.08)",
         boxShadow: "0 16px 32px -8px rgba(0,0,0,0.4)",
-        maxHeight: "calc(100vh - 40px)",
+        maxHeight: isCompactLayout ? "none" : "calc(100vh - 40px)",
         display: "flex",
         flexDirection: "column",
       }}
@@ -613,17 +748,17 @@ export default function RightPanel({
       {/* Title */}
       <div
         style={{
-          padding: "18px 20px 16px",
+          padding: isCompactLayout ? "14px 16px 12px" : "18px 20px 16px",
           borderBottom: "1px solid rgba(255,255,255,0.08)",
         }}
       >
-        <div style={{ fontSize: 20, fontWeight: 800, color: "#fff", letterSpacing: "0.2px" }}>
+        <div style={{ fontSize: "clamp(1rem, 2.3vw, 1.25rem)", fontWeight: 800, color: "#fff", letterSpacing: "0.2px" }}>
           Feed stats at ({coordinates?.x ?? 50},{coordinates?.y ?? 50})
         </div>
       </div>
 
       {!feedLoaded ? (
-        <div style={{ padding: "54px 20px", textAlign: "center" }}>
+        <div style={{ padding: isCompactLayout ? "32px 16px" : "54px 20px", textAlign: "center" }}>
           <div style={{ marginBottom: 12, opacity: 0.3 }}>
             <StarIcon size={36} />
           </div>
@@ -634,7 +769,7 @@ export default function RightPanel({
           </div>
         </div>
       ) : (
-        <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden" }}>
+        <div style={{ flex: 1, overflowY: isCompactLayout ? "visible" : "auto", overflowX: "hidden" }}>
           {/* Genres */}
           <div style={{ padding: "18px 20px 16px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
             <div

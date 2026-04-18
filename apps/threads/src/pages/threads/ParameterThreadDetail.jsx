@@ -28,14 +28,14 @@ import './../../styles/threadDetailStyles.css';
 
 const THREAD_THEME_COLOR = '#00C4B4';
 const PARAMETER_PALETTE = [
-  '#EF4444',
-  '#F59E0B',
-  '#22C55E',
-  '#3B82F6',
-  '#EC4899',
-  '#8B5CF6',
-  '#14B8A6',
-  '#A16207',
+  '#00C4B4',
+  '#00B9B7',
+  '#00AEBA',
+  '#00A3BD',
+  '#0098C0',
+  '#008DC3',
+  '#0082C6',
+  '#0077C9',
 ];
 const MIN_PARAMETER_SONG_COUNT = 11;
 const MAX_PARAMETER_SONG_COUNT = 23;
@@ -53,6 +53,9 @@ const INITIAL_PARAMETER_SCATTER_USERS = [
   "MintCassette",
   "SolarGroove",
 ];
+const COMPACT_PHONE_BREAKPOINT = 390;
+const PHONE_THREAD_BREAKPOINT = 480;
+const TABLET_PORTRAIT_BREAKPOINT = 1024;
 
 function rangeFromSeed(seedInput, min, max) {
   const seed = Math.abs(generateHash(seedInput));
@@ -310,6 +313,15 @@ function formatArtworkUrl(url, size = 300) {
     .replace('{f}', 'jpg');
 }
 
+function formatPostDate(createdUtc) {
+  if (!Number.isFinite(createdUtc) || createdUtc <= 0) {
+    return "";
+  }
+
+  const resolvedMs = createdUtc > 1e12 ? createdUtc : createdUtc * 1000;
+  return new Date(resolvedMs).toLocaleDateString();
+}
+
 function normalizeParameterSnippet(snippet = {}) {
   const attrs = snippet?.snippetData?.attributes || {};
   const snippetId = snippet.commentId || snippet.id;
@@ -362,6 +374,34 @@ function buildProfileUser(userLike, fallbackName, fallbackAvatar) {
     username,
     avatar: userLike?.avatar || fallbackAvatar || authorToAvatar(displayName),
   };
+}
+
+function useViewportMatch(maxWidth) {
+  const [isMatch, setIsMatch] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.innerWidth <= maxWidth;
+  });
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+
+    const mediaQuery = window.matchMedia(`(max-width: ${maxWidth}px)`);
+    const handleViewportChange = (event) => {
+      setIsMatch(event.matches);
+    };
+
+    setIsMatch(mediaQuery.matches);
+
+    if (typeof mediaQuery.addEventListener === "function") {
+      mediaQuery.addEventListener("change", handleViewportChange);
+      return () => mediaQuery.removeEventListener("change", handleViewportChange);
+    }
+
+    mediaQuery.addListener(handleViewportChange);
+    return () => mediaQuery.removeListener(handleViewportChange);
+  }, [maxWidth]);
+
+  return isMatch;
 }
 
 // Mock data for parameter thread
@@ -662,6 +702,10 @@ export default function ParameterThreadDetail({ postId, onBack, onSelectUser }) 
   const [isGraphsOpen, setIsGraphsOpen] = useState(false);
   const [isTikTokOpen, setIsTikTokOpen] = useState(false);
   const [hasUserRatedInSession, setHasUserRatedInSession] = useState(false);
+  const isCompactPhoneView = useViewportMatch(COMPACT_PHONE_BREAKPOINT);
+  const isMobileView = useViewportMatch(PHONE_THREAD_BREAKPOINT);
+  const isTabletPortraitView =
+    useViewportMatch(TABLET_PORTRAIT_BREAKPOINT) && !isMobileView;
 
   // Always enter parameter thread detail with info sidebar closed.
   useEffect(() => {
@@ -785,6 +829,7 @@ export default function ParameterThreadDetail({ postId, onBack, onSelectUser }) 
   
   // Audio states
   const audioRef = useRef(null);
+  const graphsSectionRef = useRef(null);
   const [activeSnippet, setActiveSnippet] = useState({
     snippetId: null,
     isPlaying: false,
@@ -1254,13 +1299,64 @@ export default function ParameterThreadDetail({ postId, onBack, onSelectUser }) 
     setIsGraphsOpen((prevOpen) => !prevOpen);
   }, []);
 
+  const scrollToGraphsSection = useCallback(() => {
+    if (typeof window === "undefined") return;
+    const sectionNode = graphsSectionRef.current;
+    if (!sectionNode) return;
+
+    const offset = isMobileView ? (isCompactPhoneView ? 82 : 86) : (isTabletPortraitView ? 96 : 104);
+    const targetTop = Math.max(
+      0,
+      window.scrollY + sectionNode.getBoundingClientRect().top - offset
+    );
+
+    window.scrollTo({ top: targetTop, behavior: "smooth" });
+  }, [isCompactPhoneView, isMobileView, isTabletPortraitView]);
+
+  useEffect(() => {
+    if (!isGraphsOpen) return undefined;
+    if (typeof window === "undefined") return undefined;
+
+    let rafPrimary = 0;
+    let rafSecondary = 0;
+
+    rafPrimary = window.requestAnimationFrame(() => {
+      rafSecondary = window.requestAnimationFrame(() => {
+        scrollToGraphsSection();
+      });
+    });
+
+    return () => {
+      if (rafPrimary) window.cancelAnimationFrame(rafPrimary);
+      if (rafSecondary) window.cancelAnimationFrame(rafSecondary);
+    };
+  }, [isGraphsOpen, scrollToGraphsSection]);
+
   const handleSelectUser = useCallback((user) => {
     if (!onSelectUser || !user) return;
     onSelectUser(user);
   }, [onSelectUser]);
+  const handleBack = useCallback(() => {
+    if (onBack) onBack();
+  }, [onBack]);
 
   const styles = ThreadDetailStyles;
   const graphsCount = graphRatings?.length || 0;
+  const horizontalInset = isCompactPhoneView ? 16 : (isMobileView ? 20 : (isTabletPortraitView ? 28 : 32));
+  const contentWidth = `min(100%, calc(100% - ${horizontalInset}px))`;
+  const statIconSize = isCompactPhoneView ? 15 : (isMobileView ? 16 : (isTabletPortraitView ? 17 : 18));
+  const headerPadding = isCompactPhoneView ? "12px 12px" : (isMobileView ? "14px 14px" : (isTabletPortraitView ? "16px 18px" : "18px 20px"));
+  const contentHorizontalPadding = isCompactPhoneView ? "12px" : (isMobileView ? "14px" : (isTabletPortraitView ? "18px" : "20px"));
+  const titleFontSize = isCompactPhoneView ? "19px" : (isMobileView ? "20px" : (isTabletPortraitView ? "24px" : "26px"));
+  const bodyFontSize = isCompactPhoneView ? "13px" : (isMobileView ? "14px" : (isTabletPortraitView ? "15px" : "16px"));
+  const postImageMaxHeight = isCompactPhoneView ? "300px" : (isMobileView ? "340px" : "500px");
+  const showInlineGraphInfo = !isCompactPhoneView;
+  const postCreatedLabel = useMemo(() => formatPostDate(post?.createdUtc), [post?.createdUtc]);
+  const mobileVerticalChartHeight = useMemo(() => {
+    if (!isMobileView) return 270;
+    const ratingRows = Math.max(2, graphRatings?.length || 0);
+    return Math.min(360, Math.max(220, ratingRows * 52));
+  }, [graphRatings?.length, isMobileView]);
   const postUser = useMemo(
     () => buildProfileUser(post, post?.author, post ? getAvatarSrc(post) : null),
     [post]
@@ -1271,6 +1367,12 @@ export default function ParameterThreadDetail({ postId, onBack, onSelectUser }) 
       className="thread-detail-container"
       style={{
         ...styles.container,
+        ...(isMobileView ? {
+          width: "100%",
+          maxWidth: "100%",
+          margin: 0,
+          paddingBottom: "16px",
+        } : null),
         opacity: isVisible ? 1 : 0,
         transform: `scale(${isVisible ? '1' : '0.98'})`,
       }}>
@@ -1284,7 +1386,7 @@ export default function ParameterThreadDetail({ postId, onBack, onSelectUser }) 
       <div style={{
         display: "flex",
         alignItems: "center",
-        padding: "18px 20px",
+        padding: headerPadding,
         backgroundColor: "rgba(10, 14, 26, 0.6)",
         backdropFilter: "blur(24px) saturate(1.4)",
         borderBottom: "1px solid rgba(0, 196, 180, 0.12)",
@@ -1294,10 +1396,10 @@ export default function ParameterThreadDetail({ postId, onBack, onSelectUser }) 
         width: "100%",
       }}>
         <button 
-          onClick={onBack} 
+          onClick={handleBack} 
           style={{
-            width: "38px",
-            height: "38px",
+            width: isCompactPhoneView ? "32px" : (isMobileView ? "34px" : "38px"),
+            height: isCompactPhoneView ? "32px" : (isMobileView ? "34px" : "38px"),
             borderRadius: "50%",
             background: "rgba(255, 255, 255, 0.06)",
             border: "1px solid rgba(255, 255, 255, 0.08)",
@@ -1306,17 +1408,17 @@ export default function ParameterThreadDetail({ postId, onBack, onSelectUser }) 
             justifyContent: "center",
             cursor: "pointer",
             color: "#e2e8f0",
-            marginRight: "16px",
+            marginRight: isCompactPhoneView ? "10px" : (isMobileView ? "12px" : "16px"),
             backdropFilter: "blur(8px)",
             padding: 0,
           }}
         >
-          <FiArrowLeft size={20} />
+          <FiArrowLeft size={isCompactPhoneView ? 17 : (isMobileView ? 18 : 20)} />
         </button>
         <span style={{
-          fontSize: "13px",
+          fontSize: isCompactPhoneView ? "11px" : (isMobileView ? "12px" : "13px"),
           fontWeight: "600",
-          letterSpacing: "3px",
+          letterSpacing: isCompactPhoneView ? "1.8px" : (isMobileView ? "2.2px" : "3px"),
           textTransform: "uppercase",
           color: "#94a3b8",
         }}>
@@ -1324,17 +1426,17 @@ export default function ParameterThreadDetail({ postId, onBack, onSelectUser }) 
         </span>
         <div style={{
           marginLeft: "auto",
-          width: "32px",
-          height: "32px",
+          width: isCompactPhoneView ? "28px" : (isMobileView ? "30px" : "32px"),
+          height: isCompactPhoneView ? "28px" : (isMobileView ? "30px" : "32px"),
           borderRadius: "50%",
-          background: "linear-gradient(135deg, #00C4B4, #0d9488)",
+          background: "linear-gradient(135deg, #00C4B4, #0e7490)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           color: "#fff",
           boxShadow: "0 2px 12px rgba(0, 196, 180, 0.3)",
         }}>
-          <BarChart3 size={16} />
+          <BarChart3 size={isCompactPhoneView ? 14 : (isMobileView ? 15 : 16)} />
         </div>
       </div>
       
@@ -1343,13 +1445,13 @@ export default function ParameterThreadDetail({ postId, onBack, onSelectUser }) 
         <div style={{
           padding: "0",
           backgroundColor: "rgba(255, 255, 255, 0.03)",
-          borderRadius: "20px",
-          margin: "20px auto",
+          borderRadius: isCompactPhoneView ? "14px" : (isMobileView ? "16px" : "20px"),
+          margin: isMobileView ? "12px auto 14px" : "20px auto",
           border: "1px solid rgba(0, 196, 180, 0.12)",
           position: "relative",
           boxShadow: "0 8px 32px rgba(0, 0, 0, 0.25)",
           backdropFilter: "blur(20px)",
-          width: "calc(100% - 32px)",
+          width: contentWidth,
           maxWidth: "100%",
           boxSizing: "border-box",
           overflow: "hidden",
@@ -1371,7 +1473,7 @@ export default function ParameterThreadDetail({ postId, onBack, onSelectUser }) 
             left: "-60px",
             width: "260px",
             height: "260px",
-            background: "radial-gradient(circle, rgba(13, 148, 136, 0.08) 0%, transparent 70%)",
+            background: "radial-gradient(circle, rgba(14, 116, 144, 0.08) 0%, transparent 70%)",
             pointerEvents: "none",
             zIndex: 0,
           }}/>
@@ -1379,8 +1481,8 @@ export default function ParameterThreadDetail({ postId, onBack, onSelectUser }) 
           <div style={{
             display: "flex",
             alignItems: "center",
-            gap: "12px",
-            padding: "18px 20px 14px",
+            gap: isCompactPhoneView ? "9px" : (isMobileView ? "10px" : "12px"),
+            padding: isMobileView ? `14px ${contentHorizontalPadding} 10px` : "18px 20px 14px",
             position: "relative",
             zIndex: 1,
           }}>
@@ -1400,8 +1502,8 @@ export default function ParameterThreadDetail({ postId, onBack, onSelectUser }) 
                 src={postUser?.avatar || getAvatarSrc(post)}
                 alt={`${postUser?.displayName || post?.author || "User"} avatar`}
                 style={{
-                  width: "44px",
-                  height: "44px",
+                  width: isCompactPhoneView ? "36px" : (isMobileView ? "40px" : "44px"),
+                  height: isCompactPhoneView ? "36px" : (isMobileView ? "40px" : "44px"),
                   borderRadius: "50%",
                   objectFit: "cover",
                   border: "2px solid rgba(0, 196, 180, 0.4)",
@@ -1418,7 +1520,7 @@ export default function ParameterThreadDetail({ postId, onBack, onSelectUser }) 
                 onClick={() => handleSelectUser(postUser)}
                 style={{
                   fontWeight: "700",
-                  fontSize: "15px",
+                  fontSize: isCompactPhoneView ? "13px" : (isMobileView ? "14px" : "15px"),
                   color: "#f1f5f9",
                   background: "none",
                   border: "none",
@@ -1431,45 +1533,46 @@ export default function ParameterThreadDetail({ postId, onBack, onSelectUser }) 
                 {postUser?.displayName || post.author}
               </button>
               <div style={{
-                fontSize: "12px",
+                fontSize: isCompactPhoneView ? "10px" : (isMobileView ? "11px" : "12px"),
                 color: "#64748b",
                 marginTop: "2px",
               }}>
-                {new Date(post.createdUtc * 1000).toLocaleDateString()}
+                {postCreatedLabel}
               </div>
               </div>
             
             {/* Parameter thread icon */}
             <div style={{
               position: "absolute",
-              right: "20px",
-              top: "18px",
-              width: "36px",
-              height: "36px",
+              right: isMobileView ? contentHorizontalPadding : "20px",
+              top: isMobileView ? "14px" : "18px",
+              width: isCompactPhoneView ? "30px" : (isMobileView ? "34px" : "36px"),
+              height: isCompactPhoneView ? "30px" : (isMobileView ? "34px" : "36px"),
               borderRadius: "50%",
-              background: "linear-gradient(135deg, rgba(0, 196, 180, 0.25), rgba(13, 148, 136, 0.15))",
+              background: "linear-gradient(135deg, rgba(0, 196, 180, 0.25), rgba(14, 116, 144, 0.15))",
               border: "1px solid rgba(0, 196, 180, 0.3)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               color: THREAD_THEME_COLOR,
             }}>
-              <BarChart3 size={18} />
+              <BarChart3 size={isCompactPhoneView ? 15 : (isMobileView ? 17 : 18)} />
             </div>
           </div>
           
           {/* Post title and content — gradient text */}
-          <div style={{ padding: "0 20px 16px", position: "relative", zIndex: 1 }}>
+          <div style={{ padding: isMobileView ? `0 ${contentHorizontalPadding} 12px` : "0 20px 16px", position: "relative", zIndex: 1 }}>
             <h2 style={{
               margin: 0,
-              fontSize: "26px",
+              fontSize: titleFontSize,
               fontWeight: "800",
-              letterSpacing: "-0.5px",
-              lineHeight: "1.2",
+              letterSpacing: isMobileView ? "-0.3px" : "-0.5px",
+              lineHeight: isMobileView ? "1.28" : "1.2",
               background: "linear-gradient(135deg, #f8fafc 30%, #94a3b8)",
               backgroundClip: "text",
               WebkitBackgroundClip: "text",
               WebkitTextFillColor: "transparent",
+              wordBreak: "break-word",
             }}>
               {post.title}
             </h2>
@@ -1477,11 +1580,11 @@ export default function ParameterThreadDetail({ postId, onBack, onSelectUser }) 
           
           {post.selftext && (
             <p style={{
-              fontSize: "16px",
-              lineHeight: 1.6,
+              fontSize: bodyFontSize,
+              lineHeight: isMobileView ? 1.55 : 1.6,
               color: "#cbd5e1",
               margin: 0,
-              padding: "0 20px 16px",
+              padding: isMobileView ? `0 ${contentHorizontalPadding} 12px` : "0 20px 16px",
               position: "relative",
               zIndex: 1,
             }}>
@@ -1495,7 +1598,7 @@ export default function ParameterThreadDetail({ postId, onBack, onSelectUser }) 
               display: "flex",
               flexWrap: "wrap",
               gap: "12px",
-              margin: "0 20px 20px",
+              margin: isMobileView ? `0 ${contentHorizontalPadding} 16px` : "0 20px 20px",
               padding: "16px",
               backgroundColor: "rgba(0, 196, 180, 0.04)",
               borderRadius: "16px",
@@ -1503,6 +1606,12 @@ export default function ParameterThreadDetail({ postId, onBack, onSelectUser }) 
               backdropFilter: "blur(8px)",
               position: "relative",
               zIndex: 1,
+              ...(isMobileView
+                ? {
+                    gap: "8px",
+                    padding: "12px",
+                  }
+                : {}),
             }}>
               {post.parameters.map((param, index) => {
                 const parameterColor = getParameterColor(param, index);
@@ -1517,6 +1626,15 @@ export default function ParameterThreadDetail({ postId, onBack, onSelectUser }) 
                     borderRadius: "999px",
                     border: `1.5px solid ${parameterColor}88`,
                     backdropFilter: "blur(4px)",
+                    ...(isMobileView
+                      ? {
+                          width: "100%",
+                          justifyContent: "space-between",
+                          gap: "6px",
+                          padding: "8px 10px",
+                          boxSizing: "border-box",
+                        }
+                      : {}),
                   }}>
                     <div style={{
                       width: "12px",
@@ -1528,12 +1646,28 @@ export default function ParameterThreadDetail({ postId, onBack, onSelectUser }) 
                       color: "#fff",
                       fontWeight: "600",
                       fontSize: "14px",
+                      ...(isMobileView
+                        ? {
+                            flex: 1,
+                            minWidth: 0,
+                            fontSize: "13px",
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                          }
+                        : {}),
                     }}>
                       {param}
                     </span>
                     <span style={{
                       color: "#94a3b8",
                       fontSize: "13px",
+                      ...(isMobileView
+                        ? {
+                            fontSize: "12px",
+                            whiteSpace: "nowrap",
+                          }
+                        : {}),
                     }}>
                       {parameterCounts[param] || 0} songs
                     </span>
@@ -1545,9 +1679,9 @@ export default function ParameterThreadDetail({ postId, onBack, onSelectUser }) 
           
           {/* Post image */}
           {post.imageUrl && (
-            <div style={{ padding: "0 20px 20px", position: "relative", zIndex: 1 }}>
+            <div style={{ padding: isMobileView ? `0 ${contentHorizontalPadding} 14px` : "0 20px 20px", position: "relative", zIndex: 1 }}>
               <div style={{
-                borderRadius: "14px",
+                borderRadius: isMobileView ? "12px" : "14px",
                 overflow: "hidden",
                 border: "1px solid rgba(255, 255, 255, 0.06)",
                 background: "#0a0e1a",
@@ -1557,7 +1691,7 @@ export default function ParameterThreadDetail({ postId, onBack, onSelectUser }) 
                   alt="Post visual"
                   style={{
                     width: "100%",
-                    maxHeight: "500px",
+                    maxHeight: postImageMaxHeight,
                     objectFit: "contain",
                     display: "block",
                   }}
@@ -1568,52 +1702,59 @@ export default function ParameterThreadDetail({ postId, onBack, onSelectUser }) 
           
          {/* Stats row — pill badges */}
          <div style={{
-            display: "flex",
+            display: isMobileView ? "grid" : "flex",
             alignItems: "center",
-            justifyContent: "space-around",
+            justifyContent: isMobileView ? "stretch" : "space-around",
+            gridTemplateColumns: isMobileView ? "repeat(4, minmax(0, 1fr))" : undefined,
+            gap: isCompactPhoneView ? "6px" : (isMobileView ? "8px" : undefined),
             width: "100%",
-            padding: "14px 20px 18px",
+            padding: isMobileView ? (isCompactPhoneView ? "10px 10px 14px" : "12px 14px 16px") : "14px 20px 18px",
             borderTop: "1px solid rgba(0, 196, 180, 0.08)",
             position: "relative",
             zIndex: 1,
           }}>
             {[
-              { icon: <MessageCircle size={18} />, val: displayedPostStatsWithFallback.num_comments },
-              { icon: <Heart size={18} />, val: displayedPostStatsWithFallback.ups },
-              { icon: <Share2 size={18} />, val: null },
-              { icon: <Bookmark size={18} />, val: displayedPostStatsWithFallback.bookmarks },
+              { icon: <MessageCircle size={statIconSize} />, val: displayedPostStatsWithFallback.num_comments },
+              { icon: <Heart size={statIconSize} />, val: displayedPostStatsWithFallback.ups },
+              { icon: <Share2 size={statIconSize} />, val: null },
+              { icon: <Bookmark size={statIconSize} />, val: displayedPostStatsWithFallback.bookmarks },
             ].map((stat, i) => (
               <button key={i} style={{
                 display: "flex",
                 alignItems: "center",
-                gap: "6px",
+                justifyContent: "center",
+                gap: isCompactPhoneView ? "4px" : (isMobileView ? "4px" : "6px"),
                 background: "rgba(255, 255, 255, 0.04)",
                 border: "1px solid rgba(255, 255, 255, 0.06)",
                 borderRadius: "999px",
-                padding: "8px 14px",
+                width: isMobileView ? "100%" : "auto",
+                minWidth: 0,
+                padding: isMobileView ? (isCompactPhoneView ? "7px 4px" : "8px 6px") : "8px 14px",
                 color: "#94a3b8",
                 cursor: "pointer",
-                fontSize: "13px",
+                fontSize: isCompactPhoneView ? "11px" : (isMobileView ? "12px" : "13px"),
                 fontWeight: "600",
                 transition: "all 0.2s ease",
               }}>
                 {stat.icon}
-                {stat.val !== null && <span>{stat.val}</span>}
+                {stat.val !== null && (
+                  <span style={{ whiteSpace: "nowrap", minWidth: 0 }}>{stat.val}</span>
+                )}
               </button>
             ))}
           </div>
           
           {/* Graphs Tab — glassmorphic capsule */}
           <div style={{
-            padding: "0 20px 20px",
+            padding: isMobileView ? `0 ${contentHorizontalPadding} 14px` : "0 20px 20px",
             position: "relative",
             zIndex: 1,
           }}>
             <div style={{
               width: "100%",
               display: "flex",
-              gap: "8px",
-              padding: "6px",
+              gap: isCompactPhoneView ? "5px" : (isMobileView ? "6px" : "8px"),
+              padding: isCompactPhoneView ? "4px" : (isMobileView ? "5px" : "6px"),
               borderRadius: "999px",
               background: "rgba(255, 255, 255, 0.03)",
               border: "1px solid rgba(255, 255, 255, 0.06)",
@@ -1635,11 +1776,11 @@ export default function ParameterThreadDetail({ postId, onBack, onSelectUser }) 
                   : "transparent",
                 color: isGraphsOpen ? "#e0e7ff" : "#64748b",
                 borderRadius: "999px",
-                padding: "12px 14px",
+                padding: isCompactPhoneView ? "8px 9px" : (isMobileView ? "10px 10px" : "12px 14px"),
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                gap: "10px",
+                gap: isCompactPhoneView ? "6px" : (isMobileView ? "6px" : "10px"),
                 fontWeight: 700,
                 letterSpacing: "0.2px",
                 boxShadow: isGraphsOpen
@@ -1650,18 +1791,18 @@ export default function ParameterThreadDetail({ postId, onBack, onSelectUser }) 
                 transition: "all 0.2s ease",
                 outline: "none",
               }}>
-                <BarChart3 size={18} color={isGraphsOpen ? THREAD_THEME_COLOR : "#64748b"} />
-                <span style={{ fontSize: "15px" }}>Graphs</span>
+                <BarChart3 size={isCompactPhoneView ? 15 : (isMobileView ? 16 : 18)} color={isGraphsOpen ? THREAD_THEME_COLOR : "#64748b"} />
+                <span style={{ fontSize: isCompactPhoneView ? "13px" : (isMobileView ? "14px" : "15px") }}>Graphs</span>
 
                 <span style={{
-                  minWidth: "28px",
-                  height: "22px",
-                  padding: "0 8px",
+                  minWidth: isCompactPhoneView ? "22px" : (isMobileView ? "24px" : "28px"),
+                  height: isCompactPhoneView ? "18px" : (isMobileView ? "20px" : "22px"),
+                  padding: isCompactPhoneView ? "0 6px" : "0 8px",
                   borderRadius: "999px",
                   display: "inline-flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  fontSize: "12px",
+                  fontSize: isCompactPhoneView ? "9px" : (isMobileView ? "11px" : "12px"),
                   fontWeight: 800,
                   background: isGraphsOpen ? `${THREAD_THEME_COLOR}33` : "rgba(255,255,255,0.06)",
                   color: isGraphsOpen ? "#fff" : "#cbd5e1",
@@ -1670,47 +1811,50 @@ export default function ParameterThreadDetail({ postId, onBack, onSelectUser }) 
                   {graphsCount}
                 </span>
 
-                <span
-                  onClick={(e) => e.stopPropagation()}
-                  onKeyDown={(e) => e.stopPropagation()}
-                  style={{ display: "inline-flex", opacity: isGraphsOpen ? 1 : 0.75 }}
-                >
-                  <InfoIconModal
-                    modalId="parameter-thread-graphs-tab-info"
-                    title="Graphs"
-                    iconSize={14}
-                    showButtonText={false}
-                    steps={[
-                      {
-                        icon: <BarChart3 size={18} color="#a9b6fc" />,
-                        title: "Use Graphs for Insights",
-                        content: "Use these graphs to glean more info on each thread",
-                      },
-                    ]}
-                  />
-                </span>
+                {showInlineGraphInfo && (
+                  <span
+                    onClick={(e) => e.stopPropagation()}
+                    onKeyDown={(e) => e.stopPropagation()}
+                    style={{ display: "inline-flex", opacity: isGraphsOpen ? 1 : 0.75 }}
+                  >
+                    <InfoIconModal
+                      modalId="parameter-thread-graphs-tab-info"
+                      title="Graphs"
+                      iconSize={isMobileView ? 12 : 14}
+                      showButtonText={false}
+                      steps={[
+                        {
+                          icon: <BarChart3 size={18} color="#a9b6fc" />,
+                          title: "Use Graphs for Insights",
+                          content: "Use these graphs to glean more info on each thread",
+                        },
+                      ]}
+                    />
+                  </span>
+                )}
               </div>
             </div>
           </div>
 
           {isGraphsOpen && (
             /* Parameter Graphs — glassmorphic */
-            <div style={{
-              width: "calc(100% - 32px)",
-              margin: "16px auto",
+            <div ref={graphsSectionRef} style={{
+              width: contentWidth,
+              margin: isMobileView ? (isCompactPhoneView ? "10px auto" : "12px auto") : "16px auto",
               backgroundImage: 'radial-gradient(circle at top right, rgba(0, 196, 180, 0.08), transparent 70%)',
-              padding: '24px',
+              padding: isMobileView ? (isCompactPhoneView ? "12px" : "16px") : "24px",
               position: 'relative',
               overflow: 'hidden',
               backgroundColor: 'rgba(255, 255, 255, 0.02)',
               borderRadius: '16px',
               border: '1px solid rgba(0, 196, 180, 0.08)',
               backdropFilter: 'blur(8px)',
+              boxSizing: "border-box",
             }}>
             {/* Vertical Rating Graph */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
               <h2 style={{ 
-                fontSize: '24px', 
+                fontSize: isCompactPhoneView ? "18px" : (isMobileView ? "20px" : "24px"), 
                 margin: 0,
                 fontWeight: '700',
                 color: '#fff'
@@ -1720,12 +1864,12 @@ export default function ParameterThreadDetail({ postId, onBack, onSelectUser }) 
             </div>
             
             <div style={{ 
-              height: '270px', 
-              marginBottom: '40px',
+              height: `${mobileVerticalChartHeight}px`,
+              marginBottom: isMobileView ? "28px" : "40px",
               backgroundColor: 'rgba(255, 255, 255, 0.02)',
               backdropFilter: 'blur(10px)',
               borderRadius: '16px',
-              padding: '16px',
+              padding: isMobileView ? (isCompactPhoneView ? "10px" : "12px") : "16px",
               border: '1px solid rgba(0, 196, 180, 0.12)',
               boxShadow: '0 4px 16px rgba(0, 0, 0, 0.15)',
               cursor: 'pointer',
@@ -1736,16 +1880,21 @@ export default function ParameterThreadDetail({ postId, onBack, onSelectUser }) 
                 <BarChart
                   data={graphRatings}
                   layout="vertical"
-                  margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                  barGap={12}
-                  barCategoryGap="58%"
+                  margin={{
+                    top: isCompactPhoneView ? 2 : (isMobileView ? 4 : 5),
+                    right: isCompactPhoneView ? 4 : (isMobileView ? 8 : 30),
+                    left: isCompactPhoneView ? 0 : (isMobileView ? 4 : 20),
+                    bottom: isCompactPhoneView ? 0 : (isMobileView ? 2 : 5),
+                  }}
+                  barGap={isCompactPhoneView ? 6 : (isMobileView ? 8 : 12)}
+                  barCategoryGap={isCompactPhoneView ? "56%" : (isMobileView ? "52%" : "58%")}
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.05)" horizontal={false} />
                   <XAxis 
                     type="number" 
                     domain={[0, 100]} 
                     tickCount={6}
-                    tick={{ fill: '#8899a6', fontSize: 12 }}
+                    tick={{ fill: '#8899a6', fontSize: isCompactPhoneView ? 9 : (isMobileView ? 10 : 12) }}
                     stroke="rgba(255, 255, 255, 0.05)"
                   />
                   <YAxis 
@@ -1757,19 +1906,19 @@ export default function ParameterThreadDetail({ postId, onBack, onSelectUser }) 
                       if (!item) return null;
                       
                       return (
-                        <g transform={`translate(${x - 40},${y})`}>
+                        <g transform={`translate(${x - (isCompactPhoneView ? 20 : (isMobileView ? 24 : 40))},${y})`}>
                           <image 
                             href={item.userAvatar} 
-                            x={0} 
-                            y={-12} 
-                            height={24} 
-                            width={24} 
+                            x={isCompactPhoneView ? 1 : (isMobileView ? 2 : 0)}
+                            y={isCompactPhoneView ? -8 : (isMobileView ? -9 : -12)}
+                            height={isCompactPhoneView ? 16 : (isMobileView ? 18 : 24)}
+                            width={isCompactPhoneView ? 16 : (isMobileView ? 18 : 24)}
                             clipPath="inset(0% round 50%)" 
                           />
                         </g>
                       );
                     }}
-                    width={50}
+                    width={isCompactPhoneView ? 24 : (isMobileView ? 30 : 50)}
                     axisLine={false}
                     tickLine={false}
                   />
@@ -1817,14 +1966,14 @@ export default function ParameterThreadDetail({ postId, onBack, onSelectUser }) 
                   <Bar 
                     dataKey="avgRating" 
                     name="avgRating" 
-                    barSize={16}
+                    barSize={isCompactPhoneView ? 10 : (isMobileView ? 12 : 16)}
                     fill="#00C4B4"
                     radius={[0, 4, 4, 0]}
                   />
                   <Bar 
                     dataKey="userRating" 
                     name="userRating" 
-                    barSize={16}
+                    barSize={isCompactPhoneView ? 10 : (isMobileView ? 12 : 16)}
                     fill="#5eead4"
                     radius={[0, 4, 4, 0]}
                   />
@@ -1835,7 +1984,7 @@ export default function ParameterThreadDetail({ postId, onBack, onSelectUser }) 
             {/* Parameter Scatter Plot */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
               <h2 style={{ 
-                fontSize: '24px', 
+                fontSize: isCompactPhoneView ? "18px" : (isMobileView ? "20px" : "24px"), 
                 margin: 0,
                 fontWeight: '700',
                 color: '#fff'
@@ -1847,6 +1996,7 @@ export default function ParameterThreadDetail({ postId, onBack, onSelectUser }) 
             <ThreadDetailScatterRatingsGraph 
               scatterData={parameterScatterData}
               onOpenModal={openScatterGraphModal}
+              isMobile={isMobileView}
             />
             </div>
           )}
@@ -1854,7 +2004,7 @@ export default function ParameterThreadDetail({ postId, onBack, onSelectUser }) 
     ) : (
         <div style={{
           ...styles.loadingContainer,
-          width: "calc(100% - 32px)",
+          width: contentWidth,
           margin: "32px auto",
         }}>
           <div style={styles.loadingSpinner}></div>
@@ -1869,16 +2019,31 @@ export default function ParameterThreadDetail({ postId, onBack, onSelectUser }) 
         </div>
       )}
       
-      <ThreadCommentComposer
-        onSubmit={handleSubmitComment}
-        onOpenTikTokModal={openTikTokView}
-      />
+      <div style={{
+        width: contentWidth,
+        margin: isMobileView ? (isCompactPhoneView ? "4px auto 14px" : "6px auto 16px") : "8px auto 24px",
+        border: "1px solid rgba(0, 196, 180, 0.22)",
+        background: "rgba(0, 56, 52, 0.2)",
+        borderRadius: isMobileView ? "16px" : "20px",
+        padding: isMobileView ? (isCompactPhoneView ? "4px" : "6px") : "8px",
+        boxSizing: "border-box",
+      }}>
+        <ThreadCommentComposer
+          onSubmit={handleSubmitComment}
+          onOpenTikTokModal={openTikTokView}
+          themeVariant="parameter"
+        />
+      </div>
       
       {/* Comments Section */}
       <div style={{
         ...styles.commentsSection,
-        width: "calc(100% - 32px)",
+        width: contentWidth,
         margin: "0 auto",
+        border: "1px solid rgba(0, 196, 180, 0.18)",
+        borderRadius: "16px",
+        background: "linear-gradient(180deg, rgba(0, 196, 180, 0.06) 0%, transparent 100%)",
+        padding: isMobileView ? (isCompactPhoneView ? "7px 10px 12px" : "8px 12px 14px") : "8px 16px 18px",
       }}>
         <h3 style={styles.commentsHeader}>
           Responses ({displayComments.length})
@@ -1961,7 +2126,7 @@ export default function ParameterThreadDetail({ postId, onBack, onSelectUser }) 
               activeSnippet.snippetId === getSnippetId(snippetObj) && 
               activeSnippet.isPlaying;
             
-            const commentKey = c.id || `comment-${c.author}-${c.createdUtc || Date.now()}`;
+            const commentKey = c.id || `comment-${c.author || 'unknown'}-${c.createdUtc || c.createdAt || 0}`;
             
             return (
               <ThreadCommentCard
@@ -1977,6 +2142,7 @@ export default function ParameterThreadDetail({ postId, onBack, onSelectUser }) 
                 isFirstSnippet={false}
                 usernameDotColor={usernameDotColor}
                 isParameterTheme
+                isMobileViewport={isMobileView}
               />
             );
           })}

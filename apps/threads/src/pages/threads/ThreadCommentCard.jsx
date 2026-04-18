@@ -21,6 +21,9 @@ import {
   isCurrentUserAuthor,
 } from '../../utils/currentUser';
 
+const NEWS_GOLD = '#e8d5a8';
+const NEWS_GOLD_DEEP = '#c4a86a';
+
 
 function authorToAvatar(author) {
   if (!author) {
@@ -132,6 +135,8 @@ const ThreadCommentCard = ({
   snippetsLoading = false, // NEW: Loading state for snippets
   usernameDotColor = null,
   isParameterTheme = false,
+  isMobileViewport = null,
+  isCompactPhoneViewport = null,
 }) => {
   const commentUser = buildCommentUser(comment);
   const isOwnComment = isCurrentUserAuthor(comment);
@@ -140,6 +145,56 @@ const ThreadCommentCard = ({
   const [hoveredAction, setHoveredAction] = useState(null);
   const [isLiked, setIsLiked] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
+
+  // Mobile detection
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof isMobileViewport === 'boolean'
+      ? isMobileViewport
+      : (typeof window !== 'undefined' ? window.innerWidth <= 480 : false)
+  );
+  const [isCompactPhone, setIsCompactPhone] = useState(() =>
+    typeof isCompactPhoneViewport === 'boolean'
+      ? isCompactPhoneViewport
+      : (typeof window !== 'undefined' ? window.innerWidth <= 390 : false)
+  );
+  useEffect(() => {
+    const hasMobileProp = typeof isMobileViewport === 'boolean';
+    const hasCompactProp = typeof isCompactPhoneViewport === 'boolean';
+
+    if (typeof window === 'undefined') {
+      if (hasMobileProp) setIsMobile(isMobileViewport);
+      if (hasCompactProp) setIsCompactPhone(isCompactPhoneViewport);
+      return undefined;
+    }
+
+    const syncViewportFlags = () => {
+      setIsMobile(hasMobileProp ? isMobileViewport : window.innerWidth <= 480);
+      setIsCompactPhone(hasCompactProp ? isCompactPhoneViewport : window.innerWidth <= 390);
+    };
+
+    syncViewportFlags();
+
+    if (hasMobileProp && hasCompactProp) {
+      return undefined;
+    }
+
+    const handleResize = () => {
+      if (!hasMobileProp) setIsMobile(window.innerWidth <= 480);
+      if (!hasCompactProp) setIsCompactPhone(window.innerWidth <= 390);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [isCompactPhoneViewport, isMobileViewport]);
+
+  // Mobile rating slider states
+  const [ratingExpanded, setRatingExpanded] = useState(false);
+  const [mobileSliderRating, setMobileSliderRating] = useState(50);
+  const [mobileHasRated, setMobileHasRated] = useState(false);
+  const [mobileMyRating, setMobileMyRating] = useState(null);
+  const sliderTrackRef = useRef(null);
+  const mobileInlineTrackRef = useRef(null);
+  const [mobileInlinePreviewRating, setMobileInlinePreviewRating] = useState(null);
 
   // Snippet states
   const [localUserRating, setLocalUserRating] = useState(0);
@@ -293,6 +348,109 @@ const ThreadCommentCard = ({
     setHoverRating(hoverValue);
   }
 
+  // Mobile horizontal slider handlers
+  function handleMobileSliderPointerDown(e) {
+    if (!sliderTrackRef.current) return;
+    e.preventDefault();
+    sliderTrackRef.current.setPointerCapture(e.pointerId);
+    updateMobileSliderFromPointer(e);
+  }
+
+  function handleMobileSliderPointerMove(e) {
+    if (!sliderTrackRef.current || !sliderTrackRef.current.hasPointerCapture(e.pointerId)) return;
+    updateMobileSliderFromPointer(e);
+  }
+
+  function handleMobileSliderPointerUp(_e) {
+    if (!sliderTrackRef.current) return;
+    // Commit rating on release
+    const rating = mobileSliderRating;
+    setMobileMyRating(rating);
+    setMobileHasRated(true);
+    setLocalUserRating(rating);
+    setRatingExpanded(false);
+    if (onRate && snippet) {
+      onRate(snippet, rating);
+    }
+    if (onRatingPause && snippet) {
+      onRatingPause(snippet);
+    }
+    setRatedTimestamp(localElapsedSeconds || 0);
+  }
+
+  function updateMobileSliderFromPointer(e) {
+    if (!sliderTrackRef.current) return;
+    const rect = sliderTrackRef.current.getBoundingClientRect();
+    const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    setMobileSliderRating(Math.round(pct * 100));
+  }
+
+  function clampRating(value) {
+    if (!Number.isFinite(value)) return 0;
+    return Math.max(0, Math.min(100, Math.round(value)));
+  }
+
+  function commitMobileRating(nextRawRating) {
+    if (!snippet) return;
+    const nextRating = clampRating(nextRawRating);
+    setMobileMyRating(nextRating);
+    setMobileHasRated(true);
+    setLocalUserRating(nextRating);
+    setMobileSliderRating(nextRating);
+    setRatingExpanded(false);
+    if (onRate) {
+      onRate(snippet, nextRating);
+    }
+    if (onRatingPause) {
+      onRatingPause(snippet);
+    }
+    setRatedTimestamp(localElapsedSeconds || 0);
+  }
+
+  function getInlineRatingFromClientX(clientX) {
+    if (!mobileInlineTrackRef.current) return 0;
+    const rect = mobileInlineTrackRef.current.getBoundingClientRect();
+    const pct = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    return clampRating(pct * 100);
+  }
+
+  function handleInlineRatingPointerDown(e) {
+    if (!mobileInlineTrackRef.current || !snippet || snippet.didRate || isOwnComment) return;
+    e.preventDefault();
+    const next = getInlineRatingFromClientX(e.clientX);
+    setMobileInlinePreviewRating(next);
+    setLocalUserRating(next);
+    setMobileSliderRating(next);
+    mobileInlineTrackRef.current.setPointerCapture(e.pointerId);
+  }
+
+  function handleInlineRatingPointerMove(e) {
+    if (!mobileInlineTrackRef.current || !snippet || snippet.didRate || isOwnComment) return;
+    if (!mobileInlineTrackRef.current.hasPointerCapture(e.pointerId)) return;
+    const next = getInlineRatingFromClientX(e.clientX);
+    setMobileInlinePreviewRating(next);
+    setLocalUserRating(next);
+    setMobileSliderRating(next);
+  }
+
+  function handleInlineRatingPointerUp(e) {
+    if (!mobileInlineTrackRef.current || !snippet || snippet.didRate || isOwnComment) return;
+    const next = getInlineRatingFromClientX(e.clientX);
+    if (mobileInlineTrackRef.current.hasPointerCapture(e.pointerId)) {
+      mobileInlineTrackRef.current.releasePointerCapture(e.pointerId);
+    }
+    setMobileInlinePreviewRating(null);
+    commitMobileRating(next);
+  }
+
+  // Sync mobileHasRated when snippet already has a rating
+  useEffect(() => {
+    if (snippet?.didRate && snippet?.userRating > 0) {
+      setMobileHasRated(true);
+      setMobileMyRating(snippet.userRating);
+    }
+  }, [snippet?.didRate, snippet?.userRating]);
+
   // Displayed rating numbers
   const displayedUserRating = Math.round(
     isHovering && !snippet?.didRate ? hoverRating : localUserRating
@@ -327,6 +485,46 @@ const ThreadCommentCard = ({
     activeSnippet.snippetId?.toString() === (snippet.commentId || snippet.id)?.toString() &&
     isPlaying;
   const hasPreview = Boolean(snippet?.previewUrl);
+  const avatarSize = isMobile ? (isCompactPhone ? 38 : 42) : 48;
+  const headerGap = isMobile ? (isCompactPhone ? 10 : 12) : 16;
+  const mobileContentOffset = isMobile ? avatarSize + headerGap : 0;
+  const mobileExpandedWidth = isMobile ? `calc(100% + ${mobileContentOffset}px)` : "100%";
+  const isMobileRatingLocked = Boolean(snippet?.didRate || isOwnComment);
+  const mobileInlineRatingValue = clampRating(
+    mobileInlinePreviewRating ??
+      (mobileHasRated && Number.isFinite(mobileMyRating) ? mobileMyRating : localUserRating)
+  );
+  const mobileInlineTrackLabel = isOwnComment
+    ? "Your comment"
+    : isMobileRatingLocked || mobileHasRated
+      ? `Rated ${mobileInlineRatingValue}`
+      : "Slide to rate";
+  const mobileTimestamp = isMobile
+    ? (() => {
+        const resolvedMs = resolveCommentTimestampMs(comment);
+        if (!resolvedMs) return timestamp;
+        return new Date(resolvedMs).toLocaleDateString(undefined, {
+          month: 'numeric',
+          day: 'numeric',
+          year: '2-digit',
+        });
+      })()
+    : timestamp;
+  const isNewsTheme = Boolean(isNewsThread) && !isParameterTheme;
+  const cardBorderColor = isParameterTheme
+    ? "1px solid rgba(0, 196, 180, 0.12)"
+    : (isNewsTheme ? "1px solid rgba(232, 213, 168, 0.2)" : "1px solid rgba(255, 255, 255, 0.07)");
+  const cardBackground = isNewsTheme ? "rgba(232, 213, 168, 0.04)" : "rgba(255, 255, 255, 0.03)";
+  const topAccentGradient = isParameterTheme
+    ? "linear-gradient(90deg, #00C4B4, #5eead4, #0d9488)"
+    : (isNewsTheme
+      ? "linear-gradient(90deg, rgba(232, 213, 168, 0.9), rgba(196, 168, 106, 0.95), rgba(232, 213, 168, 0.75))"
+      : "linear-gradient(90deg, #6366f1, #8b5cf6, #ec4899)");
+  const metaTextColor = isNewsTheme ? "rgba(232, 213, 168, 0.72)" : "#94a3b8";
+  const bodyTextColor = isNewsTheme ? "rgba(246, 236, 210, 0.92)" : "#e2e8f0";
+  const actionBaseColor = isNewsTheme ? "rgba(232, 213, 168, 0.8)" : "#94a3b8";
+  const accentActionColor = isNewsTheme ? NEWS_GOLD : "#6366f1";
+  const likeActionColor = isNewsTheme ? NEWS_GOLD_DEEP : "#ec4899";
 
   if (!comment) {
     return null;
@@ -337,14 +535,12 @@ const ThreadCommentCard = ({
     <div 
       className="thread-comment-card"
       style={{
-      padding: "24px",
-      backgroundColor: "rgba(255, 255, 255, 0.03)",
+      padding: isMobile ? (isCompactPhone ? "14px 12px" : "16px 14px") : "24px",
+      backgroundColor: cardBackground,
       backgroundImage: "none",
-      borderRadius: "20px",
-      marginBottom: "16px",
-      border: isParameterTheme
-        ? "1px solid rgba(0, 196, 180, 0.12)"
-        : "1px solid rgba(255, 255, 255, 0.07)",
+      borderRadius: isMobile ? "16px" : "20px",
+      marginBottom: isMobile ? "12px" : "16px",
+      border: cardBorderColor,
       boxShadow: "0 4px 24px rgba(0, 0, 0, 0.15)",
       backdropFilter: "blur(12px)",
       width: "100%",
@@ -361,12 +557,10 @@ const ThreadCommentCard = ({
         left: 0,
         right: 0,
         height: "3px",
-        background: isParameterTheme
-          ? "linear-gradient(90deg, #00C4B4, #5eead4, #0d9488)"
-          : "linear-gradient(90deg, #6366f1, #8b5cf6, #ec4899)",
+        background: topAccentGradient,
         zIndex: 1,
-        borderTopLeftRadius: "20px",
-        borderTopRightRadius: "20px",
+        borderTopLeftRadius: isMobile ? "16px" : "20px",
+        borderTopRightRadius: isMobile ? "16px" : "20px",
         opacity: 0.7,
       }} />
       {isParameterTheme && (
@@ -398,8 +592,8 @@ const ThreadCommentCard = ({
       <div style={{
         display: "flex",
         alignItems: "flex-start",
-        gap: "16px",
-        marginBottom: "16px",
+        gap: `${headerGap}px`,
+        marginBottom: isMobile ? "10px" : "16px",
         position: "relative",
         zIndex: 1,
       }}>
@@ -407,7 +601,7 @@ const ThreadCommentCard = ({
           <ClickableUserAvatar
             user={commentUser}
             avatarSrc={commentUser.avatar}
-            size={48}
+            size={avatarSize}
             onUserClick={onUserClick}
           />
         </div>
@@ -418,14 +612,17 @@ const ThreadCommentCard = ({
           <div style={{
             display: "flex",
             justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: "4px",
+            alignItems: isMobile ? "flex-start" : "center",
+            gap: isMobile ? "8px" : 0,
+            marginBottom: isMobile ? "6px" : "4px",
+            flexWrap: isMobile ? "nowrap" : "nowrap",
           }}>
             <div style={{
               display: "flex",
               alignItems: "center",
-              gap: "8px",
+              gap: isMobile ? "6px" : "8px",
               minWidth: 0,
+              flex: 1,
             }}>
               <button
                 type="button"
@@ -434,13 +631,18 @@ const ThreadCommentCard = ({
                   if (onUserClick) onUserClick(commentUser);
                 }}
                 style={{
-                  fontSize: "17px",
+                  fontSize: isMobile ? "14px" : "17px",
                   fontWeight: "600",
-                  color: "#f1f5f9",
+                  color: isNewsTheme ? "#fff8e9" : "#f1f5f9",
                   background: "none",
                   border: "none",
                   padding: 0,
                   cursor: "pointer",
+                  minWidth: 0,
+                  textAlign: "left",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
                 }}
               >
                 {commentUser.displayName}
@@ -449,8 +651,8 @@ const ThreadCommentCard = ({
                 <span
                   aria-hidden="true"
                   style={{
-                    width: "9px",
-                    height: "9px",
+                    width: isMobile ? "7px" : "9px",
+                    height: isMobile ? "7px" : "9px",
                     borderRadius: "50%",
                     backgroundColor: usernameDotColor,
                     boxShadow: `0 0 10px ${usernameDotColor}`,
@@ -460,19 +662,24 @@ const ThreadCommentCard = ({
               )}
             </div>
             <div style={{
-              fontSize: "14px",
-              color: "#94a3b8",
+              fontSize: isMobile ? "12px" : "14px",
+              color: metaTextColor,
+              whiteSpace: "nowrap",
+              flexShrink: 0,
+              marginTop: isMobile ? "1px" : 0,
             }}>
-              {timestamp}
+              {mobileTimestamp}
             </div>
           </div>
           
           <div style={{
-            fontSize: "15px",
-            lineHeight: "1.6",
-            color: "#e2e8f0",
-            marginBottom: "20px",
-            paddingRight: "20px"
+            fontSize: isMobile ? "14px" : "15px",
+            lineHeight: isMobile ? "1.5" : "1.6",
+            color: bodyTextColor,
+            marginBottom: isMobile ? "12px" : "20px",
+            paddingRight: isMobile ? "0" : "20px",
+            wordBreak: "break-word",
+            overflowWrap: "anywhere",
           }}>
             {comment.body || ''}
           </div>
@@ -482,10 +689,14 @@ const ThreadCommentCard = ({
             <div style={{
               display: "flex",
               backgroundColor: "rgba(255, 255, 255, 0.02)",
-              borderRadius: "16px",
+              borderRadius: isMobile ? "14px" : "16px",
               overflow: "hidden",
               border: "1px solid rgba(255, 255, 255, 0.06)",
-              marginBottom: "16px",
+              marginBottom: isMobile ? "12px" : "16px",
+              ...(isMobile ? {
+                width: mobileExpandedWidth,
+                marginLeft: `-${mobileContentOffset}px`,
+              } : null),
               boxShadow: "0 4px 16px rgba(0, 0, 0, 0.1)",
               animation: "pulse 1.5s ease-in-out infinite",
             }}>
@@ -634,14 +845,135 @@ const ThreadCommentCard = ({
           {!isNewsThread && snippet && (
             <div style={{
               display: "flex",
+              flexDirection: isMobile ? "column" : "row",
               backgroundColor: "rgba(255, 255, 255, 0.02)",
-              borderRadius: "16px",
+              borderRadius: isMobile ? "14px" : "16px",
               overflow: "hidden",
               border: "1px solid rgba(255, 255, 255, 0.06)",
-              marginBottom: "16px",
+              marginBottom: isMobile ? "12px" : "16px",
+              ...(isMobile ? {
+                width: mobileExpandedWidth,
+                marginLeft: `-${mobileContentOffset}px`,
+              } : null),
               boxShadow: "0 4px 16px rgba(0, 0, 0, 0.12)"
             }}>
-              {/* Large album art on left */}
+              {/* Album art + song info row on mobile */}
+              {isMobile ? (
+                <div style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: isCompactPhone ? "9px" : "10px",
+                  padding: isCompactPhone ? "10px" : "11px",
+                }}>
+                  {/* Small album art on mobile */}
+                  <div style={{
+                    width: isCompactPhone ? "50px" : "54px",
+                    height: isCompactPhone ? "50px" : "54px",
+                    backgroundColor: "#0a0e1a",
+                    borderRadius: "10px",
+                    overflow: "hidden",
+                    flexShrink: 0,
+                    position: "relative",
+                  }}>
+                    {formattedArtwork && formattedArtwork !== "/assets/default-artist.png" ? (
+                      <img 
+                        src={formattedArtwork}
+                        alt="Album artwork"
+                        onError={(e) => {
+                          e.currentTarget.onerror = null;
+                          e.currentTarget.src = "/assets/default-artist.png";
+                        }}
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                        }}
+                      />
+                    ) : (
+                      <div style={{
+                        width: "100%",
+                        height: "100%",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        backgroundColor: "rgba(15, 23, 42, 0.8)",
+                      }}>
+                        <Music size={24} color="#6366f1" />
+                      </div>
+                    )}
+                    {!isFirstSnippet && (
+                      <button
+                        type="button"
+                        onClick={handlePlayPause}
+                        disabled={!hasPreview}
+                        style={{
+                          position: "absolute",
+                          top: "50%",
+                          left: "50%",
+                          transform: "translate(-50%, -50%)",
+                          width: isCompactPhone ? "28px" : "30px",
+                          height: isCompactPhone ? "28px" : "30px",
+                          borderRadius: "50%",
+                          backgroundColor: "rgba(99, 102, 241, 0.85)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          border: "none",
+                          cursor: hasPreview ? "pointer" : "not-allowed",
+                          boxShadow: "0 2px 8px rgba(0, 0, 0, 0.4)",
+                          opacity: hasPreview ? 1 : 0.55,
+                        }}
+                      >
+                        {isThisSnippetPlaying ? (
+                          <Pause size={16} color="#ffffff" />
+                        ) : (
+                          <Play size={16} color="#ffffff" />
+                        )}
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Song title + artist */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "5px",
+                      marginBottom: "2px",
+                    }}>
+                      <Music size={11} color="#6366f1" />
+                      <div style={{
+                        fontSize: isCompactPhone ? "13px" : "14px",
+                        fontWeight: "600",
+                        color: "#ffffff",
+                        lineHeight: 1.25,
+                        display: "-webkit-box",
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: "vertical",
+                        overflow: "hidden",
+                      }}>
+                        {snippet.name || 'Unknown track'}
+                      </div>
+                    </div>
+                    <div style={{
+                      fontSize: isCompactPhone ? "11px" : "12px",
+                      color: "#94a3b8",
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                    }}>
+                      {snippet.artistName || 'Unknown artist'}
+                    </div>
+                    {!hasPreview && !isFirstSnippet && (
+                      <div style={{ fontSize: "11px", color: "#64748b", marginTop: "4px" }}>
+                        Preview unavailable
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+              <>
+              {/* Large album art on left — DESKTOP */}
               <div style={{
                 width: "140px",
                 height: "140px",
@@ -983,6 +1315,188 @@ const ThreadCommentCard = ({
   )}
 </div>
 
+              </>
+              )}
+
+              {/* Mobile: progress bar + stats row inside snippet container */}
+              {isMobile && (
+                <>
+                  {/* Progress bar on mobile */}
+                  <div style={{ padding: "0 12px 8px" }}>
+                    <div style={{
+                      width: "100%",
+                      height: "4px",
+                      backgroundColor: "rgba(255, 255, 255, 0.1)",
+                      borderRadius: "2px",
+                      overflow: "hidden",
+                      position: "relative",
+                    }}>
+                      <div
+                        style={{
+                          position: "absolute",
+                          left: 0,
+                          top: 0,
+                          height: "100%",
+                          width: `${getProgressPercent()}%`,
+                          background: "linear-gradient(to right, #6366f1, #8b5cf6)",
+                          borderRadius: "2px",
+                        }}
+                      />
+                    </div>
+                    <div style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      fontSize: isCompactPhone ? "10px" : "11px",
+                      color: "#64748b",
+                      marginTop: "4px",
+                    }}>
+                      <span>{isThisSnippetPlaying ? `${localElapsedSeconds}s` : '0s'}</span>
+                      <span>30s</span>
+                    </div>
+                  </div>
+
+                  {/* Me / Avg / Ratings row — always visible on mobile */}
+                  <div style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    padding: isCompactPhone ? "7px 10px" : "8px 12px",
+                    borderTop: "1px solid rgba(255, 255, 255, 0.04)",
+                    background: "rgba(99, 102, 241, 0.04)",
+                  }}>
+                    <div style={{ textAlign: "center", flex: 1, minWidth: 0 }}>
+                      <div style={{
+                        fontSize: isCompactPhone ? "10px" : "11px",
+                        color: "#64748b",
+                        marginBottom: "2px",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.06em",
+                      }}>Me</div>
+                      <div style={{
+                        fontSize: isCompactPhone ? "15px" : "16px",
+                        fontWeight: "700",
+                        color: "#818cf8",
+                      }}>
+                        {mobileHasRated ? mobileMyRating : "—"}
+                      </div>
+                    </div>
+                    <div style={{ width: "1px", background: "rgba(255, 255, 255, 0.06)" }} />
+                    <div style={{ textAlign: "center", flex: 1, minWidth: 0 }}>
+                      <div style={{
+                        fontSize: isCompactPhone ? "10px" : "11px",
+                        color: "#64748b",
+                        marginBottom: "2px",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.06em",
+                      }}>Avg</div>
+                      <div style={{
+                        fontSize: isCompactPhone ? "15px" : "16px",
+                        fontWeight: "700",
+                        color: "#e2e8f0",
+                      }}>
+                        {displayedAvgRating ?? "—"}
+                      </div>
+                    </div>
+                    <div style={{ width: "1px", background: "rgba(255, 255, 255, 0.06)" }} />
+                    <div style={{ textAlign: "center", flex: 1, minWidth: 0 }}>
+                      <div style={{
+                        fontSize: isCompactPhone ? "10px" : "11px",
+                        color: "#64748b",
+                        marginBottom: "2px",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.06em",
+                      }}>Ratings</div>
+                      <div style={{
+                        fontSize: isCompactPhone ? "15px" : "16px",
+                        fontWeight: "700",
+                        color: "#e2e8f0",
+                      }}>
+                        {totalRatings > 0 ? totalRatings : "—"}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{
+                    padding: isCompactPhone ? "8px 10px 10px" : "9px 12px 11px",
+                    borderTop: "1px solid rgba(255, 255, 255, 0.04)",
+                    background: "rgba(99, 102, 241, 0.03)",
+                  }}>
+                    <div
+                      ref={mobileInlineTrackRef}
+                      onPointerDown={handleInlineRatingPointerDown}
+                      onPointerMove={handleInlineRatingPointerMove}
+                      onPointerUp={handleInlineRatingPointerUp}
+                      onPointerCancel={handleInlineRatingPointerUp}
+                      style={{
+                        width: "100%",
+                        height: isCompactPhone ? "26px" : "28px",
+                        position: "relative",
+                        cursor: isMobileRatingLocked ? "default" : "pointer",
+                        touchAction: "none",
+                        userSelect: "none",
+                        display: "flex",
+                        alignItems: "center",
+                        opacity: isMobileRatingLocked ? 0.85 : 1,
+                      }}
+                    >
+                      <div style={{
+                        position: "absolute",
+                        left: 0,
+                        right: 0,
+                        height: "6px",
+                        borderRadius: "999px",
+                        background: "rgba(255, 255, 255, 0.09)",
+                        border: "1px solid rgba(255, 255, 255, 0.06)",
+                      }} />
+                      <div style={{
+                        position: "absolute",
+                        left: 0,
+                        height: "6px",
+                        borderRadius: "999px",
+                        width: `${mobileInlineRatingValue}%`,
+                        backgroundImage: "linear-gradient(90deg, #6366f1 0%, #8b5cf6 60%, #a78bfa 100%)",
+                        boxShadow: "0 0 10px rgba(99, 102, 241, 0.35)",
+                        transition: "width 0.08s linear",
+                      }} />
+                      <div style={{
+                        position: "absolute",
+                        left: `${mobileInlineRatingValue}%`,
+                        top: "50%",
+                        transform: "translate(-50%, -50%)",
+                        width: isCompactPhone ? "16px" : "18px",
+                        height: isCompactPhone ? "16px" : "18px",
+                        borderRadius: "50%",
+                        background: "linear-gradient(180deg, #a5b4fc, #6366f1)",
+                        border: "2px solid rgba(255,255,255,0.9)",
+                        boxShadow: "0 2px 8px rgba(0,0,0,0.35)",
+                        transition: "left 0.08s linear",
+                      }} />
+                    </div>
+                    <div style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      marginTop: "4px",
+                    }}>
+                      <span style={{
+                        fontSize: isCompactPhone ? "10px" : "11px",
+                        color: "#7c8ba3",
+                        letterSpacing: "0.03em",
+                      }}>
+                        {mobileInlineTrackLabel}
+                      </span>
+                      <span style={{
+                        fontSize: isCompactPhone ? "11px" : "12px",
+                        fontWeight: "700",
+                        color: "#c7d2fe",
+                        fontVariantNumeric: "tabular-nums",
+                      }}>
+                        {mobileInlineRatingValue}
+                      </span>
+                    </div>
+                  </div>
+                </>
+              )}
+
             </div>
           )}
           
@@ -990,21 +1504,29 @@ const ThreadCommentCard = ({
           <div style={{
             display: "flex",
             justifyContent: "space-between",
-            borderTop: "1px solid rgba(255, 255, 255, 0.06)",
-            paddingTop: "14px",
+            borderTop: isNewsTheme ? "1px solid rgba(232, 213, 168, 0.16)" : "1px solid rgba(255, 255, 255, 0.06)",
+            paddingTop: isMobile ? "10px" : "14px",
+            ...(isMobile ? {
+              width: mobileExpandedWidth,
+              marginLeft: `-${mobileContentOffset}px`,
+              paddingLeft: isCompactPhone ? "2px" : "4px",
+              paddingRight: isCompactPhone ? "2px" : "4px",
+            } : null),
           }}>
             <button
               style={{
                 display: "flex",
                 alignItems: "center",
                 gap: "6px",
-                color: hoveredAction === 'comment' ? '#ffffff' : '#94a3b8',
+                color: hoveredAction === 'comment' ? '#ffffff' : actionBaseColor,
                 backgroundColor: "transparent",
                 border: "none",
                 cursor: "pointer",
-                padding: "8px 12px",
+                padding: isMobile ? "8px 6px" : "8px 12px",
                 borderRadius: "8px",
                 transition: "color 0.2s ease",
+                minWidth: isMobile ? (isCompactPhone ? "48px" : "52px") : "auto",
+                justifyContent: "center",
               }}
               onMouseEnter={() => setHoveredAction('comment')}
               onMouseLeave={() => setHoveredAction(null)}
@@ -1018,13 +1540,15 @@ const ThreadCommentCard = ({
                 display: "flex",
                 alignItems: "center",
                 gap: "6px",
-                color: isLiked || hoveredAction === 'like' ? '#ec4899' : '#94a3b8',
+                color: isLiked || hoveredAction === 'like' ? likeActionColor : actionBaseColor,
                 backgroundColor: "transparent",
                 border: "none",
                 cursor: "pointer",
-                padding: "8px 12px",
+                padding: isMobile ? "8px 6px" : "8px 12px",
                 borderRadius: "8px",
                 transition: "color 0.2s ease",
+                minWidth: isMobile ? (isCompactPhone ? "48px" : "52px") : "auto",
+                justifyContent: "center",
               }}
               onMouseEnter={() => setHoveredAction('like')}
               onMouseLeave={() => setHoveredAction(null)}
@@ -1032,42 +1556,83 @@ const ThreadCommentCard = ({
             >
               <Heart
                 size={18}
-                fill={isLiked ? "#ec4899" : "none"}
+                fill={isLiked ? likeActionColor : "none"}
               />
               <span>{likeCount}</span>
             </button>
             
-            <button
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "6px",
-                color: hoveredAction === 'share' ? '#ffffff' : '#94a3b8',
-                backgroundColor: "transparent",
-                border: "none",
-                cursor: "pointer",
-                padding: "8px 12px",
-                borderRadius: "8px",
-                transition: "color 0.2s ease",
-              }}
-              onMouseEnter={() => setHoveredAction('share')}
-              onMouseLeave={() => setHoveredAction(null)}
-            >
-              <Share2 size={18} />
-            </button>
+            {/* Share button — desktop only */}
+            {!isMobile && (
+              <button
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  color: hoveredAction === 'share' ? '#ffffff' : actionBaseColor,
+                  backgroundColor: "transparent",
+                  border: "none",
+                  cursor: "pointer",
+                  padding: "8px 12px",
+                  borderRadius: "8px",
+                  transition: "color 0.2s ease",
+                }}
+                onMouseEnter={() => setHoveredAction('share')}
+                onMouseLeave={() => setHoveredAction(null)}
+              >
+                <Share2 size={18} />
+              </button>
+            )}
+
+            {/* Rate button — mobile only, replaces Share */}
+            {isMobile && snippet && (
+              <button
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  color: mobileHasRated
+                    ? accentActionColor
+                    : ratingExpanded
+                      ? (isNewsTheme ? '#f3dfb8' : '#a5b4fc')
+                      : hoveredAction === 'rate' ? '#ffffff' : actionBaseColor,
+                  backgroundColor: ratingExpanded || mobileHasRated
+                    ? (isNewsTheme ? "rgba(232, 213, 168, 0.12)" : "rgba(99, 102, 241, 0.1)")
+                    : "transparent",
+                  border: "none",
+                  cursor: (mobileHasRated || isOwnComment) ? "default" : "pointer",
+                  padding: isMobile ? "8px 6px" : "8px 12px",
+                  borderRadius: "8px",
+                  transition: "all 0.2s ease",
+                  fontSize: isMobile ? "13px" : "14px",
+                  minWidth: isMobile ? (isCompactPhone ? "48px" : "52px") : "auto",
+                  justifyContent: "center",
+                }}
+                onMouseEnter={() => setHoveredAction('rate')}
+                onMouseLeave={() => setHoveredAction(null)}
+                onClick={() => {
+                  if (!mobileHasRated && !snippet.didRate && !isOwnComment) {
+                    setRatingExpanded(!ratingExpanded);
+                  }
+                }}
+              >
+                <span>{mobileHasRated ? mobileMyRating : 'Rate'}</span>
+              </button>
+            )}
             
             <button
               style={{
                 display: "flex",
                 alignItems: "center",
                 gap: "6px",
-                color: isSaved || hoveredAction === 'bookmark' ? '#6366f1' : '#94a3b8',
+                color: isSaved || hoveredAction === 'bookmark' ? accentActionColor : actionBaseColor,
                 backgroundColor: "transparent",
                 border: "none",
                 cursor: "pointer",
-                padding: "8px 12px",
+                padding: isMobile ? "8px 6px" : "8px 12px",
                 borderRadius: "8px",
                 transition: "color 0.2s ease",
+                minWidth: isMobile ? (isCompactPhone ? "48px" : "52px") : "auto",
+                justifyContent: "center",
               }}
               onMouseEnter={() => setHoveredAction('bookmark')}
               onMouseLeave={() => setHoveredAction(null)}
@@ -1075,10 +1640,92 @@ const ThreadCommentCard = ({
             >
               <Bookmark
                 size={18}
-                fill={isSaved ? "#6366f1" : "none"}
+                fill={isSaved ? accentActionColor : "none"}
               />
             </button>
           </div>
+
+          {/* Expandable horizontal rating slider — mobile only */}
+          {isMobile && snippet && ratingExpanded && !mobileHasRated && (
+            <div style={{
+              marginTop: "10px",
+              padding: "14px",
+              background: "rgba(0, 0, 0, 0.25)",
+              borderRadius: "12px",
+              border: "1px solid rgba(99, 102, 241, 0.12)",
+              width: mobileExpandedWidth,
+              marginLeft: `-${mobileContentOffset}px`,
+            }}>
+              {/* Rating value display */}
+              <div style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                alignItems: "center",
+                marginBottom: "10px",
+              }}>
+                <span style={{
+                  fontSize: "22px",
+                  fontWeight: "700",
+                  color: "#6366f1",
+                  lineHeight: 1,
+                  fontVariantNumeric: "tabular-nums",
+                }}>{mobileSliderRating}</span>
+              </div>
+
+              {/* Horizontal slider track */}
+              <div
+                ref={sliderTrackRef}
+                onPointerDown={handleMobileSliderPointerDown}
+                onPointerMove={handleMobileSliderPointerMove}
+                onPointerUp={handleMobileSliderPointerUp}
+                onPointerCancel={handleMobileSliderPointerUp}
+                style={{
+                  width: "100%",
+                  height: "32px",
+                  position: "relative",
+                  cursor: "pointer",
+                  touchAction: "none",
+                  userSelect: "none",
+                  display: "flex",
+                  alignItems: "center",
+                }}
+              >
+                {/* Track background */}
+                <div style={{
+                  position: "absolute",
+                  left: 0,
+                  right: 0,
+                  height: "6px",
+                  borderRadius: "3px",
+                  background: "rgba(255, 255, 255, 0.06)",
+                }} />
+                {/* Filled track */}
+                <div style={{
+                  position: "absolute",
+                  left: 0,
+                  height: "6px",
+                  borderRadius: "3px",
+                  width: `${mobileSliderRating}%`,
+                  backgroundImage: "linear-gradient(to right, #6366f1, #8b5cf6)",
+                  boxShadow: "0 0 12px rgba(99, 102, 241, 0.3)",
+                  transition: "width 0.05s linear",
+                }} />
+                {/* Thumb */}
+                <div style={{
+                  position: "absolute",
+                  left: `${mobileSliderRating}%`,
+                  top: "50%",
+                  transform: "translate(-50%, -50%)",
+                  width: "20px",
+                  height: "20px",
+                  borderRadius: "50%",
+                  backgroundImage: "linear-gradient(to top, #6366f1, #8b5cf6)",
+                  border: "2px solid #fff",
+                  boxShadow: "0 2px 8px rgba(0, 0, 0, 0.4), 0 0 16px rgba(99, 102, 241, 0.35)",
+                }} />
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

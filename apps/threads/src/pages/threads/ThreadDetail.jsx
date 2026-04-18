@@ -33,7 +33,9 @@ const HOME_THREAD_BLUE = '#1d9bf0';
 const HOME_THREAD_BLUE_DEEP = '#1a8cd8';
 const HOME_THREAD_BLUE_SOFT = '#7dd3fc';
 const HOME_NEWS_CHAMPAGNE = '#e8d5a8';
-const HOME_NEWS_CHAMPAGNE_DEEP = '#c4a86a';
+const COMPACT_PHONE_BREAKPOINT = 390;
+const PHONE_THREAD_BREAKPOINT = 480;
+const TABLET_PORTRAIT_BREAKPOINT = 1024;
 
 const normalizePostType = (postType) => String(postType || '').toLowerCase();
 
@@ -51,7 +53,7 @@ const getMusicBadgeGradient = (postType) => {
   const normalizedType = normalizePostType(postType);
   if (normalizedType === 'groupchat') return 'linear-gradient(135deg, #FF69B4, #ec4899)';
   if (normalizedType === 'parameter') return 'linear-gradient(135deg, #00C4B4, #06b6d4)';
-  if (normalizedType === 'news') return `linear-gradient(135deg, ${HOME_NEWS_CHAMPAGNE}, ${HOME_NEWS_CHAMPAGNE_DEEP})`;
+  if (normalizedType === 'news') return `linear-gradient(135deg, ${HOME_NEWS_CHAMPAGNE}, ${HOME_NEWS_CHAMPAGNE})`;
   return `linear-gradient(135deg, ${HOME_THREAD_BLUE}, ${HOME_THREAD_BLUE_DEEP})`;
 };
 
@@ -101,9 +103,50 @@ function buildProfileUser(userLike, fallbackName, fallbackAvatar) {
   };
 }
 
+function useViewportMatch(maxWidth) {
+  const [isMatch, setIsMatch] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.innerWidth <= maxWidth;
+  });
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+
+    const mediaQuery = window.matchMedia(`(max-width: ${maxWidth}px)`);
+    const handleViewportChange = (event) => {
+      setIsMatch(event.matches);
+    };
+
+    setIsMatch(mediaQuery.matches);
+
+    if (typeof mediaQuery.addEventListener === "function") {
+      mediaQuery.addEventListener("change", handleViewportChange);
+      return () => mediaQuery.removeEventListener("change", handleViewportChange);
+    }
+
+    mediaQuery.addListener(handleViewportChange);
+    return () => mediaQuery.removeListener(handleViewportChange);
+  }, [maxWidth]);
+
+  return isMatch;
+}
+
+function formatPostDate(createdUtc) {
+  if (!Number.isFinite(createdUtc) || createdUtc <= 0) {
+    return "";
+  }
+
+  const resolvedMs = createdUtc > 1e12 ? createdUtc : createdUtc * 1000;
+  return new Date(resolvedMs).toLocaleDateString();
+}
+
 export default function ThreadDetail({ postId, postData, onBack, onSelectUser }) {
   const { closeModal: closeGlobalModal } = useContext(GlobalModalContext);
   const [isVisible, setIsVisible] = useState(false);
+  const isCompactPhoneViewport = useViewportMatch(COMPACT_PHONE_BREAKPOINT);
+  const isMobileViewport = useViewportMatch(PHONE_THREAD_BREAKPOINT);
+  const isTabletPortraitViewport =
+    useViewportMatch(TABLET_PORTRAIT_BREAKPOINT) && !isMobileViewport;
   const { 
     post, 
     comments, 
@@ -121,6 +164,7 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
   // Track the injected snippet ID for graph updates
   const injectedSnippetIdRef = useRef(null);
   const seededInitialRatingsRef = useRef(false);
+  const graphsSectionRef = useRef(null);
 
   // Always enter thread detail with info sidebar closed.
   useEffect(() => {
@@ -233,6 +277,7 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
     !snippetsLoading &&
     comments.length > 0 &&
     snippetRecs.length === 0;
+  const postCreatedLabel = useMemo(() => formatPostDate(post?.createdUtc), [post?.createdUtc]);
 
   const getSnippetId = useCallback((snippet) => {
     return snippet?.commentId || snippet?.id;
@@ -314,7 +359,9 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
 
   useEffect(() => {
     // Scroll to top when entering thread detail
-    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    }
     
     const timer = setTimeout(() => setIsVisible(true), 50);
     return () => clearTimeout(timer);
@@ -626,8 +673,15 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
     setComments(prevComments => [...prevComments, normalizedComment]);
     
     setTimeout(() => {
+      if (typeof window === "undefined" || typeof document === "undefined") {
+        return;
+      }
+      const pageHeight = Math.max(
+        document.body?.scrollHeight || 0,
+        document.documentElement?.scrollHeight || 0
+      );
       window.scrollTo({
-        top: document.body.scrollHeight,
+        top: pageHeight,
         behavior: 'smooth'
       });
     }, 100);
@@ -645,12 +699,55 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
     setActiveSection(prevSection => section === prevSection ? null : section);
   }, []);
 
+  const scrollToGraphsSection = useCallback(() => {
+    if (typeof window === "undefined") return;
+    const sectionNode = graphsSectionRef.current;
+    if (!sectionNode) return;
+
+    const offset = isMobileViewport ? (isCompactPhoneViewport ? 82 : 86) : (isTabletPortraitViewport ? 96 : 104);
+    const targetTop = Math.max(
+      0,
+      window.scrollY + sectionNode.getBoundingClientRect().top - offset
+    );
+
+    window.scrollTo({ top: targetTop, behavior: "smooth" });
+  }, [isCompactPhoneViewport, isMobileViewport, isTabletPortraitViewport]);
+
+  useEffect(() => {
+    if (activeSection !== "graphs") return undefined;
+    if (typeof window === "undefined") return undefined;
+
+    let rafPrimary = 0;
+    let rafSecondary = 0;
+
+    rafPrimary = window.requestAnimationFrame(() => {
+      rafSecondary = window.requestAnimationFrame(() => {
+        scrollToGraphsSection();
+      });
+    });
+
+    return () => {
+      if (rafPrimary) window.cancelAnimationFrame(rafPrimary);
+      if (rafSecondary) window.cancelAnimationFrame(rafSecondary);
+    };
+  }, [activeSection, scrollToGraphsSection]);
+
   const handleBack = useCallback(() => {
     if (onBack) onBack();
   }, [onBack]);
 
   const styles = ThreadDetailStyles;
   const graphsCount = graphRatings?.length || 0;
+  const horizontalInset = isCompactPhoneViewport ? 16 : (isMobileViewport ? 20 : (isTabletPortraitViewport ? 28 : 32));
+  const contentWidth = `min(100%, calc(100% - ${horizontalInset}px))`;
+  const statIconSize = isCompactPhoneViewport ? 15 : (isMobileViewport ? 16 : (isTabletPortraitViewport ? 17 : 18));
+  const headerPadding = isCompactPhoneViewport ? "12px 12px" : (isMobileViewport ? "14px 14px" : (isTabletPortraitViewport ? "16px 18px" : "18px 20px"));
+  const contentHorizontalPadding = isCompactPhoneViewport ? "12px" : (isMobileViewport ? "14px" : (isTabletPortraitViewport ? "18px" : "20px"));
+  const titleFontSize = isCompactPhoneViewport ? "19px" : (isMobileViewport ? "20px" : (isTabletPortraitViewport ? "24px" : "26px"));
+  const bodyFontSize = isCompactPhoneViewport ? "13px" : (isMobileViewport ? "14px" : (isTabletPortraitViewport ? "15px" : "16px"));
+  const postImageMaxHeight = isCompactPhoneViewport ? "300px" : (isMobileViewport ? "340px" : "500px");
+  const showInlineGraphInfo = !isCompactPhoneViewport;
+  const useGridStatsRow = isMobileViewport;
 
   // Build TikTok modal snippets from both snippetRecs and comment-attached snippets.
   // Exclude the seeded example snippet from this modal feed.
@@ -768,6 +865,12 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
       className="thread-detail-container"
       style={{
         ...styles.container,
+        ...(isMobileViewport ? {
+          width: "100%",
+          maxWidth: "100%",
+          margin: 0,
+          paddingBottom: "16px",
+        } : null),
         ...(isNormalThread ? {
           backgroundColor: "#071423",
           background: "linear-gradient(165deg, #071423 0%, #0a2238 44%, #08182a 100%)",
@@ -790,7 +893,7 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
       <div style={{
         display: "flex",
         alignItems: "center",
-        padding: "18px 20px",
+        padding: headerPadding,
         backgroundColor: isNormalThread
           ? "rgba(5, 16, 30, 0.72)"
           : isNewsThread
@@ -810,8 +913,8 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
         <button 
           onClick={handleBack} 
           style={{
-            width: "38px",
-            height: "38px",
+            width: isCompactPhoneViewport ? "32px" : (isMobileViewport ? "34px" : "38px"),
+            height: isCompactPhoneViewport ? "32px" : (isMobileViewport ? "34px" : "38px"),
             borderRadius: "50%",
             background: isNormalThread
               ? "rgba(29, 155, 240, 0.16)"
@@ -828,7 +931,7 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
             justifyContent: "center",
             cursor: "pointer",
             color: isNormalThread ? "#bae6fd" : isNewsThread ? HOME_NEWS_CHAMPAGNE : "#e2e8f0",
-            marginRight: "16px",
+            marginRight: isCompactPhoneViewport ? "10px" : (isMobileViewport ? "12px" : "16px"),
             backdropFilter: "blur(8px)",
             boxShadow: isNormalThread
               ? "0 6px 14px rgba(29, 155, 240, 0.18)"
@@ -838,14 +941,14 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
             padding: 0,
           }}
         >
-          <FiArrowLeft size={20} />
+          <FiArrowLeft size={isCompactPhoneViewport ? 17 : (isMobileViewport ? 18 : 20)} />
         </button>
         <span style={{
-          fontSize: "13px",
+          fontSize: isCompactPhoneViewport ? "11px" : (isMobileViewport ? "12px" : "13px"),
           fontWeight: "600",
-          letterSpacing: "3px",
+          letterSpacing: isCompactPhoneViewport ? "1.8px" : (isMobileViewport ? "2.2px" : "3px"),
           textTransform: "uppercase",
-          color: isNormalThread ? "#93dbff" : isNewsThread ? HOME_NEWS_CHAMPAGNE_DEEP : "#94a3b8",
+          color: isNormalThread ? "#93dbff" : isNewsThread ? HOME_NEWS_CHAMPAGNE : "#94a3b8",
         }}>
           {headerLabel}
         </span>
@@ -854,8 +957,8 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
         {!isNewsThread && (
           <div style={{
             marginLeft: "auto",
-            width: "32px",
-            height: "32px",
+            width: isCompactPhoneViewport ? "28px" : (isMobileViewport ? "30px" : "32px"),
+            height: isCompactPhoneViewport ? "28px" : (isMobileViewport ? "30px" : "32px"),
             borderRadius: "50%",
             background: getMusicBadgeGradient(normalizedPostType),
             display: "flex",
@@ -864,7 +967,7 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
             color: "#fff",
             boxShadow: `0 2px 12px ${themeColor}44`,
           }}>
-            <Music size={16} />
+            <Music size={isCompactPhoneViewport ? 14 : (isMobileViewport ? 15 : 16)} />
           </div>
         )}
       </div>
@@ -877,6 +980,11 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
           ...styles.postCard,
           position: "relative",
           overflow: "hidden",
+          width: contentWidth,
+          margin: isMobileViewport ? "12px auto 14px" : (isTabletPortraitViewport ? "16px auto 18px" : "20px auto"),
+          borderRadius: isMobileViewport
+            ? (isCompactPhoneViewport ? "14px" : "16px")
+            : (isTabletPortraitViewport ? "18px" : "20px"),
           ...(isNormalThread ? {
             backgroundColor: "rgba(8, 27, 45, 0.65)",
             border: "1px solid rgba(29, 155, 240, 0.25)",
@@ -908,7 +1016,7 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
             background: isNormalThread
               ? "radial-gradient(circle, rgba(125, 211, 252, 0.14) 0%, transparent 70%)"
               : isNewsThread
-                ? `radial-gradient(circle, rgba(196, 168, 106, 0.1) 0%, transparent 70%)`
+                ? "radial-gradient(circle, rgba(232, 213, 168, 0.1) 0%, transparent 70%)"
                 : "radial-gradient(circle, rgba(236, 72, 153, 0.08) 0%, transparent 70%)",
             pointerEvents: "none",
             zIndex: 0,
@@ -918,8 +1026,8 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
           <div style={{
             display: "flex",
             alignItems: "center",
-            gap: "12px",
-            padding: "18px 20px 14px",
+            gap: isCompactPhoneViewport ? "9px" : (isMobileViewport ? "10px" : "12px"),
+            padding: isMobileViewport ? `14px ${contentHorizontalPadding} 10px` : "18px 20px 14px",
             position: "relative",
             zIndex: 1,
           }}>
@@ -929,7 +1037,7 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
               <ClickableUserAvatar
                 user={postUser}
                 avatarSrc={postUser.avatar}
-                size={44}
+                size={isCompactPhoneViewport ? 36 : (isMobileViewport ? 40 : 44)}
                 onUserClick={handleSelectUser}
               />
             </div>
@@ -942,7 +1050,7 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
                 onClick={() => handleSelectUser(postUser)}
                 style={{
                   fontWeight: "700",
-                  fontSize: "15px",
+                  fontSize: isCompactPhoneViewport ? "13px" : (isMobileViewport ? "14px" : "15px"),
                   color: "#f1f5f9",
                   background: "none",
                   border: "none",
@@ -954,23 +1062,23 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
                 {postUser.displayName}
               </button>
               <div style={{
-                fontSize: "12px",
-                color: isNormalThread ? "#7cc8ea" : isNewsThread ? `${HOME_NEWS_CHAMPAGNE_DEEP}99` : "#64748b",
+                fontSize: isCompactPhoneViewport ? "10px" : (isMobileViewport ? "11px" : "12px"),
+                color: isNormalThread ? "#7cc8ea" : isNewsThread ? `${HOME_NEWS_CHAMPAGNE}99` : "#64748b",
                 marginTop: "2px",
               }}>
-                {new Date(post.createdUtc * 1000).toLocaleDateString()}
+                {postCreatedLabel}
               </div>
             </div>
           </div>
           
           {/* Title — gradient text */}
-          <div style={{ padding: "0 20px 16px", position: "relative", zIndex: 1 }}>
+          <div style={{ padding: isMobileViewport ? `0 ${contentHorizontalPadding} 12px` : "0 20px 16px", position: "relative", zIndex: 1 }}>
             <h2 style={{
               margin: 0,
-              fontSize: "26px",
+              fontSize: titleFontSize,
               fontWeight: "800",
-              letterSpacing: "-0.5px",
-              lineHeight: "1.2",
+              letterSpacing: isMobileViewport ? "-0.3px" : "-0.5px",
+              lineHeight: isMobileViewport ? "1.28" : "1.2",
               background: isNormalThread
                 ? `linear-gradient(135deg, #f8fdff 24%, ${HOME_THREAD_BLUE_SOFT} 92%)`
                 : isNewsThread
@@ -979,6 +1087,7 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
               backgroundClip: "text",
               WebkitBackgroundClip: "text",
               WebkitTextFillColor: "transparent",
+              wordBreak: "break-word",
             }}>
               {post.title}
             </h2>
@@ -986,11 +1095,11 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
 
           {post.selftext && (
             <p style={{
-              fontSize: "16px",
-              lineHeight: 1.6,
+              fontSize: bodyFontSize,
+              lineHeight: isMobileViewport ? 1.55 : 1.6,
               color: isNormalThread ? "#d6efff" : isNewsThread ? `${HOME_NEWS_CHAMPAGNE}cc` : "#cbd5e1",
               margin: 0,
-              padding: "0 20px 16px",
+              padding: isMobileViewport ? `0 ${contentHorizontalPadding} 12px` : "0 20px 16px",
               position: "relative",
               zIndex: 1,
             }}>
@@ -1000,9 +1109,9 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
           
           {/* Post image */}
           {post.imageUrl && (
-            <div style={{ padding: "0 20px 20px", position: "relative", zIndex: 1 }}>
+            <div style={{ padding: isMobileViewport ? `0 ${contentHorizontalPadding} 14px` : "0 20px 20px", position: "relative", zIndex: 1 }}>
               <div style={{
-                borderRadius: "14px",
+                borderRadius: isMobileViewport ? "12px" : "14px",
                 overflow: "hidden",
                 border: "1px solid rgba(255, 255, 255, 0.06)",
                 background: "#0a0e1a",
@@ -1012,7 +1121,7 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
                   alt="Post visual"
                   style={{
                     width: "100%",
-                    maxHeight: "500px",
+                    maxHeight: postImageMaxHeight,
                     objectFit: "contain",
                     display: "block",
                   }}
@@ -1060,11 +1169,13 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
               STATS ROW — pill badges
               ═══════════════════════════════════════════════ */}
           <div style={{
-            display: "flex",
+            display: useGridStatsRow ? "grid" : "flex",
             alignItems: "center",
-            justifyContent: "space-around",
+            justifyContent: useGridStatsRow ? "stretch" : "space-around",
+            gridTemplateColumns: useGridStatsRow ? "repeat(4, minmax(0, 1fr))" : undefined,
+            gap: isCompactPhoneViewport ? "4px" : (isMobileViewport ? "6px" : 0),
             width: "100%",
-            padding: "14px 20px 18px",
+            padding: isMobileViewport ? (isCompactPhoneViewport ? "9px 10px 13px" : "10px 12px 14px") : "14px 20px 18px",
             borderTop: isNormalThread
               ? "1px solid rgba(29, 155, 240, 0.18)"
               : isNewsThread
@@ -1074,15 +1185,19 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
             zIndex: 1,
           }}>
             {[
-              { icon: <MessageCircle size={18} />, val: displayedPostStatsWithFallback.num_comments },
-              { icon: <Heart size={18} />, val: displayedPostStatsWithFallback.ups },
-              { icon: <Share2 size={18} />, val: null },
-              { icon: <Bookmark size={18} />, val: displayedPostStatsWithFallback.bookmarks },
-            ].map((stat, i) => (
+              { Icon: MessageCircle, val: displayedPostStatsWithFallback.num_comments },
+              { Icon: Heart, val: displayedPostStatsWithFallback.ups },
+              { Icon: Share2, val: null },
+              { Icon: Bookmark, val: displayedPostStatsWithFallback.bookmarks },
+            ].map(({ Icon, val }, i) => (
               <button key={i} style={{
                 display: "flex",
                 alignItems: "center",
-                gap: "6px",
+                gap: isCompactPhoneViewport ? "4px" : "6px",
+                justifyContent: "center",
+                flex: isMobileViewport ? "1 1 0" : "0 0 auto",
+                minWidth: 0,
+                width: isMobileViewport ? "100%" : "auto",
                 background: isNormalThread
                   ? "rgba(29, 155, 240, 0.12)"
                   : isNewsThread
@@ -1094,15 +1209,17 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
                     ? "1px solid rgba(232, 213, 168, 0.18)"
                     : "1px solid rgba(255, 255, 255, 0.06)",
                 borderRadius: "999px",
-                padding: "8px 14px",
+                padding: isMobileViewport ? (isCompactPhoneViewport ? "7px 4px" : "8px 6px") : "8px 14px",
                 color: isNormalThread ? "#a8e1ff" : isNewsThread ? `${HOME_NEWS_CHAMPAGNE}bb` : "#94a3b8",
                 cursor: "pointer",
-                fontSize: "13px",
+                fontSize: isCompactPhoneViewport ? "11px" : (isMobileViewport ? "12px" : "13px"),
                 fontWeight: "600",
                 transition: "all 0.2s ease",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
               }}>
-                {stat.icon}
-                {stat.val !== null && <span>{stat.val}</span>}
+                <Icon size={statIconSize} />
+                {val !== null && <span style={{ minWidth: 0, textOverflow: "ellipsis", overflow: "hidden" }}>{val}</span>}
               </button>
             ))}
           </div>
@@ -1112,14 +1229,14 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
               ═══════════════════════════════════════════════ */}
           {!isNewsThread && (
             <div style={{
-              padding: "0 20px 20px",
+              padding: isMobileViewport ? `0 ${contentHorizontalPadding} 14px` : "0 20px 20px",
               position: "relative",
               zIndex: 1,
             }}>
               <div style={{
                 display: "flex",
-                gap: "8px",
-                padding: "6px",
+                gap: isCompactPhoneViewport ? "5px" : (isMobileViewport ? "6px" : "8px"),
+                padding: isCompactPhoneViewport ? "4px" : (isMobileViewport ? "5px" : "6px"),
                 borderRadius: "999px",
                 background: isNormalThread ? "rgba(29, 155, 240, 0.08)" : "rgba(255, 255, 255, 0.03)",
                 border: isNormalThread ? "1px solid rgba(29, 155, 240, 0.22)" : "1px solid rgba(255, 255, 255, 0.06)",
@@ -1144,11 +1261,11 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
                         : "transparent",
                     color: activeSection === "graphs" ? "#e0e7ff" : "#64748b",
                     borderRadius: "999px",
-                    padding: "12px 14px",
+                    padding: isCompactPhoneViewport ? "8px 9px" : (isMobileViewport ? "10px 12px" : "12px 14px"),
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    gap: "10px",
+                    gap: isCompactPhoneViewport ? "6px" : (isMobileViewport ? "8px" : "10px"),
                     fontWeight: 700,
                     letterSpacing: "0.2px",
                     boxShadow:
@@ -1159,19 +1276,19 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
                     outline: "none",
                   }}
                 >
-                  <BarChart3 size={18} color={activeSection === "graphs" ? themeColor : "#64748b"} />
-                  <span style={{ fontSize: "15px" }}>Graphs</span>
+                  <BarChart3 size={isCompactPhoneViewport ? 15 : (isMobileViewport ? 16 : 18)} color={activeSection === "graphs" ? themeColor : "#64748b"} />
+                  <span style={{ fontSize: isCompactPhoneViewport ? "13px" : (isMobileViewport ? "14px" : "15px") }}>Graphs</span>
 
                   <span
                     style={{
-                      minWidth: "28px",
-                      height: "22px",
-                      padding: "0 10px",
+                      minWidth: isCompactPhoneViewport ? "22px" : (isMobileViewport ? "24px" : "28px"),
+                      height: isCompactPhoneViewport ? "18px" : (isMobileViewport ? "20px" : "22px"),
+                      padding: isCompactPhoneViewport ? "0 6px" : (isMobileViewport ? "0 8px" : "0 10px"),
                       borderRadius: "999px",
                       display: "inline-flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      fontSize: "11px",
+                      fontSize: isCompactPhoneViewport ? "9px" : (isMobileViewport ? "10px" : "11px"),
                       fontWeight: 800,
                       background: activeSection === "graphs" ? `${themeColor}33` : "rgba(255,255,255,0.06)",
                       color: activeSection === "graphs" ? "#fff" : "#cbd5e1",
@@ -1181,26 +1298,28 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
                     {graphsCount}
                   </span>
 
-                  <span style={{ display: "inline-flex", opacity: activeSection === "graphs" ? 1 : 0.75 }}>
-                    <InfoIconModal
-                      modalId={`thread-detail-graphs-tab-info-${postId || post?.id || 'unknown'}`}
-                      title="Graphs"
-                      iconSize={14}
-                      showButtonText={false}
-                      steps={[
-                        {
-                          icon: <BarChart3 size={18} color="#a9b6fc" />,
-                          title: "Use Graphs for Insights",
-                          content: "Use these graphs to glean more info on each thread",
-                        },
-                        {
-                          icon: <Users size={18} color="#a9b6fc" />,
-                          title: "Engage to Add Data",
-                          content: "Engaging and rating snippets will add more users to each graph",
-                        },
-                      ]}
-                    />
-                  </span>
+                  {showInlineGraphInfo && (
+                    <span style={{ display: "inline-flex", opacity: activeSection === "graphs" ? 1 : 0.75 }}>
+                      <InfoIconModal
+                        modalId={`thread-detail-graphs-tab-info-${postId || post?.id || 'unknown'}`}
+                        title="Graphs"
+                        iconSize={isMobileViewport ? 12 : 14}
+                        showButtonText={false}
+                        steps={[
+                          {
+                            icon: <BarChart3 size={18} color="#a9b6fc" />,
+                            title: "Use Graphs for Insights",
+                            content: "Use these graphs to glean more info on each thread",
+                          },
+                          {
+                            icon: <Users size={18} color="#a9b6fc" />,
+                            title: "Engage to Add Data",
+                            content: "Engaging and rating snippets will add more users to each graph",
+                          },
+                        ]}
+                      />
+                    </span>
+                  )}
                 </div>
 
               </div>
@@ -1219,12 +1338,15 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
               />
               
               {activeSection === "graphs" && (
-                <GraphSection 
-                  graphRatings={graphRatings}
-                  scatterData={scatterData}
-                  openVerticalGraphModal={openVerticalGraphModal}
-                  openScatterGraphModal={openScatterGraphModal}
-                />
+                <div ref={graphsSectionRef}>
+                  <GraphSection 
+                    graphRatings={graphRatings}
+                    scatterData={scatterData}
+                    openVerticalGraphModal={openVerticalGraphModal}
+                    openScatterGraphModal={openScatterGraphModal}
+                    isMobile={isMobileViewport}
+                  />
+                </div>
               )}
               
             </>
@@ -1234,7 +1356,7 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
       ) : (
         <div style={{
           ...styles.loadingContainer,
-          width: "calc(100% - 32px)",
+          width: contentWidth,
           margin: "32px auto",
         }}>
           <div style={styles.loadingSpinner}></div>
@@ -1250,18 +1372,19 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
       )}
       {!isNewsThread && (
         <div style={{
-          width: "calc(100% - 32px)",
-          margin: "8px auto 24px",
+          width: contentWidth,
+          margin: isMobileViewport ? (isCompactPhoneViewport ? "4px auto 14px" : "6px auto 16px") : "8px auto 24px",
           ...(isNormalThread ? {
             border: "1px solid rgba(29, 155, 240, 0.22)",
             background: "rgba(7, 26, 42, 0.45)",
-            borderRadius: "20px",
-            padding: "8px",
+            borderRadius: isMobileViewport ? "16px" : "20px",
+            padding: isMobileViewport ? (isCompactPhoneViewport ? "4px" : "6px") : "8px",
           } : null),
         }}>
           <ThreadCommentComposer
             onSubmit={handleSubmitComment}
             onOpenTikTokModal={openTikTokView}
+            themeVariant={isParameterThread ? "parameter" : "thread"}
           />
         </div>
       )}
@@ -1269,19 +1392,19 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
       {post?.postType !== "groupchat" && (
         <div style={{
           ...styles.commentsSection,
-          width: "calc(100% - 32px)",
+          width: contentWidth,
           margin: "0 auto",
           ...(isNormalThread ? {
             border: "1px solid rgba(29, 155, 240, 0.2)",
             borderRadius: "16px",
             background: "linear-gradient(180deg, rgba(9, 27, 44, 0.5) 0%, rgba(7, 21, 35, 0.35) 100%)",
-            padding: "8px 16px 18px",
+            padding: isMobileViewport ? (isCompactPhoneViewport ? "7px 10px 12px" : "8px 12px 14px") : "8px 16px 18px",
           } : null),
           ...(isNewsThread ? {
             border: "1px solid rgba(232, 213, 168, 0.14)",
             borderRadius: "16px",
             background: "linear-gradient(180deg, rgba(232, 213, 168, 0.06) 0%, transparent 100%)",
-            padding: "8px 16px 18px",
+            padding: isMobileViewport ? (isCompactPhoneViewport ? "7px 10px 12px" : "8px 12px 14px") : "8px 16px 18px",
           } : null),
         }}>
           <h3 style={{
@@ -1291,7 +1414,7 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
               borderBottom: "1px solid rgba(29, 155, 240, 0.24)",
             } : null),
             ...(isNewsThread ? {
-              color: HOME_NEWS_CHAMPAGNE_DEEP,
+              color: HOME_NEWS_CHAMPAGNE,
               borderBottom: "1px solid rgba(232, 213, 168, 0.2)",
             } : null),
           }}>
@@ -1382,7 +1505,7 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
                 activeSnippet.snippetId === getSnippetId(snippetObj) && 
                 activeSnippet.isPlaying;
               
-              const commentKey = c.id || `comment-${c.author}-${c.createdUtc || Date.now()}`;
+              const commentKey = c.id || `comment-${c.author || 'unknown'}-${c.createdUtc || c.createdAt || index}`;
               
               return (
                 <ThreadCommentCard
@@ -1398,6 +1521,8 @@ export default function ThreadDetail({ postId, postData, onBack, onSelectUser })
                   isFirstSnippet={shouldShowExampleComment && index === 0 && c.id === 'example_comment_001' && Boolean(snippetObj)}
                   isNewsThread={isNewsThread}
                   snippetsLoading={!isNewsThread && !usedCache && snippetsLoading}
+                  isMobileViewport={isMobileViewport}
+                  isCompactPhoneViewport={isCompactPhoneViewport}
                 />
               );
             })}

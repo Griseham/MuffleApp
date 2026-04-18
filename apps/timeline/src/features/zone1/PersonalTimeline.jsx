@@ -3,7 +3,6 @@ import {
   getCacheReadyTimelineArtists,
   loadCacheReadyArtists,
 } from "../../backend/cacheReadyArtists";
-import ZONE3_DATA from "../../backend/cache/zone3_data.json";
 import Zone1Header from "./Zone1Header";
 import ArtistDot from "./ArtistDot";
 import { BellIcon } from "../Icons";
@@ -149,11 +148,15 @@ function sanitizeArtistKey(name) {
   return normalized || "artist";
 }
 
-const { ARTIST_GENRE_SCORES_BY_NAME, ZONE3_ARTISTS_BY_GENRE } = (() => {
+let ARTIST_GENRE_SCORES_BY_NAME = new Map();
+let ZONE3_ARTISTS_BY_GENRE = new Map();
+let zone3DataLoadPromise = null;
+
+function buildZone3DataMaps(zone3Data) {
   const byName = new Map();
   const artistsByGenre = new Map();
   const genreCountsByArtist = new Map();
-  const zone3Albums = Array.isArray(ZONE3_DATA?.albums) ? ZONE3_DATA.albums : [];
+  const zone3Albums = Array.isArray(zone3Data?.albums) ? zone3Data.albums : [];
 
   zone3Albums.forEach((entry) => {
     const genre = String(entry?.genre || "").trim();
@@ -203,11 +206,8 @@ const { ARTIST_GENRE_SCORES_BY_NAME, ZONE3_ARTISTS_BY_GENRE } = (() => {
     byName.set(normalizedName, normalizedScores);
   });
 
-  return {
-    ARTIST_GENRE_SCORES_BY_NAME: byName,
-    ZONE3_ARTISTS_BY_GENRE: artistsByGenre,
-  };
-})();
+  return { byName, artistsByGenre };
+}
 
 function hashString(str) {
   let h = 2166136261;
@@ -337,6 +337,32 @@ async function loadAlbumArtworkCache() {
     });
 
   return albumArtworkLoadPromise;
+}
+
+async function loadZone3DataCache() {
+  if (zone3DataLoadPromise) return zone3DataLoadPromise;
+
+  zone3DataLoadPromise = fetch(getDataUrl("zone3_data.json"), { cache: "force-cache" })
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error(`Failed to load zone3_data.json: ${response.status}`);
+      }
+      return response.json();
+    })
+    .then((zone3Data) => {
+      const { byName, artistsByGenre } = buildZone3DataMaps(zone3Data);
+      ARTIST_GENRE_SCORES_BY_NAME = byName;
+      ZONE3_ARTISTS_BY_GENRE = artistsByGenre;
+      return true;
+    })
+    .catch(() => {
+      return false;
+    })
+    .finally(() => {
+      zone3DataLoadPromise = null;
+    });
+
+  return zone3DataLoadPromise;
 }
 
 function getAlbumArtworkForArtistAlbum(artistName, albumName) {
@@ -973,6 +999,7 @@ export default function PersonalTimeline({
     Promise.all([
       loadCacheReadyArtists(),
       loadAlbumArtworkCache(),
+      loadZone3DataCache(),
     ])
       .then(([, loadedArtwork]) => {
         if (!isMounted) return;
@@ -1532,6 +1559,8 @@ export default function PersonalTimeline({
     });
 
     return lanes;
+    // albumArtworkVersion bumps when the module-level artwork map mutates — needed to invalidate this memo.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     renderedFriendTimelines,
     topAlbumsArtists,

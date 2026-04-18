@@ -6,8 +6,11 @@ import React, {
   useDeferredValue,
   useEffect,
   useMemo,
+  useReducer,
+  useRef,
   useState,
 } from 'react';
+import ReactDOM from 'react-dom';
 import { Headphones, Disc, Music, TrendingUp, Mic, Info } from 'lucide-react';
 import Starfield from '../components/Starfield';
 import UserProfile from './user/UserProfile'; 
@@ -21,6 +24,7 @@ import {
   CURRENT_USER_DISPLAY_NAME,
   CURRENT_USER_USERNAME,
 } from '../utils/currentUser';
+import '../styles/homeStyles.css';
 
 const ThreadDetail = lazy(() => import('./threads/ThreadDetail'));
 const GroupChatDetail = lazy(() => import('./threads/GroupChatDetail'));
@@ -102,6 +106,85 @@ const PINNED_HOME_THREAD_IDS = ['1hc9b9g', '1h41sz5', '1gzncch'];
 const PINNED_HOME_PARAMETER_ID = 'parameter_thread_002';
 const CACHED_POSTS_FEED_SUMMARY_ENDPOINT = '/cached-posts/feed-summary';
 const EMPTY_STATE_DELAY_MS = 1000;
+const VIEW_TRANSITION_MS = 220;
+const SHELL_STACK_BREAKPOINT = 1180;
+const INITIAL_VISIBLE_POSTS = 8;
+const VISIBLE_POSTS_STEP = 8;
+const REDDIT_SOURCE_SUBREDDITS = [
+  { label: 'r/musicrecommendations', url: 'https://www.reddit.com/r/MusicRecommendations/' },
+  { label: 'r/musicsuggestions', url: 'https://www.reddit.com/r/musicsuggestions/' },
+  { label: 'r/music', url: 'https://www.reddit.com/r/Music/' },
+];
+
+const initialViewState = {
+  route: 'feed',
+  stack: [],
+  thread: null,
+  user: null,
+  isTransitioning: false,
+};
+
+function createViewSnapshot(state) {
+  return {
+    route: state.route,
+    thread: state.thread,
+    user: state.user,
+  };
+}
+
+function homeViewReducer(state, action) {
+  switch (action.type) {
+    case 'OPEN_THREAD': {
+      if (!action.thread || state.isTransitioning) {
+        return state;
+      }
+
+      return {
+        ...state,
+        route: 'thread',
+        stack: [...state.stack, createViewSnapshot(state)],
+        thread: action.thread,
+        user: null,
+        isTransitioning: true,
+      };
+    }
+    case 'OPEN_USER': {
+      if (!action.user || state.isTransitioning) {
+        return state;
+      }
+
+      return {
+        ...state,
+        route: 'user',
+        stack: [...state.stack, createViewSnapshot(state)],
+        user: action.user,
+        isTransitioning: true,
+      };
+    }
+    case 'BACK': {
+      if (state.isTransitioning || state.stack.length === 0) {
+        return state;
+      }
+
+      const previous = state.stack[state.stack.length - 1];
+      return {
+        ...state,
+        route: previous.route,
+        thread: previous.thread || null,
+        user: previous.user || null,
+        stack: state.stack.slice(0, -1),
+        isTransitioning: true,
+      };
+    }
+    case 'END_TRANSITION':
+      return {
+        ...state,
+        isTransitioning: false,
+      };
+    default:
+      return state;
+  }
+}
 
 function normalizePostType(postType = '') {
   return String(postType).trim().toLowerCase();
@@ -232,6 +315,42 @@ function buildCachedFeedPosts(cachedPostList) {
   return [createExamplePost(), ...pinnedPosts, ...remainingPosts];
 }
 
+const EXPANDED_POST_CONTENT_ARTISTS = [
+  { name: 'Ariana Grande', genre: 'Pop' },
+  { name: 'Bad Bunny', genre: 'Latin Trap/Reggaeton' },
+  { name: 'Drake', genre: 'Hip-Hop' },
+  { name: 'Post Malone', genre: 'Pop Rap' },
+  { name: 'Dua Lipa', genre: 'Dance-Pop' },
+  { name: 'SZA', genre: 'R&B' },
+  { name: 'Frank Ocean', genre: 'Alternative R&B' },
+  { name: 'Beyoncé', genre: 'Pop/R&B' },
+  { name: 'Taylor Swift', genre: 'Pop' },
+  { name: 'Kendrick Lamar', genre: 'Hip-Hop' },
+  { name: 'Billie Eilish', genre: 'Alternative Pop' },
+  { name: 'The Weeknd', genre: 'R&B/Pop' },
+  { name: 'Lana Del Rey', genre: 'Alternative Pop' },
+  { name: 'Travis Scott', genre: 'Hip-Hop' },
+  { name: 'Tyler, The Creator', genre: 'Hip-Hop' },
+];
+
+const TOP_ARTIST_POOL_BY_GENRE = {
+  'Pop': EXPANDED_POST_CONTENT_ARTISTS.filter((artist) => artist.genre.toLowerCase().includes('pop')),
+  'Hip-Hop': EXPANDED_POST_CONTENT_ARTISTS.filter((artist) => artist.genre.toLowerCase().includes('hip-hop') || artist.genre.toLowerCase().includes('rap')),
+  'R&B': EXPANDED_POST_CONTENT_ARTISTS.filter((artist) => artist.genre.toLowerCase().includes('r&b')),
+  'Electronic': EXPANDED_POST_CONTENT_ARTISTS.filter((artist) => artist.genre.toLowerCase().includes('dance')),
+  'Synth-Pop': EXPANDED_POST_CONTENT_ARTISTS.filter((artist) => artist.genre.toLowerCase().includes('pop')),
+};
+
+const TOP_ARTIST_FALLBACK_POOL = [...EXPANDED_POST_CONTENT_ARTISTS];
+
+function normalizeArtistKey(name = '') {
+  return String(name || '')
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase();
+}
+
 function generateFeedData(x, y, wheelGenres = []) {
   const seed = x * 13 + y * 7;
   const genreColors = {
@@ -321,26 +440,59 @@ function generateFeedData(x, y, wheelGenres = []) {
     });
   }
 
-  const artistNames = [
-    "Tyler, The Creator", "Tame Impala", "Frank Ocean", "Mac Miller",
-    "Radiohead", "Daft Punk", "Kendrick Lamar", "The Strokes",
-    "Arctic Monkeys", "Childish Gambino", "The Weeknd", "SZA"
-  ];
+  const artists = [];
+  const usedArtistNames = new Set();
 
-  const artists = selectedGenres.slice(0, 3).flatMap((genre, genreIndex) => {
-    const artistCount = 2 + Math.floor((seed + genre.name.length) % 2);
-    return Array.from({ length: artistCount }, (_, i) => {
-      const artistIndex = (genreIndex * 3 + i + seed) % artistNames.length;
-      return {
-        id: `artist-${genre.name.toLowerCase()}-${i}-${seed % 1000}`,
-        name: artistNames[artistIndex],
-        genre: genre.name,
-        recommendations: Math.floor(1500 + (seed * (i + 1)) % 2000),
-        discovered: (seed + i) % 3 !== 0,
-        imageUrl: `/assets/image${Math.abs(artistIndex * 7 + seed) % 1000 + 1}.png`
-      };
+  const pushUniqueArtist = (candidate, genreIndex, slotIndex) => {
+    const safeName = String(candidate?.name || '').trim();
+    const safeGenre = String(candidate?.genre || '').trim() || 'Music';
+    const artistKey = normalizeArtistKey(safeName);
+    if (!safeName || !artistKey || usedArtistNames.has(artistKey)) {
+      return false;
+    }
+
+    usedArtistNames.add(artistKey);
+    const recommendationSeed = Math.abs(
+      seed + genreIndex * 173 + slotIndex * 47 + artistKey.length * 29
+    );
+    artists.push({
+      id: `artist-${artistKey.replace(/[^a-z0-9]+/g, '-')}-${recommendationSeed % 10000}`,
+      name: safeName,
+      genre: safeGenre,
+      recommendations: 1400 + (recommendationSeed % 2600),
+      discovered: recommendationSeed % 4 !== 0,
+      imageUrl: '',
     });
+    return true;
+  };
+
+  selectedGenres.slice(0, 4).forEach((genre, genreIndex) => {
+    const pool = TOP_ARTIST_POOL_BY_GENRE[genre.name] || [];
+    if (!pool.length) {
+      return;
+    }
+
+    const startIndex = Math.abs(seed + genreIndex * 11) % pool.length;
+    const targetCount = Math.min(2, pool.length);
+    let added = 0;
+
+    for (let offset = 0; offset < pool.length && added < targetCount; offset += 1) {
+      const candidate = pool[(startIndex + offset) % pool.length];
+      if (pushUniqueArtist(candidate, genreIndex, offset)) {
+        added += 1;
+      }
+    }
   });
+
+  if (artists.length < 8) {
+    const fallbackStart = Math.abs(seed * 3) % TOP_ARTIST_FALLBACK_POOL.length;
+    for (let offset = 0; offset < TOP_ARTIST_FALLBACK_POOL.length && artists.length < 8; offset += 1) {
+      const candidate = TOP_ARTIST_FALLBACK_POOL[
+        (fallbackStart + offset) % TOP_ARTIST_FALLBACK_POOL.length
+      ];
+      pushUniqueArtist(candidate, selectedGenres.length, offset);
+    }
+  }
 
   return { genres: selectedGenres, artists };
 }
@@ -464,7 +616,7 @@ function ThreadsHomeSidebar() {
         data-content="old-videos"
         onClick={handlePlaceholderNav}
       >
-        Old Videos
+        Archives
       </button>
     </aside>
   );
@@ -492,14 +644,16 @@ function ThreadsAppShell({ children, rightPanel = null }) {
   );
 }
 
-function ThreadsMainFrame({ children }) {
+function ThreadsMainFrame({ children, viewMode = 'feed', isTransitioning = false }) {
   return (
     <div
+      className={`threads-main-frame home-view-frame home-view-frame--${viewMode}${isTransitioning ? ' is-transitioning' : ''}`}
+      data-view-mode={viewMode}
       style={{
         maxWidth: '1000px',
         width: '100%',
         margin: '0 auto',
-        padding: '1rem 1rem 0',
+        padding: '0.75rem clamp(0.55rem, 2.2vw, 1rem) 0',
         boxSizing: 'border-box',
       }}
     >
@@ -514,27 +668,71 @@ const MusicHome = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [canShowEmptyState, setCanShowEmptyState] = useState(false);
   const [currentFilter, setCurrentFilter] = useState('all');
-  
+
   // Navigation state
-  const [selectedThread, setSelectedThread] = useState(null);
-  const [selectedUser, setSelectedUser] = useState(null);
-  const [navigationHistory, setNavigationHistory] = useState([]);
-  
+  const [viewState, dispatchView] = useReducer(homeViewReducer, initialViewState);
+
   // UI state
   const [showTikTokModal, setShowTikTokModal] = useState(false);
   const [isStarfieldOpen, setIsStarfieldOpen] = useState(false);
-  
+  const [pendingSubreddit, setPendingSubreddit] = useState(null);
+
   // Starfield state
   const [feedCoordinate, setFeedCoordinate] = useState({ x: 50, y: 50 });
   const [feedLoaded, setFeedLoaded] = useState(false);
   const [feedData, setFeedData] = useState({ genres: [], artists: [] });
-  
+
   // Cached posts tracking
   const [cachedPosts, setCachedPosts] = useState([]);
+  const [viewportMetrics, setViewportMetrics] = useState({
+    width: typeof window === 'undefined' ? 1440 : window.innerWidth,
+    height: typeof window === 'undefined' ? 900 : window.innerHeight,
+  });
+  const scrollPositionsRef = useRef({
+    feed: 0,
+    thread: 0,
+    user: 0,
+  });
+  const loadMoreSentinelRef = useRef(null);
+  const [visiblePostCount, setVisiblePostCount] = useState(INITIAL_VISIBLE_POSTS);
+
+  const isStackedLayout = viewportMetrics.width <= SHELL_STACK_BREAKPOINT;
+  const isMobileFeedView = viewportMetrics.width <= 640;
+  const selectedThread = viewState.thread;
+  const selectedUser = viewState.user;
+  const activeRoute = viewState.route;
 
   useEffect(() => {
-    import('../styles/homeStyles.css');
+    const updateViewportMetrics = () => {
+      setViewportMetrics({
+        width: window.innerWidth || 1440,
+        height: window.innerHeight || 900,
+      });
+    };
+
+    updateViewportMetrics();
+    window.addEventListener('resize', updateViewportMetrics);
+    return () => window.removeEventListener('resize', updateViewportMetrics);
   }, []);
+
+  useEffect(() => {
+    const shouldLockBody = showTikTokModal || Boolean(pendingSubreddit);
+    if (!shouldLockBody || typeof document === 'undefined') {
+      return undefined;
+    }
+
+    const previousBodyOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+    };
+  }, [showTikTokModal, pendingSubreddit]);
+
+  useEffect(() => {
+    if (isMobileFeedView) {
+      setIsStarfieldOpen(false);
+    }
+  }, [isMobileFeedView]);
 
   const filteredPosts = useMemo(() => {
     if (currentFilter === 'all') {
@@ -545,6 +743,11 @@ const MusicHome = () => {
   }, [currentFilter, posts]);
 
   const deferredFilteredPosts = useDeferredValue(filteredPosts);
+  const visiblePosts = useMemo(
+    () => deferredFilteredPosts.slice(0, visiblePostCount),
+    [deferredFilteredPosts, visiblePostCount]
+  );
+  const hasMoreVisiblePosts = visiblePostCount < deferredFilteredPosts.length;
   const isSettlingEmptyState = !isLoading && filteredPosts.length === 0 && !canShowEmptyState;
   const showFeedLoadingOverlay = isLoading || isSettlingEmptyState;
 
@@ -566,17 +769,89 @@ const MusicHome = () => {
     return () => clearTimeout(emptyStateTimeout);
   }, [filteredPosts.length, isLoading]);
 
+  useEffect(() => {
+    setVisiblePostCount(INITIAL_VISIBLE_POSTS);
+  }, [currentFilter, posts]);
+
+  useEffect(() => {
+    const sentinel = loadMoreSentinelRef.current;
+    if (!sentinel || isLoading || !hasMoreVisiblePosts || typeof IntersectionObserver === 'undefined') {
+      return undefined;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+        if (!entry?.isIntersecting) {
+          return;
+        }
+
+        setVisiblePostCount((prevCount) => (
+          Math.min(prevCount + VISIBLE_POSTS_STEP, deferredFilteredPosts.length)
+        ));
+      },
+      {
+        root: null,
+        rootMargin: '600px 0px',
+        threshold: 0.01,
+      }
+    );
+
+    observer.observe(sentinel);
+
+    return () => observer.disconnect();
+  }, [deferredFilteredPosts.length, hasMoreVisiblePosts, isLoading]);
+
   const starfieldPosts = useMemo(
     () => posts,
     [posts]
   );
 
   const toggleTikTokModal = useCallback(() => setShowTikTokModal(prev => !prev), []);
-  
-  const handleViewUserProfile = useCallback((user) => {
-    setNavigationHistory(prev => [...prev, 'home']);
-    setSelectedUser(user);
+
+  const saveScrollForRoute = useCallback((route) => {
+    if (!route || typeof window === 'undefined') {
+      return;
+    }
+    scrollPositionsRef.current[route] = window.scrollY || 0;
   }, []);
+
+  const restoreScrollForRoute = useCallback((route) => {
+    if (!route || typeof window === 'undefined') {
+      return;
+    }
+
+    const targetScrollTop = scrollPositionsRef.current[route] || 0;
+    window.requestAnimationFrame(() => {
+      window.scrollTo({
+        top: targetScrollTop,
+        left: 0,
+        behavior: 'auto',
+      });
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!viewState.isTransitioning) {
+      return undefined;
+    }
+
+    const transitionTimeout = window.setTimeout(() => {
+      dispatchView({ type: 'END_TRANSITION' });
+    }, VIEW_TRANSITION_MS);
+
+    return () => window.clearTimeout(transitionTimeout);
+  }, [viewState.isTransitioning]);
+
+  const handleViewUserProfile = useCallback((user) => {
+    if (!user || viewState.isTransitioning) {
+      return;
+    }
+
+    saveScrollForRoute(viewState.route);
+    dispatchView({ type: 'OPEN_USER', user });
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }, [saveScrollForRoute, viewState.isTransitioning, viewState.route]);
 
   const resolveSelectedPost = useCallback((postOrId) => {
     if (!postOrId) {
@@ -594,33 +869,36 @@ const MusicHome = () => {
   }, [cachedPosts, posts]);
   
   const handleViewThread = useCallback((postOrId) => {
+    if (viewState.isTransitioning) {
+      return;
+    }
+
     const resolvedPost = resolveSelectedPost(postOrId);
     if (!resolvedPost) {
       return;
     }
 
-    setNavigationHistory(prev => [...prev, 'home']);
-    setSelectedThread({
+    saveScrollForRoute(viewState.route);
+    dispatchView({
+      type: 'OPEN_THREAD',
+      thread: {
       ...resolvedPost,
       postType: normalizePostType(resolvedPost?.postType),
-      entryTransition: true,
+      },
     });
-  }, [resolveSelectedPost]);
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }, [resolveSelectedPost, saveScrollForRoute, viewState.isTransitioning, viewState.route]);
 
-  const handleUserProfileBack = useCallback(() => {
-    const lastPage = navigationHistory[navigationHistory.length - 1];
-    setNavigationHistory((prev) => prev.slice(0, -1));
-    setSelectedUser(null);
-
-    if (lastPage !== 'thread') {
-      setSelectedThread(null);
+  const handleBack = useCallback(() => {
+    if (viewState.isTransitioning || viewState.stack.length === 0) {
+      return;
     }
-  }, [navigationHistory]);
 
-  const handleThreadBack = useCallback(() => {
-    setNavigationHistory((prev) => prev.slice(0, -1));
-    setSelectedThread(null);
-  }, []);
+    const previousRoute = viewState.stack[viewState.stack.length - 1]?.route || 'feed';
+    saveScrollForRoute(viewState.route);
+    dispatchView({ type: 'BACK' });
+    restoreScrollForRoute(previousRoute);
+  }, [restoreScrollForRoute, saveScrollForRoute, viewState.isTransitioning, viewState.route, viewState.stack]);
 
   const handleStarfieldLoadFeed = useCallback(({ x, y, genres = [] }) => {
     setFeedCoordinate({ x, y });
@@ -641,6 +919,14 @@ const MusicHome = () => {
     setJumpGenre(genreName);
     setIsStarfieldOpen(true);
   }, []);
+
+  const starfieldOpenHeight = useMemo(() => {
+    const viewportHeight = viewportMetrics.height || 900;
+    const preferredRatio = isStackedLayout ? 0.56 : 0.68;
+    const minHeight = isStackedLayout ? 300 : 380;
+    const maxHeight = isStackedLayout ? 560 : 700;
+    return Math.max(minHeight, Math.min(maxHeight, Math.round(viewportHeight * preferredRatio)));
+  }, [isStackedLayout, viewportMetrics.height]);
 
   const handleCommentSubmit = useCallback((newComment) => {
     const authorName = newComment?.author || CURRENT_USER_DISPLAY_NAME;
@@ -792,12 +1078,48 @@ const MusicHome = () => {
     });
   }, [cachedFeedPosts]);
 
+  const handleOpenSubreddit = useCallback((event, subreddit) => {
+    event.preventDefault();
+
+    if (!subreddit?.url) {
+      return;
+    }
+
+    setPendingSubreddit(subreddit);
+  }, []);
+
+  const handleCloseSubredditModal = useCallback(() => {
+    setPendingSubreddit(null);
+  }, []);
+
+  const handleConfirmSubredditOpen = useCallback(() => {
+    if (typeof window !== 'undefined' && pendingSubreddit?.url) {
+      window.open(pendingSubreddit.url, '_blank', 'noopener,noreferrer');
+    }
+    setPendingSubreddit(null);
+  }, [pendingSubreddit]);
+
+  useEffect(() => {
+    if (!pendingSubreddit || typeof window === 'undefined') {
+      return undefined;
+    }
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setPendingSubreddit(null);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [pendingSubreddit]);
+
   const renderedPosts = useMemo(() => {
     if (isLoading) {
       return null;
     }
 
-    return deferredFilteredPosts.map((post) => (
+    return visiblePosts.map((post) => (
       <div
         key={post.id}
         style={{
@@ -806,7 +1128,7 @@ const MusicHome = () => {
           width: '100%',
         }}
       >
-        <div style={{ width: '90%', maxWidth: '990px' }}>
+        <div style={{ width: '100%', maxWidth: '990px', padding: '0 clamp(0.25rem, 1.6vw, 0.85rem)' }}>
           <MemoPostCard
             post={post}
             onClick={handleViewThread}
@@ -817,47 +1139,41 @@ const MusicHome = () => {
         </div>
       </div>
     ));
-  }, [deferredFilteredPosts, handleViewThread, handleViewUserProfile, isLoading]);
+  }, [handleViewThread, handleViewUserProfile, isLoading, visiblePosts]);
 
   return (
     <>
-      {selectedUser ? (
+      {activeRoute === 'user' && selectedUser ? (
         <ThreadsAppShell>
-          <ThreadsMainFrame>
+          <ThreadsMainFrame viewMode={activeRoute} isTransitioning={viewState.isTransitioning}>
             <UserProfile 
               user={selectedUser} 
-              onBack={handleUserProfileBack}
+              onBack={handleBack}
             />
           </ThreadsMainFrame>
         </ThreadsAppShell>
-      ) : selectedThread ? (
+      ) : activeRoute === 'thread' && selectedThread ? (
         <ThreadsAppShell>
-          <ThreadsMainFrame>
+          <ThreadsMainFrame viewMode={activeRoute} isTransitioning={viewState.isTransitioning}>
             <Suspense fallback={<HomeViewFallback label="Loading thread..." />}>
               {selectedThread.postType === "groupchat" ? (
                 <GroupChatDetail
                   post={selectedThread}
-                  onBack={handleThreadBack}
+                  onBack={handleBack}
                   onUserListUpdate={() => { /* intentionally empty */ }}
                 />
               ) : selectedThread.postType === "parameter" ? (
                 <ParameterThreadDetail
                   postId={selectedThread.id}
-                  onBack={handleThreadBack}
-                  onSelectUser={(user) => {
-                    setNavigationHistory(prev => [...prev, 'thread']);
-                    setSelectedUser(user);
-                  }}
+                  onBack={handleBack}
+                  onSelectUser={handleViewUserProfile}
                 />
               ) : (
                 <ThreadDetail 
                   postId={selectedThread.id}
                   postData={selectedThread}
-                  onSelectUser={(user) => {
-                    setNavigationHistory(prev => [...prev, 'thread']);
-                    setSelectedUser(user);
-                  }}
-                  onBack={handleThreadBack} 
+                  onSelectUser={handleViewUserProfile}
+                  onBack={handleBack} 
                 />
               )}
             </Suspense>
@@ -878,7 +1194,8 @@ const MusicHome = () => {
             />
           )}
         >
-          <ThreadsMainFrame>
+          <ThreadsMainFrame viewMode={activeRoute} isTransitioning={viewState.isTransitioning}>
+                {!isMobileFeedView && (
                 <div
                   style={{
                     borderRadius: '16px',
@@ -951,7 +1268,7 @@ const MusicHome = () => {
 
                   <div
                     style={{
-                      height: isStarfieldOpen ? 600 : 76,
+                      height: isStarfieldOpen ? starfieldOpenHeight : 76,
                       transition: 'height 260ms cubic-bezier(0.16, 1, 0.3, 1)',
                       position: 'relative',
                       backgroundColor: '#0c111b',
@@ -1010,12 +1327,13 @@ const MusicHome = () => {
                     )}
                   </div>
                   </div>
+                )}
 
             <div className="feed-content-overlay" style={{
               maxWidth: '1000px',
               width: '100%',
               margin: '0 auto',
-              padding: '1.25rem 1rem 0',
+              padding: 'clamp(0.9rem, 2.2vw, 1.25rem) clamp(0.65rem, 2.2vw, 1rem) 0',
               boxSizing: 'border-box',
               overflowX: 'hidden',
               transform: 'none',
@@ -1031,23 +1349,22 @@ const MusicHome = () => {
                 alignItems: 'flex-start',
                 justifyContent: 'center',
                 gap: '12px',
-                margin: '1.5rem 0 1.2rem',
-                padding: '0.5rem 0',
+                margin: '1.5rem 0 0.75rem',
+                padding: '0.5rem 0 0',
                 width: '100%',
                 position: 'relative'
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '14px', flexWrap: 'wrap' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', width: '100%' }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: '14px', flexWrap: 'wrap', gridColumn: '2' }}>
                     <button
                       type="button"
                       onClick={handleShowForYouFeed}
                       style={{
-                        background: 'linear-gradient(45deg, #9c27b0, #3f51b5)',
+                        background: 'linear-gradient(90deg, #a78bfa, #60a5fa)',
                         backgroundClip: 'text',
                         WebkitBackgroundClip: 'text',
                         WebkitTextFillColor: 'transparent',
-                        textShadow: '0 0 10px rgba(156, 39, 176, 0.3)',
-                        fontSize: '2.5rem',
+                        fontSize: 'clamp(1.55rem, 7.2vw, 2.5rem)',
                         fontWeight: 700,
                         border: 'none',
                         padding: 0,
@@ -1063,71 +1380,131 @@ const MusicHome = () => {
                       For You
                     </button>
 
-                    <button
-                      type="button"
-                      disabled
-                      style={{
-                        background: 'linear-gradient(45deg, #9c27b0, #3f51b5)',
-                        backgroundClip: 'text',
-                        WebkitBackgroundClip: 'text',
-                        WebkitTextFillColor: 'transparent',
-                        textShadow: '0 0 10px rgba(156, 39, 176, 0.3)',
-                        fontSize: '2.5rem',
-                        fontWeight: 700,
-                        border: 'none',
-                        padding: 0,
-                        margin: 0,
-                        lineHeight: '1.2',
-                        cursor: 'not-allowed',
-                        opacity: 0.22,
-                        filter: 'grayscale(1)',
-                        transition: 'opacity 160ms ease, filter 160ms ease',
-                      }}
-                      title="Trending (disabled)"
-                    >
-                      Trending
-                    </button>
+                    {!isMobileFeedView && (
+                      <button
+                        type="button"
+                        disabled
+                        style={{
+                          color: 'rgba(255, 255, 255, 0.14)',
+                          WebkitTextFillColor: 'rgba(255, 255, 255, 0.14)',
+                          fontSize: 'clamp(1.55rem, 7.2vw, 2.5rem)',
+                          fontWeight: 700,
+                          border: 'none',
+                          background: 'none',
+                          padding: 0,
+                          margin: 0,
+                          lineHeight: '1.2',
+                          cursor: 'not-allowed',
+                          transition: 'opacity 160ms ease',
+                        }}
+                        title="Trending (disabled)"
+                      >
+                        Trending
+                      </button>
+                    )}
 
-                    <button
-                      type="button"
-                      disabled
-                      style={{
-                        background: 'linear-gradient(45deg, #9c27b0, #3f51b5)',
-                        backgroundClip: 'text',
-                        WebkitBackgroundClip: 'text',
-                        WebkitTextFillColor: 'transparent',
-                        textShadow: '0 0 10px rgba(156, 39, 176, 0.3)',
-                        fontSize: '2.5rem',
-                        fontWeight: 700,
-                        border: 'none',
-                        padding: 0,
-                        margin: 0,
-                        lineHeight: '1.2',
-                        cursor: 'not-allowed',
-                        opacity: 0.22,
-                        filter: 'grayscale(1)',
-                        transition: 'opacity 160ms ease, filter 160ms ease',
-                      }}
-                      title="Recents (coming soon)"
-                    >
-                      Recents
-                    </button>
+                    {!isMobileFeedView && (
+                      <button
+                        type="button"
+                        disabled
+                        style={{
+                          color: 'rgba(255, 255, 255, 0.14)',
+                          WebkitTextFillColor: 'rgba(255, 255, 255, 0.14)',
+                          fontSize: 'clamp(1.55rem, 7.2vw, 2.5rem)',
+                          fontWeight: 700,
+                          border: 'none',
+                          background: 'none',
+                          padding: 0,
+                          margin: 0,
+                          lineHeight: '1.2',
+                          cursor: 'not-allowed',
+                          transition: 'opacity 160ms ease',
+                        }}
+                        title="Recents (coming soon)"
+                      >
+                        Recents
+                      </button>
+                    )}
                   </div>
 
-                  <MemoInfoIconModal
-                    title="For You"
-                    modalId="for-you-info"
-                    iconSize={20}
-                    buttonText="Info"
-                    steps={FOR_YOU_INFO_STEPS}
-                  />
+                  <div style={{ gridColumn: '3', justifySelf: 'end' }}>
+                    <MemoInfoIconModal
+                      title="For You"
+                      modalId="for-you-info"
+                      iconSize={20}
+                      buttonText="Info"
+                      steps={FOR_YOU_INFO_STEPS}
+                    />
+                  </div>
                 </div>
+              </div>
+
+              <div
+                style={{
+                  margin: '0.6rem auto 1rem',
+                  padding: '0.55rem 0.85rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  flexWrap: 'wrap',
+                  background: 'rgba(169, 182, 252, 0.05)',
+                  border: '1px solid rgba(169, 182, 252, 0.12)',
+                  borderRadius: '10px',
+                }}
+              >
+                <svg
+                  width="13"
+                  height="13"
+                  viewBox="0 0 20 20"
+                  fill="none"
+                  style={{ flexShrink: 0, opacity: 0.45 }}
+                >
+                  <circle cx="10" cy="10" r="9" stroke="#a9b6fc" strokeWidth="1.5" />
+                  <circle cx="10" cy="8" r="2.5" stroke="#a9b6fc" strokeWidth="1.5" />
+                  <path d="M4.5 16c.8-2.5 3-4 5.5-4s4.7 1.5 5.5 4" stroke="#a9b6fc" strokeWidth="1.5" strokeLinecap="round" />
+                </svg>
+                <span style={{ fontSize: '0.76rem', color: 'rgba(255, 255, 255, 0.35)' }}>
+                  All posts cached from
+                </span>
+                {REDDIT_SOURCE_SUBREDDITS.map((subreddit, index) => {
+                  const isLast = index === REDDIT_SOURCE_SUBREDDITS.length - 1;
+                  const isSecondToLast = index === REDDIT_SOURCE_SUBREDDITS.length - 2;
+                  return (
+                    <React.Fragment key={subreddit.label}>
+                      <a
+                        href={subreddit.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(event) => handleOpenSubreddit(event, subreddit)}
+                        style={{
+                          color: '#a9b6fc',
+                          fontWeight: 600,
+                          fontSize: '0.76rem',
+                          textDecoration: 'none',
+                          borderBottom: '1px solid rgba(169, 182, 252, 0.28)',
+                          paddingBottom: '1px',
+                          transition: 'border-color 0.15s',
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.borderBottomColor = 'rgba(169, 182, 252, 0.7)'}
+                        onMouseLeave={(e) => e.currentTarget.style.borderBottomColor = 'rgba(169, 182, 252, 0.28)'}
+                      >
+                        {subreddit.label}
+                      </a>
+                      {isSecondToLast && (
+                        <span style={{ color: 'rgba(255, 255, 255, 0.3)', fontSize: '0.76rem' }}>and</span>
+                      )}
+                      {!isLast && !isSecondToLast && (
+                        <span style={{ color: 'rgba(255, 255, 255, 0.3)', fontSize: '0.76rem' }}>,</span>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
               </div>
 
               <div className="content-wrapper" style={{
                 backgroundColor: 'rgba(12, 17, 27, 0.7)',
                 borderRadius: '1.5rem',
-                padding: '1.5rem',
+                padding: 'clamp(0.95rem, 2.4vw, 1.5rem)',
                 boxSizing: 'border-box',
                 boxShadow: '0 8px 32px rgba(31, 38, 135, 0.1)',
                 backdropFilter: 'blur(8px)',
@@ -1243,6 +1620,17 @@ const MusicHome = () => {
                 }}>
                   {renderedPosts}
                 </div>
+
+                {!isLoading && hasMoreVisiblePosts && (
+                  <div
+                    ref={loadMoreSentinelRef}
+                    aria-hidden="true"
+                    style={{
+                      height: 1,
+                      width: '100%',
+                    }}
+                  />
+                )}
                   </div>
 
                   {showFeedLoadingOverlay && (
@@ -1265,6 +1653,104 @@ const MusicHome = () => {
                       onNavigateToThread={handleViewThread}
                     />
                   </Suspense>
+                )}
+
+                {pendingSubreddit && typeof document !== 'undefined' && ReactDOM.createPortal(
+                  <div
+                    role="presentation"
+                    onClick={handleCloseSubredditModal}
+                    style={{
+                      position: 'fixed',
+                      inset: 0,
+                      zIndex: 32000,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: '1rem',
+                      background: 'rgba(3, 7, 18, 0.7)',
+                      backdropFilter: 'blur(5px)',
+                    }}
+                  >
+                    <div
+                      role="dialog"
+                      aria-modal="true"
+                      aria-labelledby="subreddit-confirm-title"
+                      onClick={(event) => event.stopPropagation()}
+                      style={{
+                        width: 'min(92vw, 420px)',
+                        borderRadius: '16px',
+                        border: '1px solid rgba(169, 182, 252, 0.35)',
+                        background: 'linear-gradient(160deg, rgba(16,22,38,0.96), rgba(11,16,27,0.98))',
+                        boxShadow: '0 20px 60px rgba(0, 0, 0, 0.45)',
+                        color: '#dbe6ff',
+                        padding: '1.2rem 1.1rem 1rem',
+                      }}
+                    >
+                      <h3
+                        id="subreddit-confirm-title"
+                        style={{
+                          margin: 0,
+                          fontSize: '1.05rem',
+                          fontWeight: 700,
+                          color: '#eef2ff',
+                        }}
+                      >
+                        Open subreddit in new tab?
+                      </h3>
+                      <p
+                        style={{
+                          margin: '0.65rem 0 0',
+                          fontSize: '0.92rem',
+                          lineHeight: 1.55,
+                          color: 'rgba(219, 230, 255, 0.84)',
+                        }}
+                      >
+                        Do you want to open <strong>{pendingSubreddit.label}</strong> in a new tab?
+                      </p>
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'flex-end',
+                          gap: '0.65rem',
+                          marginTop: '1rem',
+                        }}
+                      >
+                        <button
+                          type="button"
+                          onClick={handleCloseSubredditModal}
+                          style={{
+                            borderRadius: '10px',
+                            border: '1px solid rgba(148, 163, 184, 0.38)',
+                            background: 'rgba(30, 41, 59, 0.85)',
+                            color: '#d4def7',
+                            fontSize: '0.88rem',
+                            fontWeight: 600,
+                            padding: '0.5rem 0.8rem',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleConfirmSubredditOpen}
+                          style={{
+                            borderRadius: '10px',
+                            border: '1px solid rgba(169, 182, 252, 0.42)',
+                            background: 'linear-gradient(120deg, rgba(96, 165, 250, 0.35), rgba(129, 140, 248, 0.5))',
+                            color: '#f8faff',
+                            fontSize: '0.88rem',
+                            fontWeight: 700,
+                            padding: '0.5rem 0.85rem',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          Open
+                        </button>
+                      </div>
+                    </div>
+                  </div>,
+                  document.body
                 )}
               </div>
             </div>

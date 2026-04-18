@@ -20,13 +20,13 @@ const XIcon = ({ size = 18, color = "white" }) => (
   </svg>
 );
 
-const StepCard = ({ step, isOpen, onToggle, iconColor }) => {
+const StepCard = ({ step, isOpen, onToggle, iconColor, isCompact = false }) => {
   const [showAll, setShowAll] = useState(false);
   const longText = step.content.length > 450;
 
   const cardStyle = {
-    marginBottom: 24,
-    borderRadius: 12,
+    marginBottom: isCompact ? 14 : 24,
+    borderRadius: isCompact ? 10 : 12,
     background: "rgba(255,255,255,0.05)",
     cursor: "pointer"
   };
@@ -39,9 +39,9 @@ const StepCard = ({ step, isOpen, onToggle, iconColor }) => {
         style={{
           display: "flex",
           alignItems: "center",
-          padding: "20px 24px",
+          padding: isCompact ? "14px 16px" : "20px 24px",
           fontWeight: 600,
-          fontSize: "1.25rem"
+          fontSize: isCompact ? "1.05rem" : "1.25rem"
         }}
       >
         {step.icon ? step.icon : <InfoIcon size={20} color={iconColor} />}
@@ -54,11 +54,11 @@ const StepCard = ({ step, isOpen, onToggle, iconColor }) => {
 
       {/* Body */}
       {isOpen && (
-        <div style={{ padding: "0 24px 24px 24px" }}>
+        <div style={{ padding: isCompact ? "0 16px 16px 16px" : "0 24px 24px 24px" }}>
           <div
             style={{
               whiteSpace: 'pre-wrap',
-              maxHeight: !showAll && longText ? 160 : "none",
+              maxHeight: !showAll && longText ? (isCompact ? 140 : 160) : "none",
               overflow: !showAll && longText ? "hidden" : "visible",
               lineHeight: 1.7
             }}
@@ -115,6 +115,10 @@ const InfoIconModal = ({
   const [openIndex, setOpenIndex] = useState(0);    // first card open by default
   const [portalContainer, setPortalContainer] = useState(null);
   const [currentStep, setCurrentStep] = useState(0);
+  const [isMobileViewport, setIsMobileViewport] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia('(max-width: 768px)').matches;
+  });
   
   // Generate unique modal ID if not provided - use useState to ensure it's stable
   const [uniqueModalId] = useState(() => 
@@ -158,16 +162,37 @@ const InfoIconModal = ({
   
   // Portal setup for modal
   useEffect(() => {
+    if (typeof document === 'undefined') return undefined;
+
     // Create portal container when component mounts
     const container = document.createElement('div');
     container.id = `info-modal-portal-${uniqueModalId}`;
-    document.body.appendChild(container);
+
+    const mountPortalContainer = () => {
+      const fullscreenRoot = document.fullscreenElement;
+      const portalHost =
+        fullscreenRoot && typeof fullscreenRoot.appendChild === 'function'
+          ? fullscreenRoot
+          : document.body;
+
+      if (container.parentNode !== portalHost) {
+        portalHost.appendChild(container);
+      }
+    };
+
+    mountPortalContainer();
     setPortalContainer(container);
+
+    const handleFullscreenChange = () => {
+      mountPortalContainer();
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
     
     // Cleanup when component unmounts
     return () => {
-      if (container && document.body.contains(container)) {
-        document.body.removeChild(container);
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      if (container.parentNode) {
+        container.parentNode.removeChild(container);
       }
     };
   }, [uniqueModalId]);
@@ -223,13 +248,32 @@ const InfoIconModal = ({
     };
   }, [isThisModalOpen, currentStep, handleCloseModal]);
 
+  // Track viewport size so mobile can use a bottom-sheet layout.
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const mediaQuery = window.matchMedia('(max-width: 768px)');
+    const updateViewport = (event) => setIsMobileViewport(event.matches);
+
+    setIsMobileViewport(mediaQuery.matches);
+
+    if (mediaQuery.addEventListener) {
+      mediaQuery.addEventListener('change', updateViewport);
+      return () => mediaQuery.removeEventListener('change', updateViewport);
+    }
+
+    mediaQuery.addListener(updateViewport);
+    return () => mediaQuery.removeListener(updateViewport);
+  }, []);
+
+  const useMobileSheet = sidePanel && isMobileViewport;
+
   // Shared content component for both modal and side panel - Design 1: Card-based Layout
   const ModalContent = () => (
     <>
       {/* Header */}
       <div style={{
         borderBottom: '1px solid rgba(255, 255, 255, 0.25)',
-        padding: '20px 28px 20px 48px',
+        padding: useMobileSheet ? '16px 16px 16px 20px' : '20px 28px 20px 48px',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
@@ -238,7 +282,7 @@ const InfoIconModal = ({
 
 <h3
   style={{
-    fontSize: '1.5rem',
+    fontSize: useMobileSheet ? '1.25rem' : '1.5rem',
     fontWeight: 600,
     letterSpacing: '0.01em',
     color: '#ffffff',
@@ -271,8 +315,9 @@ const InfoIconModal = ({
       
       {/* Card-based Content Area */}
       <div style={{ 
-        padding: '16px',
-        height: 'calc(100vh - 120px)', // Full height minus header
+        padding: useMobileSheet ? '12px' : '16px',
+        height: useMobileSheet ? 'auto' : 'calc(100vh - 120px)',
+        maxHeight: useMobileSheet ? 'calc(82vh - 80px - env(safe-area-inset-bottom, 0px))' : 'none',
         overflowY: 'auto'
       }}>
         {modalSteps.map((step, index) => (
@@ -284,6 +329,7 @@ const InfoIconModal = ({
       setOpenIndex(openIndex === index ? -1 : index)
     }
     iconColor={iconColor}
+    isCompact={useMobileSheet}
   />
 ))}
 
@@ -348,12 +394,53 @@ const InfoIconModal = ({
       {portalContainer && isThisModalOpen && ReactDOM.createPortal(
         sidePanel ? (
           /* --------- SIDE‑PANEL VARIANT ---------- */
-          <div 
-            style={sidePanelStyles} 
-            onClick={e => e.stopPropagation()} /* keep clicks inside */
-          >
-            <ModalContent />
-          </div>
+          useMobileSheet ? (
+            <div
+              style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: 'rgba(0, 0, 0, 0.62)',
+                backdropFilter: 'blur(2px)',
+                display: 'flex',
+                alignItems: 'flex-end',
+                zIndex: 30000
+              }}
+              onClick={handleCloseModal}
+            >
+              <div
+                style={{
+                  ...sidePanelStyles,
+                  top: 'auto',
+                  right: 0,
+                  left: 0,
+                  bottom: 0,
+                  width: '100%',
+                  maxWidth: '100vw',
+                  height: 'auto',
+                  maxHeight: '82vh',
+                  borderLeft: 'none',
+                  borderTop: '1px solid rgba(255, 255, 255, 0.3)',
+                  borderRadius: '18px 18px 0 0',
+                  overflow: 'hidden',
+                  animation: 'slideUpMobile 0.25s ease-out',
+                  paddingBottom: 'env(safe-area-inset-bottom, 0px)'
+                }}
+                onClick={e => e.stopPropagation()}
+              >
+                <ModalContent />
+              </div>
+            </div>
+          ) : (
+            <div 
+              style={sidePanelStyles} 
+              onClick={e => e.stopPropagation()} /* keep clicks inside */
+            >
+              <ModalContent />
+            </div>
+          )
         ) : (
           /* --------- ORIGINAL CENTER MODAL ---------- */
           <div className="modal-backdrop" 
@@ -402,6 +489,10 @@ const InfoIconModal = ({
         @keyframes slideInRight {
           from { transform: translateX(100%); opacity: 0; }
           to   { transform: translateX(0);   opacity: 1; }
+        }
+        @keyframes slideUpMobile {
+          from { transform: translateY(100%); opacity: 0; }
+          to   { transform: translateY(0); opacity: 1; }
         }
       `}</style>
     </>

@@ -8,6 +8,9 @@
 
 :root {
   --threads-home-sidebar-width: 360px;
+  --threads-home-main-max: 1000px;
+  --threads-home-rightpanel-width: min(420px, 100%);
+  --threads-home-shell-gutter: clamp(10px, 2.2vw, 20px);
 }
 
 .threads-home-layout {
@@ -15,36 +18,37 @@
   justify-content: center;
   min-height: 100vh;
   position: relative;
-  padding: 20px 0 32px;
+  padding: 10px 0 22px;
 }
 
 .threads-home-shell {
   display: flex;
-  align-items: flex-start;
+  flex-direction: column;
+  align-items: stretch;
   justify-content: center;
-  gap: 0;
+  gap: 14px;
   width: 100%;
-  max-width: 1800px;
-  padding: 0 16px;
-  padding-left: 0;
+  max-width: calc(var(--threads-home-main-max) + (var(--threads-home-shell-gutter) * 2));
+  padding: 0 var(--threads-home-shell-gutter);
+}
+
+.threads-home-shell > * {
+  min-width: 0;
 }
 
 .threads-home-sidebar {
-  width: var(--threads-home-sidebar-width);
-  min-width: var(--threads-home-sidebar-width);
-  max-width: var(--threads-home-sidebar-width);
-  min-height: calc(100vh - 40px);
-  position: sticky;
-  top: 20px;
-  height: calc(100vh - 40px);
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding: 28px 0;
+  display: none;
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+  min-height: 0;
+  position: relative;
+  top: 0;
+  height: auto;
+  overflow: visible;
+  padding: 0;
   background: transparent;
-  backdrop-filter: none;
-  border-right: none;
   z-index: 2;
-  border-radius: 0;
 }
 
 .threads-home-sidebar__logo {
@@ -148,27 +152,52 @@
 }
 
 .threads-home-main {
-  flex: 1 1 0;
+  flex: 1 1 auto;
   min-width: 0;
-  max-width: 1000px;
+  width: 100%;
+  max-width: none;
+  overflow-x: clip;
 }
 
 .threads-home-rightpanel {
-  position: sticky;
-  top: 20px;
-  align-self: flex-start;
-  flex-shrink: 0;
+  position: relative;
+  top: 0;
+  align-self: stretch;
+  width: 100%;
+  max-width: none;
+  flex-shrink: 1;
   z-index: 20;
 }
 
+.threads-home-rightpanel > * {
+  width: 100%;
+  max-width: 100%;
+}
+
 .threads-home-rightpanel-spacer {
-  pointer-events: none;
+  display: none;
 }
 
 .threads-home-rightpanel-spacer-inner {
-  width: 420px;
+  width: var(--threads-home-rightpanel-width);
   height: 1px;
   visibility: hidden;
+}
+
+.threads-main-frame {
+  width: 100%;
+}
+
+.home-view-frame {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.home-view-frame.is-transitioning {
+  pointer-events: none;
+  opacity: 0.96;
+  transform: translateY(2px);
 }
 
 @keyframes fadeIn {
@@ -208,17 +237,17 @@
 }
 
 .feed-content-overlay {
-  margin-top: -400px;
+  margin-top: 0;
   position: relative;
   z-index: 10;
-  border-top-left-radius: 30px;
-  border-top-right-radius: 30px;
-  box-shadow: 0 -15px 40px rgba(0,0,0,0.6);
+  border-top-left-radius: clamp(14px, 2vw, 22px);
+  border-top-right-radius: clamp(14px, 2vw, 22px);
+  box-shadow: 0 -12px 24px rgba(0,0,0,0.45);
   background-color: #0a0c14;
   border-top: 1px solid rgba(255,255,255,0.1);
   border-left: 1px solid rgba(255,255,255,0.1);
   border-right: 1px solid rgba(255,255,255,0.1);
-  padding-top: 30px;
+  padding-top: clamp(10px, 2vw, 20px);
 }
 
 .cosmic-gradient {
@@ -405,34 +434,313 @@
   cursor: pointer;
 }
 
-@media (max-width: 1360px) {
-  .threads-home-sidebar {
-    display: none;
+@media (max-width: 640px) {
+  .threads-home-layout {
+    padding-top: 8px;
   }
 
-  .threads-home-shell {
-    max-width: 1480px;
-    padding-left: 16px;
+  .content-wrapper {
+    border-radius: 1rem;
+    padding: 1rem 0.9rem;
+  }
+
+  .pill-container {
+    gap: 0.45rem;
+    padding: 0;
+    justify-content: flex-start;
   }
 }
 
-@media (max-width: 1180px) {
+@media (min-width: 1181px) {
+  .threads-home-layout {
+    padding: 20px 0 32px;
+  }
+
   .threads-home-shell {
-    flex-direction: column;
-    align-items: stretch;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 0;
+    max-width: calc(var(--threads-home-main-max) + var(--threads-home-rightpanel-width) + (var(--threads-home-shell-gutter) * 2));
   }
 
   .threads-home-main {
-    max-width: none;
+    flex: 1 1 0;
+    max-width: var(--threads-home-main-max);
   }
 
   .threads-home-rightpanel {
-    position: relative;
-    top: 0;
-    width: 100%;
+    position: sticky;
+    top: 20px;
+    align-self: flex-start;
+    width: var(--threads-home-rightpanel-width);
+    max-width: var(--threads-home-rightpanel-width);
+    flex-shrink: 0;
   }
 
   .threads-home-rightpanel-spacer {
-    display: none;
+    display: block;
+    pointer-events: none;
+    width: var(--threads-home-rightpanel-width);
+    max-width: var(--threads-home-rightpanel-width);
+  }
+}
+
+@media (min-width: 1361px) {
+  .threads-home-shell {
+    max-width: calc(var(--threads-home-main-max) + var(--threads-home-rightpanel-width) + var(--threads-home-sidebar-width) + (var(--threads-home-shell-gutter) * 2));
+    padding-left: 0;
+  }
+
+  .threads-home-sidebar {
+    display: block;
+    width: var(--threads-home-sidebar-width);
+    min-width: var(--threads-home-sidebar-width);
+    max-width: var(--threads-home-sidebar-width);
+    min-height: calc(100vh - 40px);
+    position: sticky;
+    top: 20px;
+    height: calc(100vh - 40px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 28px 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-view-frame,
+  .feed-content-main,
+  .genre-pill,
+  .spinner {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   POSTCARD MOBILE STACKED LAYOUT
+   Targets: 360×800 (Android), 390×844 (iPhone), 414×896 (big phone)
+   Breakpoint: ≤767px  (tablet portrait 768+ gets desktop grid)
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Base mobile stacked container */
+.postcard-mobile-stacked {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.postcard-mobile-thread-vol-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+  padding: 7px 10px;
+  border-radius: 10px;
+  background: rgba(15, 24, 35, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.postcard-mobile-thread-vol-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.postcard-mobile-thread-vol-label {
+  color: #a9b6fc;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.postcard-mobile-thread-vol-value {
+  margin-left: auto;
+  color: #10b981;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+/* ── Genre stats section ── */
+.postcard-mobile-genre-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+/* Volume row */
+.postcard-mobile-vol-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: rgba(15, 24, 35, 0.6);
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  position: relative;
+}
+
+/* Genre tags grid — 2-col flex wrap */
+.postcard-mobile-genre-grid {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Each genre chip */
+.postcard-mobile-genre-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 calc(50% - 4px);
+  min-width: 0;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* If there are 3 genres, the 3rd wraps and takes ~50% width */
+.postcard-mobile-genre-chip:nth-child(3):last-child {
+  flex: 0 1 calc(50% - 4px);
+}
+
+/* Genre color tag */
+.postcard-mobile-genre-tag {
+  padding: 3px 8px;
+  border-radius: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  color: white;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 80px;
+}
+
+/* Genre percentage */
+.postcard-mobile-genre-pct {
+  color: #10b981;
+  font-weight: 700;
+  font-size: 12px;
+  white-space: nowrap;
+  margin-left: auto;
+}
+
+/* ── Stats row ── */
+.postcard-mobile-stats-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0 4px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Stat button */
+.postcard-mobile-stat-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px 4px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #9ca3af;
+  font-size: 13px;
+  font-weight: 500;
+  transition: color 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.postcard-mobile-stat-btn:active {
+  transform: scale(0.95);
+}
+
+/* ── Device-specific fine-tuning ── */
+
+/* Small Android: 360px width — tighter spacing */
+@media (max-width: 374px) {
+  .postcard-mobile-thread-vol-row {
+    padding: 6px 9px;
+    margin-bottom: 10px;
+  }
+
+  .postcard-mobile-thread-vol-label {
+    font-size: 11px;
+  }
+
+  .postcard-mobile-thread-vol-value {
+    font-size: 14px;
+  }
+
+  .postcard-mobile-genre-chip {
+    padding: 5px 8px;
+    gap: 6px;
+  }
+
+  .postcard-mobile-genre-tag {
+    font-size: 11px;
+    padding: 2px 6px;
+    max-width: 68px;
+  }
+
+  .postcard-mobile-genre-pct {
+    font-size: 11px;
+  }
+
+  .postcard-mobile-stat-btn {
+    padding: 6px 2px;
+    gap: 4px;
+    font-size: 12px;
+  }
+
+  .postcard-mobile-stat-btn svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .postcard-mobile-vol-row {
+    padding: 7px 10px;
+  }
+}
+
+/* Standard iPhone (390px) — default sizing, no overrides needed */
+
+/* Big phone: 414px+ — a bit more breathing room */
+@media (min-width: 414px) and (max-width: 767px) {
+  .postcard-mobile-thread-vol-row {
+    padding: 8px 12px;
+  }
+
+  .postcard-mobile-thread-vol-label {
+    font-size: 13px;
+  }
+
+  .postcard-mobile-thread-vol-value {
+    font-size: 16px;
+  }
+
+  .postcard-mobile-genre-chip {
+    padding: 7px 12px;
+    gap: 10px;
+  }
+
+  .postcard-mobile-genre-tag {
+    font-size: 13px;
+    padding: 3px 10px;
+    max-width: 90px;
+  }
+
+  .postcard-mobile-genre-pct {
+    font-size: 13px;
+  }
+
+  .postcard-mobile-stat-btn {
+    padding: 8px 6px;
+    gap: 6px;
+    font-size: 14px;
   }
 }

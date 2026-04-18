@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Play, Pause, Headphones, Volume2, Music, 
   Mic, Users, Lock
@@ -13,6 +13,23 @@ import {
 const ExpandedPostContent = ({ post, themeColor, _genres, getRgbaFromHex }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [volumeGain, setVolumeGain] = useState(0);
+  const [viewportWidth, setViewportWidth] = useState(
+    typeof window === 'undefined' ? 1280 : window.innerWidth
+  );
+
+  useEffect(() => {
+    const handleResize = () => {
+      setViewportWidth(window.innerWidth || 1280);
+    };
+
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const isPhone = viewportWidth <= 767;
+  const isTabletPortrait = viewportWidth >= 768 && viewportWidth <= 1024;
+  const isCompactPhone = viewportWidth <= 390;
   
   const songData = useMemo(() => {
     const seed = hashString(post.id);
@@ -108,22 +125,44 @@ const ExpandedPostContent = ({ post, themeColor, _genres, getRgbaFromHex }) => {
       setTimeout(() => clearInterval(volumeInterval), 2000);
     }
   };
+
+  const outerPadding = isPhone ? '14px 12px' : isTabletPortrait ? '16px' : '20px';
+  const layoutStyle = isPhone
+    ? {
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '14px',
+      }
+    : {
+        display: 'grid',
+        gridTemplateColumns: isTabletPortrait ? 'minmax(0, 230px) minmax(0, 1fr)' : 'minmax(0, 240px) minmax(0, 1fr)',
+        gap: isTabletPortrait ? '14px' : '20px',
+        alignItems: 'start',
+      };
+  const topSongCardHeight = isPhone ? 270 : isTabletPortrait ? 286 : 300;
+  const topSongPreviewHeight = isPhone ? 126 : isTabletPortrait ? 134 : 140;
+  const artistPanelHeight = isPhone ? 252 : isTabletPortrait ? 286 : 300;
+  const artistGridColumns = isPhone
+    ? (isCompactPhone ? 'repeat(3, minmax(0, 1fr))' : 'repeat(4, minmax(0, 1fr))')
+    : (isTabletPortrait ? 'repeat(4, minmax(0, 1fr))' : 'repeat(4, minmax(0, 1fr))');
+  const artistAvatarSize = isPhone ? (isCompactPhone ? 40 : 44) : 48;
+  const artistBadgeSize = isPhone ? 18 : 20;
   
   return (
     <div style={{
-      padding: '20px',
+      padding: outerPadding,
       borderTop: `1px solid ${getRgbaFromHex(themeColor, 0.3)}`,
       background: `linear-gradient(to bottom, ${getRgbaFromHex(themeColor, 0.05)}, rgba(30, 39, 50, 0.8))`,
     }}>
-      <div style={{ display: 'flex', gap: '20px' }}>
-        <div style={{ width: '240px' }}>
+      <div style={layoutStyle}>
+        <div style={{ width: isPhone ? '100%' : (isTabletPortrait ? '230px' : '240px') }}>
           <div style={{
             display: 'flex',
             alignItems: 'center',
             marginBottom: '10px',
           }}>
             <Headphones size={18} color={themeColor} style={{ marginRight: '8px' }} />
-            <span style={{ fontWeight: '700', fontSize: '16px', color: 'white' }}>
+            <span style={{ fontWeight: '700', fontSize: isPhone ? '15px' : '16px', color: 'white' }}>
               Top Song Recommendation
             </span>
           </div>
@@ -133,12 +172,12 @@ const ExpandedPostContent = ({ post, themeColor, _genres, getRgbaFromHex }) => {
             borderRadius: '12px',
             overflow: 'hidden',
             border: `1px solid ${getRgbaFromHex(themeColor, 0.3)}`,
-            height: '300px',
+            height: `${topSongCardHeight}px`,
             display: 'flex',
             flexDirection: 'column'
           }}>
             <div style={{
-              height: '140px',
+              height: `${topSongPreviewHeight}px`,
               backgroundColor: 'rgba(20, 30, 40, 0.7)',
               display: 'flex',
               alignItems: 'center',
@@ -149,8 +188,8 @@ const ExpandedPostContent = ({ post, themeColor, _genres, getRgbaFromHex }) => {
               onClick={handlePlaySnippet}
             >
               <div style={{
-                width: '64px',
-                height: '64px',
+                width: isPhone ? '56px' : '64px',
+                height: isPhone ? '56px' : '64px',
                 borderRadius: '50%',
                 backgroundColor: 'rgba(0, 0, 0, 0.4)',
                 display: 'flex',
@@ -158,9 +197,9 @@ const ExpandedPostContent = ({ post, themeColor, _genres, getRgbaFromHex }) => {
                 justifyContent: 'center'
               }}>
                 {isPlaying ? (
-                  <Pause size={32} color="white" />
+                  <Pause size={isPhone ? 28 : 32} color="white" />
                 ) : (
-                  <Play size={32} color="white" />
+                  <Play size={isPhone ? 28 : 32} color="white" />
                 )}
               </div>
             </div>
@@ -170,11 +209,12 @@ const ExpandedPostContent = ({ post, themeColor, _genres, getRgbaFromHex }) => {
               flex: '1',
               display: 'flex',
               flexDirection: 'column',
-              justifyContent: 'space-between'
+              justifyContent: 'space-between',
+              minHeight: 0,
             }}>
               <div>
                 <div style={{
-                  fontSize: '18px',
+                  fontSize: isPhone ? '16px' : '18px',
                   fontWeight: '700',
                   color: 'white',
                   marginBottom: '4px'
@@ -182,7 +222,7 @@ const ExpandedPostContent = ({ post, themeColor, _genres, getRgbaFromHex }) => {
                   {songData.song}
                 </div>
                 <div style={{
-                  fontSize: '14px',
+                  fontSize: isPhone ? '13px' : '14px',
                   color: '#a0aec0',
                   marginBottom: '16px'
                 }}>
@@ -266,12 +306,14 @@ const ExpandedPostContent = ({ post, themeColor, _genres, getRgbaFromHex }) => {
           </div>
         </div>
         
-        <div style={{ flex: '1' }}>
+        <div style={{ flex: '1', minWidth: 0 }}>
           <div style={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            marginBottom: '10px'
+            marginBottom: '10px',
+            gap: '8px',
+            flexWrap: isPhone ? 'wrap' : 'nowrap',
           }}>
             <div style={{
               display: 'flex',
@@ -279,7 +321,7 @@ const ExpandedPostContent = ({ post, themeColor, _genres, getRgbaFromHex }) => {
               position: 'relative'
             }}>
               <Users size={18} color={themeColor} style={{ marginRight: '8px' }} />
-              <span style={{ fontWeight: '700', fontSize: '16px', color: 'white' }}>
+              <span style={{ fontWeight: '700', fontSize: isPhone ? '15px' : '16px', color: 'white' }}>
                 Artists
               </span>
               {/* INFO ICON 3: Post expand button info - Only show for example post */}
@@ -309,7 +351,7 @@ const ExpandedPostContent = ({ post, themeColor, _genres, getRgbaFromHex }) => {
               backgroundColor: 'rgba(30, 45, 60, 0.6)',
               padding: '4px 12px',
               borderRadius: '12px',
-              fontSize: '14px',
+              fontSize: isPhone ? '13px' : '14px',
               fontWeight: '600',
               color: 'white'
             }}>
@@ -321,14 +363,14 @@ const ExpandedPostContent = ({ post, themeColor, _genres, getRgbaFromHex }) => {
             backgroundColor: 'rgba(30, 45, 60, 0.6)',
             borderRadius: '12px',
             border: `1px solid ${getRgbaFromHex(themeColor, 0.3)}`,
-            padding: '16px',
-            height: '300px',
+            padding: isPhone ? '12px' : '16px',
+            height: `${artistPanelHeight}px`,
             overflowY: 'auto'
           }}>
             <div style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(4, 1fr)',
-              gap: '16px 12px',
+              gridTemplateColumns: artistGridColumns,
+              gap: isPhone ? '12px 9px' : '16px 12px',
             }}>
               {artistsList.discovered.map((artist) => (
                 <div key={artist.id} style={{
@@ -339,8 +381,8 @@ const ExpandedPostContent = ({ post, themeColor, _genres, getRgbaFromHex }) => {
                 }}>
                   <div style={{
                     position: 'relative',
-                    width: '48px',
-                    height: '48px',
+                    width: `${artistAvatarSize}px`,
+                    height: `${artistAvatarSize}px`,
                     borderRadius: '50%',
                     backgroundColor: '#2a3744',
                     display: 'flex',
@@ -348,7 +390,7 @@ const ExpandedPostContent = ({ post, themeColor, _genres, getRgbaFromHex }) => {
                     justifyContent: 'center',
                     border: `2px solid ${artist.color}`
                   }}>
-                    <Mic size={18} color={artist.color} />
+                    <Mic size={isPhone ? 15 : 18} color={artist.color} />
                     
                     <div style={{
                       position: 'absolute',
@@ -356,9 +398,9 @@ const ExpandedPostContent = ({ post, themeColor, _genres, getRgbaFromHex }) => {
                       right: '-5px',
                       backgroundColor: artist.color,
                       borderRadius: '50%',
-                      width: '20px',
-                      height: '20px',
-                      fontSize: '11px',
+                      width: `${artistBadgeSize}px`,
+                      height: `${artistBadgeSize}px`,
+                      fontSize: isPhone ? '10px' : '11px',
                       fontWeight: '700',
                       color: 'white',
                       display: 'flex',
@@ -370,7 +412,7 @@ const ExpandedPostContent = ({ post, themeColor, _genres, getRgbaFromHex }) => {
                   </div>
                   
                   <div style={{
-                    fontSize: '12px',
+                    fontSize: isPhone ? '11px' : '12px',
                     fontWeight: '600',
                     color: 'white',
                     textAlign: 'center',
@@ -394,8 +436,8 @@ const ExpandedPostContent = ({ post, themeColor, _genres, getRgbaFromHex }) => {
                 }}>
                   <div style={{
                     position: 'relative',
-                    width: '48px',
-                    height: '48px',
+                    width: `${artistAvatarSize}px`,
+                    height: `${artistAvatarSize}px`,
                     borderRadius: '50%',
                     backgroundColor: '#2a3744',
                     display: 'flex',
@@ -403,7 +445,7 @@ const ExpandedPostContent = ({ post, themeColor, _genres, getRgbaFromHex }) => {
                     justifyContent: 'center',
                     border: `2px solid #4a5568`
                   }}>
-                    <Lock size={18} color="#4a5568" />
+                    <Lock size={isPhone ? 15 : 18} color="#4a5568" />
                     
                     <div style={{
                       position: 'absolute',
@@ -411,9 +453,9 @@ const ExpandedPostContent = ({ post, themeColor, _genres, getRgbaFromHex }) => {
                       right: '-5px',
                       backgroundColor: '#4a5568',
                       borderRadius: '50%',
-                      width: '20px',
-                      height: '20px',
-                      fontSize: '11px',
+                      width: `${artistBadgeSize}px`,
+                      height: `${artistBadgeSize}px`,
+                      fontSize: isPhone ? '10px' : '11px',
                       fontWeight: '700',
                       color: 'white',
                       display: 'flex',
@@ -425,7 +467,7 @@ const ExpandedPostContent = ({ post, themeColor, _genres, getRgbaFromHex }) => {
                   </div>
                   
                   <div style={{
-                    fontSize: '12px',
+                    fontSize: isPhone ? '11px' : '12px',
                     fontWeight: '600',
                     color: '#718096',
                     textAlign: 'center'

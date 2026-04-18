@@ -8,6 +8,9 @@ import { buildApiUrl, toApiOriginUrl } from "../../utils/api";
 
 const DEFAULT_ARTWORK = "/assets/default-artist.png";
 const GROUPCHAT_MUSIC_SEARCH_ENABLED = false;
+const COMPACT_PHONE_BREAKPOINT = 390;
+const PHONE_BREAKPOINT = 480;
+const TABLET_PORTRAIT_BREAKPOINT = 1024;
 
 // Helper function to generate avatar URLs
 function authorToAvatar(author) {
@@ -34,6 +37,34 @@ function normalizeMediaUrl(url) {
   return url;
 }
 
+function useViewportMatch(maxWidth) {
+  const [isMatch, setIsMatch] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.innerWidth <= maxWidth;
+  });
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+
+    const mediaQuery = window.matchMedia(`(max-width: ${maxWidth}px)`);
+    const handleViewportChange = (event) => {
+      setIsMatch(event.matches);
+    };
+
+    setIsMatch(mediaQuery.matches);
+
+    if (typeof mediaQuery.addEventListener === "function") {
+      mediaQuery.addEventListener("change", handleViewportChange);
+      return () => mediaQuery.removeEventListener("change", handleViewportChange);
+    }
+
+    mediaQuery.addListener(handleViewportChange);
+    return () => mediaQuery.removeListener(handleViewportChange);
+  }, [maxWidth]);
+
+  return isMatch;
+}
+
 function formatArtworkUrl(url, size = 100) {
   if (!url || typeof url !== "string") return "";
   return normalizeMediaUrl(
@@ -58,6 +89,12 @@ function formatTimestamp(timestamp) {
   const hours = date.getHours();
   const minutes = date.getMinutes();
   return `${hours}:${minutes < 10 ? '0' + minutes : minutes}`;
+}
+
+function formatPostDate(createdUtc) {
+  if (!Number.isFinite(createdUtc) || createdUtc <= 0) return "";
+  const resolvedMs = createdUtc > 1e12 ? createdUtc : createdUtc * 1000;
+  return new Date(resolvedMs).toLocaleString();
 }
 
 // Clean message body: strip markdown links, images, and decode HTML entities
@@ -145,6 +182,12 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
   const [onlineUsers, setOnlineUsers] = useState([]);
   const [isVisible, setIsVisible] = useState(false);
   const [panelNotice, setPanelNotice] = useState(null);
+  const [isPostExpanded, setIsPostExpanded] = useState(false);
+  const isCompactPhoneView = useViewportMatch(COMPACT_PHONE_BREAKPOINT);
+  const isMobileView = useViewportMatch(PHONE_BREAKPOINT);
+  const isTabletPortraitView =
+    useViewportMatch(TABLET_PORTRAIT_BREAKPOINT) && !isMobileView;
+  const isTouchViewport = isMobileView || isTabletPortraitView;
 
   const replaySummary = useMemo(() => {
     const snippetMessages = allMessages.filter((message) => Boolean(message?.snippet)).length;
@@ -203,6 +246,17 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
     }
     return groupChatFallbackStats.roomVolume;
   }, [groupChatFallbackStats.roomVolume, post?.roomVolume]);
+  const postCreatedLabel = useMemo(() => formatPostDate(post?.createdUtc), [post?.createdUtc]);
+  const pagePadding = isCompactPhoneView ? "10px" : (isMobileView ? "12px" : (isTabletPortraitView ? "18px" : "20px"));
+  const surfaceRadius = isCompactPhoneView ? "14px" : (isMobileView ? "16px" : (isTabletPortraitView ? "20px" : "24px"));
+  const chatContainerHeight = useMemo(() => {
+    if (isMobileView) {
+      if (isPostExpanded) return isCompactPhoneView ? "calc(100dvh - 340px)" : "calc(100dvh - 360px)";
+      return isCompactPhoneView ? "calc(100dvh - 220px)" : "calc(100dvh - 240px)";
+    }
+    if (isTabletPortraitView) return "calc(100dvh - 360px)";
+    return "calc(100vh - 420px)";
+  }, [isCompactPhoneView, isMobileView, isPostExpanded, isTabletPortraitView]);
 
   // Audio playback state
   const audioRef = useRef(null);
@@ -450,7 +504,7 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
         comments.forEach(comment => {
           if (comment.author && comment.author !== "[deleted]" && comment.body) {
             const commentData = {
-              id: `msg_${comment.id}_${Date.now()}`,
+              id: `msg_${comment.id || "unknown"}_${comment.createdUtc || 0}`,
               originalId: comment.id,
               author: comment.author,
               body: comment.body,
@@ -471,7 +525,7 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
             }
             
             repliesByParent[parentId].push({
-              id: `msg_${reply.id}_${Date.now()}`,
+              id: `msg_${reply.id || "unknown"}_${reply.createdUtc || 0}`,
               originalId: reply.id,
               author: reply.author,
               body: reply.body,
@@ -730,22 +784,52 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
       return (
         <div
           key={msg.id}
-          style={isUserMessage ? styles.sentMessageContainer : styles.messageContainer}
+          style={
+            isUserMessage
+              ? styles.sentMessageContainer
+              : {
+                  ...styles.messageContainer,
+                  ...(isCompactPhoneView ? { gap: "8px", marginBottom: "12px" } : null),
+                }
+          }
         >
           {!isUserMessage && (
             <div style={styles.avatarColumn}>
               <img 
                 src={authorToAvatar(msg.author)} 
-                style={styles.avatar} 
+                style={{
+                  ...styles.avatar,
+                  ...(isCompactPhoneView ? { width: "30px", height: "30px" } : null),
+                }}
                 alt={msg.author} 
               />
-              <div style={styles.onlineIndicator}></div>
+              <div
+                style={{
+                  ...styles.onlineIndicator,
+                  ...(isCompactPhoneView ? { width: "8px", height: "8px" } : null),
+                }}
+              />
             </div>
           )}
           
-          <div style={isUserMessage ? styles.sentChatBubbleWrapper : styles.chatBubbleWrapper}>
+          <div
+            style={
+              isUserMessage
+                ? {
+                    ...styles.sentChatBubbleWrapper,
+                    ...(isMobileView ? { maxWidth: "84%" } : null),
+                  }
+                : {
+                    ...styles.chatBubbleWrapper,
+                    ...(isMobileView ? { maxWidth: "84%" } : null),
+                  }
+            }
+          >
             {!isUserMessage && (
-              <div style={styles.messageAuthor}>
+              <div style={{
+                ...styles.messageAuthor,
+                ...(isCompactPhoneView ? { fontSize: "12px" } : null),
+              }}>
                 {msg.author}
               </div>
             )}
@@ -758,24 +842,53 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
               </div>
             )}
             
-            <div style={isUserMessage ? styles.sentChatBubble : styles.chatBubble}>
-              <p style={styles.messageBody}>{cleanMessageBody(sanitizeComment(msg.body || ''))}</p>
+            <div
+              style={
+                isUserMessage
+                  ? {
+                      ...styles.sentChatBubble,
+                      ...(isCompactPhoneView ? { padding: "10px 12px", borderRadius: "14px" } : null),
+                    }
+                  : {
+                      ...styles.chatBubble,
+                      ...(isCompactPhoneView ? { padding: "10px 12px", borderRadius: "14px" } : null),
+                    }
+              }
+            >
+              <p style={{
+                ...styles.messageBody,
+                ...(isCompactPhoneView ? { fontSize: "13px", lineHeight: 1.45 } : null),
+              }}>
+                {cleanMessageBody(sanitizeComment(msg.body || ''))}
+              </p>
               
               {msg.snippet && (
-                <div style={styles.snippetContainer}>
+                <div style={{
+                  ...styles.snippetContainer,
+                  ...(isCompactPhoneView ? { gap: "8px", padding: "8px 10px", marginTop: "8px" } : null),
+                }}>
                   <img
                     src={msg.snippet.artwork || DEFAULT_ARTWORK}
                     alt={msg.snippet.name}
-                    style={styles.snippetArtwork}
+                    style={{
+                      ...styles.snippetArtwork,
+                      ...(isCompactPhoneView ? { width: "34px", height: "34px", borderRadius: "7px" } : null),
+                    }}
                     onError={(e) => {
                       e.currentTarget.src = DEFAULT_ARTWORK;
                     }}
                   />
                   <div style={styles.snippetInfo}>
-                    <div style={styles.snippetTitle}>
+                    <div style={{
+                      ...styles.snippetTitle,
+                      ...(isCompactPhoneView ? { fontSize: "12px" } : null),
+                    }}>
                       {msg.snippet.name}
                     </div>
-                    <div style={styles.snippetArtist}>
+                    <div style={{
+                      ...styles.snippetArtist,
+                      ...(isCompactPhoneView ? { fontSize: "10px" } : null),
+                    }}>
                       {msg.snippet.artistName}
                     </div>
                   </div>
@@ -785,6 +898,7 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
                     title={msg.snippet.previewUrl ? "Play preview" : "Preview unavailable"}
                     style={{
                       ...styles.playButton,
+                      ...(isCompactPhoneView ? { width: "28px", height: "28px", fontSize: "11px" } : null),
                       ...(msg.snippet.previewUrl ? null : styles.playButtonDisabled)
                     }}
                   >
@@ -793,7 +907,10 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
                 </div>
               )}
               
-              <div style={styles.messageTime}>
+              <div style={{
+                ...styles.messageTime,
+                ...(isCompactPhoneView ? { fontSize: "10px", marginTop: "4px" } : null),
+              }}>
                 {formatTimestamp(msg.timestamp)}
               </div>
             </div>
@@ -801,7 +918,14 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
         </div>
       );
     });
-  }, [messages, currentPlayingSnippetId, isSnippetAudioPlaying, handlePlayInChat]);
+  }, [
+    currentPlayingSnippetId,
+    handlePlayInChat,
+    isCompactPhoneView,
+    isMobileView,
+    isSnippetAudioPlaying,
+    messages,
+  ]);
 
   if (loading) {
     return (
@@ -825,6 +949,17 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
       ...styles.pageContainer,
       opacity: isVisible ? 1 : 0,
       transform: `scale(${isVisible ? '1' : '0.98'})`,
+      maxWidth: isTabletPortraitView ? "960px" : styles.pageContainer.maxWidth,
+      padding: pagePadding,
+      ...(isMobileView
+        ? {
+            width: "100%",
+            maxWidth: "100%",
+            margin: 0,
+            minHeight: "100dvh",
+            boxSizing: "border-box",
+          }
+        : null),
     }}>
       <style>
         {`
@@ -851,122 +986,486 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
       
       <audio ref={audioRef} style={{ display: "none" }} />
 
-      {/* Header */}
-      <div style={styles.header}>
-        <div style={styles.headerLeft}>
-          <button onClick={onBack} style={styles.backButton}>←</button>
-          <div>
-            <h1 style={styles.headerTitle}>
+      {/* ── MOBILE HEADER (Design 2: Chat First) ── */}
+      {isMobileView ? (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: isCompactPhoneView ? "8px" : "10px",
+          marginBottom: isCompactPhoneView ? "8px" : "10px",
+          padding: isCompactPhoneView ? "8px 10px" : "10px 14px",
+          background: 'rgba(255,105,180,0.06)',
+          borderRadius: isCompactPhoneView ? "12px" : "14px",
+          border: '1px solid rgba(255,105,180,0.15)',
+        }}>
+          <button
+            onClick={onBack}
+            style={{
+              ...styles.backButton,
+              width: isCompactPhoneView ? "30px" : "34px",
+              height: isCompactPhoneView ? "30px" : "34px",
+              fontSize: isCompactPhoneView ? "14px" : "16px",
+              flexShrink: 0
+            }}
+          >
+            ←
+          </button>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <h1 style={{
+              ...styles.headerTitle,
+              fontSize: isCompactPhoneView ? "14px" : "16px",
+              margin: 0,
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis'
+            }}>
               Group <span style={{ color: '#ff69b4' }}>Chat Replay</span>
             </h1>
-            <p style={styles.headerSubtitle}>{replaySummary.participantCount} Users</p>
+            <p style={{
+              ...styles.headerSubtitle,
+              fontSize: isCompactPhoneView ? "10px" : "11px",
+              margin: '1px 0 0',
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}>
+              {replaySummary.participantCount} Users · Replay
+            </p>
+          </div>
+          <div style={{
+            ...styles.volumeBadge,
+            padding: isCompactPhoneView ? "4px 8px" : "5px 10px",
+            gap: isCompactPhoneView ? "4px" : "5px",
+            flexShrink: 0,
+            minWidth: 0,
+          }}>
+            <Volume2 size={isCompactPhoneView ? 12 : 14} color="#ff69b4" />
+            <span style={{
+              ...styles.volumeNumber,
+              fontSize: isCompactPhoneView ? "11px" : "13px",
+              whiteSpace: "nowrap",
+            }}>
+              {headerRoomVolume.toLocaleString()}
+            </span>
           </div>
         </div>
-        
-        {/* Room Volume Badge */}
-        <div style={styles.volumeBadge}>
-          <Volume2 size={18} color="#ff69b4" />
-          <span style={styles.volumeNumber}>{headerRoomVolume.toLocaleString()}</span>
+      ) : (
+        /* ── DESKTOP HEADER ── */
+        <div style={{
+          ...styles.header,
+          ...(isTabletPortraitView
+            ? {
+                marginBottom: "18px",
+                padding: "14px 16px",
+                borderRadius: "14px",
+              }
+            : null),
+        }}>
+          <div style={styles.headerLeft}>
+            <button
+              onClick={onBack}
+              style={{
+                ...styles.backButton,
+                ...(isTabletPortraitView
+                  ? { width: "36px", height: "36px", fontSize: "16px", borderRadius: "9px" }
+                  : null),
+              }}
+            >
+              ←
+            </button>
+            <div>
+              <h1 style={{
+                ...styles.headerTitle,
+                ...(isTabletPortraitView ? { fontSize: "20px" } : null),
+              }}>
+                Group <span style={{ color: '#ff69b4' }}>Chat Replay</span>
+              </h1>
+              <p style={{
+                ...styles.headerSubtitle,
+                ...(isTabletPortraitView ? { fontSize: "11px" } : null),
+              }}>
+                {replaySummary.participantCount} Users
+              </p>
+            </div>
+          </div>
+          <div style={{
+            ...styles.volumeBadge,
+            ...(isTabletPortraitView ? { padding: "7px 12px", gap: "6px" } : null),
+          }}>
+            <Volume2 size={isTabletPortraitView ? 16 : 18} color="#ff69b4" />
+            <span style={{
+              ...styles.volumeNumber,
+              ...(isTabletPortraitView ? { fontSize: "15px" } : null),
+            }}>
+              {headerRoomVolume.toLocaleString()}
+            </span>
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Post Card + Stats Row */}
-      <div style={styles.postStatsRow}>
-        {/* Post Card */}
-        <div style={styles.postCard}>
-          <div style={styles.postHeader}>
+      {/* ── MOBILE: Slim Context Banner (Design 2) ── */}
+      {isMobileView ? (
+        <>
+          {/* Collapsed banner — always visible */}
+          <div
+            style={{
+              ...styles.contextBanner,
+              ...(isCompactPhoneView
+                ? {
+                    gap: "8px",
+                    padding: "8px 10px",
+                    borderRadius: "12px",
+                    marginBottom: "10px",
+                  }
+                : null),
+            }}
+            onClick={() => setIsPostExpanded((p) => !p)}
+          >
             <img
               src={authorToAvatar(post.author)}
               alt={post.author}
-              style={styles.postAvatar}
+              style={{
+                ...styles.contextBannerThumb,
+                ...(isCompactPhoneView
+                  ? { width: "38px", height: "38px", borderRadius: "9px" }
+                  : null),
+              }}
+              onError={(e) => { e.currentTarget.src = '/assets/default-avatar.png'; }}
             />
-            <div>
-              <div style={styles.postAuthor}>{post.author}</div>
-              <div style={styles.postDate}>
-                {new Date(post.createdUtc * 1000).toLocaleString()}
+            <div style={styles.contextBannerBody}>
+              <div style={{
+                ...styles.contextBannerAuthor,
+                ...(isCompactPhoneView ? { fontSize: "12px" } : null),
+              }}>
+                {post.author}
+              </div>
+              <div style={{
+                ...styles.contextBannerText,
+                ...(isCompactPhoneView ? { fontSize: "11px", marginTop: "1px" } : null),
+              }}>
+                {post.title}
+              </div>
+              <div style={styles.contextBannerMeta}>
+                {rightPanelStats.genres.map((item) => (
+                  <span
+                    key={item.name}
+                    style={{
+                      ...styles.contextBannerGenrePill,
+                      backgroundColor: item.color,
+                      ...(isCompactPhoneView ? { fontSize: "9px", padding: "2px 6px" } : null),
+                    }}
+                  >
+                    {item.name}
+                  </span>
+                ))}
               </div>
             </div>
-          </div>
-          <p style={styles.postTitle}>{post.title}</p>
-          {post.selftext && (
-            <p style={styles.postText}>{post.selftext}</p>
-          )}
-          {post.imageUrl && (
-            <img src={post.imageUrl} alt="Post" style={styles.postImage} />
-          )}
-        </div>
-
-        {/* Replay Stats Card */}
-        <div style={styles.statsCard} className="float-card">
-          <div style={styles.volumeSection}>
-            <div style={styles.volumeHeader}>
-              <Volume2 size={16} color="#ff69b4" />
-              <span style={styles.volumeLabel}>Vol</span>
-              <span style={styles.volumeChange}>+{rightPanelStats.volumePoints}</span>
-            </div>
+            <button
+              style={{
+                ...styles.contextBannerExpandBtn,
+                ...(isCompactPhoneView ? { fontSize: "16px" } : null),
+              }}
+              aria-label={isPostExpanded ? 'Collapse post' : 'Expand post'}
+            >
+              {isPostExpanded ? '✕' : '⋯'}
+            </button>
           </div>
 
-          <div style={styles.genreSection}>
-            {rightPanelStats.genres.map((item) => (
-              <div key={item.name} style={styles.genreRow}>
-                <span style={{
-                  ...styles.genreTag,
-                  backgroundColor: item.color,
+          {/* Expanded panel */}
+          {isPostExpanded && (
+            <div style={{
+              ...styles.contextBannerExpanded,
+              ...(isCompactPhoneView ? { padding: "12px", borderRadius: "12px" } : null),
+            }}>
+              {post.selftext && (
+                <p style={{
+                  ...styles.postText,
+                  fontSize: isCompactPhoneView ? "12px" : "13px",
+                  marginBottom: "10px",
                 }}>
-                  {item.name}
-                </span>
-                <span style={styles.genreChange}>{item.change}</span>
+                  {post.selftext}
+                </p>
+              )}
+              {post.imageUrl && (
+                <img
+                  src={post.imageUrl}
+                  alt="Post"
+                  style={{
+                    ...styles.contextBannerExpandedImage,
+                    ...(isCompactPhoneView ? { maxHeight: "170px" } : null),
+                  }}
+                />
+              )}
+              <div style={{
+                ...styles.contextBannerStatsRow,
+                ...(isCompactPhoneView ? { gap: "8px" } : null),
+              }}>
+                <div style={styles.contextBannerStatBlock}>
+                  <div style={styles.contextBannerStatLabel}>
+                    <Volume2 size={12} color="#ff69b4" /> Vol
+                  </div>
+                  <div style={styles.contextBannerStatValue}>+{rightPanelStats.volumePoints}</div>
+                </div>
+                <div style={styles.contextBannerStatBlock}>
+                  <div style={styles.contextBannerStatLabel}>Genres</div>
+                  <div style={styles.contextBannerGenreList}>
+                    {rightPanelStats.genres.map((item) => (
+                      <div key={item.name} style={styles.contextBannerGenreRow}>
+                        <span style={{ ...styles.contextBannerGenrePill, backgroundColor: item.color }}>
+                          {item.name}
+                        </span>
+                        <span style={styles.contextBannerGenreChange}>{item.change}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
-            ))}
+            </div>
+          )}
+        </>
+      ) : (
+        /* ── DESKTOP: Post Card + Stats Row ── */
+        <div style={{
+          ...styles.postStatsRow,
+          ...(isTabletPortraitView ? { gap: "12px", marginBottom: "16px" } : null),
+        }}>
+          <div style={{
+            ...styles.postCard,
+            ...(isTabletPortraitView
+              ? { borderRadius: "16px", padding: "16px" }
+              : null),
+          }}>
+            <div style={{
+              ...styles.postHeader,
+              ...(isTabletPortraitView ? { gap: "10px", marginBottom: "10px" } : null),
+            }}>
+              <img
+                src={authorToAvatar(post.author)}
+                alt={post.author}
+                style={{
+                  ...styles.postAvatar,
+                  ...(isTabletPortraitView ? { width: "42px", height: "42px" } : null),
+                }}
+              />
+              <div>
+                <div style={{
+                  ...styles.postAuthor,
+                  ...(isTabletPortraitView ? { fontSize: "14px" } : null),
+                }}>
+                  {post.author}
+                </div>
+                <div style={{
+                  ...styles.postDate,
+                  ...(isTabletPortraitView ? { fontSize: "12px" } : null),
+                }}>
+                  {postCreatedLabel}
+                </div>
+              </div>
+            </div>
+            <p style={{
+              ...styles.postTitle,
+              ...(isTabletPortraitView ? { fontSize: "14px", marginBottom: "10px" } : null),
+            }}>
+              {post.title}
+            </p>
+            {post.selftext && (
+              <p style={{
+                ...styles.postText,
+                ...(isTabletPortraitView ? { fontSize: "13px", marginBottom: "10px" } : null),
+              }}>
+                {post.selftext}
+              </p>
+            )}
+            {post.imageUrl && (
+              <img
+                src={post.imageUrl}
+                alt="Post"
+                style={{
+                  ...styles.postImage,
+                  ...(isTabletPortraitView ? { height: "clamp(180px, 34vw, 300px)" } : null),
+                }}
+              />
+            )}
+          </div>
+
+          <div
+            style={{
+              ...styles.statsCard,
+              ...(isTabletPortraitView
+                ? {
+                    width: "146px",
+                    borderRadius: "16px",
+                    padding: "14px 12px",
+                    gap: "12px",
+                  }
+                : null),
+            }}
+            className="float-card"
+          >
+            <div style={styles.volumeSection}>
+              <div style={styles.volumeHeader}>
+                <Volume2 size={isTabletPortraitView ? 14 : 16} color="#ff69b4" />
+                <span style={{
+                  ...styles.volumeLabel,
+                  ...(isTabletPortraitView ? { fontSize: "13px" } : null),
+                }}>
+                  Vol
+                </span>
+                <span style={{
+                  ...styles.volumeChange,
+                  ...(isTabletPortraitView ? { fontSize: "14px" } : null),
+                }}>
+                  +{rightPanelStats.volumePoints}
+                </span>
+              </div>
+            </div>
+            <div style={{
+              ...styles.genreSection,
+              ...(isTabletPortraitView ? { gap: "8px" } : null),
+            }}>
+              {rightPanelStats.genres.map((item) => (
+                <div key={item.name} style={styles.genreRow}>
+                  <span
+                    style={{
+                      ...styles.genreTag,
+                      backgroundColor: item.color,
+                      ...(isTabletPortraitView ? { fontSize: "12px", padding: "4px 8px" } : null),
+                    }}
+                  >
+                    {item.name}
+                  </span>
+                  <span style={{
+                    ...styles.genreChange,
+                    ...(isTabletPortraitView ? { fontSize: "12px" } : null),
+                  }}>
+                    {item.change}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Chat Container */}
-      <div style={styles.chatContainer}>
+      <div style={{
+        ...styles.chatContainer,
+        borderRadius: surfaceRadius,
+        ...(isMobileView ? {
+          minHeight: isCompactPhoneView ? "300px" : "340px",
+          height: chatContainerHeight,
+        } : (isTabletPortraitView ? {
+          minHeight: "500px",
+          height: "calc(100dvh - 360px)",
+        } : null)),
+      }}>
         {/* Chat Header with Tool Buttons */}
-        <div style={styles.chatHeader}>
-          <span style={styles.chatHeaderText}>Chat Replay</span>
-          <div style={styles.toolButtons}>
+        <div style={{
+          ...styles.chatHeader,
+          ...(isMobileView
+            ? { padding: isCompactPhoneView ? "8px 10px" : "10px 12px" }
+            : (isTabletPortraitView ? { padding: "12px 16px" } : null)),
+        }}>
+          <span style={{
+            ...styles.chatHeaderText,
+            ...(isMobileView ? { fontSize: isCompactPhoneView ? "11px" : "12px" } : null),
+          }}>
+            Chat Replay
+          </span>
+          <div style={{
+            ...styles.toolButtons,
+            ...(isTouchViewport ? { width: "100%", justifyContent: "flex-end", minWidth: 0 } : null),
+          }}>
             <button 
               onClick={toggleMusicPanel}
               style={{
                 ...styles.toolButton,
                 background: isSongSearchVisible ? 'rgba(255,105,180,0.2)' : 'transparent',
+                ...(isMobileView
+                  ? {
+                      flex: 1,
+                      justifyContent: "center",
+                      minWidth: 0,
+                      gap: isCompactPhoneView ? "4px" : "5px",
+                      padding: isCompactPhoneView ? "6px 8px" : "7px 10px",
+                      fontSize: isCompactPhoneView ? "11px" : "12px",
+                    }
+                  : (isTabletPortraitView ? { padding: "7px 12px", fontSize: "12px" } : null)),
               }}
               className="btn-glow"
             >
-              <Music size={14} />
-              <span>Add Song</span>
+              <Music size={isMobileView ? (isCompactPhoneView ? 11 : 12) : 14} />
+              <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                {isCompactPhoneView ? "Song" : "Add Song"}
+              </span>
             </button>
             <button 
               onClick={toggleUsersPanel}
               style={{
                 ...styles.toolButton,
                 background: activeSection === 'users' ? 'rgba(255,105,180,0.2)' : 'transparent',
+                ...(isMobileView
+                  ? {
+                      flex: 1,
+                      justifyContent: "center",
+                      minWidth: 0,
+                      gap: isCompactPhoneView ? "4px" : "5px",
+                      padding: isCompactPhoneView ? "6px 8px" : "7px 10px",
+                      fontSize: isCompactPhoneView ? "11px" : "12px",
+                    }
+                  : (isTabletPortraitView ? { padding: "7px 12px", fontSize: "12px" } : null)),
               }}
               className="btn-glow"
             >
-              <Users size={14} />
-              <span>{replaySummary.participantCount} Users</span>
+              <Users size={isMobileView ? (isCompactPhoneView ? 11 : 12) : 14} />
+              <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                {isCompactPhoneView ? "Users" : `${replaySummary.participantCount} Users`}
+              </span>
             </button>
           </div>
         </div>
 
         {/* Users Panel */}
         {activeSection === 'users' && (
-          <div style={styles.usersPanel}>
-            <div style={styles.usersPanelScroll}>
+          <div style={{
+            ...styles.usersPanel,
+            ...(isMobileView
+              ? { padding: isCompactPhoneView ? "10px" : "12px" }
+              : (isTabletPortraitView ? { padding: "14px 16px" } : null)),
+          }}>
+            <div style={{
+              ...styles.usersPanelScroll,
+              ...(isMobileView ? { gap: isCompactPhoneView ? "10px" : "12px", paddingBottom: "6px" } : null),
+            }}>
               {onlineUsers.map((user, i) => (
-                <div key={i} style={styles.userCard}>
+                <div
+                  key={i}
+                  style={{
+                    ...styles.userCard,
+                    ...(isCompactPhoneView ? { minWidth: "58px" } : null),
+                  }}
+                >
                   <div style={styles.userAvatarWrapper}>
-                    <img src={user.avatar} alt={user.name} style={styles.userAvatar} />
+                    <img
+                      src={user.avatar}
+                      alt={user.name}
+                      style={{
+                        ...styles.userAvatar,
+                        ...(isCompactPhoneView ? { width: "42px", height: "42px" } : null),
+                      }}
+                    />
                     <div style={{
                       ...styles.userOnlineIndicator,
+                      ...(isCompactPhoneView ? { width: "10px", height: "10px" } : null),
                       background: user.isActive ? '#00ff88' : '#555',
                     }} />
                   </div>
-                  <span style={styles.userNameSmall}>{user.name.split('_')[0]}</span>
+                  <span style={{
+                    ...styles.userNameSmall,
+                    ...(isCompactPhoneView ? { fontSize: "10px", maxWidth: "52px" } : null),
+                  }}>
+                    {user.name.split('_')[0]}
+                  </span>
                 </div>
               ))}
             </div>
@@ -975,8 +1474,16 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
 
         {/* Music Search Panel */}
         {isSongSearchVisible && (
-          <div style={styles.musicPanel}>
-            <div style={styles.searchInputWrapper}>
+          <div style={{
+            ...styles.musicPanel,
+            ...(isMobileView
+              ? { padding: isCompactPhoneView ? "10px" : "12px" }
+              : (isTabletPortraitView ? { padding: "14px 16px" } : null)),
+          }}>
+            <div style={{
+              ...styles.searchInputWrapper,
+              ...(isMobileView ? { gap: "6px" } : null),
+            }}>
               <input
                 value={searchQuery}
                 onChange={(e) => {
@@ -995,6 +1502,12 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
                 placeholder={GROUPCHAT_MUSIC_SEARCH_ENABLED ? "Search Apple Music..." : "Music search disabled in replay prototype"}
                 style={{
                   ...styles.searchInput,
+                  ...(isMobileView
+                    ? {
+                        padding: isCompactPhoneView ? "10px 12px" : "11px 14px",
+                        fontSize: isCompactPhoneView ? "12px" : "13px",
+                      }
+                    : null),
                   ...(GROUPCHAT_MUSIC_SEARCH_ENABLED ? null : styles.searchInputDisabled)
                 }}
                 onKeyDown={(e) => e.key === 'Enter' && handleSongSearch()}
@@ -1005,10 +1518,16 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
                 disabled={isSearching || !GROUPCHAT_MUSIC_SEARCH_ENABLED}
                 style={{
                   ...styles.searchButton,
+                  ...(isMobileView
+                    ? {
+                        padding: isCompactPhoneView ? "10px 12px" : "11px 14px",
+                        borderRadius: "10px",
+                      }
+                    : null),
                   ...(GROUPCHAT_MUSIC_SEARCH_ENABLED ? null : styles.searchButtonDisabled)
                 }}
               >
-                {isSearching ? '...' : <Search size={16} />}
+                {isSearching ? '...' : <Search size={isCompactPhoneView ? 14 : 16} />}
               </button>
             </div>
 
@@ -1062,7 +1581,18 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
         )}
 
         {/* Messages Area */}
-        <div ref={chatRef} style={styles.messagesArea}>
+        <div
+          ref={chatRef}
+          style={{
+            ...styles.messagesArea,
+            ...(isMobileView
+              ? {
+                  padding: isCompactPhoneView ? "10px" : "12px",
+                  minHeight: "220px",
+                }
+              : (isTabletPortraitView ? { padding: "14px 16px", minHeight: "280px" } : null)),
+          }}
+        >
           <div style={styles.joinMessage}>— Replay started —</div>
           
           {renderMessages()}
@@ -1119,7 +1649,7 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
             style={{
               ...styles.notice,
               ...(panelNotice.type === "warning" ? styles.noticeWarning : styles.noticeInfo),
-              margin: '12px 20px 0'
+              margin: isMobileView ? "8px 10px 0" : (isTabletPortraitView ? "10px 16px 0" : "12px 20px 0"),
             }}
           >
             {panelNotice.text}
@@ -1127,7 +1657,12 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
         )}
 
         {/* Input Area */}
-        <div style={styles.inputArea}>
+        <div style={{
+          ...styles.inputArea,
+          ...(isMobileView
+            ? { gap: "8px", padding: isCompactPhoneView ? "10px" : "12px" }
+            : (isTabletPortraitView ? { padding: "12px 16px", gap: "10px" } : null)),
+        }}>
           <input
             value={newComment}
             onChange={(e) => {
@@ -1139,7 +1674,15 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
               }
             }}
             placeholder="Replay view only"
-            style={styles.messageInput}
+            style={{
+              ...styles.messageInput,
+              ...(isMobileView
+                ? {
+                    padding: isCompactPhoneView ? "10px 12px" : "11px 14px",
+                    fontSize: isCompactPhoneView ? "12px" : "13px",
+                  }
+                : null),
+            }}
             disabled
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
@@ -1151,16 +1694,38 @@ export default function GroupChatDetail({ post, onBack, onUserListUpdate }) {
           <button
             onClick={handleSubmitComment}
             disabled
-            style={styles.sendButton}
+            style={{
+              ...styles.sendButton,
+              ...(isMobileView
+                ? {
+                    padding: isCompactPhoneView ? "10px 12px" : "11px 14px",
+                    minWidth: isCompactPhoneView ? "42px" : "48px",
+                  }
+                : null),
+            }}
           >
-            <Send size={16} />
+            <Send size={isCompactPhoneView ? 14 : 16} />
           </button>
         </div>
       </div>
 
       {/* Scroll to bottom button */}
       {showScrollButton && (
-        <button onClick={scrollToBottom} style={styles.scrollButton}>
+        <button
+          onClick={scrollToBottom}
+          style={{
+            ...styles.scrollButton,
+            ...(isTouchViewport
+              ? {
+                  width: isCompactPhoneView ? "36px" : "40px",
+                  height: isCompactPhoneView ? "36px" : "40px",
+                  right: isCompactPhoneView ? "12px" : "14px",
+                  bottom: isCompactPhoneView ? "72px" : "82px",
+                  fontSize: isCompactPhoneView ? "15px" : "16px",
+                }
+              : null),
+          }}
+        >
           ↓
         </button>
       )}

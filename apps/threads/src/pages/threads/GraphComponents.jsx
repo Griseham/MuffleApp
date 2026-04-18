@@ -10,18 +10,18 @@ function withAlpha(color, alphaHex) {
 }
 
 // Design 4: Bullet Chart Style for Vertical Ratings Graph
-export const VerticalRatingsGraph = ({ graphRatings, onOpenModal }) => {
+export const VerticalRatingsGraph = ({ graphRatings = [], onOpenModal, isMobile = false }) => {
   const [hoveredIndex, setHoveredIndex] = useState(null);
 
   return (
     <div 
       style={{ 
-        minHeight: '220px',
-        marginBottom: '40px',
+        minHeight: isMobile ? '200px' : '220px',
+        marginBottom: isMobile ? '28px' : '40px',
         backgroundColor: 'rgba(15, 23, 42, 0.5)',
         backdropFilter: 'blur(10px)',
         borderRadius: '12px',
-        padding: '20px',
+        padding: isMobile ? '14px' : '20px',
         border: '1px solid rgba(255, 255, 255, 0.05)',
         boxShadow: '0 4px 16px rgba(0, 0, 0, 0.2)',
         cursor: 'pointer',
@@ -32,7 +32,7 @@ export const VerticalRatingsGraph = ({ graphRatings, onOpenModal }) => {
       <div style={{ 
         display: 'flex', 
         flexDirection: 'column', 
-        gap: '12px',
+        gap: isMobile ? '10px' : '12px',
       }}>
         {graphRatings.map((item, idx) => {
           const isHovered = hoveredIndex === idx;
@@ -43,8 +43,8 @@ export const VerticalRatingsGraph = ({ graphRatings, onOpenModal }) => {
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '12px',
-                padding: '10px 12px',
+                gap: isMobile ? '8px' : '12px',
+                padding: isMobile ? '8px 10px' : '10px 12px',
                 borderRadius: '10px',
                 backgroundColor: isHovered ? 'rgba(167, 139, 250, 0.12)' : 'rgba(255,255,255,0.02)',
                 transition: 'all 0.2s ease',
@@ -63,8 +63,8 @@ export const VerticalRatingsGraph = ({ graphRatings, onOpenModal }) => {
                     src={item.userAvatar} 
                     alt="avatar"
                     style={{ 
-                      width: 36, 
-                      height: 36, 
+                      width: isMobile ? 30 : 36, 
+                      height: isMobile ? 30 : 36, 
                       borderRadius: '50%', 
                       objectFit: 'cover',
                       border: '2px solid rgba(139, 92, 246, 0.5)',
@@ -74,8 +74,8 @@ export const VerticalRatingsGraph = ({ graphRatings, onOpenModal }) => {
                   />
                 ) : (
                   <div style={{ 
-                    width: 36, 
-                    height: 36, 
+                    width: isMobile ? 30 : 36, 
+                    height: isMobile ? 30 : 36, 
                     borderRadius: '50%', 
                     backgroundColor: '#1e293b',
                     display: 'flex',
@@ -94,7 +94,7 @@ export const VerticalRatingsGraph = ({ graphRatings, onOpenModal }) => {
               <div style={{ flex: 1, position: 'relative' }}>
                 <div style={{ 
                   position: 'relative', 
-                  height: '28px', 
+                  height: isMobile ? '24px' : '28px', 
                   backgroundColor: 'rgba(255,255,255,0.04)',
                   borderRadius: '6px',
                   overflow: 'visible',
@@ -130,9 +130,9 @@ export const VerticalRatingsGraph = ({ graphRatings, onOpenModal }) => {
                   {/* Your rating bar */}
                   <div style={{
                     position: 'absolute',
-                    top: '8px',
+                    top: isMobile ? '7px' : '8px',
                     left: 0,
-                    height: '12px',
+                    height: isMobile ? '10px' : '12px',
                     width: `${item.userRating || 0}%`,
                     background: 'linear-gradient(90deg, #8b5cf6, #a78bfa)',
                     borderRadius: '3px',
@@ -157,8 +157,8 @@ export const VerticalRatingsGraph = ({ graphRatings, onOpenModal }) => {
                   <div style={{
                     position: 'absolute',
                     left: `${item.avgRating || 0}%`,
-                    top: '4px',
-                    bottom: '4px',
+                    top: isMobile ? '3px' : '4px',
+                    bottom: isMobile ? '3px' : '4px',
                     width: '3px',
                     backgroundColor: '#3b82f6',
                     transform: 'translateX(-50%)',
@@ -186,7 +186,7 @@ export const VerticalRatingsGraph = ({ graphRatings, onOpenModal }) => {
                 </div>
                 
                 {/* Tooltip on hover */}
-                {isHovered && (
+                {!isMobile && isHovered && (
                   <div style={{
                     position: 'absolute',
                     bottom: 'calc(100% + 10px)',
@@ -236,15 +236,15 @@ export const VerticalRatingsGraph = ({ graphRatings, onOpenModal }) => {
               <div style={{ 
                 display: 'flex', 
                 alignItems: 'center', 
-                gap: '12px',
+                gap: isMobile ? '8px' : '12px',
                 flexShrink: 0,
               }}>
                 {/* Your rating value */}
                 <span style={{ 
                   color: '#a78bfa', 
-                  fontSize: '16px', 
+                  fontSize: isMobile ? '14px' : '16px', 
                   fontWeight: 'bold',
-                  minWidth: '32px',
+                  minWidth: isMobile ? '26px' : '32px',
                   textAlign: 'right',
                 }}>
                   {item.userRating || 0}
@@ -253,9 +253,9 @@ export const VerticalRatingsGraph = ({ graphRatings, onOpenModal }) => {
                 {/* Average value */}
                 <span style={{ 
                   color: '#3b82f6', 
-                  fontSize: '16px', 
+                  fontSize: isMobile ? '14px' : '16px', 
                   fontWeight: 'bold',
-                  minWidth: '32px',
+                  minWidth: isMobile ? '26px' : '32px',
                   textAlign: 'right',
                 }}>
                   {item.avgRating || 0}
@@ -270,10 +270,17 @@ export const VerticalRatingsGraph = ({ graphRatings, onOpenModal }) => {
 };
 
 // Simple Scatter Plot with Names
-export const ScatterRatingsGraph = ({ scatterData, onOpenModal }) => {
+export const ScatterRatingsGraph = ({ scatterData = [], onOpenModal, isMobile = false }) => {
   const [hoveredUser, setHoveredUser] = useState(null);
 
-  const maxRatings = Math.max(...scatterData.map(d => d.ratingCount), 100);
+  const maxRatings = Math.max(...scatterData.map((d) => d.ratingCount), 100);
+  const chartHeight = isMobile ? 200 : 220;
+  const chartLeftInset = isMobile ? 30 : 40;
+  const pointSize = isMobile ? 24 : 28;
+  const pointHoverSize = isMobile ? 28 : 34;
+  const axisLabelFontSize = isMobile ? '10px' : '12px';
+  const minPointDeltaX = isMobile ? 6.5 : 3.2;
+  const minPointDeltaY = isMobile ? 7.5 : 4.5;
   const positionedScatterData = useMemo(() => {
     const placed = [];
 
@@ -285,7 +292,11 @@ export const ScatterRatingsGraph = ({ scatterData, onOpenModal }) => {
       let attempts = 0;
 
       while (
-        placed.some((point) => Math.abs(point.x - x) < 3.2 && Math.abs(point.y - y) < 4.5) &&
+        placed.some(
+          (point) =>
+            Math.abs(point.x - x) < minPointDeltaX &&
+            Math.abs(point.y - y) < minPointDeltaY
+        ) &&
         attempts < 20
       ) {
         const ring = Math.floor(attempts / 6) + 1;
@@ -305,16 +316,16 @@ export const ScatterRatingsGraph = ({ scatterData, onOpenModal }) => {
         _plotY: y,
       };
     });
-  }, [scatterData, maxRatings]);
+  }, [scatterData, maxRatings, minPointDeltaX, minPointDeltaY]);
 
   return (
     <div 
       style={{
-        minHeight: '240px',
+        minHeight: isMobile ? '220px' : '240px',
         backgroundColor: 'rgba(15, 23, 42, 0.5)',
         backdropFilter: 'blur(10px)',
         borderRadius: '12px',
-        padding: '20px',
+        padding: isMobile ? '14px' : '20px',
         border: '1px solid rgba(255, 255, 255, 0.05)',
         boxShadow: '0 4px 16px rgba(0, 0, 0, 0.2)',
         cursor: 'pointer',
@@ -325,14 +336,14 @@ export const ScatterRatingsGraph = ({ scatterData, onOpenModal }) => {
       {/* Chart area */}
       <div style={{
         position: 'relative',
-        height: '220px',
-        marginLeft: '40px',
-        marginBottom: '30px',
+        height: `${chartHeight}px`,
+        marginLeft: `${chartLeftInset}px`,
+        marginBottom: isMobile ? '26px' : '30px',
       }}>
         {/* Y-axis line */}
         <div style={{
           position: 'absolute',
-          left: '-40px',
+          left: `-${chartLeftInset}px`,
           top: 0,
           bottom: 0,
           width: '1px',
@@ -342,7 +353,7 @@ export const ScatterRatingsGraph = ({ scatterData, onOpenModal }) => {
         {/* X-axis line */}
         <div style={{
           position: 'absolute',
-          left: '-40px',
+          left: `-${chartLeftInset}px`,
           right: 0,
           bottom: 0,
           height: '1px',
@@ -353,10 +364,10 @@ export const ScatterRatingsGraph = ({ scatterData, onOpenModal }) => {
         {[0, 50, 100].map(val => (
           <div key={val} style={{
             position: 'absolute',
-            left: '-35px',
+            left: isMobile ? '-27px' : '-35px',
             top: `${100 - val}%`,
             transform: 'translateY(-50%)',
-            fontSize: '11px',
+            fontSize: isMobile ? '10px' : '11px',
             color: '#64748b',
           }}>
             {val}
@@ -367,10 +378,10 @@ export const ScatterRatingsGraph = ({ scatterData, onOpenModal }) => {
         {[0, 50, 100].map((val) => (
           <div key={val} style={{
             position: 'absolute',
-            bottom: '-20px',
+            bottom: isMobile ? '-18px' : '-20px',
             left: `${val}%`,
             transform: 'translateX(-50%)',
-            fontSize: '11px',
+            fontSize: isMobile ? '10px' : '11px',
             color: '#64748b',
           }}>
             {Math.round(val * maxRatings / 100)}
@@ -427,13 +438,13 @@ export const ScatterRatingsGraph = ({ scatterData, onOpenModal }) => {
                   src={user.userAvatar}
                   alt={user.username}
                   style={{
-                    width: isHovered ? '34px' : '28px',
-                    height: isHovered ? '34px' : '28px',
+                    width: `${isHovered ? pointHoverSize : pointSize}px`,
+                    height: `${isHovered ? pointHoverSize : pointSize}px`,
                     borderRadius: '50%',
                     objectFit: 'cover',
                     border: isHovered 
-                      ? `4px solid ${accentColor}` 
-                      : `3px solid ${withAlpha(accentColor, 'CC')}`,
+                      ? `3px solid ${accentColor}` 
+                      : `2px solid ${withAlpha(accentColor, 'CC')}`,
                     boxShadow: isHovered 
                       ? `0 0 20px ${withAlpha(accentColor, 'CC')}` 
                       : `0 0 12px ${withAlpha(accentColor, '88')}`,
@@ -443,8 +454,8 @@ export const ScatterRatingsGraph = ({ scatterData, onOpenModal }) => {
                 />
               ) : (
                 <div style={{
-                  width: isHovered ? '34px' : '28px',
-                  height: isHovered ? '34px' : '28px',
+                  width: `${isHovered ? pointHoverSize : pointSize}px`,
+                  height: `${isHovered ? pointHoverSize : pointSize}px`,
                   borderRadius: '50%',
                   backgroundColor: '#1e293b',
                   display: 'flex',
@@ -453,8 +464,8 @@ export const ScatterRatingsGraph = ({ scatterData, onOpenModal }) => {
                   fontSize: '12px',
                   color: '#94a3b8',
                   border: isHovered 
-                    ? `4px solid ${accentColor}` 
-                    : `3px solid ${withAlpha(accentColor, 'CC')}`,
+                    ? `3px solid ${accentColor}` 
+                    : `2px solid ${withAlpha(accentColor, 'CC')}`,
                   boxShadow: isHovered 
                     ? `0 0 20px ${withAlpha(accentColor, 'CC')}` 
                     : `0 0 12px ${withAlpha(accentColor, '88')}`,
@@ -475,6 +486,7 @@ export const ScatterRatingsGraph = ({ scatterData, onOpenModal }) => {
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap',
+                display: isMobile ? 'none' : 'block',
               }}>
                 {user.username}
               </span>
@@ -512,7 +524,7 @@ export const ScatterRatingsGraph = ({ scatterData, onOpenModal }) => {
         bottom: '8px',
         left: '50%',
         transform: 'translateX(-50%)',
-        fontSize: '12px',
+        fontSize: axisLabelFontSize,
         color: '#64748b',
       }}>
         Number of Ratings
@@ -521,10 +533,10 @@ export const ScatterRatingsGraph = ({ scatterData, onOpenModal }) => {
       {/* Y-axis label */}
       <div style={{
         position: 'absolute',
-        left: '8px',
+        left: isMobile ? '6px' : '8px',
         top: '50%',
         transform: 'translateY(-50%) rotate(-90deg)',
-        fontSize: '12px',
+        fontSize: axisLabelFontSize,
         color: '#64748b',
       }}>
         Rating Value
@@ -537,19 +549,21 @@ export const GraphSection = ({
   graphRatings, 
   scatterData, 
   openVerticalGraphModal, 
-  openScatterGraphModal 
+  openScatterGraphModal,
+  isMobile = false,
 }) => (
   <div style={{
-    width: "calc(100% - 32px)",
-    margin: "16px auto",
+    width: isMobile ? "calc(100% - 20px)" : "calc(100% - 32px)",
+    margin: isMobile ? "12px auto" : "16px auto",
     backgroundImage: 'radial-gradient(circle at top right, rgba(59, 130, 246, 0.1), transparent 70%)',
-    padding: '24px',
+    padding: isMobile ? "14px" : "24px",
     position: 'relative',
     overflow: 'hidden',
     backgroundColor: 'rgba(15, 23, 42, 0.3)',
     borderRadius: '16px',
     border: '1px solid rgba(255, 255, 255, 0.08)',
-    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)'
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
+    boxSizing: 'border-box',
   }}>
     <div style={{
       position: 'absolute',
@@ -572,13 +586,20 @@ export const GraphSection = ({
     }} />
     
     <div style={{ position: 'relative', zIndex: '1' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: isMobile ? 'stretch' : 'center',
+        flexDirection: isMobile ? 'column' : 'row',
+        gap: isMobile ? '10px' : 0,
+        marginBottom: isMobile ? '14px' : '24px',
+      }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <h2 style={{ fontSize: '24px', margin: 0, fontWeight: '700' }}>Graph 1</h2>
+          <h2 style={{ fontSize: isMobile ? '20px' : '24px', margin: 0, fontWeight: '700', lineHeight: 1 }}>Graph 1</h2>
           <InfoIconModal
             modalId="thread-graph-vertical-info"
             title="Vertical Rating Graph"
-            iconSize={16}
+            iconSize={isMobile ? 14 : 16}
             showButtonText={false}
             steps={[{
               icon: <BarChart3 size={18} color="#a9b6fc" />,
@@ -591,48 +612,52 @@ export const GraphSection = ({
         <div style={{ 
           display: 'flex',
           alignItems: 'center',
-          gap: '16px',
+          justifyContent: isMobile ? 'center' : 'flex-start',
+          gap: isMobile ? '12px' : '16px',
           background: 'rgba(15, 23, 42, 0.7)',
-          padding: '10px 18px',
+          padding: isMobile ? '8px 10px' : '10px 18px',
           borderRadius: '24px',
           fontWeight: '500',
-          fontSize: '14px',
+          fontSize: isMobile ? '11px' : '14px',
           boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
-          border: '1px solid rgba(255, 255, 255, 0.05)'
+          border: '1px solid rgba(255, 255, 255, 0.05)',
+          width: isMobile ? '100%' : 'auto',
+          boxSizing: 'border-box',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <div style={{ 
-              width: '16px', 
+              width: isMobile ? '12px' : '16px', 
               height: '8px', 
               background: 'linear-gradient(90deg, #8b5cf6, #a78bfa)',
               borderRadius: '2px' 
             }}></div>
-            <span style={{ color: '#e2e8f0' }}>Your Rating</span>
+            <span style={{ color: '#e2e8f0' }}>{isMobile ? 'You' : 'Your Rating'}</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <div style={{ 
               width: '3px', 
-              height: '16px', 
+              height: isMobile ? '12px' : '16px', 
               backgroundColor: '#3b82f6',
               borderRadius: '1px' 
             }}></div>
-            <span style={{ color: '#e2e8f0' }}>Average</span>
+            <span style={{ color: '#e2e8f0' }}>{isMobile ? 'Avg' : 'Average'}</span>
           </div>
         </div>
       </div>
       
       <VerticalRatingsGraph 
         graphRatings={graphRatings} 
-        onOpenModal={openVerticalGraphModal} 
+        onOpenModal={openVerticalGraphModal}
+        isMobile={isMobile}
       />
       
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: isMobile ? '14px' : '24px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <h2 style={{ fontSize: '24px', margin: 0, fontWeight: '700' }}>Graph 2</h2>
+          <h2 style={{ fontSize: isMobile ? '20px' : '24px', margin: 0, fontWeight: '700', lineHeight: 1 }}>Graph 2</h2>
           <InfoIconModal
             modalId="thread-graph-scatter-info"
             title="Scatter Plot Graph"
-            iconSize={16}
+            iconSize={isMobile ? 14 : 16}
             showButtonText={false}
             steps={[{
               icon: <GitBranch size={18} color="#a9b6fc" />,
@@ -645,7 +670,8 @@ export const GraphSection = ({
       
       <ScatterRatingsGraph 
         scatterData={scatterData} 
-        onOpenModal={openScatterGraphModal} 
+        onOpenModal={openScatterGraphModal}
+        isMobile={isMobile}
       />
     </div>
   </div>

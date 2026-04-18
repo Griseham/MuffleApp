@@ -5,8 +5,8 @@ const ThreadDetailStyles = {
   // Main Container
   // =========================
   container: {
-    backgroundColor: "#0a0e1a",
-    background: "linear-gradient(165deg, #0a0e1a 0%, #111827 40%, #0f172a 100%)",
+    backgroundColor: "#1a1a1a",
+    background: "#1a1a1a",
     color: "#fff",
     minHeight: "100vh",
     maxWidth: "1200px",
@@ -38,7 +38,7 @@ const ThreadDetailStyles = {
     padding: "18px 20px",
     position: "sticky",
     top: 0,
-    backgroundColor: "rgba(10, 14, 26, 0.6)",
+    backgroundColor: "rgba(26, 26, 26, 0.6)",
     backdropFilter: "blur(24px) saturate(1.4)",
     zIndex: 20,
     borderBottom: "1px solid rgba(255, 255, 255, 0.06)",
@@ -91,7 +91,7 @@ const ThreadDetailStyles = {
   // =========================
   postCard: {
     padding: "0",
-    backgroundColor: "rgba(255, 255, 255, 0.03)",
+    backgroundColor: "#1a1a1a",
     backgroundImage: "none",
     borderRadius: "20px",
     margin: "20px auto",
@@ -148,7 +148,7 @@ const ThreadDetailStyles = {
     borderRadius: "14px",
     display: "block",
     border: "1px solid rgba(255, 255, 255, 0.06)",
-    backgroundColor: "rgba(10, 14, 26, 0.6)",
+    backgroundColor: "rgba(26, 26, 26, 0.6)",
     marginTop: "0",
     marginBottom: "0",
     boxShadow: "none",
@@ -247,7 +247,7 @@ const ThreadDetailStyles = {
     flexDirection: "column",
     gap: "24px",
     padding: "16px",
-    backgroundColor: "rgba(15, 23, 42, 0.3)",
+    backgroundColor: "rgba(26, 26, 26, 0.3)",
     borderRadius: "16px",
     margin: "16px 0",
     border: "1px solid rgba(255, 255, 255, 0.08)",
@@ -257,7 +257,7 @@ const ThreadDetailStyles = {
   
   graphCard: {
     padding: "16px",
-    backgroundColor: "rgba(15, 23, 42, 0.5)",
+    backgroundColor: "rgba(26, 26, 26, 0.5)",
     borderRadius: "12px",
     cursor: "pointer",
     border: "1px solid rgba(255, 255, 255, 0.08)",
@@ -283,7 +283,7 @@ const ThreadDetailStyles = {
     justifyContent: "center",
     gap: "16px",
     padding: "20px",
-    background: "rgba(15, 23, 42, 0.4)",
+    background: "rgba(26, 26, 26, 0.4)",
     borderRadius: "16px",
     marginTop: "16px",
     border: "1px solid rgba(255, 255, 255, 0.08)",
@@ -325,7 +325,7 @@ const ThreadDetailStyles = {
   // Action bar
   // =========================
   actionBarContainer: {
-    backgroundColor: "rgba(10, 14, 26, 0.9)",
+    backgroundColor: "rgba(26, 26, 26, 0.9)",
     backdropFilter: "blur(12px)",
     borderTop: "1px solid rgba(255, 255, 255, 0.06)",
     borderBottom: "1px solid rgba(255, 255, 255, 0.06)",

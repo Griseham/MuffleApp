@@ -101,12 +101,24 @@ export function getAvatarSrc(post) {
   const num = hashString(idStr);
   return `/assets/image${(num % 1000) + 1}.png`;
 }
+
+export function sanitizeDeletedUsername(username) {
+  const normalized = String(username || '').trim();
+  if (!normalized) return normalized;
+
+  const deletedPrefixMatch = normalized.match(/^\[deleted\](.*)$/i);
+  if (!deletedPrefixMatch) return normalized;
+
+  return `User${deletedPrefixMatch[1] || ''}`;
+}
+
 // Generate username based on author
 export function generateUsername(author) {
   if (!author) return `user${getRandomNumber(1000, 9999)}`;
   if (isCurrentUserAuthor(author)) return CURRENT_USER_DISPLAY_NAME;
+  const safeAuthor = sanitizeDeletedUsername(author);
   // Strip any spaces from the author name
-  return `${author?.replace(/\s+/g, '')}${getRandomNumber(10, 999)}`;
+  return `${safeAuthor?.replace(/\s+/g, '')}${getRandomNumber(10, 999)}`;
 }
 
 // Format relative time

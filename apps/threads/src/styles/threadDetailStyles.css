@@ -310,3 +310,11 @@
     margin-left: 0;
   }
 }
+
+@media (max-width: 480px) {
+  /* Prevent intermittent paint gaps in mobile cards after dynamic inline-size adjustments */
+  .thread-comment-card {
+    contain: none;
+    isolation: auto;
+  }
+}

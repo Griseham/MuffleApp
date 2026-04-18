@@ -5,56 +5,6 @@ import ConstellationOverlay from "../ConstellationOverlay";
 import { StarfieldContext } from "../context/Context";
 
 export default function Constellations() {
-  const { artists, handleConstellationNodeClick } = useContext(StarfieldContext);
-  
-  // Validate artist coordinates
-  const validatedArtists = artists.map((artist) => {
-    // First, ensure coordinates exist
-    if (!artist.coordinate || typeof artist.coordinate.x !== 'number' || typeof artist.coordinate.y !== 'number') {
-      // Assign a default coordinate at the center
-      return {
-        ...artist,
-        coordinate: { 
-          x: TOTAL_WIDTH / 2, 
-          y: TOTAL_HEIGHT / 2 
-        }
-      };
-    }
-    
-    // Preserve the constellationIndex property for proper navigation
-    // This ensures the ConstellationOverlay knows which constellation to display
-    const constellationIndex = artist.constellationIndex !== undefined ? 
-      artist.constellationIndex : 0;
-      
-    return {
-      ...artist,
-      constellationIndex
-    };
-  });
-  
-  return (
-    <>
-      {validatedArtists && validatedArtists.length > 0 ? (
-        <ConstellationOverlay 
-          artists={validatedArtists}
-          onNodeClick={handleConstellationNodeClick}
-        />
-      ) : (
-        <div
-          style={{
-            position: "absolute",
-            left: TOTAL_WIDTH / 2,
-            top: TOTAL_HEIGHT / 2 + 300,
-            transform: "translate(-50%, -50%)",
-            color: "rgba(255,255,255,0.5)",
-            fontSize: 24,
-            pointerEvents: "none",
-            whiteSpace: "nowrap",
-          }}
-        >
-          Search for an artist to see constellations
-        </div>
-      )}
-    </>
-  );
+  // Constellations feature is muted — render nothing.
+  return null;
 }

@@ -256,6 +256,134 @@ const threadCommentCardStyles = {
     backgroundColor: "#6366f1",
     transition: "height 0.3s ease-out",
   },
+
+  // ========================
+  // Mobile Rating Slider
+  // ========================
+  mobileSliderContainer: {
+    marginTop: "10px",
+    padding: "14px",
+    background: "rgba(0, 0, 0, 0.25)",
+    borderRadius: "12px",
+    border: "1px solid rgba(99, 102, 241, 0.12)",
+  },
+
+  mobileSliderValue: {
+    fontSize: "22px",
+    fontWeight: "700",
+    color: "#6366f1",
+    lineHeight: 1,
+    fontVariantNumeric: "tabular-nums",
+    textAlign: "right",
+    marginBottom: "10px",
+  },
+
+  mobileSliderTrack: {
+    width: "100%",
+    height: "32px",
+    position: "relative",
+    cursor: "pointer",
+    touchAction: "none",
+    userSelect: "none",
+    display: "flex",
+    alignItems: "center",
+  },
+
+  mobileSliderTrackBg: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    height: "6px",
+    borderRadius: "3px",
+    background: "rgba(255, 255, 255, 0.06)",
+  },
+
+  mobileSliderTrackFill: {
+    position: "absolute",
+    left: 0,
+    height: "6px",
+    borderRadius: "3px",
+    backgroundImage: "linear-gradient(to right, #6366f1, #8b5cf6)",
+    boxShadow: "0 0 12px rgba(99, 102, 241, 0.3)",
+  },
+
+  mobileSliderThumb: {
+    position: "absolute",
+    top: "50%",
+    transform: "translate(-50%, -50%)",
+    width: "20px",
+    height: "20px",
+    borderRadius: "50%",
+    backgroundImage: "linear-gradient(to top, #6366f1, #8b5cf6)",
+    border: "2px solid #fff",
+    boxShadow: "0 2px 8px rgba(0, 0, 0, 0.4), 0 0 16px rgba(99, 102, 241, 0.35)",
+  },
+
+  // ========================
+  // Mobile Stats Row
+  // ========================
+  mobileStatsRow: {
+    display: "flex",
+    justifyContent: "space-around",
+    padding: "8px 12px",
+    borderTop: "1px solid rgba(255, 255, 255, 0.04)",
+    background: "rgba(99, 102, 241, 0.04)",
+  },
+
+  mobileStatLabel: {
+    fontSize: "11px",
+    color: "#64748b",
+    marginBottom: "2px",
+    textTransform: "uppercase",
+    letterSpacing: "0.06em",
+    textAlign: "center",
+  },
+
+  mobileStatValue: {
+    fontSize: "16px",
+    fontWeight: "700",
+    color: "#e2e8f0",
+    textAlign: "center",
+  },
+
+  mobileStatValueAccent: {
+    fontSize: "16px",
+    fontWeight: "700",
+    color: "#818cf8",
+    textAlign: "center",
+  },
+
+  mobileStatDivider: {
+    width: "1px",
+    background: "rgba(255, 255, 255, 0.06)",
+  },
+
+  // ========================
+  // Mobile Rate Button
+  // ========================
+  mobileRateButton: {
+    display: "flex",
+    alignItems: "center",
+    gap: "6px",
+    backgroundColor: "transparent",
+    border: "none",
+    cursor: "pointer",
+    padding: "8px 12px",
+    borderRadius: "8px",
+    transition: "all 0.2s ease",
+    fontSize: "14px",
+  },
+
+  mobileRateButtonActive: {
+    backgroundColor: "rgba(99, 102, 241, 0.1)",
+    color: "#a5b4fc",
+  },
+
+  mobileRateButtonRated: {
+    backgroundColor: "rgba(99, 102, 241, 0.1)",
+    color: "#6366f1",
+    cursor: "default",
+  },
 };
 
 export default threadCommentCardStyles;

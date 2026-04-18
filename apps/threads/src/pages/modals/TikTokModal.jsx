@@ -7,6 +7,9 @@ import { Music, Users, ChevronUp, ChevronDown } from 'lucide-react';
 import InfoIconModal from '../../components/InfoIconModal';
 import { toApiOriginUrl } from "../../utils/api";
 
+const MOBILE_MODAL_BREAKPOINT = 768;
+const MODAL_TRANSITION_MS = 220;
+
 function normalizeMediaUrl(url = "") {
   if (typeof url !== "string") return "";
   const trimmed = url.trim();
@@ -87,12 +90,40 @@ export default function TikTokModal({
   const [hoverRating, setHoverRating] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
   const [slideDirection, setSlideDirection] = useState(null);
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [isClosingModal, setIsClosingModal] = useState(false);
+  const [isMobileView, setIsMobileView] = useState(
+    () => (typeof window !== "undefined" ? window.innerWidth <= MOBILE_MODAL_BREAKPOINT : false)
+  );
   
   const containerRef = useRef(null);
   const modalRef = useRef(null);
+  const touchStartYRef = useRef(null);
+  const closeTimerRef = useRef(null);
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      setIsModalVisible(true);
+      return undefined;
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      setIsModalVisible(true);
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (closeTimerRef.current) {
+        clearTimeout(closeTimerRef.current);
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -109,6 +140,25 @@ export default function TikTokModal({
       document.body.style.overflow = prevOverflow;
       document.body.style.paddingRight = prevPaddingRight;
     };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+
+    const mediaQuery = window.matchMedia(`(max-width: ${MOBILE_MODAL_BREAKPOINT}px)`);
+    const handleViewportChange = (event) => {
+      setIsMobileView(event.matches);
+    };
+
+    setIsMobileView(mediaQuery.matches);
+
+    if (typeof mediaQuery.addEventListener === "function") {
+      mediaQuery.addEventListener("change", handleViewportChange);
+      return () => mediaQuery.removeEventListener("change", handleViewportChange);
+    }
+
+    mediaQuery.addListener(handleViewportChange);
+    return () => mediaQuery.removeListener(handleViewportChange);
   }, []);
   
   // Lock background scroll while modal is open and cleanup audio on unmount
@@ -169,11 +219,6 @@ export default function TikTokModal({
       @keyframes indeterminateBar {
         0% { transform: translateX(-60%); }
         100% { transform: translateX(160%); }
-      }
-      
-      .modal-wrapper {
-        animation: modalAppear 180ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
-        will-change: transform, opacity;
       }
       
       .content-animate-up {
@@ -310,6 +355,41 @@ export default function TikTokModal({
       }, 50);
     }, 200);
   };
+
+  const handleVerticalTouchStart = (e) => {
+    touchStartYRef.current = e.touches?.[0]?.clientY ?? null;
+  };
+
+  const handleVerticalTouchEnd = (e) => {
+    const startY = touchStartYRef.current;
+    const endY = e.changedTouches?.[0]?.clientY;
+    touchStartYRef.current = null;
+
+    if (typeof startY !== "number" || typeof endY !== "number") return;
+
+    const diff = startY - endY;
+    if (Math.abs(diff) > 50) {
+      handleSwipe(diff > 0 ? "up" : "down");
+    }
+  };
+
+  const handleMobileWheelNavigation = (e) => {
+    if (!isMobileView || isAnimating) return;
+    const containerNode = containerRef.current;
+    if (!containerNode) return;
+
+    const maxScrollTop = Math.max(0, containerNode.scrollHeight - containerNode.clientHeight);
+    const isNearTop = containerNode.scrollTop <= 4;
+    const isNearBottom = maxScrollTop <= 4 || containerNode.scrollTop >= maxScrollTop - 4;
+
+    if (e.deltaY > 0 && isNearBottom) {
+      e.preventDefault();
+      handleSwipe("up");
+    } else if (e.deltaY < 0 && isNearTop) {
+      e.preventDefault();
+      handleSwipe("down");
+    }
+  };
   
   // Handle play/pause of snippet
   const togglePlay = (snippetId) => {
@@ -361,15 +441,27 @@ export default function TikTokModal({
   
   // Handle closing modal with audio cleanup
   const handleClose = () => {
+    if (isClosingModal) return;
+
     if (audioRef.current && modalIsPlaying) {
       audioRef.current.pause();
       setModalIsPlaying(false);
       setAudioProgress(0);
     }
-    
-    if (onClose) {
-      onClose();
+
+    setIsClosingModal(true);
+    setIsModalVisible(false);
+
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current);
     }
+
+    closeTimerRef.current = setTimeout(() => {
+      closeTimerRef.current = null;
+      if (onClose) {
+        onClose();
+      }
+    }, MODAL_TRANSITION_MS);
   };
 
   // Add keyboard navigation
@@ -511,6 +603,29 @@ export default function TikTokModal({
     const commentData = getSnippetCommentData(snippet);
     return snippet.snippetAuthorAvatar || getAvatarSrc({ author: commentData.author });
   };
+
+  const getResponsiveStyle = (styleKey) => {
+    const baseStyle = styles[styleKey] || {};
+    if (!isMobileView) return baseStyle;
+    return {
+      ...baseStyle,
+      ...(mobileStyles[styleKey] || {}),
+    };
+  };
+
+  const animatedOverlayStyle = {
+    ...getResponsiveStyle('overlay'),
+    opacity: isModalVisible && !isClosingModal ? 1 : 0,
+  };
+
+  const animatedModalWrapperStyle = {
+    ...getResponsiveStyle('modalWrapper'),
+    opacity: isModalVisible && !isClosingModal ? 1 : 0,
+    transform:
+      isModalVisible && !isClosingModal
+        ? 'translateY(0) scale(1)'
+        : (isMobileView ? 'translateY(8px) scale(0.99)' : 'translateY(14px) scale(0.985)'),
+  };
   
   // Render side panel with navigation and rating - Design 1 Layout
   const renderSidePanel = () => {
@@ -531,15 +646,15 @@ export default function TikTokModal({
         : fallbackRatings.avgRating;
     
     return (
-      <div style={styles.sidePanel}>
+      <div style={getResponsiveStyle('sidePanel')}>
         {/* Navigation */}
-        <div style={styles.navSection}>
+        <div style={getResponsiveStyle('navSection')}>
           <button 
             onClick={() => handleSwipe("down")} 
             disabled={currentIndex === 0 || isAnimating}
             className="nav-btn"
             style={{
-              ...styles.navButton,
+              ...getResponsiveStyle('navButton'),
               opacity: currentIndex === 0 ? 0.3 : 1,
               cursor: currentIndex === 0 || isAnimating ? 'not-allowed' : 'pointer',
             }}
@@ -547,7 +662,7 @@ export default function TikTokModal({
             <ChevronUp size={22} color="#fff" />
           </button>
           
-          <div style={styles.pageIndicator}>
+          <div style={getResponsiveStyle('pageIndicator')}>
             {currentIndex + 1}/{snippets.length}
           </div>
           
@@ -556,7 +671,7 @@ export default function TikTokModal({
             disabled={currentIndex === snippets.length - 1 || isAnimating}
             className="nav-btn"
             style={{
-              ...styles.navButton,
+              ...getResponsiveStyle('navButton'),
               opacity: currentIndex === snippets.length - 1 ? 0.3 : 1,
               cursor: currentIndex === snippets.length - 1 || isAnimating ? 'not-allowed' : 'pointer',
             }}
@@ -566,10 +681,10 @@ export default function TikTokModal({
         </div>
 
         {/* Rating Bar */}
-        <div style={styles.ratingBarSection}>
-          <span style={styles.ratingLabel}>Rating</span>
+        <div style={getResponsiveStyle('ratingBarSection')}>
+          <span style={getResponsiveStyle('ratingLabel')}>Rating</span>
           <div 
-            style={styles.ratingBarContainer}
+            style={getResponsiveStyle('ratingBarContainer')}
             onClick={handleRatingClick}
             onMouseMove={handleRatingHover}
             onMouseLeave={() => setIsHovering(false)}
@@ -596,45 +711,78 @@ export default function TikTokModal({
           </div>
         </div>
 
+        {isMobileView && (
+          <div style={styles.mobileRatingNav}>
+            <button
+              onClick={() => handleSwipe("down")}
+              disabled={currentIndex === 0 || isAnimating}
+              className="nav-btn"
+              aria-label="Previous song"
+              style={{
+                ...styles.mobileRatingNavButton,
+                opacity: currentIndex === 0 ? 0.3 : 1,
+                cursor: currentIndex === 0 || isAnimating ? "not-allowed" : "pointer",
+              }}
+            >
+              <ChevronUp size={16} color="#fff" />
+            </button>
+
+            <button
+              onClick={() => handleSwipe("up")}
+              disabled={currentIndex === snippets.length - 1 || isAnimating}
+              className="nav-btn"
+              aria-label="Next song"
+              style={{
+                ...styles.mobileRatingNavButton,
+                opacity: currentIndex === snippets.length - 1 ? 0.3 : 1,
+                cursor:
+                  currentIndex === snippets.length - 1 || isAnimating ? "not-allowed" : "pointer",
+              }}
+            >
+              <ChevronDown size={16} color="#fff" />
+            </button>
+          </div>
+        )}
+
         {/* Stats Cards */}
-        <div style={styles.statsSection}>
+        <div style={getResponsiveStyle('statsSection')}>
           {/* Total Rated */}
-          <div className="stat-card" style={styles.statCard}>
-            <div style={styles.statIcon}>
+          <div className="stat-card" style={getResponsiveStyle('statCard')}>
+            <div style={getResponsiveStyle('statIcon')}>
               <Users size={14} color="#818cf8" />
             </div>
-            <span style={styles.statValue}>{totalRated}</span>
-            <span style={styles.statLabel}>rated</span>
+            <span style={getResponsiveStyle('statValue')}>{totalRated}</span>
+            <span style={getResponsiveStyle('statLabel')}>rated</span>
           </div>
           
           {/* Your Rating */}
           <div className="stat-card" style={{
-            ...styles.statCard,
+            ...getResponsiveStyle('statCard'),
             background: 'rgba(34, 197, 94, 0.1)',
             border: '1px solid rgba(34, 197, 94, 0.2)',
           }}>
-            <span style={{ ...styles.statValue, color: '#22c55e' }}>
+            <span style={{ ...getResponsiveStyle('statValue'), color: '#22c55e' }}>
               {currentSnippet.didRate ? displayedUserRating : '--'}
             </span>
-            <span style={{ ...styles.statLabel, color: '#22c55e' }}>you</span>
+            <span style={{ ...getResponsiveStyle('statLabel'), color: '#22c55e' }}>you</span>
           </div>
           
           {/* Average */}
           <div className="stat-card" style={{
-            ...styles.statCard,
+            ...getResponsiveStyle('statCard'),
             background: 'rgba(251, 191, 36, 0.1)',
             border: '1px solid rgba(251, 191, 36, 0.2)',
           }}>
-            <span style={{ ...styles.statValue, color: '#fbbf24' }}>{avgRating}</span>
-            <span style={{ ...styles.statLabel, color: '#fbbf24' }}>avg</span>
+            <span style={{ ...getResponsiveStyle('statValue'), color: '#fbbf24' }}>{avgRating}</span>
+            <span style={{ ...getResponsiveStyle('statLabel'), color: '#fbbf24' }}>avg</span>
           </div>
         </div>
         
         {/* Hover Rating Preview */}
         {isHovering && !currentSnippet.didRate && (
-          <div style={styles.ratingPreview}>
-            <span style={styles.ratingPreviewValue}>{hoverRating}</span>
-            <span style={styles.ratingPreviewLabel}>Click to rate</span>
+          <div style={getResponsiveStyle('ratingPreview')}>
+            <span style={getResponsiveStyle('ratingPreviewValue')}>{hoverRating}</span>
+            <span style={getResponsiveStyle('ratingPreviewLabel')}>Click to rate</span>
           </div>
         )}
       </div>
@@ -644,22 +792,21 @@ export default function TikTokModal({
   // Don't render if no snippets
   if (!snippets || snippets.length === 0) {
     return createPortal(
-      <div style={styles.overlay} onClick={handleClose}>
+      <div style={animatedOverlayStyle} onClick={handleClose}>
         <div 
           ref={modalRef}
-          className="modal-wrapper"
-          style={styles.modalWrapper} 
+          style={animatedModalWrapperStyle} 
           onClick={e => e.stopPropagation()}
         >
-          <div style={styles.mainPanel}>
-            <div style={styles.header}>
-              <div style={styles.backButton} onClick={handleClose}>
+          <div style={getResponsiveStyle('mainPanel')}>
+            <div style={getResponsiveStyle('header')}>
+              <div style={getResponsiveStyle('backButton')} onClick={handleClose}>
                 <FiArrowLeft size={18} color="#888" />
               </div>
-              <span style={styles.headerText}>
+              <span style={getResponsiveStyle('headerText')}>
                 {isInitialLoading ? "Loading songs..." : "No snippets available"}
               </span>
-              <div style={styles.headerRightSlot}>
+              <div style={getResponsiveStyle('headerRightSlot')}>
                 {hasTitleInfo ? (
                   <InfoIconModal
                     title={titleInfoModalTitle || "Information"}
@@ -668,7 +815,7 @@ export default function TikTokModal({
                     steps={titleInfoSteps}
                   />
                 ) : (
-                  <div style={styles.headerRightSpacer} />
+                  <div style={getResponsiveStyle('headerRightSpacer')} />
                 )}
               </div>
             </div>
@@ -707,34 +854,33 @@ export default function TikTokModal({
   };
   
   return createPortal(
-    <div style={styles.overlay} onClick={handleClose}>
+    <div style={animatedOverlayStyle} onClick={handleClose}>
       <div 
         ref={modalRef}
-        className="modal-wrapper"
-        style={styles.modalWrapper} 
+        style={animatedModalWrapperStyle} 
         onClick={e => e.stopPropagation()}
       >
         {/* Main Content Panel */}
-        <div style={styles.mainPanel}>
+        <div style={getResponsiveStyle('mainPanel')}>
           {/* Header */}
-          <div style={styles.header}>
-            <div style={styles.backButton} onClick={handleClose}>
+          <div style={getResponsiveStyle('header')}>
+            <div style={getResponsiveStyle('backButton')} onClick={handleClose}>
               <FiArrowLeft size={18} color="#888" />
             </div>
             <div
               style={{
-                ...styles.headerTitleContainer,
+                ...getResponsiveStyle('headerTitleContainer'),
                 cursor: canNavigateToThread ? "pointer" : "default",
                 opacity: canNavigateToThread ? 1 : 0.9,
               }}
               onClick={canNavigateToThread ? goToThread : undefined}
             >
               {canNavigateToThread && <span style={styles.headerArrow}>←</span>}
-              <span style={styles.headerText}>
+              <span style={getResponsiveStyle('headerText')}>
                 {currentSnippet?.threadTitle || threadTitle || "TikTok View"}
               </span>
             </div>
-            <div style={styles.headerRightSlot}>
+            <div style={getResponsiveStyle('headerRightSlot')}>
               {hasTitleInfo ? (
                 <InfoIconModal
                   title={titleInfoModalTitle || "Information"}
@@ -743,7 +889,7 @@ export default function TikTokModal({
                   steps={titleInfoSteps}
                 />
               ) : (
-                <div style={styles.headerRightSpacer} />
+                <div style={getResponsiveStyle('headerRightSpacer')} />
               )}
             </div>
           </div>
@@ -752,75 +898,161 @@ export default function TikTokModal({
             <div style={styles.loadingContainer}>
               <div style={styles.loadingSpinner}></div>
             </div>
+          ) : isMobileView ? (
+            /* ── Mobile: Design 4 layout ── */
+            <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+              {/* Main scrollable content */}
+              <div
+                ref={containerRef}
+                className={getAnimationClass()}
+                style={getResponsiveStyle('contentContainer')}
+                onTouchStart={handleVerticalTouchStart}
+                onTouchEnd={handleVerticalTouchEnd}
+                onWheel={handleMobileWheelNavigation}
+              >
+                {/* User row above artwork */}
+                <div style={styles.mobileUserRow}>
+                  <img
+                    src={getCommentAvatar(currentSnippet)}
+                    alt="User"
+                    style={styles.mobileAvatar}
+                  />
+                  <span style={styles.mobileAuthorName}>{commentData?.author || "Unknown"}</span>
+                </div>
+
+                {/* Album Art */}
+                <div
+                  style={getResponsiveStyle('albumArtContainer')}
+                  onClick={() => togglePlay(currentSnippet?.commentId || currentSnippet?.id)}
+                >
+                  <div style={styles.albumArtGradient} />
+                  {currentArtworkUrl ? (
+                    <img src={currentArtworkUrl} alt="Album artwork" style={styles.albumArtImage} />
+                  ) : (
+                    <div style={styles.albumArtPlaceholder}>
+                      <Music size={60} color="rgba(99, 102, 241, 0.3)" />
+                    </div>
+                  )}
+                  <div
+                    className={`play-button ${isThisSnippetPlaying ? 'playing' : ''}`}
+                    style={getResponsiveStyle('playButton')}
+                  >
+                    {isThisSnippetPlaying
+                      ? <FiPause size={28} color="#fff" />
+                      : <FiPlay size={28} color="#fff" style={{ marginLeft: "3px" }} />}
+                  </div>
+                </div>
+
+                {/* Song info — left-aligned, below artwork */}
+                <div style={styles.mobileSongInfo}>
+                  <h2 style={styles.mobileTrackTitle}>{currentSnippetTrackTitle}</h2>
+                  <p style={styles.mobileArtistName}>{currentSnippetArtistName}</p>
+                </div>
+
+                {/* Progress Bar */}
+                <div style={getResponsiveStyle('progressContainer')}>
+                  <div style={styles.progressBar}>
+                    <div style={{
+                      ...styles.progressFill,
+                      width: `${Math.min(isThisSnippetPlaying ? audioProgress : 0, 100)}%`
+                    }} />
+                  </div>
+                  <div style={styles.progressTimes}>
+                    <span>0:{String(Math.floor(isThisSnippetPlaying ? (audioProgress / 30 * 30) : 0)).padStart(2, '0')}</span>
+                    <span>0:30</span>
+                  </div>
+                </div>
+
+                {/* Engagement Actions */}
+                <div style={getResponsiveStyle('engagementContainer')}>
+                  <button
+                    className="engagement-btn"
+                    style={getResponsiveStyle('engagementButton')}
+                    onClick={toggleFavorite}
+                  >
+                    <FiHeart
+                      size={20}
+                      style={{
+                        fill: isCurrentSnippetLiked ? "#ef4444" : "none",
+                        color: isCurrentSnippetLiked ? "#ef4444" : "#666"
+                      }}
+                    />
+                    <span style={{
+                      ...getResponsiveStyle('engagementCount'),
+                      color: isCurrentSnippetLiked ? "#ef4444" : "#666"
+                    }}>
+                      {getEngagementValues(currentSnippet?.commentId || currentSnippet?.id).likes}
+                    </span>
+                  </button>
+
+                  <button className="engagement-btn" style={getResponsiveStyle('engagementButton')}>
+                    <FiMessageCircle size={20} color="#666" />
+                    <span style={getResponsiveStyle('engagementCount')}>
+                      {getEngagementValues(currentSnippet?.commentId || currentSnippet?.id).comments}
+                    </span>
+                  </button>
+
+                  <button className="engagement-btn" style={getResponsiveStyle('engagementButton')}>
+                    <FiBookmark size={20} color="#666" />
+                    <span style={getResponsiveStyle('engagementCount')}>
+                      {getEngagementValues(currentSnippet?.commentId || currentSnippet?.id).bookmarks}
+                    </span>
+                  </button>
+
+                  <button className="engagement-btn" style={getResponsiveStyle('engagementButton')}>
+                    <FiShare size={20} color="#666" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Slim rating bar — right side, inline with main panel */}
+              {renderSidePanel()}
+            </div>
           ) : (
-            <div 
+            /* ── Desktop: original layout ── */
+            <div
               ref={containerRef}
               className={getAnimationClass()}
-              style={styles.contentContainer}
-              onTouchStart={(e) => {
-                window.touchStartY = e.touches[0].clientY;
-              }}
-              onTouchEnd={(e) => {
-                const touchEndY = e.changedTouches[0].clientY;
-                const diff = window.touchStartY - touchEndY;
-                
-                if (Math.abs(diff) > 50) {
-                  handleSwipe(diff > 0 ? "up" : "down");
-                }
-              }}
+              style={getResponsiveStyle('contentContainer')}
+              onTouchStart={handleVerticalTouchStart}
+              onTouchEnd={handleVerticalTouchEnd}
             >
               {/* Album Art Container */}
-              <div 
-                style={styles.albumArtContainer}
+              <div
+                style={getResponsiveStyle('albumArtContainer')}
                 onClick={() => togglePlay(currentSnippet?.commentId || currentSnippet?.id)}
               >
-                {/* Gradient Background Effect */}
                 <div style={styles.albumArtGradient} />
-                
-                {/* Album Artwork */}
                 {currentArtworkUrl ? (
-                  <img 
-                    src={currentArtworkUrl}
-                    alt="Album artwork"
-                    style={styles.albumArtImage}
-                  />
+                  <img src={currentArtworkUrl} alt="Album artwork" style={styles.albumArtImage} />
                 ) : (
                   <div style={styles.albumArtPlaceholder}>
                     <Music size={60} color="rgba(99, 102, 241, 0.3)" />
                   </div>
                 )}
-                
-                {/* Play Button */}
-                <div 
+                <div
                   className={`play-button ${isThisSnippetPlaying ? 'playing' : ''}`}
-                  style={styles.playButton}
+                  style={getResponsiveStyle('playButton')}
                 >
-                  {isThisSnippetPlaying ? 
-                    <FiPause size={28} color="#fff" /> : 
-                    <FiPlay size={28} color="#fff" style={{ marginLeft: "3px" }} />
-                  }
+                  {isThisSnippetPlaying
+                    ? <FiPause size={28} color="#fff" />
+                    : <FiPlay size={28} color="#fff" style={{ marginLeft: "3px" }} />}
                 </div>
               </div>
-              
+
               {/* Song Info */}
-              <div style={styles.songInfoContainer}>
-                <div style={styles.genreTag}>
-                  {currentSnippet?.genre || "#music"}
-                </div>
-                <h2 style={styles.trackTitle}>
-                  {currentSnippetTrackTitle}
-                </h2>
-                <p style={styles.artistName}>
-                  {currentSnippetArtistName}
-                </p>
+              <div style={getResponsiveStyle('songInfoContainer')}>
+                <div style={styles.genreTag}>{currentSnippet?.genre || "#music"}</div>
+                <h2 style={getResponsiveStyle('trackTitle')}>{currentSnippetTrackTitle}</h2>
+                <p style={getResponsiveStyle('artistName')}>{currentSnippetArtistName}</p>
               </div>
-              
+
               {/* Progress Bar */}
-              <div style={styles.progressContainer}>
+              <div style={getResponsiveStyle('progressContainer')}>
                 <div style={styles.progressBar}>
                   <div style={{
                     ...styles.progressFill,
-                    width: `${Math.min(isThisSnippetPlaying ? audioProgress : 0, 100)}%` 
+                    width: `${Math.min(isThisSnippetPlaying ? audioProgress : 0, 100)}%`
                   }} />
                 </div>
                 <div style={styles.progressTimes}>
@@ -828,66 +1060,66 @@ export default function TikTokModal({
                   <span>0:30</span>
                 </div>
               </div>
-              
+
               {/* Comment Card */}
-              <div style={styles.commentCard}>
-                <img 
+              <div style={getResponsiveStyle('commentCard')}>
+                <img
                   src={getCommentAvatar(currentSnippet)}
-                  alt="User" 
-                  style={styles.commentAvatar} 
+                  alt="User"
+                  style={getResponsiveStyle('commentAvatar')}
                 />
                 <div style={styles.commentContent}>
-                  <span style={styles.commentAuthor}>{commentData?.author || "Unknown"}</span>
-                  <p style={styles.commentText}>{commentData?.text || "Great recommendation!"}</p>
+                  <span style={getResponsiveStyle('commentAuthor')}>{commentData?.author || "Unknown"}</span>
+                  <p style={getResponsiveStyle('commentText')}>{commentData?.text || "Great recommendation!"}</p>
                 </div>
               </div>
-              
+
               {/* Engagement Actions */}
-              <div style={styles.engagementContainer}>
-                <button 
+              <div style={getResponsiveStyle('engagementContainer')}>
+                <button
                   className="engagement-btn"
-                  style={styles.engagementButton} 
+                  style={getResponsiveStyle('engagementButton')}
                   onClick={toggleFavorite}
                 >
-                  <FiHeart 
-                    size={20} 
-                    style={{ 
-                      fill: isCurrentSnippetLiked ? "#ef4444" : "none", 
-                      color: isCurrentSnippetLiked ? "#ef4444" : "#666" 
+                  <FiHeart
+                    size={20}
+                    style={{
+                      fill: isCurrentSnippetLiked ? "#ef4444" : "none",
+                      color: isCurrentSnippetLiked ? "#ef4444" : "#666"
                     }}
                   />
-                  <span style={{ 
-                    ...styles.engagementCount,
+                  <span style={{
+                    ...getResponsiveStyle('engagementCount'),
                     color: isCurrentSnippetLiked ? "#ef4444" : "#666"
                   }}>
                     {getEngagementValues(currentSnippet?.commentId || currentSnippet?.id).likes}
                   </span>
                 </button>
-                
-                <button className="engagement-btn" style={styles.engagementButton}>
+
+                <button className="engagement-btn" style={getResponsiveStyle('engagementButton')}>
                   <FiMessageCircle size={20} color="#666" />
-                  <span style={styles.engagementCount}>
+                  <span style={getResponsiveStyle('engagementCount')}>
                     {getEngagementValues(currentSnippet?.commentId || currentSnippet?.id).comments}
                   </span>
                 </button>
-                
-                <button className="engagement-btn" style={styles.engagementButton}>
+
+                <button className="engagement-btn" style={getResponsiveStyle('engagementButton')}>
                   <FiBookmark size={20} color="#666" />
-                  <span style={styles.engagementCount}>
+                  <span style={getResponsiveStyle('engagementCount')}>
                     {getEngagementValues(currentSnippet?.commentId || currentSnippet?.id).bookmarks}
                   </span>
                 </button>
-                
-                <button className="engagement-btn" style={styles.engagementButton}>
+
+                <button className="engagement-btn" style={getResponsiveStyle('engagementButton')}>
                   <FiShare size={20} color="#666" />
                 </button>
               </div>
             </div>
           )}
         </div>
-        
-        {/* Side Panel - Navigation + Rating */}
-        {renderSidePanel()}
+
+        {/* Side Panel — desktop only (mobile rating bar is inlined above) */}
+        {!isMobileView && renderSidePanel()}
       </div>
     </div>,
     document.body
@@ -904,7 +1136,7 @@ const styles = {
     alignItems: 'center',
     padding: '20px',
     overscrollBehavior: 'contain',
-    animation: 'overlayFade 140ms ease-out forwards',
+    transition: `opacity ${MODAL_TRANSITION_MS}ms cubic-bezier(0.16, 1, 0.3, 1)`,
     willChange: 'opacity',
     zIndex: 25000,
   },
@@ -915,6 +1147,8 @@ const styles = {
     maxWidth: '580px',
     width: '100%',
     alignItems: 'stretch',
+    transition: `opacity ${MODAL_TRANSITION_MS}ms cubic-bezier(0.16, 1, 0.3, 1), transform ${MODAL_TRANSITION_MS}ms cubic-bezier(0.16, 1, 0.3, 1)`,
+    willChange: 'opacity, transform',
   },
 
   // Main Content Panel
@@ -1257,29 +1491,39 @@ const styles = {
   statCard: {
     display: 'flex',
     alignItems: 'center',
-    gap: '8px',
-    padding: '10px 12px',
+    justifyContent: 'space-between',
+    gap: '5px',
+    padding: '9px 8px',
     background: 'rgba(99, 102, 241, 0.1)',
     borderRadius: '10px',
     border: '1px solid rgba(99, 102, 241, 0.2)',
+    minWidth: 0,
   },
 
   statIcon: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
   },
 
   statValue: {
     color: '#fff',
-    fontSize: '16px',
+    fontSize: '15px',
     fontWeight: '700',
+    lineHeight: 1,
+    minWidth: 0,
   },
 
   statLabel: {
     color: '#888',
-    fontSize: '10px',
+    fontSize: '9px',
     textTransform: 'uppercase',
+    letterSpacing: '0.25px',
+    lineHeight: 1,
+    whiteSpace: 'nowrap',
+    flexShrink: 0,
+    marginLeft: 'auto',
   },
 
   // Rating Preview
@@ -1305,6 +1549,65 @@ const styles = {
     fontSize: '9px',
     textTransform: 'uppercase',
     letterSpacing: '0.5px',
+  },
+
+  mobileRatingNav: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '6px',
+    alignItems: 'center',
+  },
+
+  mobileRatingNavButton: {
+    width: '26px',
+    height: '26px',
+    borderRadius: '8px',
+    border: '1px solid rgba(255, 255, 255, 0.12)',
+    background: 'rgba(255, 255, 255, 0.05)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 0,
+  },
+
+  // Mobile Design 4 — user row above artwork
+  mobileUserRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    marginBottom: '12px',
+  },
+
+  mobileAvatar: {
+    width: '28px',
+    height: '28px',
+    borderRadius: '50%',
+    objectFit: 'cover',
+    flexShrink: 0,
+    background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+  },
+
+  mobileAuthorName: {
+    color: '#888',
+    fontSize: '12px',
+    fontWeight: '500',
+  },
+
+  mobileSongInfo: {
+    marginBottom: '12px',
+  },
+
+  mobileTrackTitle: {
+    color: '#fff',
+    fontSize: '19px',
+    fontWeight: '600',
+    margin: '0 0 3px 0',
+  },
+
+  mobileArtistName: {
+    color: '#666',
+    fontSize: '13px',
+    margin: 0,
   },
 
   // Loading & Empty States
@@ -1359,5 +1662,196 @@ const styles = {
     fontSize: '14px',
     textAlign: 'center',
     margin: 0,
+  },
+};
+
+const mobileStyles = {
+  overlay: {
+    alignItems: 'center',
+    padding: '10px',
+    overflowY: 'auto',
+  },
+
+  // On mobile the modalWrapper is just the main panel — side panel is inlined inside it
+  modalWrapper: {
+    flexDirection: 'column',
+    gap: '0px',
+    maxWidth: '460px',
+  },
+
+  mainPanel: {
+    borderRadius: '20px',
+    maxHeight: 'calc(100dvh - 80px)',
+    display: 'flex',
+    flexDirection: 'column',
+  },
+
+  header: {
+    padding: '12px 14px',
+  },
+
+  backButton: {
+    width: '34px',
+    height: '34px',
+  },
+
+  headerTitleContainer: {
+    minWidth: 0,
+  },
+
+  headerText: {
+    maxWidth: '170px',
+    fontSize: '12px',
+  },
+
+  headerRightSlot: {
+    width: '34px',
+    minWidth: '34px',
+  },
+
+  headerRightSpacer: {
+    width: '34px',
+    height: '34px',
+  },
+
+  // Main content area scrolls; rating bar sits to its right
+  contentContainer: {
+    flex: 1,
+    padding: '6px 14px 14px',
+    overflowY: 'auto',
+  },
+
+  albumArtContainer: {
+    borderRadius: '16px',
+    marginBottom: '12px',
+  },
+
+  playButton: {
+    width: '58px',
+    height: '58px',
+  },
+
+  songInfoContainer: {
+    marginBottom: '12px',
+  },
+
+  trackTitle: {
+    fontSize: '20px',
+  },
+
+  artistName: {
+    fontSize: '13px',
+  },
+
+  progressContainer: {
+    marginBottom: '12px',
+  },
+
+  commentCard: {
+    marginBottom: '12px',
+    padding: '10px 12px',
+  },
+
+  commentAvatar: {
+    width: '34px',
+    height: '34px',
+  },
+
+  commentAuthor: {
+    fontSize: '12px',
+  },
+
+  commentText: {
+    fontSize: '11px',
+  },
+
+  engagementContainer: {
+    padding: '10px 0',
+  },
+
+  engagementButton: {
+    padding: '6px 8px',
+  },
+
+  engagementCount: {
+    fontSize: '10px',
+  },
+
+  // Slim vertical rating bar — sits inside the main panel flex row on the right
+  sidePanel: {
+    width: '44px',
+    minWidth: '44px',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '8px',
+    padding: '16px 0',
+    borderRadius: '0',
+    background: 'transparent',
+    border: 'none',
+    borderLeft: '1px solid rgba(255, 255, 255, 0.04)',
+  },
+
+  // Hide nav arrows on mobile — user scrolls via touch
+  navSection: {
+    display: 'none',
+  },
+
+  navButton: {
+    display: 'none',
+  },
+
+  pageIndicator: {
+    display: 'none',
+  },
+
+  ratingBarSection: {
+    gap: '8px',
+    flexShrink: 0,
+    alignItems: 'center',
+  },
+
+  ratingLabel: {
+    fontSize: '9px',
+    letterSpacing: '1px',
+  },
+
+  ratingBarContainer: {
+    width: '10px',
+    height: '120px',
+  },
+
+  // Hide stats cards on mobile — keep it clean
+  statsSection: {
+    display: 'none',
+  },
+
+  statCard: {
+    display: 'none',
+  },
+
+  statIcon: {
+    display: 'none',
+  },
+
+  statValue: {
+    fontSize: '14px',
+  },
+
+  statLabel: {
+    fontSize: '9px',
+    marginLeft: 0,
+  },
+
+  ratingPreview: {
+    display: 'none',
+  },
+
+  ratingPreviewValue: {
+    fontSize: '20px',
+  },
+
+  ratingPreviewLabel: {
+    fontSize: '8px',
   },
 };

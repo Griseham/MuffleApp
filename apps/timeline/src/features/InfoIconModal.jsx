@@ -102,16 +102,18 @@ export default function InfoIconModal({
   ariaLabel = "Information",
 }) {
   const [openIndex, setOpenIndex] = useState(0);
-  const [portalContainer, setPortalContainer] = useState(null);
+  const [{ uniqueModalId, portalContainer }] = useState(() => {
+    const id =
+      modalId ||
+      `modal-${title.replace(/\s/g, "-").toLowerCase()}-${Math.random().toString(36).slice(2, 11)}`;
+    const container = typeof document !== "undefined" ? document.createElement("div") : null;
+    if (container) container.id = `info-modal-portal-${id}`;
+    return { uniqueModalId: id, portalContainer: container };
+  });
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
   const [shouldRenderModal, setShouldRenderModal] = useState(false);
   const closeTimerRef = useRef(null);
-  const [uniqueModalId] = useState(
-    () =>
-      modalId ||
-      `modal-${title.replace(/\s/g, "-").toLowerCase()}-${Math.random().toString(36).slice(2, 11)}`
-  );
 
   const modalSteps =
     steps.length > 0
@@ -125,20 +127,18 @@ export default function InfoIconModal({
         ];
 
   useEffect(() => {
-    const container = document.createElement("div");
-    container.id = `info-modal-portal-${uniqueModalId}`;
-    document.body.appendChild(container);
-    setPortalContainer(container);
+    if (!portalContainer) return undefined;
+    document.body.appendChild(portalContainer);
 
     return () => {
       if (closeTimerRef.current) {
         clearTimeout(closeTimerRef.current);
       }
-      if (document.body.contains(container)) {
-        document.body.removeChild(container);
+      if (document.body.contains(portalContainer)) {
+        document.body.removeChild(portalContainer);
       }
     };
-  }, [uniqueModalId]);
+  }, [portalContainer]);
 
   useEffect(() => {
     if (!isModalOpen) return undefined;

@@ -1,0 +1,1221 @@
+/* RoomsScreen.css - Main layout styles for the Rooms Screen with centered dial tuner */
+
+/* PlayingScreen palette scoped to RoomsScreen */
+.radio-rooms-container {
+  --primary: #60a5fa;
+  --primary-glow: rgba(96, 165, 250, 0.5);
+  --similarity-positive: #60a5fa;
+  --similarity-negative: var(--similarity-positive);
+  --similarity-positive-glow: rgba(96, 165, 250, 0.5);
+  --similarity-negative-glow: var(--similarity-positive-glow);
+  --tab-active: rgba(15, 18, 26, 0.78);
+  --tab-active-text: #f8fafc;
+  --tab-inactive: rgba(241, 245, 249, 0.58);
+  --disabled-color: rgba(241, 245, 249, 0.45);
+  --disabled-bg: rgba(0, 0, 0, 0.45);
+  --bg-card: linear-gradient(180deg, rgba(15, 18, 28, 0.97) 0%, rgba(8, 10, 16, 0.99) 100%);
+  --bg-medium: #0f121a;
+  --bg-dark: #000000;
+  --border-dark: rgba(255, 255, 255, 0.08);
+  --border-light: rgba(255, 255, 255, 0.18);
+  --text-muted: rgba(241, 245, 249, 0.6);
+  --text-light: #e2e8f0;
+
+  width: 100%;
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 40px 20px 80px;
+  height: 100vh;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  background-color: #000;
+  position: relative;
+  -webkit-overflow-scrolling: touch;
+}
+
+.radio-rooms-container::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+/* Recents Loading Indicator */
+.recents-loading {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 40px 20px !important;
+  gap: 15px !important;
+}
+
+.recents-loading .loading-spinner {
+  width: 40px !important;
+  height: 40px !important;
+}
+
+.recents-loading p {
+  color: var(--primary) !important;
+  font-size: 16px !important;
+  margin: 0 !important;
+  font-weight: 500 !important;
+}
+
+/* Back Button */
+.back-button {
+  background: rgba(15, 18, 26, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  font-size: 14px;
+  color: #f1f5f9;
+  cursor: pointer;
+  padding: 8px 14px;
+  border-radius: 999px;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+  position: absolute;
+  top: 14px;
+  left: 20px;
+  z-index: 101;
+  backdrop-filter: blur(4px);
+}
+
+.back-button:hover {
+  background-color: rgba(15, 18, 26, 0.85);
+  border-color: rgba(255, 255, 255, 0.24);
+  color: #fff;
+}
+
+/* Selected Artists Container */
+.selected-artists-container {
+  margin: 60px auto 20px;
+  max-width: 1000px;
+  color: #ffffff;
+  background:
+    radial-gradient(140% 120% at 0% 0%, rgba(96, 165, 250, 0.13), transparent 50%),
+    radial-gradient(140% 120% at 100% 120%, rgba(96, 165, 250, 0.07), transparent 48%),
+    linear-gradient(180deg, rgba(20, 23, 33, 0.95), rgba(8, 10, 16, 0.99));
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 16px 18px 18px;
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  transition: opacity 0.3s, filter 0.3s;
+}
+
+.selected-artists-container.disabled {
+  opacity: 0.5;
+  filter: grayscale(0.7);
+  pointer-events: none;
+}
+
+.selected-artists-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.selected-artists-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.selected-artists-kicker {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: rgba(156, 163, 175, 0.9);
+}
+
+.selected-artists-copy h2 {
+  margin: 0;
+  font-size: 21px;
+  line-height: 1.2;
+  color: #f8fafc;
+}
+
+.selected-artists-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border-radius: 999px;
+  padding: 7px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(15, 18, 26, 0.76);
+  box-shadow: 0 0 16px rgba(96, 165, 250, 0.2);
+}
+
+.selected-artists-count strong {
+  font-family: var(--font-family-mono);
+  color: var(--primary);
+  font-size: 14px;
+  line-height: 1;
+}
+
+.selected-artists-count span {
+  font-size: 12px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #e2e8f0;
+}
+
+.selected-artists-list {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding: 2px 2px 8px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(96, 165, 250, 0.5) rgba(8, 10, 16, 0.8);
+}
+
+.selected-artist-card {
+  flex: 0 0 auto;
+  width: 120px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 9px;
+  text-align: center;
+  border-radius: 13px;
+  padding: 10px 8px 11px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: linear-gradient(180deg, rgba(20, 23, 33, 0.92), rgba(8, 10, 16, 0.97));
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.34);
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.selected-artist-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(96, 165, 250, 0.5);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.42), 0 0 16px rgba(96, 165, 250, 0.14);
+}
+
+.selected-artist-image-wrap {
+  width: 72px;
+  height: 72px;
+  border-radius: 999px;
+  padding: 3px;
+  background: linear-gradient(140deg, rgba(96, 165, 250, 0.62), rgba(255, 255, 255, 0.14) 70%);
+  box-shadow: 0 0 18px rgba(96, 165, 250, 0.15);
+}
+
+.selected-artist-image {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.55);
+}
+
+.selected-artist-name {
+  width: 100%;
+  margin-top: 0;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.24;
+  color: #f1f5f9;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Simple tuner wrapper for placing the info icon on the dial panel */
+.simple-tuner-shell {
+  position: relative;
+  margin: 0 auto 24px;
+  width: 100%;
+  max-width: 1000px;
+}
+
+.rooms-tuner-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 6px 4px 2px;
+  --primary: #60a5fa;
+  --primary-glow: rgba(96, 165, 250, 0.5);
+  --similarity-positive: #60a5fa;
+  --similarity-negative: var(--similarity-positive);
+  --similarity-positive-glow: rgba(96, 165, 250, 0.5);
+  --similarity-negative-glow: var(--similarity-positive-glow);
+  --bg-card: linear-gradient(180deg, rgba(15, 18, 28, 0.97) 0%, rgba(8, 10, 16, 0.99) 100%);
+  --bg-medium: #0f121a;
+  --border-dark: rgba(255, 255, 255, 0.08);
+  --border-light: rgba(255, 255, 255, 0.18);
+  --text-muted: rgba(241, 245, 249, 0.6);
+  --text-light: #e2e8f0;
+}
+
+.rooms-tuner-wrap .simple-tuner-dial {
+  margin-bottom: 0;
+}
+
+.rooms-tuner-wrap .simple-tuner-dial__value-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(241, 245, 249, 0.88);
+  letter-spacing: 0.08em;
+}
+
+.rooms-tuner-wrap .simple-tuner-dial__value-number {
+  font-size: 30px;
+  font-weight: 800;
+  color: #fff;
+  text-shadow: 0 0 16px rgba(255, 255, 255, 0.38);
+}
+
+.rooms-tuner-wrap .simple-tuner-dial__hint {
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(241, 245, 249, 0.9);
+  letter-spacing: 0.03em;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+  bottom: -20px;
+}
+
+.simple-tuner-shell__info {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  z-index: 20;
+}
+
+.simple-tuner-shell__info .info-icon-button {
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(15, 18, 26, 0.76);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.38);
+}
+
+@media (max-width: 600px) {
+  .rooms-tuner-wrap .simple-tuner-dial--has-mobile-steps .simple-tuner-dial__content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas:
+      "vol sim"
+      "dial dial";
+    align-items: start;
+    gap: 10px 12px;
+  }
+
+  .rooms-tuner-wrap .simple-tuner-dial--has-mobile-steps .simple-tuner-dial__value--volume {
+    grid-area: vol;
+    text-align: left;
+  }
+
+  .rooms-tuner-wrap .simple-tuner-dial--has-mobile-steps .simple-tuner-dial__value--similarity {
+    grid-area: sim;
+    text-align: right;
+  }
+
+  .rooms-tuner-wrap .simple-tuner-dial--has-mobile-steps .simple-tuner-dial__value {
+    min-width: 0;
+    padding: 5px 6px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  .rooms-tuner-wrap .simple-tuner-dial--has-mobile-steps .simple-tuner-dial__value--volume .simple-tuner-dial__value-header {
+    justify-content: flex-start !important;
+  }
+
+  .rooms-tuner-wrap .simple-tuner-dial--has-mobile-steps .simple-tuner-dial__value--similarity .simple-tuner-dial__value-header {
+    justify-content: flex-end !important;
+  }
+
+  .rooms-tuner-wrap .simple-tuner-dial--has-mobile-steps .simple-tuner-dial__value-number {
+    font-size: 24px;
+    line-height: 1.05;
+  }
+
+  .rooms-tuner-wrap .simple-tuner-dial--has-mobile-steps .simple-tuner-dial__value-label {
+    font-size: 10px;
+    letter-spacing: 0.07em;
+  }
+
+  .rooms-tuner-wrap .simple-tuner-dial--has-mobile-steps .simple-tuner-dial__dial-wrapper {
+    grid-area: dial;
+    width: 100%;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .rooms-tuner-wrap .simple-tuner-dial--has-mobile-steps .simple-tuner-dial__dial-and-steps {
+    position: relative;
+    min-height: 124px;
+    justify-content: center;
+    width: 100%;
+    --mobile-step-side-width: clamp(96px, calc(50% - 62px), 132px);
+  }
+
+  .rooms-tuner-wrap .simple-tuner-dial--has-mobile-steps .simple-tuner-dial__mobile-steps {
+    position: absolute;
+    inset: 0;
+    max-width: none;
+  }
+
+  .rooms-tuner-wrap .simple-tuner-dial--has-mobile-steps .simple-tuner-dial__mobile-step {
+    position: absolute;
+    font-size: 10px;
+    line-height: 1.22;
+    color: rgba(241, 245, 249, 0.96);
+    font-weight: 700;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+  }
+
+  .rooms-tuner-wrap .simple-tuner-dial--has-mobile-steps .simple-tuner-dial__mobile-step:nth-child(1),
+  .rooms-tuner-wrap .simple-tuner-dial--has-mobile-steps .simple-tuner-dial__mobile-step:nth-child(2) {
+    left: 0;
+    width: var(--mobile-step-side-width);
+    text-align: left;
+  }
+
+  .rooms-tuner-wrap .simple-tuner-dial--has-mobile-steps .simple-tuner-dial__mobile-step:nth-child(1) {
+    top: 22px;
+  }
+
+  .rooms-tuner-wrap .simple-tuner-dial--has-mobile-steps .simple-tuner-dial__mobile-step:nth-child(2) {
+    top: 62px;
+  }
+
+  .rooms-tuner-wrap .simple-tuner-dial--has-mobile-steps .simple-tuner-dial__mobile-step:nth-child(3) {
+    right: 0;
+    top: 22px;
+    width: var(--mobile-step-side-width);
+    text-align: right;
+  }
+}
+
+@media (max-width: 390px) {
+  .rooms-tuner-wrap .simple-tuner-dial--has-mobile-steps .simple-tuner-dial__content {
+    gap: 8px 10px;
+  }
+
+  .rooms-tuner-wrap .simple-tuner-dial--has-mobile-steps .simple-tuner-dial__dial-wrapper {
+    order: 0;
+    margin-bottom: 0;
+  }
+
+  .rooms-tuner-wrap .simple-tuner-dial--has-mobile-steps .simple-tuner-dial__dial-and-steps {
+    --mobile-step-side-width: clamp(86px, calc(50% - 58px), 116px);
+  }
+
+  .rooms-tuner-wrap .simple-tuner-dial--has-mobile-steps .simple-tuner-dial__value-number {
+    font-size: 22px;
+  }
+}
+
+/* Tuner Container - for expanded advanced tuner */
+.tuner-container {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  max-width: 1000px;
+  margin: 0 auto 24px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4), 0 0 14px rgba(96, 165, 250, 0.08);
+  border-radius: 10px;
+  overflow: hidden;
+  background: linear-gradient(180deg, rgba(15, 18, 28, 0.97) 0%, rgba(8, 10, 16, 0.99) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: opacity 0.3s, filter 0.3s, border-color 0.3s;
+}
+
+.tuner-container.expanded {
+  margin-top: 0;
+  border-top: none;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+  padding-top: 14px;
+}
+
+.tuner-container.disabled {
+  opacity: 0.5;
+  filter: grayscale(0.7);
+  border-color: var(--disabled-color);
+  pointer-events: none;
+}
+
+.tuner-container.disabled::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--disabled-bg);
+  backdrop-filter: blur(2px);
+  z-index: 100;
+}
+
+/* Collapsible tuner header - kept for backwards compatibility */
+.tuner-container.collapsed {
+  /* keep same border/box-shadow, just no inner padding from tuner-wrapper */
+}
+
+.tuner-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 96px 10px 16px;
+  background: linear-gradient(180deg, rgba(20, 20, 20, 0.94) 0%, rgba(0, 0, 0, 0.9) 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.tuner-header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tuner-header-label {
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.tuner-header-value {
+  font-family: var(--font-family-mono);
+  font-size: 18px;
+  color: var(--primary);
+}
+
+.tuner-toggle-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  font-size: 13px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(15, 18, 26, 0.58);
+  color: #f1f5f9;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.tuner-toggle-button:hover {
+  background: rgba(15, 18, 26, 0.85);
+  border-color: rgba(255, 255, 255, 0.24);
+  color: #ffffff;
+}
+
+.tuner-toggle-icon {
+  display: inline-block;
+  font-size: 11px;
+  transition: transform 0.2s ease;
+}
+
+.tuner-toggle-icon.collapsed {
+  transform: rotate(180deg);
+}
+
+.tuner-container.collapsed .tuner-wrapper {
+  display: none;
+}
+
+/* SCOPED TAB NAVIGATION FOR ROOMS SCREEN ONLY */
+.radio-rooms-container .tabs-container {
+  width: 100%;
+  max-width: 1000px;
+  margin: 0 auto 24px;
+}
+
+.radio-rooms-container .tabs-navigation {
+  display: flex;
+  gap: 4px;
+  background: linear-gradient(180deg, rgba(20, 20, 20, 0.94) 0%, rgba(0, 0, 0, 0.9) 100%);
+  border-radius: 10px;
+  padding: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+}
+
+.radio-rooms-container .tab-button {
+  flex: 1;
+  padding: 12px 20px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: var(--tab-inactive);
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  position: relative;
+  overflow: hidden;
+}
+
+.radio-rooms-container .tab-button:hover:not(.active):not(.disabled) {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.radio-rooms-container .tab-button.active {
+  color: var(--tab-active-text);
+  background: var(--tab-active);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.radio-rooms-container .tab-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  transition: left 0.5s;
+}
+
+.radio-rooms-container .tab-button:hover::before {
+  left: 100%;
+}
+
+.radio-rooms-container .tab-button.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: transparent;
+  color: var(--disabled-color);
+}
+
+.radio-rooms-container .tab-button.disabled:hover {
+  background: transparent;
+  color: var(--disabled-color);
+}
+
+/* Tuner Components */
+.tuner-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  padding: 32px 16px 40px;
+  width: 100%;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.rt-wrapper {
+  user-select: none;
+  padding: 2rem;
+  background: linear-gradient(180deg, rgba(15, 18, 28, 0.97) 0%, rgba(8, 10, 16, 0.99) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  gap: 1.5rem;
+}
+
+/* Disable expanded tuner interaction while loading/tuning */
+.rt-wrapper.disabled {
+  pointer-events: none;
+  opacity: 0.72;
+  filter: grayscale(0.15);
+}
+
+.rt-header {
+  width: 95%;
+  background: linear-gradient(180deg, rgba(20, 20, 20, 0.94) 0%, rgba(0, 0, 0, 0.9) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.5rem;
+  padding: 0.8rem 1rem;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.05);
+}
+
+.rt-display {
+  font-family: var(--font-family-mono);
+  font-weight: 700;
+  font-size: 2.5rem;
+  display: flex;
+  justify-content: center;
+  align-items: baseline;
+  position: relative;
+  z-index: 2;
+  padding: 0.7rem 0;
+  min-width: 280px;
+}
+
+.rt-number {
+  cursor: pointer;
+  color: rgba(241, 245, 249, 0.52);
+  transition: color 0.15s, text-shadow 0.15s;
+}
+
+.rt-number.active {
+  color: var(--primary);
+  text-shadow: 0 0 10px var(--primary-glow);
+}
+
+.rt-number.similarity-active {
+  color: var(--similarity-positive);
+  text-shadow: 0 0 10px var(--similarity-positive-glow);
+}
+
+.rt-number.similarity-negative {
+  color: var(--similarity-negative);
+  text-shadow: 0 0 10px var(--similarity-negative-glow);
+}
+
+.rt-dot {
+  color: rgba(241, 245, 249, 0.52);
+  margin: 0 0.15rem;
+  pointer-events: none;
+}
+
+.rt-progress-bar {
+  width: 95%;
+  height: 0.4rem;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 9999px;
+  overflow: hidden;
+  margin: 0 auto 4px;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+.rt-progress-fill {
+  height: 100%;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, var(--primary), #93c5fd);
+  transition: width 0.2s;
+  box-shadow: 0 0 8px var(--primary-glow);
+}
+
+/* Station Cards List */
+.stations-list {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  margin-bottom: 60px;
+  width: 100%;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.stations-list.fade-in {
+  animation: fadeIn 0.45s ease-out;
+}
+
+/* Info Messages */
+.mode-info-message {
+  text-align: center;
+  margin: 10px auto 20px;
+  padding: 10px;
+  background: rgba(15, 18, 26, 0.52);
+  border-radius: 8px;
+  font-size: 14px;
+  color: #e2e8f0;
+  max-width: 1000px;
+}
+
+.error-message {
+  text-align: center;
+  padding: 20px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 8px;
+  color: #ef4444;
+  margin: 20px auto;
+  max-width: 600px;
+}
+
+.retry-button {
+  background: var(--primary);
+  color: #000;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  margin-top: 10px;
+  transition: background-color 0.2s;
+}
+
+.retry-button:hover {
+  background: #3b82f6;
+}
+
+.no-stations-message {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-muted);
+  font-size: 16px;
+}
+
+/* Feed Section */
+.feed-section {
+  position: relative;
+  min-height: 200px;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.initial-loading-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.initial-load-panel {
+  width: 100%;
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 16px 18px;
+  border: 1px solid rgba(96, 165, 250, 0.22);
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(17, 24, 39, 0.94), rgba(7, 10, 16, 0.98));
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.22);
+}
+
+.initial-load-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.initial-load-kicker {
+  color: #d1d5db;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.initial-load-percentage {
+  color: var(--primary);
+  font-family: var(--font-family-mono);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.initial-load-bar {
+  width: 100%;
+  height: 10px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.initial-load-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #3b82f6 0%, #60a5fa 55%, #93c5fd 100%);
+  box-shadow: 0 0 18px rgba(96, 165, 250, 0.32);
+  transition: width 0.28s ease-out;
+}
+
+.initial-load-status {
+  margin: 10px 0 0;
+  color: #9ca3af;
+  font-size: 14px;
+}
+
+/* In-feed overlays (tuning / quick loading) */
+.feed-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.48);
+  backdrop-filter: blur(2px);
+  z-index: 60;
+  border-radius: 12px;
+}
+
+.feed-overlay-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 22px;
+  background: linear-gradient(180deg, rgba(26, 28, 34, 0.96), rgba(12, 14, 18, 0.96));
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+}
+
+/* Loading bar shown above the spinner inside FeedOverlay */
+.feed-loading-bar {
+  width: 240px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.10);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.feed-loading-bar-fill {
+  height: 100%;
+  width: 40%;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    rgba(96, 165, 250, 0.25),
+    rgba(96, 165, 250, 0.95),
+    rgba(96, 165, 250, 0.25)
+  );
+  animation: feedBarSlide 1.05s ease-in-out infinite;
+}
+
+.feed-overlay-label {
+  font-size: 14px;
+  color: #e5e7eb;
+  font-family: var(--font-family-mono);
+  letter-spacing: 0.02em;
+  opacity: 0.95;
+}
+
+/* Skeleton station cards (initial load) */
+.station-skeleton {
+  background: linear-gradient(180deg, rgba(15, 18, 28, 0.97) 0%, rgba(8, 10, 16, 0.99) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  padding: 18px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.28);
+  position: relative;
+  overflow: hidden;
+}
+
+.station-skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-120%);
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+  animation: skeletonShimmer 1.2s ease-in-out infinite;
+}
+
+.station-skeleton-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+.station-skeleton-pill {
+  height: 14px;
+  width: 180px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.08);
+}
+
+.station-skeleton-pill.short {
+  width: 110px;
+}
+
+.station-skeleton-row {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.station-skeleton-circle {
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.07);
+}
+
+.station-skeleton-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.station-skeleton-bar {
+  height: 10px;
+  width: 220px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.07);
+}
+
+.station-skeleton-bar.short {
+  width: 120px;
+}
+
+.room-loader {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 50;
+}
+
+.lds-dual-ring {
+  width: 64px;
+  height: 64px;
+  border: 6px solid #60a5fa;
+  border-top: 6px solid transparent;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+/* Centered spinner for Recents tab */
+.recents-loader {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 60px 0;
+}
+
+/* Animations */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes skeletonShimmer {
+  0% { transform: translateX(-120%); }
+  100% { transform: translateX(120%); }
+}
+
+@keyframes feedBarSlide {
+  0% { transform: translateX(-120%); }
+  100% { transform: translateX(220%); }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .radio-rooms-container {
+    padding: 20px;
+  }
+
+  .tuner-container.expanded {
+    margin-bottom: 18px;
+    padding-top: 10px;
+  }
+
+  .tuner-wrapper {
+    gap: 16px;
+    padding: 18px 10px 24px;
+  }
+
+  .selected-artists-container {
+    margin-top: 56px;
+    padding: 14px 14px 15px;
+  }
+
+  .selected-artists-copy h2 {
+    font-size: 18px;
+  }
+
+  .selected-artists-count {
+    padding: 6px 10px;
+  }
+
+  .selected-artist-card {
+    width: 106px;
+    padding: 8px 7px 10px;
+    gap: 8px;
+  }
+
+  .selected-artist-image-wrap {
+    width: 62px;
+    height: 62px;
+  }
+  
+  .radio-rooms-container .tabs-navigation {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .radio-rooms-container .tab-button {
+    padding: 10px 16px;
+    font-size: 14px;
+  }
+}
+
+@media (min-width: 700px) and (max-width: 820px) and (orientation: portrait) {
+  .radio-rooms-container.is-tablet-portrait-view {
+    padding: 24px 18px 56px;
+  }
+
+  .radio-rooms-container.is-tablet-portrait-view .tabs-navigation {
+    flex-direction: row;
+    gap: 4px;
+  }
+
+  .radio-rooms-container.is-tablet-portrait-view .tab-button {
+    padding: 11px 14px;
+    font-size: 14px;
+  }
+
+  .radio-rooms-container.is-tablet-portrait-view .selected-artists-container {
+    margin-top: 58px;
+  }
+
+  .radio-rooms-container.is-tablet-portrait-view .selected-artists-list {
+    gap: 10px;
+  }
+
+  .radio-rooms-container.is-tablet-portrait-view .selected-artist-card {
+    width: 104px;
+  }
+}
+
+@media (max-width: 480px) {
+  .radio-rooms-container {
+    padding: 16px 12px 36px;
+  }
+
+  .simple-tuner-shell__info {
+    bottom: 10px;
+    right: 8px;
+  }
+
+  .tuner-container {
+    border-radius: 9px;
+  }
+
+  .tuner-wrapper {
+    padding: 14px 8px 20px;
+  }
+
+  .selected-artists-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .selected-artists-copy h2 {
+    font-size: 17px;
+  }
+
+  .selected-artists-list {
+    gap: 10px;
+  }
+
+  .selected-artist-card {
+    width: 96px;
+  }
+
+  .selected-artist-image-wrap {
+    width: 54px;
+    height: 54px;
+  }
+
+  .selected-artist-name {
+    font-size: 12px;
+  }
+
+  .radio-rooms-container .tab-button {
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 414px) {
+  .radio-rooms-container {
+    padding: 15px 11px 34px;
+  }
+
+  .selected-artists-container {
+    margin-top: 52px;
+    padding: 12px 12px 13px;
+  }
+
+  .selected-artists-list {
+    gap: 8px;
+  }
+
+  .selected-artist-card {
+    width: 92px;
+    padding: 7px 6px 9px;
+  }
+
+  .selected-artist-image-wrap {
+    width: 52px;
+    height: 52px;
+  }
+
+  .rooms-tuner-wrap .simple-tuner-dial {
+    padding: 16px 14px 18px;
+  }
+
+  .rooms-tuner-wrap .simple-tuner-dial--has-mobile-steps .simple-tuner-dial__dial-and-steps {
+    --mobile-step-side-width: clamp(84px, calc(50% - 56px), 116px);
+  }
+
+  .simple-tuner-shell__info {
+    bottom: 8px;
+    right: 8px;
+  }
+}
+
+@media (max-width: 390px) {
+  .radio-rooms-container {
+    padding: 14px 10px 30px;
+  }
+
+  .rooms-tuner-wrap .simple-tuner-dial--has-mobile-steps .simple-tuner-dial__dial-and-steps {
+    --mobile-step-side-width: clamp(80px, calc(50% - 54px), 110px);
+  }
+
+  .rooms-tuner-wrap .simple-tuner-dial--has-mobile-steps .simple-tuner-dial__mobile-step {
+    font-size: 9px;
+  }
+}
+
+@media (max-width: 360px) {
+  .radio-rooms-container {
+    padding: 12px 8px 24px;
+  }
+
+  .selected-artists-container {
+    margin-top: 50px;
+    padding: 10px 10px 12px;
+  }
+
+  .selected-artist-card {
+    width: 86px;
+  }
+
+  .selected-artist-image-wrap {
+    width: 48px;
+    height: 48px;
+  }
+
+  .rooms-tuner-wrap .simple-tuner-dial {
+    padding: 14px 10px 16px;
+  }
+
+  .rooms-tuner-wrap .simple-tuner-dial--has-mobile-steps .simple-tuner-dial__value-number {
+    font-size: 20px;
+  }
+
+  .rooms-tuner-wrap .simple-tuner-dial--has-mobile-steps .simple-tuner-dial__dial-and-steps {
+    --mobile-step-side-width: clamp(72px, calc(50% - 50px), 100px);
+  }
+
+  .rooms-tuner-wrap .simple-tuner-dial--has-mobile-steps .simple-tuner-dial__mobile-step {
+    font-size: 8.5px;
+    line-height: 1.18;
+  }
+
+  .simple-tuner-shell__info {
+    bottom: 6px;
+    right: 6px;
+  }
+}

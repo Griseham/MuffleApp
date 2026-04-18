@@ -701,7 +701,7 @@ export default function ContextPanel({
   const [likedSongs, setLikedSongs] = useState(() => new Set());
   const [activeAlbumView, setActiveAlbumView] = useState(null);
   const [isAlbumClosing, setIsAlbumClosing] = useState(false);
-  const [isSelectedArtistLoading, setIsSelectedArtistLoading] = useState(false);
+  const [isSelectedArtistLoading, setIsSelectedArtistLoading] = useState(true);
   const [zone2Artists, setZone2Artists] = useState(() =>
     buildZone2Artists(getCacheReadyTimelineArtists())
   );
@@ -751,7 +751,6 @@ export default function ContextPanel({
   useEffect(() => {
     let isMounted = true;
 
-    setIsSelectedArtistLoading(true);
     Promise.all([
       loadCacheReadyArtists(),
       loadAlbumArtworksCache(),

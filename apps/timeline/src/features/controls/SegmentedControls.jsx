@@ -1,35 +1,5 @@
 import { GENRES } from "../../backend/timelineMockData";
-import { ChartIcon, VolumeIcon, GenreIcon } from "../Icons";
 import InfoIconModal from "../InfoIconModal";
-
-export const FILTER_OPTIONS = [
-  { value: "yourTimeline", label: "Timeline", icon: <ChartIcon /> },
-  { value: "volume", label: "Volume", icon: <VolumeIcon /> },
-  { value: "genre", label: "Genre", icon: <GenreIcon /> },
-];
-
-// Original single-select tabs (kept for any other uses)
-export function SegmentedTabs({ value, onChange = () => {}, options = FILTER_OPTIONS }) {
-  return (
-    <div className="segmented-tabs">
-      {options.map((opt) => {
-        const isActive = value === opt.value;
-        return (
-          <button
-            key={opt.value}
-            type="button"
-            className={`segmented-tab ${isActive ? "active" : ""}`}
-            onClick={() => onChange(opt.value)}
-          >
-            {opt.icon && <span className="segmented-icon">{opt.icon}</span>}
-            <span className="segmented-label">{opt.label}</span>
-            {isActive && <span className="segmented-underline" />}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
 
 /**
  * Multi-toggle tabs — each tab can be independently active/inactive.
@@ -37,9 +7,8 @@ export function SegmentedTabs({ value, onChange = () => {}, options = FILTER_OPT
  *   tabs: Array<{ id, label, icon? }>
  *   activeIds: Set<string> | string[]  — which tab ids are currently active
  *   onToggle: (id: string) => void     — called when a tab is clicked
- *   exclusiveId: string (optional)     — if this id is toggled, all others are cleared
  */
-export function MultiToggleTabs({ tabs, activeIds, onToggle, exclusiveId, disabledIds = [] }) {
+export function MultiToggleTabs({ tabs, activeIds, onToggle, disabledIds = [] }) {
   const activeSet = new Set(activeIds);
   const disabledSet = new Set(disabledIds);
 

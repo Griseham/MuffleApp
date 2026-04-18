@@ -1,0 +1,241 @@
+/* SimpleTunerDial.css - Styles for the centered circular dial tuner */
+
+.simple-tuner-dial {
+  background: var(--bg-card, #0f172a);
+  border-radius: 16px;
+  border: 2px solid var(--primary);
+  padding: 20px 24px;
+  box-shadow: 0 0 20px var(--primary-glow);
+  transition: opacity 0.3s, filter 0.3s;
+  width: 100%;
+  max-width: 1000px;
+  margin: 0 auto 20px;
+}
+
+.simple-tuner-dial.disabled {
+  opacity: 0.5;
+  filter: grayscale(0.7);
+}
+
+/* When expanded tuner is open, lock only the dial interaction */
+.simple-tuner-dial.dial-locked .simple-tuner-dial__dial {
+  opacity: 0.35;
+  filter: grayscale(0.8);
+  pointer-events: none;
+}
+
+.simple-tuner-dial__content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+/* Value displays */
+.simple-tuner-dial__value {
+  text-align: center;
+  min-width: 80px;
+  flex: 1;
+}
+
+.simple-tuner-dial__value--volume {
+  text-align: left;
+}
+
+.simple-tuner-dial__value--similarity {
+  text-align: right;
+}
+
+.simple-tuner-dial__value-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.simple-tuner-dial__value--volume .simple-tuner-dial__value-header {
+  justify-content: flex-start;
+}
+
+.simple-tuner-dial__value--similarity .simple-tuner-dial__value-header {
+  justify-content: flex-end;
+}
+
+.simple-tuner-dial__value-label {
+  font-size: 10px;
+  color: var(--text-muted, #888);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.simple-tuner-dial__value-number {
+  font-family: var(--font-family-mono);
+  font-size: 28px;
+  font-weight: 700;
+  display: block;
+  line-height: 1.2;
+}
+
+.simple-tuner-dial__value-number--volume {
+  color: #fff;
+  text-shadow: 0 0 15px rgba(255, 255, 255, 0.35);
+}
+
+.simple-tuner-dial__value-number--similarity {
+  color: #fff;
+  text-shadow: 0 0 15px rgba(255, 255, 255, 0.35);
+}
+
+/* Dial wrapper */
+.simple-tuner-dial__dial-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  flex-shrink: 0;
+}
+
+.simple-tuner-dial__dial-and-steps {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+/* Dial */
+.simple-tuner-dial__dial {
+  cursor: pointer;
+  user-select: none;
+  touch-action: none;
+  position: relative;
+}
+
+.simple-tuner-dial__dial.armed {
+  filter: drop-shadow(0 0 10px rgba(255,255,255,0.08));
+}
+
+.simple-tuner-dial__hint {
+  position: absolute;
+  left: 50%;
+  bottom: -18px;
+  transform: translateX(-50%);
+  font-size: 10px;
+  color: rgba(255,255,255,0.65);
+  letter-spacing: 0.4px;
+  white-space: nowrap;
+}
+
+.simple-tuner-dial__mobile-steps {
+  display: none;
+  pointer-events: none;
+}
+
+.simple-tuner-dial__mobile-step {
+  color: rgba(255, 255, 255, 0.9);
+  pointer-events: none;
+}
+
+/* Arc glow effects */
+.simple-tuner-dial__arc--volume {
+  filter: drop-shadow(0 0 6px var(--primary-glow));
+}
+
+.simple-tuner-dial__arc--similarity {
+  filter: drop-shadow(0 0 6px currentColor);
+}
+
+/* Indicator line glow */
+.simple-tuner-dial__indicator {
+  filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.5));
+}
+
+/* Expand button */
+.simple-tuner-dial__expand-btn {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--border-light, #333);
+  border-radius: 20px;
+  padding: 6px 14px;
+  margin-top: 8px;
+  color: var(--text-light, #ccc);
+  font-size: 11px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.simple-tuner-dial__expand-btn:hover {
+  background: rgba(15, 23, 42, 0.9);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .simple-tuner-dial {
+    padding: 16px;
+  }
+
+  .simple-tuner-dial__content {
+    gap: 12px;
+  }
+
+  .simple-tuner-dial__value {
+    min-width: 60px;
+  }
+
+  .simple-tuner-dial__value-number {
+    font-size: 22px;
+  }
+
+  .simple-tuner-dial__value-label {
+    font-size: 9px;
+  }
+
+  .simple-tuner-dial--has-mobile-steps .simple-tuner-dial__hint {
+    display: none;
+  }
+
+  .simple-tuner-dial--has-mobile-steps .simple-tuner-dial__mobile-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-width: 124px;
+  }
+
+  .simple-tuner-dial--has-mobile-steps .simple-tuner-dial__mobile-step {
+    font-size: 10px;
+    line-height: 1.25;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+  }
+}
+
+@media (max-width: 400px) {
+  .simple-tuner-dial__content {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .simple-tuner-dial__dial-wrapper {
+    order: -1;
+    width: 100%;
+    margin-bottom: 12px;
+  }
+
+  .simple-tuner-dial__value {
+    flex: 1;
+  }
+
+  .simple-tuner-dial__value--volume,
+  .simple-tuner-dial__value--similarity {
+    text-align: center;
+  }
+
+  .simple-tuner-dial__value-header {
+    justify-content: center !important;
+  }
+}

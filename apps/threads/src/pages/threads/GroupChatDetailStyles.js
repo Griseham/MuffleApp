@@ -1,4 +1,5 @@
 // GroupChatDetailStyles.js - Dark Gradient Cards Design
+// Mobile (≤768px): Design 2 "Chat First" — slim collapsible context banner, max chat space
 
 const GroupChatDetailStyles = {
   // =========================
@@ -775,6 +776,150 @@ const GroupChatDetailStyles = {
     fontSize: '18px',
     fontWeight: 500,
     color: '#ff69b4',
+  },
+
+  // =========================
+  // Mobile: Context Banner (Design 2)
+  // Replaces postStatsRow on mobile — slim collapsible strip
+  // =========================
+  contextBanner: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: '10px',
+    padding: '10px 12px',
+    background: 'rgba(255,105,180,0.07)',
+    border: '1px solid rgba(255,105,180,0.15)',
+    borderRadius: '14px',
+    marginBottom: '12px',
+    cursor: 'pointer',
+  },
+
+  contextBannerThumb: {
+    width: '44px',
+    height: '44px',
+    borderRadius: '10px',
+    objectFit: 'cover',
+    border: '2px solid rgba(255,105,180,0.25)',
+    flexShrink: 0,
+  },
+
+  contextBannerBody: {
+    flex: 1,
+    minWidth: 0,
+  },
+
+  contextBannerAuthor: {
+    color: '#ff69b4',
+    fontWeight: 600,
+    fontSize: '13px',
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+  },
+
+  contextBannerText: {
+    color: '#888',
+    fontSize: '12px',
+    lineHeight: 1.4,
+    marginTop: '2px',
+    display: '-webkit-box',
+    WebkitLineClamp: 2,
+    WebkitBoxOrient: 'vertical',
+    overflow: 'hidden',
+  },
+
+  contextBannerMeta: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    marginTop: '6px',
+    flexWrap: 'wrap',
+  },
+
+  contextBannerGenrePill: {
+    padding: '2px 8px',
+    borderRadius: '5px',
+    fontSize: '10px',
+    fontWeight: 600,
+    color: '#fff',
+  },
+
+  contextBannerExpandBtn: {
+    flexShrink: 0,
+    background: 'none',
+    border: 'none',
+    color: '#ff69b4',
+    fontSize: '18px',
+    cursor: 'pointer',
+    padding: '0 2px',
+    lineHeight: 1,
+    alignSelf: 'center',
+  },
+
+  // Expanded panel shown below the banner on mobile
+  contextBannerExpanded: {
+    background: 'linear-gradient(145deg, #151520, #1a1a25)',
+    borderRadius: '14px',
+    border: '1px solid rgba(255,105,180,0.15)',
+    padding: '14px',
+    marginBottom: '12px',
+  },
+
+  contextBannerExpandedImage: {
+    width: '100%',
+    borderRadius: '10px',
+    objectFit: 'cover',
+    objectPosition: 'center',
+    maxHeight: '200px',
+    display: 'block',
+    border: '1px solid rgba(255,105,180,0.15)',
+    marginBottom: '12px',
+  },
+
+  contextBannerStatsRow: {
+    display: 'flex',
+    gap: '10px',
+  },
+
+  contextBannerStatBlock: {
+    flex: 1,
+    background: 'rgba(255,255,255,0.03)',
+    border: '1px solid rgba(255,255,255,0.07)',
+    borderRadius: '10px',
+    padding: '10px 12px',
+  },
+
+  contextBannerStatLabel: {
+    color: '#555',
+    fontSize: '11px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '4px',
+    marginBottom: '4px',
+  },
+
+  contextBannerStatValue: {
+    color: '#10b981',
+    fontSize: '15px',
+    fontWeight: 700,
+  },
+
+  contextBannerGenreList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '6px',
+  },
+
+  contextBannerGenreRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+
+  contextBannerGenreChange: {
+    color: '#10b981',
+    fontSize: '12px',
+    fontWeight: 700,
   },
 };
 

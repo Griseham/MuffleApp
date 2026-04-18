@@ -1,0 +1,894 @@
+/* SelectionScreen.css */
+/* Updated: RoomsScreen palette + Design B (blue outline) continue button */
+
+/* Artist image container styling - defined in UnifiedArtistStyles.css now */
+
+/* SelectionScreen-only shell variant */
+.mufl-sidebar-app-shell.selection-shell {
+  background: #000;
+}
+
+.mufl-sidebar-app-shell.selection-shell .mufl-sidebar-app-main {
+  padding: 0 24px;
+  box-sizing: border-box;
+}
+
+.mufl-sidebar-app-shell.selection-shell .threads-home-sidebar {
+  background: transparent;
+}
+
+/* Main container — RoomsScreen palette */
+.selection-screen-container {
+  --sel-bg: #000;
+  --sel-primary: #60a5fa;
+  --sel-primary-glow: rgba(96, 165, 250, 0.5);
+  --sel-surface: rgba(15, 18, 28, 0.97);
+  --sel-surface-bottom: rgba(8, 10, 16, 0.99);
+  --sel-surface-strong: rgba(15, 18, 26, 0.9);
+  --sel-surface-soft: rgba(255, 255, 255, 0.06);
+  --sel-border: rgba(255, 255, 255, 0.12);
+  --sel-border-light: rgba(255, 255, 255, 0.18);
+  --sel-text: #f8fafc;
+  --sel-text-light: #e2e8f0;
+  --sel-muted: rgba(241, 245, 249, 0.6);
+  --sel-accent: #60a5fa;
+  --sel-accent-soft: rgba(96, 165, 250, 0.24);
+  --sel-accent-ghost: rgba(96, 165, 250, 0.08);
+
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+  padding-top: 16px;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  box-sizing: border-box;
+  background: transparent;
+  position: relative;
+  overflow: hidden;
+  min-height: 100vh;
+  min-height: 100dvh;
+  height: 100dvh;
+}
+
+.selection-screen-panel {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.96), rgba(0, 0, 0, 0.99));
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 20px 20px 0 0;
+  box-shadow: 0 20px 46px rgba(1, 4, 10, 0.45);
+  overflow: hidden;
+}
+
+.selection-screen-panel .artists-area {
+  height: auto;
+  min-height: 0;
+}
+
+@media (max-width: 768px) {
+  .mufl-sidebar-app-shell.selection-shell .mufl-sidebar-app-main {
+    padding: 0 14px;
+  }
+
+  .selection-screen-container {
+    width: 100%;
+    padding-top: 10px;
+  }
+
+  .selection-screen-panel {
+    border-radius: 14px 14px 0 0;
+  }
+}
+
+/* Fixed header area — RoomsScreen radial gradient wash */
+.selection-header {
+  padding: 24px 20px;
+  position: sticky;
+  top: 0;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.96), rgba(0, 0, 0, 0.98));
+  backdrop-filter: blur(10px);
+  z-index: 20;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.selection-header h1 {
+  font-size: 28px;
+  font-weight: 700;
+  margin: 0 0 20px 0;
+  text-align: center;
+  color: var(--sel-text);
+}
+
+/* Search bar styles — RoomsScreen card bg + blue focus */
+.search-container {
+  margin: 0 auto 20px;
+  width: 100%;
+  position: relative;
+}
+
+.search-input {
+  width: 100%;
+  padding: 12px 20px;
+  padding-right: 45px;
+  border-radius: 50px;
+  border: 1px solid var(--sel-border-light);
+  background: linear-gradient(180deg, rgba(15, 18, 28, 0.88), rgba(8, 10, 16, 0.92));
+  color: var(--sel-text);
+  font-size: 16px;
+  box-sizing: border-box;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.search-input:focus {
+  outline: none;
+  background: linear-gradient(180deg, rgba(15, 18, 28, 0.95), rgba(8, 10, 16, 0.97));
+  border-color: rgba(96, 165, 250, 0.4);
+  box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.15), 0 0 14px rgba(96, 165, 250, 0.12);
+}
+
+.search-input::placeholder {
+  color: var(--sel-muted);
+}
+
+.search-help-text {
+  margin: -8px 4px 12px;
+  color: var(--sel-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+/* Search spinner — blue accent */
+.search-spinner {
+  position: absolute;
+  right: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(96, 165, 250, 0.15);
+  border-radius: 50%;
+  border-top: 2px solid var(--sel-primary);
+  animation: spin 1s linear infinite;
+}
+
+/* Genre filter styles — RoomsScreen tab styling */
+.genre-filters-container {
+  position: relative;
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+
+.genre-filters {
+  display: flex;
+  overflow-x: auto;
+  gap: 10px;
+  padding: 4px 0;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  position: relative;
+  mask-image: linear-gradient(to right, transparent, black 10px, black 90%, transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, black 10px, black 90%, transparent);
+}
+
+.genre-filters::-webkit-scrollbar {
+  display: none;
+}
+
+.genre-button {
+  flex: 0 0 auto;
+  padding: 8px 18px;
+  border-radius: 50px;
+  background: linear-gradient(180deg, rgba(20, 20, 20, 0.94) 0%, rgba(0, 0, 0, 0.9) 100%);
+  color: rgba(241, 245, 249, 0.58);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.genre-button:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.genre-button.active {
+  background: rgba(15, 18, 26, 0.78);
+  color: var(--sel-text);
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.genre-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Scrollable artists area */
+.artists-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 0;
+  margin-bottom: calc(var(--selection-bottom-area-height, 110px) + 14px);
+  min-height: 0;
+  height: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.artists-area::-webkit-scrollbar {
+  display: none;
+}
+
+/* Artists grid */
+.artists-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+  padding: 0 20px;
+}
+
+@media (max-width: 768px) {
+  .artists-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .artists-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Artist circle styles */
+.selection-artist-circle {
+  appearance: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  padding: 10px;
+  border-radius: 12px;
+  border: none;
+  background: transparent;
+  color: inherit;
+  text-align: inherit;
+}
+
+.selection-artist-circle:hover {
+  background-color: rgba(96, 165, 250, 0.04);
+}
+
+/* Selected state — RoomsScreen blue accent */
+.selection-artist-circle.selected {
+  background-color: var(--sel-accent-ghost);
+}
+
+.selection-artist-circle:disabled {
+  cursor: wait;
+}
+
+.selection-artist-image-container {
+  width: 100%;
+  aspect-ratio: 1/1;
+  position: relative;
+  border-radius: 50%;
+  overflow: hidden;
+  margin-bottom: 10px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.artist-circle-image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Selected ring — RoomsScreen blue glow */
+.selection-artist-circle.selected .selection-artist-image-container::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border: 3px solid rgba(96, 165, 250, 0.5);
+  border-radius: 50%;
+  box-sizing: border-box;
+  box-shadow: 0 0 16px rgba(96, 165, 250, 0.14);
+}
+
+.selection-artist-name {
+  font-size: 16px;
+  text-align: center;
+  font-weight: 600;
+  margin: 0;
+  color: #f1f5f9;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.3;
+}
+
+/* Selected artist name — blue accent */
+.selection-artist-circle.selected .selection-artist-name {
+  color: var(--sel-primary);
+  font-weight: 700;
+}
+
+/* Loading spinner for artist circles — blue */
+.artist-loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.7);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.artist-loading-spinner {
+  border: 3px solid rgba(96, 165, 250, 0.2);
+  border-radius: 50%;
+  border-top: 3px solid var(--sel-primary);
+  width: 28px;
+  height: 28px;
+  animation: spin 1s linear infinite;
+}
+
+/* Initial loading state */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 300px;
+  width: 100%;
+}
+
+.loading-container-full {
+  min-height: 100%;
+  height: calc(100dvh - 280px);
+}
+
+.loading-container p {
+  margin: 0;
+  color: var(--sel-muted);
+  font-size: 14px;
+}
+
+/* Main loading spinner — blue */
+.loading-spinner {
+  border: 4px solid rgba(96, 165, 250, 0.15);
+  border-radius: 50%;
+  border-top: 4px solid var(--sel-primary);
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+  margin-bottom: 16px;
+}
+
+/* Load more button — RoomsScreen card style */
+.load-more-container {
+  display: flex;
+  justify-content: center;
+  padding: 20px 0 30px 0;
+  width: 100%;
+}
+
+.load-more-button {
+  background: linear-gradient(180deg, rgba(20, 20, 20, 0.94), rgba(0, 0, 0, 0.9));
+  color: var(--sel-text);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 50px;
+  padding: 10px 24px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.load-more-button:hover {
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.load-more-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* No results message */
+.no-results {
+  width: 100%;
+  text-align: center;
+  color: var(--sel-muted);
+  font-size: 16px;
+  padding: 40px 0;
+}
+
+/* Animation for related artists */
+.fade-in {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Bottom area — RoomsScreen palette chips + Design B button
+   ─────────────────────────────────────────────────────────── */
+
+.bottom-area {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 900px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.95) 18%);
+  backdrop-filter: blur(10px);
+  padding: 24px clamp(10px, 3vw, 20px) calc(14px + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  z-index: 100;
+  box-sizing: border-box;
+}
+
+/* Chips row */
+.bottom-chips-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* Individual artist chip — RoomsScreen card style with blue tint */
+.artist-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(96, 165, 250, 0.06);
+  border-radius: 50px;
+  padding: 5px 12px 5px 5px;
+  border: 1px solid rgba(96, 165, 250, 0.2);
+  animation: chipFadeIn 0.3s ease both;
+  transition: background-color 0.2s, border-color 0.2s;
+}
+
+.artist-chip:hover {
+  background: rgba(96, 165, 250, 0.1);
+  border-color: rgba(96, 165, 250, 0.3);
+}
+
+/* Avatar inside chip — RoomsScreen gradient ring */
+.artist-chip-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  position: relative;
+  background: linear-gradient(140deg, rgba(96, 165, 250, 0.62), rgba(255, 255, 255, 0.14) 70%);
+  padding: 2px;
+  box-shadow: 0 0 12px rgba(96, 165, 250, 0.12);
+}
+
+.artist-chip-avatar .artist-circle-image {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: calc(100% - 4px);
+  height: calc(100% - 4px);
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+/* Name inside chip */
+.artist-chip-name {
+  color: #93c5fd;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Remove button inside chip */
+.artist-chip-remove {
+  appearance: none;
+  background: none;
+  border: none;
+  color: rgba(96, 165, 250, 0.5);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0 2px;
+  line-height: 1;
+  transition: color 0.2s;
+  display: flex;
+  align-items: center;
+}
+
+.artist-chip-remove:hover {
+  color: #ff6b6b;
+}
+
+/* Empty slot placeholder — blue dashed */
+.artist-chip-empty {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1.5px dashed rgba(96, 165, 250, 0.12);
+  flex-shrink: 0;
+  margin: 5px 2px;
+}
+
+@keyframes chipFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Continue button — Design B: Blue outline with inner glow
+   ─────────────────────────────────────────────────────────── */
+
+.continue-button {
+  background: transparent;
+  color: var(--sel-primary);
+  border: 1.5px solid rgba(96, 165, 250, 0.45);
+  border-radius: 50px;
+  padding: 13px 0;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  width: 100%;
+  box-shadow: 0 0 18px rgba(96, 165, 250, 0.12), inset 0 0 18px rgba(96, 165, 250, 0.04);
+}
+
+.continue-button:hover:not(:disabled) {
+  border-color: rgba(96, 165, 250, 0.65);
+  box-shadow: 0 0 24px rgba(96, 165, 250, 0.2), inset 0 0 24px rgba(96, 165, 250, 0.06);
+  color: #93c5fd;
+}
+
+.continue-button:active:not(:disabled) {
+  transform: scale(0.99);
+  box-shadow: 0 0 12px rgba(96, 165, 250, 0.15), inset 0 0 12px rgba(96, 165, 250, 0.05);
+}
+
+.continue-button:disabled {
+  background: transparent;
+  color: rgba(96, 165, 250, 0.3);
+  border: 1.5px solid rgba(96, 165, 250, 0.12);
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+/* Error message */
+.error-message {
+  color: #ff6b6b;
+  text-align: left;
+  margin: 0 0 12px;
+  padding: 12px 14px;
+  background-color: rgba(255, 107, 107, 0.1);
+  border-radius: 8px;
+  font-size: 14px;
+  border: 1px solid rgba(255, 107, 107, 0.25);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Artist tile sizing & fallback fixes
+   ─────────────────────────────────────────────────────────── */
+
+/* Grid now self-sizes: 130 px tiles with 20 px gutters */
+.artists-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 20px;
+  padding: 0 20px;
+}
+
+.selection-artist-circle {
+  width: 130px;
+  margin: 0 auto;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  transition: transform 0.16s ease, background-color 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.selection-artist-image-container {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  position: relative;
+  border-radius: 50%;
+  overflow: hidden;
+  background: linear-gradient(180deg, rgba(20, 23, 33, 0.92), rgba(8, 10, 16, 0.97));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.artist-circle-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: filter 0.16s ease;
+}
+
+.selection-artist-name {
+  font-size: 15px;
+  margin-top: 8px;
+  color: rgba(241, 245, 249, 0.88);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.selection-artist-circle:not(.selected) {
+  background: rgba(255, 255, 255, 0.01);
+}
+
+.selection-artist-circle:not(.selected) .artist-circle-image {
+  filter: grayscale(0.24) brightness(0.8) saturate(0.86);
+}
+
+.selection-artist-circle:hover:not(.selected) {
+  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+.selection-artist-circle:hover:not(.selected) .artist-circle-image {
+  filter: grayscale(0.06) brightness(0.95) saturate(0.96);
+}
+
+/* Selected state — RoomsScreen blue */
+.selection-artist-circle.selected {
+  transform: translateY(-1px);
+  background: linear-gradient(180deg, rgba(15, 30, 56, 0.7), rgba(8, 20, 38, 0.82));
+  border-color: rgba(96, 165, 250, 0.7);
+  box-shadow: 0 8px 26px rgba(7, 13, 26, 0.55), 0 0 0 1px rgba(96, 165, 250, 0.22);
+}
+
+.selection-artist-circle.selected .selection-artist-image-container {
+  border-color: rgba(147, 197, 253, 0.7);
+}
+
+.selection-artist-circle.selected .selection-artist-image-container::after {
+  inset: 0;
+  border: 4px solid rgba(147, 197, 253, 0.95);
+  border-width: 4px;
+  box-shadow: 0 0 24px rgba(96, 165, 250, 0.36);
+}
+
+.selection-artist-circle.selected .selection-artist-image-container::before {
+  content: '✓';
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 800;
+  color: #dbeafe;
+  background: rgba(15, 23, 42, 0.92);
+  border: 1px solid rgba(147, 197, 253, 0.85);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.45);
+  z-index: 3;
+}
+
+.selection-artist-circle.selected .artist-circle-image {
+  filter: none;
+}
+
+.selection-artist-circle.selected .selection-artist-name {
+  color: #93c5fd;
+  font-weight: 800;
+  text-shadow: 0 0 12px rgba(96, 165, 250, 0.22);
+}
+
+/* SelectionScreen viewport hardening for phone/tablet variants */
+.selection-screen-container.is-tablet-portrait-view {
+  max-width: 760px;
+}
+
+.selection-screen-container.is-tablet-portrait-view .artists-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  padding: 0 16px;
+}
+
+.selection-screen-container.is-tablet-portrait-view .selection-artist-circle {
+  width: 100%;
+  max-width: 128px;
+}
+
+.selection-screen-container.is-tablet-portrait-view .selection-header {
+  padding: 20px 16px;
+}
+
+.selection-screen-container.is-tablet-portrait-view .bottom-area {
+  max-width: 760px;
+  padding-top: 20px;
+}
+
+@media (max-width: 414px) {
+  .mufl-sidebar-app-shell.selection-shell .mufl-sidebar-app-main {
+    padding: 0 10px;
+  }
+
+  .selection-screen-container {
+    padding-top: 8px;
+  }
+
+  .selection-screen-panel {
+    border-radius: 12px 12px 0 0;
+  }
+
+  .selection-header {
+    padding: 16px 12px;
+  }
+
+  .selection-header h1 {
+    font-size: 23px;
+    margin-bottom: 14px;
+  }
+
+  .search-container {
+    margin-bottom: 14px;
+  }
+
+  .genre-filters-container {
+    margin-bottom: 10px;
+  }
+
+  .artists-grid {
+    gap: 14px;
+    padding: 0 12px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .selection-artist-circle {
+    width: 100%;
+    max-width: 124px;
+    padding: 8px 6px;
+  }
+
+  .selection-artist-name {
+    font-size: 14px;
+    margin-top: 7px;
+  }
+
+  .bottom-area {
+    padding-top: 18px;
+    gap: 12px;
+  }
+
+  .continue-button {
+    padding: 12px 0;
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 390px) {
+  .mufl-sidebar-app-shell.selection-shell .mufl-sidebar-app-main {
+    padding: 0 8px;
+  }
+
+  .selection-header {
+    padding: 14px 10px;
+  }
+
+  .selection-header h1 {
+    font-size: 22px;
+    margin-bottom: 12px;
+  }
+
+  .artists-grid {
+    gap: 12px;
+    padding: 0 10px;
+  }
+
+  .selection-artist-circle {
+    max-width: 114px;
+    padding: 7px 5px;
+  }
+
+  .selection-artist-circle.selected .selection-artist-image-container::before {
+    width: 21px;
+    height: 21px;
+    font-size: 12px;
+    top: 6px;
+    right: 6px;
+  }
+
+  .artist-chip-name {
+    max-width: 80px;
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 360px) {
+  .selection-screen-container {
+    padding-top: 6px;
+  }
+
+  .selection-header {
+    padding: 12px 9px;
+  }
+
+  .selection-header h1 {
+    font-size: 20px;
+  }
+
+  .search-input {
+    padding: 10px 16px;
+    padding-right: 40px;
+    font-size: 15px;
+  }
+
+  .genre-button {
+    padding: 7px 14px;
+    font-size: 13px;
+  }
+
+  .artists-grid {
+    gap: 10px;
+    padding: 0 8px;
+  }
+
+  .selection-artist-circle {
+    max-width: 106px;
+    padding: 6px 4px;
+  }
+
+  .selection-artist-name {
+    font-size: 13px;
+  }
+
+  .bottom-area {
+    padding-top: 16px;
+  }
+
+  .continue-button {
+    font-size: 13px;
+    letter-spacing: 0.7px;
+  }
+}

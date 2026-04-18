@@ -49,19 +49,6 @@ export const TrophyIcon = () => (
   </svg>
 );
 
-export const SearchIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="11" cy="11" r="8"/>
-    <path d="m21 21-4.3-4.3"/>
-  </svg>
-);
-
-export const PlayIcon = () => (
-  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-    <polygon points="5 3 19 12 5 21 5 3"/>
-  </svg>
-);
-
 export const CloseIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M18 6L6 18M6 6l12 12"/>
@@ -79,13 +66,6 @@ export const BellIcon = ({ checked = false }) => (
     <path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
     <path d="M10.3 21a2 2 0 0 0 3.4 0" />
     {checked && <path d="m9.5 12.5 1.8 1.8 3.7-3.7" />}
-  </svg>
-);
-
-export const DiscIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="10"/>
-    <circle cx="12" cy="12" r="3"/>
   </svg>
 );
 
