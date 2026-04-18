@@ -21,7 +21,6 @@ const [isRefreshing, setIsRefreshing] = useState(false);
 const [internalCountdown, setInternalCountdown] = useState(20); // Changed to 20
 const [selectedByCurrentUser, setSelectedByCurrentUser] = useState(new Set()); // Track current user's selections
 const [artistUserSelections, setArtistUserSelections] = useState({}); // Persistent user selections per artist
-const [lastRefreshTime, setLastRefreshTime] = useState(Date.now()); // Track when pool last refreshed
 const [userSelectionTimeouts, setUserSelectionTimeouts] = useState([]); // Track timeouts for cleanup
 
 // Use external countdown if provided, otherwise use internal
@@ -248,8 +247,7 @@ const refreshVisibleArtists = async () => {
   // Clear all user selections when pool refreshes
   setArtistUserSelections({});
   setSelectedByCurrentUser(new Set()); // Clear current user selections
-  setLastRefreshTime(Date.now());
-  
+
   // Small delay to show loading animation
   await new Promise(resolve => setTimeout(resolve, 500));
   
@@ -310,6 +308,7 @@ const refreshVisibleArtists = async () => {
 };
 
 // Initial load and when pool artists change
+// eslint-disable-next-line react-hooks/exhaustive-deps
 useEffect(() => {
   refreshVisibleArtists();
 }, [poolArtists, roomArtists]);
@@ -338,6 +337,7 @@ useEffect(() => {
   }, 1000);
 
   return () => clearInterval(interval);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [externalCountdown, poolArtists, roomArtists]);
 
 // Helper function for room artist indicator
@@ -421,8 +421,7 @@ return (
           {visibleArtists.map((artist, index) => {
             const users = getUsersForArtist(artist.id || artist.name);
             const isSelected = isSelectedByCurrentUser(artist.id);
-            const hasUsers = users.length > 0;
-            
+
             return (
               <div 
                 key={`${artist.id || index}-${index}`} 
