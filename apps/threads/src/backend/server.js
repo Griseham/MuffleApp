@@ -2035,6 +2035,12 @@ app.get("/api/posts/:postId/comments", async (req, res) => {
     return res.json({ success: true, data: [], skipped: true, reason: post.postType });
   }
 
+  // Respect an explicit postType from the caller. Only infer groupchat by subreddit
+  // when no explicit type was provided.
+  const normalizedPostType = (post.postType || "").toString().toLowerCase();
+  const hasExplicitPostType = queryPostType.length > 0;
+  const isGroupchat = normalizedPostType === "groupchat" || (!hasExplicitPostType && post.subreddit === "musicsuggestions");
+
   // Check if we have a fresh cache entry
   const cacheEntry = commentsCache[postId];
   const now = Date.now();
@@ -2046,8 +2052,47 @@ app.get("/api/posts/:postId/comments", async (req, res) => {
     return res.json({ success: true, data: cacheEntry.data });
   }
 
+  // Prefer local cached post comments before making external Reddit requests.
+  try {
+    const cachedPost = await loadCachedPostWithRepairedMedia(postId);
+    if (cachedPost && Array.isArray(cachedPost.comments) && cachedPost.comments.length > 0) {
+      const cachedComments = cachedPost.comments;
+      const finalData = isGroupchat
+        ? {
+            topLevel: cachedComments.slice(0, 15),
+            replies: cachedComments.flatMap((comment) =>
+              (Array.isArray(comment.replies) ? comment.replies : []).map((reply) => ({
+                ...reply,
+                parentId: reply.parentId || comment.id,
+                parentAuthor: reply.parentAuthor || comment.author,
+              }))
+            ),
+          }
+        : cachedComments
+            .slice(0, 18)
+            .map((comment) => ({
+              ...comment,
+              body: removeLinks(comment.body),
+              replies: Array.isArray(comment.replies)
+                ? comment.replies.map((reply) => ({
+                    ...reply,
+                    body: removeLinks(reply.body),
+                  }))
+                : [],
+            }));
+
+      commentsCache[postId] = {
+        data: finalData,
+        timestamp: now,
+      };
+
+      return res.json({ success: true, data: finalData, cached: true, source: "cached-post" });
+    }
+  } catch  {
+    // Fall through to live Reddit fetch.
+  }
+
   // Not cached or stale. Let's fetch from Reddit
-  const isGroupchat = post.postType === "groupchat" || post.subreddit === "musicsuggestions";
   const commentLimit = isGroupchat ? 50 : 18;
   const commentsUrl = `https://www.reddit.com/r/${post.subreddit}/comments/${post.id}.json?limit=${commentLimit}&raw_json=1`;
 
@@ -2117,8 +2162,8 @@ app.get("/api/posts/:postId/comments", async (req, res) => {
     return res.json({ success: true, data: finalData });
 
   } catch (err) {
-    
-    return res.status(500).json({ success: false, error: err.toString() });
+    commentsCache[postId] = { data: [], timestamp: now };
+    return res.json({ success: true, data: [], degraded: true, error: err.toString() });
   }
 });
 
