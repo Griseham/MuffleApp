@@ -1157,7 +1157,7 @@
             </div>
             
             <div class="nav-item" data-content="pitch">Pitch Deck</div>
-            <div class="nav-item" data-content="old-videos">Archived Videos</div>
+            <div class="nav-item" data-content="old-videos">Archives</div>
             <div class="nav-submenu" id="archived-nav-submenu">
                 <div class="nav-sub-item nav-archive-sub-item" data-content="archived-rooms">Rooms</div>
                 <div class="nav-sub-item nav-archive-sub-item" data-content="archived-threads">Threads</div>
@@ -1194,7 +1194,18 @@
                         <div class="mvp-section">
                             <div class="mvp-text">Try the MVP</div>
                             <button class="mvp-button">Launch Prototype</button>
-                            <div class="coming-soon-note">Updated Explainer video coming soon</div>
+                        </div>
+
+                        <div class="info-video-section">
+                            <h2 class="section-title">Informational</h2>
+                            <div class="info-video-card" data-video="/assets/UpdatedThreadsVideo.mp4">
+                                <div class="info-video-thumbnail">
+                                    <video class="video-element" preload="metadata">
+                                        <source src="/assets/UpdatedThreadsVideo.mp4" type="video/mp4">
+                                    </video>
+                                    <div class="play-overlay">▶</div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -1388,6 +1399,30 @@
             
             // Initialize first slide in pitch deck
             updateSlide(1);
+
+            // Honor ?tab= query parameter so other apps can deep-link a sidebar tab.
+            try {
+                const params = new URLSearchParams(window.location.search);
+                const requestedTab = params.get('tab');
+                if (requestedTab) {
+                    const aliasMap = {
+                        'archives': 'archived-rooms',
+                        'old-videos': 'archived-rooms',
+                        'pitch-deck': 'pitch'
+                    };
+                    const resolvedTab = aliasMap[requestedTab] || requestedTab;
+                    if (resolvedTab === 'archived-rooms' || resolvedTab === 'archived-threads' || resolvedTab === 'archived-timeline') {
+                        archivedSubmenu?.classList.add('open');
+                        setArchivedNavActive(resolvedTab);
+                        showContent(resolvedTab);
+                    } else if (contentMap[resolvedTab]) {
+                        clearActiveNav();
+                        const navEl = document.querySelector(`.nav-item[data-content="${resolvedTab}"], .nav-sub-item[data-content="${resolvedTab}"]`);
+                        navEl?.classList.add('active');
+                        showContent(resolvedTab);
+                    }
+                }
+            } catch (err) { /* ignore malformed query strings */ }
         });
         
         // Handle nav item selection and content switching
