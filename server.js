@@ -52,34 +52,30 @@ registerUnifiedRoutes(app);
 // 3) Serve shared media from the repo root so all apps resolve /assets/*
 app.use('/assets', express.static(path.join(__dirname, 'assets')));
 
-// 4) Serve the Rooms React build
-app.use(express.static(path.join(__dirname, 'apps/rooms/build')));
-// ──────────────────────────────────────────────────────
-
-// 5) Rooms SPA under /rooms
+// 4) Rooms SPA under /rooms
 app.use('/rooms', express.static(path.join(__dirname, 'apps/rooms/build')));
 app.get('/rooms/*', (req, res) => {
   res.sendFile(path.join(__dirname, 'apps/rooms/build', 'index.html'));
 });
 
-// 6) Threads SPA under /threads
+// 5) Threads SPA under /threads
 app.use('/threads', express.static(path.join(__dirname, 'apps/threads/dist')));
 app.get('/threads/*', (req, res) => {
   res.sendFile(path.join(__dirname, 'apps/threads/dist', 'index.html'));
 });
 
-// 7) Timeline SPA under /timeline
+// 6) Timeline SPA under /timeline
 app.use('/timeline', express.static(path.join(__dirname, 'apps/timeline/dist')));
 app.get('/timeline/*', (req, res) => {
   res.sendFile(path.join(__dirname, 'apps/timeline/dist', 'index.html'));
 });
 
-// 8) Root investor portal
+// 7) Root investor portal
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// 9) Health check
+// 8) Health check
 app.get('/health', (req, res) => res.sendStatus(200));
 
 const PORT = process.env.PORT || 8080;
