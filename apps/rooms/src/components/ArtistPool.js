@@ -308,9 +308,9 @@ const refreshVisibleArtists = async () => {
 };
 
 // Initial load and when pool artists change
-// eslint-disable-next-line react-hooks/exhaustive-deps
 useEffect(() => {
   refreshVisibleArtists();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [poolArtists, roomArtists]);
 
 // Synchronized countdown and refresh logic
@@ -419,7 +419,6 @@ return (
       ) : visibleArtists.length > 0 ? (
         <div className="grid grid-cols-5 gap-x-4 gap-y-2 px-2 pt-1 pb-2">
           {visibleArtists.map((artist, index) => {
-            const users = getUsersForArtist(artist.id || artist.name);
             const isSelected = isSelectedByCurrentUser(artist.id);
 
             return (
