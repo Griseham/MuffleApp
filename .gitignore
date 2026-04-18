@@ -48,6 +48,9 @@ Thumbs.db
 **/assets/image*.png
 **/assets/image*.jpg
 **/assets/image*.jpeg
+!assets/image*.png
+!assets/image*.jpg
+!assets/image*.jpeg
 *.zip
 node_modules/
 .DS_Store
