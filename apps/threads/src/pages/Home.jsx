@@ -842,6 +842,7 @@ const MusicHome = () => {
 
   const isStackedLayout = viewportMetrics.width <= SHELL_STACK_BREAKPOINT;
   const isMobileFeedView = viewportMetrics.width <= 640;
+  const isDesktopStarfieldView = viewportMetrics.width > SHELL_STACK_BREAKPOINT;
   const selectedThread = viewState.thread;
   const selectedUser = viewState.user;
   const activeRoute = viewState.route;
@@ -873,10 +874,10 @@ const MusicHome = () => {
   }, [showTikTokModal, pendingSubreddit]);
 
   useEffect(() => {
-    if (isMobileFeedView) {
+    if (!isDesktopStarfieldView) {
       setIsStarfieldOpen(false);
     }
-  }, [isMobileFeedView]);
+  }, [isDesktopStarfieldView]);
 
   const filteredPosts = useMemo(() => {
     if (currentFilter === 'all') {
@@ -1060,9 +1061,9 @@ const MusicHome = () => {
       genres : [{ name: genreName, color: '#1DB954', percentage: 100, liveUsers: "18.5K" }],
       artists: []
     });
-    setJumpGenre(genreName);
-    setIsStarfieldOpen(true);
-  }, []);
+    setJumpGenre(isDesktopStarfieldView ? genreName : null);
+    setIsStarfieldOpen(isDesktopStarfieldView);
+  }, [isDesktopStarfieldView]);
 
   const starfieldOpenHeight = useMemo(() => {
     const viewportHeight = viewportMetrics.height || 900;
@@ -1339,7 +1340,7 @@ const MusicHome = () => {
           )}
         >
           <ThreadsMainFrame viewMode={activeRoute} isTransitioning={viewState.isTransitioning}>
-                {!isMobileFeedView && (
+                {isDesktopStarfieldView && (
                 <div
                   style={{
                     borderRadius: '16px',
