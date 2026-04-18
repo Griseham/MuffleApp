@@ -97,19 +97,6 @@ const TimerRing = ({ minutes, total = 40, size = 24, stroke = 2.5, color = '#60a
   );
 };
 
-// --- SVG Icons ---
-const UserIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path
-      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
-
 // Radar info icons
 const RadarIcon = ({ size = 20, color = '#FFA500' }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">

@@ -74,22 +74,6 @@ const PALETTE = [
 
 const colorFromString = (input = "") => PALETTE[hashStringToInt(input) % PALETTE.length];
 
-const hexToRgba = (hex, alpha = 1) => {
-  const normalized = String(hex || "").replace("#", "").trim();
-  const valid = normalized.length === 3 || normalized.length === 6;
-  if (!valid) return `rgba(255,255,255,${alpha})`;
-
-  const fullHex = normalized.length === 3
-    ? normalized.split("").map((ch) => ch + ch).join("")
-    : normalized;
-
-  const r = parseInt(fullHex.slice(0, 2), 16);
-  const g = parseInt(fullHex.slice(2, 4), 16);
-  const b = parseInt(fullHex.slice(4, 6), 16);
-
-  return `rgba(${r},${g},${b},${alpha})`;
-};
-
 // ── Stat gain popup data ──
 const STAT_GENRES = [
   "Blues", "Jazz", "Hip-Hop", "R&B", "Soul", "Funk", "Rock", "Pop",

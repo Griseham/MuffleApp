@@ -300,8 +300,6 @@ const SIMILARITY_RANGES = {
   
   // Generate artists for volume mode rooms (simpler, randomized logic)
   const generateVolumeRoomArtists = (selectedArtists, relatedArtists, roomIndex) => {
-    const roomArtists = [];
-    
     // Always include some selected artists (6-12 depending on how many we have for 2 pages)
     const selectedToShow = selectedArtists.length > 0 
       ? shuffleArray(selectedArtists).slice(0, Math.min(12, selectedArtists.length))
